@@ -39,6 +39,19 @@
   body.touch #curveTouch{display:flex}
   body.touch #fsB{display:inline-block}
   body.touch #controls button{padding:13px 22px;font-size:17px;font-weight:600}
+  #stage{position:relative;margin:0 auto}
+  #joy,#tbtns{display:none;position:absolute;touch-action:none;user-select:none;-webkit-user-select:none}
+  #joy{left:10px;bottom:10px;width:var(--joy,120px);height:var(--joy,120px);border-radius:50%;
+    background:rgba(15,23,42,.35);border:2px solid rgba(255,255,255,.4)}
+  #knob{position:absolute;left:50%;top:50%;width:44%;height:44%;margin:-22% 0 0 -22%;border-radius:50%;
+    background:rgba(250,204,21,.9);box-shadow:0 2px 8px rgba(0,0,0,.4);pointer-events:none}
+  #tbtns{right:10px;bottom:10px;flex-direction:column;gap:10px;align-items:center}
+  #tbtns button{width:var(--tb,72px);height:var(--tb,72px);border-radius:50%;padding:0;font-size:14px;font-weight:700;
+    background:rgba(51,65,85,.85);border:2px solid rgba(255,255,255,.35);touch-action:none}
+  #tbtns #tDive{background:rgba(180,83,9,.9)}
+  body.touch.defend #joy{display:block}
+  body.touch.defend #tbtns{display:flex}
+  body.touch #diveB,body.touch #switchD{display:none!important}
   body.touch.portrait #rotateHint{display:block}
   .net{font-size:13px;color:var(--muted)}
   .code{font:800 34px/1.1 ui-monospace,Menlo,Consolas,monospace;letter-spacing:6px;color:var(--accent);text-align:center;margin:10px 0}
@@ -86,7 +99,11 @@
     <div id="curveBox">Courbe <div class="track"><div id="dot"></div></div></div>
   </div>
   <div id="rotateHint">📱 Tourne ton téléphone en paysage pour un terrain plus grand.</div>
-  <canvas id="c"></canvas>
+  <div id="stage">
+    <canvas id="c"></canvas>
+    <div id="joy"><div id="knob"></div></div>
+    <div id="tbtns"><button id="tSwitch">Switch</button><button id="tDive">Layout</button></div>
+  </div>
   <div id="controls">
     <button id="curveL">↶ Courbe (A)</button>
     <button id="curveR">Courbe (E) ↷</button>
@@ -199,7 +216,7 @@
       • <b>Layout</b> (clic, tap ou F) : un plongeon vers le pointeur qui élargit ta zone de block. Tu restes au sol un instant si tu rates.<br>
       • <b>Switch</b> (Espace) : prendre le joueur entouré en gris (le plus proche du disque).<br><br>
       <b>Vent</b> : les traits blancs qui traversent le terrain montrent sa direction et sa force. Il fait dériver le disque. L'aperçu du lancer montre déjà la dérive : la croix est l'endroit visé, le cercle l'endroit où le disque arrivera. Contre le vent, les lancers longs sont plus difficiles.<br><br>
-      <b>Sur téléphone</b> : joue en paysage (bouton ⛶ pour le plein écran). En attaque, pose le doigt, glisse pour viser et relâche pour lancer ; la barre en bas règle la courbe. En défense, fais glisser ton doigt pour déplacer ton joueur, tape pour un layout.<br><br>
+      <b>Sur téléphone</b> : joue en paysage (bouton ⛶ pour le plein écran). En attaque, pose le doigt, glisse pour viser et relâche pour lancer ; la barre en bas règle la courbe. En défense, le joystick en bas à gauche déplace ton joueur ; les boutons ronds à droite font un layout (dans la direction du joystick) ou un switch. Tu peux aussi taper sur un de tes joueurs pour le prendre.<br><br>
       <b>En ligne</b> : un joueur crée la partie et envoie le code, l'autre le rejoint. Chacun contrôle son équipe (l'hôte les Bleus, l'invité les Rouges) et choisit sa stratégie avant chaque point ; le point démarre quand les deux sont prêts.<br><br>
       <b>Plays de départ</b> : avant chaque point, tu peux lancer une combinaison préparée. Les joueurs concernés portent un repère (★, 1, 2, S) pendant le play.<br><br>
       On marque en attrapant le disque dans l'en-but adverse.
@@ -224,10 +241,14 @@ const CANCEL_R = 2.5;                                       // relâcher à moin
 const PEER_PREFIX = 'ultimate-frisbee-proto-v1-';
 // ---------------------------------------------------------------------
 //  RELAIS (TURN) — nécessaire quand un joueur est en 4G/5G ou sur un réseau strict.
-//  Crée un compte gratuit sur https://www.metered.ca/tools/openrelay/ (20 Go/mois),
-//  puis colle ici le nom de ton application et ta clé API :
+//  Compte gratuit sur https://www.metered.ca/tools/openrelay/ (20 Go/mois).
+//  Méthode simple : Dashboard → TURN Server → Credentials → « Create Credential »,
+//  puis colle ici le username et le password affichés :
+const TURN_USER = 'f3aaf34a9284ce9886b01f0e';       // ex. 'e8dd65b92f6aee9a4b7c3b1d'
+const TURN_PASS = 'rwnzqzQFQ+JnfCJQ';       // ex. 'uWdWNmkhvyqTEswO'
+//  (Autre méthode, facultative : nom d'application + clé API de credential)
 const TURN_APP = '';        // ex. 'monjeu'  (pour monjeu.metered.live)
-const TURN_KEY = '';        // ex. 'a1b2c3d4...'
+const TURN_KEY = '';
 // ---------------------------------------------------------------------
 const BASE_ICE = [
   { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
@@ -272,14 +293,17 @@ const ctx = canvas.getContext('2d');
 let S = 10, dpr = 1;
 // Le terrain occupe toute la place disponible, en largeur comme en hauteur (utile sur téléphone en paysage)
 function resize() {
-  const wrap = canvas.parentElement;
-  const others = [...wrap.children].filter(e => e !== canvas).reduce((h, e) => h + e.offsetHeight, 0);
+  const stage = canvas.parentElement, wrap = stage.parentElement;
+  const others = [...wrap.children].filter(e => e !== stage).reduce((h, e) => h + e.offsetHeight, 0);
   const availW = wrap.clientWidth, availH = window.innerHeight - others - 30;
   S = Math.max(3, Math.min(availW / (W + 2 * M), availH / (H + 2 * M)));
   const w = (W + 2 * M) * S, h = (H + 2 * M) * S;
   dpr = window.devicePixelRatio || 1;
   canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
   canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+  stage.style.width = w + 'px';
+  stage.style.setProperty('--joy', Math.round(clamp(h * 0.4, 90, 150)) + 'px');   // joystick à la taille de l'écran
+  stage.style.setProperty('--tb', Math.round(clamp(h * 0.2, 54, 80)) + 'px');
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   document.body.classList.toggle('portrait', window.innerHeight > window.innerWidth);
 }
@@ -1288,7 +1312,7 @@ function updateHud() {
   $('dot').style.left = ((G.curve + 1) / 2 * 100) + '%';
   const ME = G.me, OP = 1 - ME, att = G.off === ME;
   const op = G.oplay ? G.oplay.type : '', dp = G.dplay ? G.dplay.type : '';
-  const key = [att, forceOf(0), forceOf(1), formOf(0), formOf(1), defFormOf(0), defFormOf(1), op, dp, G.wind.kmh, G.net, G.me, G.ctrl.join()].join('|');
+  const key = [att, G.phase === 'play', forceOf(0), forceOf(1), formOf(0), formOf(1), defFormOf(0), defFormOf(1), op, dp, G.wind.kmh, G.net, G.me, G.ctrl.join()].join('|');
   if (key === hudKey) return;
   hudKey = key;
   const opp = G.ctrl[OP] === 'ai' ? 'IA' : 'adversaire';
@@ -1307,6 +1331,7 @@ function updateHud() {
   $('curveTouch').style.visibility = att ? 'visible' : 'hidden';
   $('curveBox').style.visibility = att ? 'visible' : 'hidden';
   $('diveB').style.display = $('switchD').style.display = att ? 'none' : '';
+  document.body.classList.toggle('defend', !att && G.phase === 'play');
   $('hint').innerHTML = att
     ? '<i>Attaque</i> : vise et relâche pour lancer (relâche sur ton joueur pour annuler). Anneau vert = coéquipier démarqué. Zone rouge = break side : ajoute de la courbe (A/E, molette) pour contourner la mark. Cercle pointillé = zone de stall.'
     : '<i>Défense</i> : ton joueur (anneau jaune) suit la souris ou le doigt. <i>Clic / tap / F</i> = layout. <i>Espace</i> = switch vers le joueur en gris. Entre dans le cercle du handler pour lancer le stall, le petit cercle jaune indique la position de mark pour ta force.';
@@ -1409,6 +1434,10 @@ function doDive(t, x, y) {
   if (G.net === 'guest') { netSend({ t: 'dive', x, y }); return; }
   if (G.phase === 'play' && G.off !== t && G.sel[t]) { diveTo(G.sel[t], x, y); inputOf(t).last = G.time; }
 }
+function doSelect(t, p) {
+  if (G.net === 'guest') { netSend({ t: 'select', i: players.indexOf(p) }); return; }
+  if (G.phase === 'play' && G.off !== t && p && p.team === t) { G.sel[t] = p; inputOf(t).last = -1e9; }
+}
 function doSwitch(t) {
   if (G.net === 'guest') { netSend({ t: 'switch' }); G.pointer.last = -1e9; return; }
   const n = switchTarget(t);
@@ -1425,9 +1454,17 @@ function userDive() { if (defending()) { doDive(G.me, G.pointer.x, G.pointer.y);
 function toWorld(e) { const r = canvas.getBoundingClientRect(); return { x: (e.clientX - r.left) / S - M, y: (e.clientY - r.top) / S - M }; }
 function setPointer(e) { const w = toWorld(e); G.pointer.x = w.x; G.pointer.y = w.y; G.pointer.active = true; G.pointer.last = G.time; sendInput(); }
 
-canvas.addEventListener('pointermove', setPointer);
+const isTouch = () => document.body.classList.contains('touch');
+// sur téléphone en défense, le terrain ne sert qu'à taper sur un de ses joueurs (le joystick gère le déplacement)
+const touchDefense = e => e.pointerType !== 'mouse' && isTouch() && defending();
+canvas.addEventListener('pointermove', e => { if (!touchDefense(e)) setPointer(e); });
 canvas.addEventListener('pointerdown', e => {
   e.preventDefault();
+  if (touchDefense(e)) {
+    const w = toWorld(e), [p, d] = nearestD(TEAMS[G.me], w.x, w.y);
+    if (p && d < 2.5) doSelect(G.me, p);
+    return;
+  }
   Object.assign(G.pointer, { down: true, downT: G.time, type: e.pointerType });
   setPointer(e);
   G.pointer.downX = G.pointer.x; G.pointer.downY = G.pointer.y;
@@ -1437,6 +1474,7 @@ canvas.addEventListener('pointerdown', e => {
   sendInput(true);
 });
 function pointerEnd(e) {
+  if (touchDefense(e)) return;
   setPointer(e);
   G.pointer.down = false;
   if (G.aiming && canThrow()) {
@@ -1465,6 +1503,50 @@ $('curveR').addEventListener('click', () => adjustCurve(0.25));
 $('curveRange').addEventListener('input', e => setCurve(+e.target.value));
 $('switchD').addEventListener('click', switchDefender);
 $('diveB').addEventListener('click', userDive);
+
+// ---------- joystick virtuel (téléphone, en défense) ----------
+const joy = { active: false, id: null, dx: 0, dy: 0 };
+function joyUpdate(e) {
+  const r = $('joy').getBoundingClientRect(), R0 = r.width / 2;
+  let dx = (e.clientX - r.left - R0) / R0, dy = (e.clientY - r.top - R0) / R0;
+  const m = Math.hypot(dx, dy); if (m > 1) { dx /= m; dy /= m; }
+  joy.dx = dx; joy.dy = dy;
+  $('knob').style.transform = `translate(${dx * R0 * 0.62}px, ${dy * R0 * 0.62}px)`;
+}
+$('joy').addEventListener('pointerdown', e => {
+  e.preventDefault(); joy.active = true; joy.id = e.pointerId;
+  $('joy').setPointerCapture(e.pointerId); joyUpdate(e);
+});
+$('joy').addEventListener('pointermove', e => { if (joy.active && e.pointerId === joy.id) joyUpdate(e); });
+function joyEnd(e) {
+  if (e.pointerId !== joy.id) return;
+  joy.active = false; joy.dx = joy.dy = 0; $('knob').style.transform = '';
+  const sel = G.sel[G.me];
+  if (sel) { G.pointer.x = sel.x; G.pointer.y = sel.y; }      // il s'arrête là où il est
+  G.pointer.down = false; G.pointer.last = G.time; sendInput(true);
+}
+$('joy').addEventListener('pointerup', joyEnd);
+$('joy').addEventListener('pointercancel', joyEnd);
+// à chaque image : le joystick place la cible juste devant le défenseur (la vitesse suit l'inclinaison)
+function joyFrame() {
+  if (!joy.active || !defending()) return;
+  const sel = G.sel[G.me]; if (!sel) return;
+  const m = Math.hypot(joy.dx, joy.dy), k = m < 0.12 ? 0 : 3.2;
+  G.pointer.x = sel.x + joy.dx * k; G.pointer.y = sel.y + joy.dy * k;
+  G.pointer.down = true; G.pointer.active = true; G.pointer.last = G.time;
+  sendInput();
+}
+function touchDive() {
+  if (!defending()) return;
+  const sel = G.sel[G.me]; if (!sel) return;
+  let dx = joy.dx, dy = joy.dy;
+  if (Math.hypot(dx, dy) < 0.2) { dx = sel.vx; dy = sel.vy; }            // sinon dans le sens de sa course
+  if (Math.hypot(dx, dy) < 0.2) { dx = disc.x - sel.x; dy = disc.y - sel.y; } // sinon vers le disque
+  const l = Math.hypot(dx, dy) || 1;
+  doDive(G.me, sel.x + dx / l * 3, sel.y + dy / l * 3);
+}
+for (const [id, fn] of [['tDive', touchDive], ['tSwitch', switchDefender]])
+  $(id).addEventListener('pointerdown', e => { e.preventDefault(); fn(); });
 const fsOK = document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen;
 if (!fsOK) $('fsB').style.setProperty('display', 'none', 'important');
 $('fsB').addEventListener('click', () => {
@@ -1526,6 +1608,16 @@ function wireConn(c) {
 let iceCache = null;
 function iceServers() {
   if (iceCache) return Promise.resolve(iceCache);
+  if (TURN_USER && TURN_PASS) {
+    const cred = { username: TURN_USER, credential: TURN_PASS };
+    return Promise.resolve(iceCache = BASE_ICE.concat([
+      { urls: 'stun:stun.relay.metered.ca:80' },
+      Object.assign({ urls: 'turn:global.relay.metered.ca:80' }, cred),
+      Object.assign({ urls: 'turn:global.relay.metered.ca:80?transport=tcp' }, cred),
+      Object.assign({ urls: 'turn:global.relay.metered.ca:443' }, cred),
+      Object.assign({ urls: 'turns:global.relay.metered.ca:443?transport=tcp' }, cred)
+    ]));
+  }
   if (!TURN_APP || !TURN_KEY) return Promise.resolve(iceCache = BASE_ICE);
   return fetch(`https://${TURN_APP}.metered.live/api/v1/turn/credentials?apiKey=${TURN_KEY}`)
     .then(r => r.json())
@@ -1550,7 +1642,7 @@ function watchIce(c, onFail) {
   const check = () => { if (pc.iceConnectionState === 'failed') onFail(); };
   pc.addEventListener('iceconnectionstatechange', check);
 }
-const ICE_FAIL_MSG = 'La partie a bien été trouvée, mais vos deux réseaux bloquent la connexion directe (fréquent en 4G/5G ou sur un wifi d’entreprise). Essayez tous les deux sur le même wifi, ou configurez un relais TURN (voir le haut du fichier index.html).';
+const ICE_FAIL_MSG = 'La partie a bien été trouvée, mais vos deux réseaux bloquent la connexion directe (fréquent en 4G/5G ou sur un wifi d’entreprise). Essayez tous les deux sur le même wifi, ou configurez un relais TURN (lignes TURN_USER / TURN_PASS en haut du script de index.html).';
 
 function hostGame() {
   $('lobbyHome').style.display = 'none'; $('lobbyHost').style.display = ''; $('lobbyErr').textContent = '';
@@ -1633,6 +1725,7 @@ function hostOnData(m) {
   else if (m.t === 'throw') { if (G.phase === 'play' && G.off === 1 && disc.mode === 'held') throwDisc(disc.holder, m.x, m.y, clamp(+m.curve || 0, -1, 1), 1); }
   else if (m.t === 'dive') doDive(1, m.x, m.y);
   else if (m.t === 'switch') doSwitch(1);
+  else if (m.t === 'select') doSelect(1, players[m.i | 0]);
   else if (m.t === 'ready') {
     G.remoteCfg = Object.assign({}, G.remoteCfg, m.cfg); G.ready[1] = true;
     $('oppReady').textContent = 'L’adversaire est prêt ✓';
@@ -1751,6 +1844,7 @@ function loop(now) {
     }
     if (G.net === 'host') { netT += dt; if (netT >= 0.05) { netT = 0; netSend(snapshot()); } }
   }
+  joyFrame();
   netHeartbeat(dt);
   if (G.msgT > 0) G.msgT -= dt;
   if (G.phase !== 'play') G.gt += dt * 0.5;            // les rafales continuent dans le menu
