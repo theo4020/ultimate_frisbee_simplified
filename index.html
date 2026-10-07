@@ -197,7 +197,7 @@
       <div class="row"><span>Play de défense</span>
         <button class="opt" data-g="dplay" data-v="none">Aucun</button>
         <button class="opt" data-g="dplay" data-v="safety">Deep safety</button>
-        <button class="opt" data-g="dplay" data-v="double">Double team</button>
+        <button class="opt" data-g="dplay" data-v="double">Poach</button>
         <button class="opt" data-g="dplay" data-v="junk">Junk</button>
       </div>
       <div class="desc" id="descDPlay"></div>
@@ -215,6 +215,8 @@
       • <b>Mark</b> : entre dans le cercle du handler pour lancer le stall count. Le petit cercle pointillé jaune montre où te placer pour respecter ta force.<br>
       • <b>Layout</b> (clic, tap ou F) : un plongeon vers le pointeur qui élargit ta zone de block. Tu restes au sol un instant si tu rates.<br>
       • <b>Switch</b> (Espace) : prendre le joueur entouré en gris (le plus proche du disque).<br><br>
+      <b>Hauteur du disque</b> : la trajectoire et l'anneau sous le disque changent de couleur. Rouge : contrable, même en layout. Orange : contrable seulement debout (le layout passe dessous). Bleu : trop haut, personne ne peut le toucher.<br><br>
+      <b>Double team</b> : seule la mark peut être dans le cercle de stall du handler. Si un deuxième défenseur y entre sans garder un autre attaquant, « Double team ! » est appelé : le compte perd une seconde et reste bloqué tant qu'il n'est pas sorti.<br><br>
       <b>Vent</b> : les traits blancs qui traversent le terrain montrent sa direction et sa force. Il fait dériver le disque. L'aperçu du lancer montre déjà la dérive : la croix est l'endroit visé, le cercle l'endroit où le disque arrivera. Contre le vent, les lancers longs sont plus difficiles.<br><br>
       <b>Sur téléphone</b> : joue en paysage (bouton ⛶ pour le plein écran). En attaque, pose le doigt, glisse pour viser et relâche pour lancer ; la barre en bas règle la courbe. En défense, le joystick en bas à gauche déplace ton joueur ; les boutons ronds à droite font un layout (dans la direction du joystick) ou un switch. Tu peux aussi taper sur un de tes joueurs pour le prendre.<br><br>
       <b>En ligne</b> : un joueur crée la partie et envoie le code, l'autre le rejoint. Chacun contrôle son équipe (l'hôte les Bleus, l'invité les Rouges) et choisit sa stratégie avant chaque point ; le point démarre quand les deux sont prêts.<br><br>
@@ -237,6 +239,7 @@ const DIVE_T = 0.33, DOWN_T = 0.8;
 const SPEEDS = { lent: 0.6, normal: 0.78, rapide: 1 };
 const DRIFT = 0.5;                                          // dérive du disque : vent (m/s) × temps de vol × DRIFT
 const STALL_R = 4.5;                                        // rayon du stall count (agrandi par rapport aux 3 m réels)
+const REACH_STAND = 2.0, REACH_DIVE = 1.5;                  // hauteur max du disque contrable debout / en plongeon
 const CANCEL_R = 2.5;                                       // relâcher à moins de 2,5 m du handler annule le lancer
 const PEER_PREFIX = 'ultimate-frisbee-proto-v1-';
 // ---------------------------------------------------------------------
@@ -268,11 +271,11 @@ const PLAYS = {
 const DPLAYS = {
   none: 'Pas de play : ta défense de base dès le début.',
   safety: 'Un défenseur (S) lâche le dump pour protéger le deep en début de point. Anti-huck, mais les passes courtes sont faciles.',
-  double: 'Un deuxième défenseur (2) ferme aussi l’open side du handler jusqu’au premier lancer. Le dump est laissé libre.',
+  double: 'Un deuxième défenseur (2) lâche le dump et se poste juste hors du cercle de stall, côté open, pour couper les passes courtes du premier lancer (un 2e défenseur dans le cercle serait un double team).',
   junk: 'Commence dans l’autre système (zone ↔ man) pour surprendre, puis bascule sur ta défense de base après 2 passes.'
 };
 const PLAY_NAMES = { none: 'aucun', huck: 'Huck', split: 'Double cut', give: 'Give and go', flood: 'Iso',
-  safety: 'Deep safety', double: 'Double team', junk: 'Junk' };
+  safety: 'Deep safety', double: 'Poach', junk: 'Junk' };
 
 const NAMES = { vert: 'Vertical stack', ho: 'Horizontal stack', man: 'Man', zone: 'Zone', haut: 'force haut', bas: 'force bas', middle: 'force middle' };
 const DESCS = {
@@ -609,7 +612,7 @@ function assignMan(defT, h) {
 
 function zoneSlots(defT, ax, ay, dir, closed) {
   const open = -closed, atk = TEAMS[1 - defT], s = [];
-  s[0] = { x: ax + dir * 0.9, y: ay + closed * 1.1 };                       // marqueur
+  s[0] = { x: ax + dir * 1.0, y: ay + closed * 1.3 };                       // marqueur
   let deepA = null, dd = -1e9;
   for (const a of atk) { const dep = dir * (a.x - ax); if (dep > dd) { dd = dep; deepA = a; } }
   const deepDepth = Math.max(20, dd + 3);
@@ -634,6 +637,10 @@ function zoneSlots(defT, ax, ay, dir, closed) {
     if (dep > 6 && dep < 21) { const sc = Math.abs(a.y - H / 2) + Math.abs(dep - 12) * 0.5; if (sc < best) { best = sc; midA = a; } }
   }
   s[4] = midA ? { x: midA.x - dir * 1, y: midA.y * 0.7 + ay * 0.3 } : { x: ax + dir * 12, y: H / 2 * 0.5 + ay * 0.5 };
+  for (let k = 1; k < 5; k++) {                                              // seul le marqueur entre dans le cercle de stall
+    const o = s[k], dd = dist(o.x, o.y, ax, ay), lim = STALL_R + 0.9;
+    if (dd < lim) { const f = lim / Math.max(dd, 0.01); o.x = ax + (o.x - ax) * f; o.y = ay + (o.y - ay) * f; }
+  }
   for (const o of s) { o.x = clamp(o.x, 0.5, W - 0.5); o.y = clamp(o.y, 0.5, H - 0.5); }
   return s;
 }
@@ -682,14 +689,17 @@ function defenderAI(d, ax, ay, dir, closed, form, slots) {
       const s = slots[1];
       d.tx = s.x; d.ty = clamp(s.y + (form === 'zone' ? (s.y > H / 2 ? -7 : 7) : 0), 1, H - 1); return;
     }
-    if (DP.type === 'double' && disc.mode === 'held') { d.tx = disc.x + dir * 0.9; d.ty = disc.y + open * 1.1; d.react = 0.08; return; }
+    if (DP.type === 'double' && disc.mode === 'held') {            // juste hors du cercle, côté open
+      const k = (STALL_R + 0.7) / Math.hypot(0.6, 1);
+      d.tx = clamp(disc.x + dir * 0.6 * k, 0.5, W - 0.5); d.ty = clamp(disc.y + open * k, 0.5, H - 0.5); d.react = 0.1; return;
+    }
   }
   if (form === 'man') {
     const a = d.match;
     if (!a) { d.tx = d.x; d.ty = d.y; return; }
     const marking = (disc.mode === 'held' && disc.holder === a) || (disc.mode === 'ground' && G.pickup === a);
     if (marking) {                                          // marquage : on se place côté fermé
-      d.tx = disc.x + dir * 0.9; d.ty = disc.y + closed * 1.1; d.react = 0.08;
+      d.tx = disc.x + dir * 1.0; d.ty = disc.y + closed * 1.3; d.react = 0.08;
     } else {                                                // on anticipe la course et on protège le côté ouvert
       const px = a.x + a.vx * 0.15, py = a.y + a.vy * 0.15;
       const depth = dir * (a.x - ax);
@@ -700,9 +710,33 @@ function defenderAI(d, ax, ay, dir, closed, form, slots) {
     const s = slots[d.zslot]; d.tx = s.x; d.ty = s.y;
     if (d.zslot === 0) d.react = 0.08;
   }
+  avoidDoubleTeam(d, form);
   d.tx = clamp(d.tx, 0.5, W - 0.5); d.ty = clamp(d.ty, 0.5, H - 0.5);
 }
 
+// règle : un seul défenseur (la mark) dans le cercle du handler, sauf s'il garde un autre attaquant
+function guardingOther(d, x, y) {
+  const h = disc.holder;
+  if (defFormOf(d.team) === 'man' && d.match && d.match !== h && dist(d.match.x, d.match.y, x, y) < 3.5) return true;
+  return TEAMS[1 - d.team].some(a => a !== h && dist(a.x, a.y, x, y) < 2.2);
+}
+function avoidDoubleTeam(d, form) {
+  if (disc.mode !== 'held' || !disc.holder) return;
+  const h = disc.holder;
+  const markerOk = G.marker && G.marker.team === d.team && dist(G.marker.x, G.marker.y, h.x, h.y) < STALL_R;
+  const isMark = markerOk ? G.marker === d : (form === 'man' ? d.match === h : d.zslot === 0);
+  if (isMark) return;
+  const lim = STALL_R + 0.8, dc = dist(d.x, d.y, h.x, h.y);
+  if (dc < STALL_R && !guardingOther(d, d.x, d.y)) {        // déjà dans le cercle : il en sort par le chemin le plus court
+    const ux = dc > 0.01 ? (d.x - h.x) / dc : dirOf(d.team === 0 ? 1 : 0), uy = dc > 0.01 ? (d.y - h.y) / dc : 0;
+    d.tx = clamp(h.x + ux * lim, 0.5, W - 0.5); d.ty = clamp(h.y + uy * lim, 0.5, H - 0.5); d.sp = SPD.sprint; d.react = 0.1;
+    return;
+  }
+  const dd = dist(d.tx, d.ty, h.x, h.y);
+  if (dd >= lim || guardingOther(d, d.tx, d.ty)) return;
+  const ux = dd > 0.01 ? (d.tx - h.x) / dd : dirOf(h.team), uy = dd > 0.01 ? (d.ty - h.y) / dd : 0;
+  d.tx = clamp(h.x + ux * lim, 0.5, W - 0.5); d.ty = clamp(h.y + uy * lim, 0.5, H - 0.5);
+}
 function diveTo(p, x, y) {
   if (p.dive > 0 || p.down > 0) return;
   let dx = x - p.x, dy = y - p.y, l = Math.hypot(dx, dy);
@@ -795,7 +829,8 @@ function aiThrow(h) {
 function holdDisc(p) {
   disc.mode = 'held'; disc.holder = p; disc.x = p.x; disc.y = p.y; disc.z = 0;
   p.vx = p.vy = 0;
-  G.stall = 0; G.holdT = 0; G.marker = null; G.pickup = null; p.think = rand(0.6, 1.4);
+  G.stall = 0; G.holdT = 0; G.marker = null; G.dbl = null; G.pickup = null;
+  players.forEach(q => { q.inT = 0; }); p.think = rand(0.6, 1.4);
   assignRoles(p.team, p);
   if (defFormOf(1 - p.team) === 'zone') assignZone(1 - p.team, p.x, p.y);
   playOnCatch(p);
@@ -914,8 +949,9 @@ function update(dt) {
     for (let j = i + 1; j < players.length; j++) {
       const a = players[i], b = players[j];
       const dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy);
-      if (d > 0.001 && d < 1.2) {
-        const push = (1.2 - d) * 0.5, nx = dx / d, ny = dy / d;
+      const minD = (a === disc.holder || b === disc.holder) && a.team !== b.team ? 1.5 : 1.2;   // pas de contact avec le handler
+      if (d > 0.001 && d < minD) {
+        const push = (minD - d) * 0.5, nx = dx / d, ny = dy / d;
         if (a !== disc.holder && a !== G.pickup) { a.x -= nx * push; a.y -= ny * push; }
         if (b !== disc.holder && b !== G.pickup) { b.x += nx * push; b.y += ny * push; }
       }
@@ -927,12 +963,23 @@ function update(dt) {
     disc.x = h.x; disc.y = h.y;
     G.holdT += dt;
     // règle WFDF : si la mark sort des 3 m (ici STALL_R) ou si un autre défenseur devient la mark, le compte repart à 1
-    if (G.marker && G.marker.team !== h.team && dist(G.marker.x, G.marker.y, h.x, h.y) < STALL_R) G.stall += dt;
-    else {
+    if (!(G.marker && G.marker.team !== h.team && dist(G.marker.x, G.marker.y, h.x, h.y) < STALL_R)) {
+      const form = defFormOf(def);
+      const desig = dfn.find(d => (form === 'man' ? d.match === h : d.zslot === 0) && dist(d.x, d.y, h.x, h.y) < STALL_R);
       const [mk, md] = nearestD(dfn, h.x, h.y);
-      G.marker = md < STALL_R ? mk : null;
+      G.marker = desig || (md < STALL_R ? mk : null);
       G.stall = 0;
     }
+    // double team : un autre défenseur dans le cercle sans garder personne → compte gelé, et -1 (règle WFDF)
+    // (un défenseur qui traverse le cercle a 1,5 s pour en sortir)
+    for (const d of dfn) {
+      const inside = d !== G.marker && dist(d.x, d.y, h.x, h.y) < STALL_R && !guardingOther(d, d.x, d.y);
+      d.inT = inside ? (d.inT || 0) + dt : 0;
+    }
+    const dbl = dfn.find(d => d.inT > 1.5) || null;
+    if (dbl && !G.dbl && G.marker) { G.stall = Math.max(0, Math.floor(G.stall) - 1); flash('Double team !'); }
+    G.dbl = G.marker ? dbl : null;
+    if (G.marker && !G.dbl) G.stall += dt;
     if (G.stall >= 10) { G.stats.stalls++; turnover(h.x, h.y, 'Stall 10 ! Turnover'); return; }
     if (G.ctrl[off] === 'ai') { h.think -= dt; if (h.think <= 0) aiThrow(h); }
   } else if (disc.mode === 'air') {
@@ -945,7 +992,7 @@ function update(dt) {
       const d = dist(p.x, p.y, disc.x, disc.y);
       if (p.team !== disc.team) {
         const diving = p.dive > 0;
-        const reach = diving ? 1.9 : 1.05, high = diving ? 1.5 : 2.0;
+        const reach = diving ? 1.9 : 1.05, high = diving ? REACH_DIVE : REACH_STAND;
         if (u > 0.03 && d < reach && disc.z < high && !disc.rolled.has(p)) {
           disc.rolled.add(p);
           const r = Math.random();
@@ -1147,6 +1194,37 @@ function endDPlay() {
 // =====================================================================
 function canThrow() { return G.phase === 'play' && G.off === G.me && disc.mode === 'held' && !!disc.holder; }
 function defending() { return G.phase === 'play' && G.off !== G.me; }
+// couleur selon la hauteur : rouge = contrable (même en plongeon), orange = contrable debout, bleu = trop haut
+function heightColor(z, a) {
+  return z < REACH_DIVE ? `rgba(248,113,113,${a})` : z < REACH_STAND ? `rgba(251,146,60,${a})` : `rgba(125,211,252,${a})`;
+}
+function drawFlightPath(sx, sy, cx, cy, ex, ey, dur, u0, alpha, width, dash) {
+  const peak = peakOf(dur), step = 0.025;
+  ctx.save(); ctx.lineWidth = width; ctx.lineCap = 'round'; if (dash) ctx.setLineDash(dash);
+  let [px, py] = bez(sx, sy, cx, cy, ex, ey, u0);
+  for (let u = u0 + step; u <= 1.0001; u += step) {
+    const [x, y] = bez(sx, sy, cx, cy, ex, ey, Math.min(1, u));
+    ctx.strokeStyle = heightColor(Math.sin(Math.PI * (u - step / 2)) * peak, alpha);
+    ctx.beginPath(); ctx.moveTo(X(px), Y(py)); ctx.lineTo(X(x), Y(y)); ctx.stroke();
+    px = x; py = y;
+  }
+  ctx.restore();
+}
+function drawHeightLegend() {
+  const fs = Math.max(9, S * 1.15), x0 = X(0.8), y0 = Y(0.8) + fs;
+  ctx.save(); ctx.font = `600 ${fs}px system-ui`; ctx.textAlign = 'left';
+  const items = [['contrable', REACH_DIVE - 0.1], ['debout seulement', REACH_STAND - 0.1], ['trop haut', REACH_STAND + 1]];
+  let x = x0;
+  ctx.fillStyle = 'rgba(15,23,42,.55)';
+  const wTot = items.reduce((w, [t]) => w + ctx.measureText(t).width + fs * 1.8, fs * 0.6);
+  ctx.fillRect(x0 - fs * 0.4, y0 - fs * 1.05, wTot, fs * 1.5);
+  for (const [t, z] of items) {
+    ctx.fillStyle = heightColor(z, 1); circle(x + fs * 0.35, y0 - fs * 0.32, fs * 0.35); ctx.fill();
+    ctx.fillStyle = '#e2e8f0'; ctx.fillText(t, x + fs * 0.9, y0);
+    x += ctx.measureText(t).width + fs * 1.8;
+  }
+  ctx.restore();
+}
 function circle(x, y, r) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); }
 function arrow(x1, y1, x2, y2, color) {
   ctx.save(); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 2; ctx.setLineDash([5, 5]);
@@ -1202,7 +1280,7 @@ function draw() {
     ctx.fillStyle = 'rgba(254,202,202,.85)'; ctx.font = `600 ${Math.max(9, S * 1.2)}px system-ui`; ctx.textAlign = 'center';
     ctx.fillText('break side', X(h.x), Y(h.y + closed * 5.2) + 4);
     if (defT === ME) {                                     // où se placer pour marquer selon ta force
-      const mx = h.x + dir * 0.9, my = h.y + closed * 1.1;
+      const mx = h.x + dir * 1.0, my = h.y + closed * 1.3;
       ctx.save(); ctx.setLineDash([2, 3]); ctx.strokeStyle = 'rgba(250,204,21,.8)'; ctx.lineWidth = 1.5;
       circle(X(mx), Y(my), 0.8 * S); ctx.stroke(); ctx.restore();
     }
@@ -1231,9 +1309,8 @@ function draw() {
     ctx.save();
     const cancel = G.aiming && dist(G.pointer.x, G.pointer.y, h.x, h.y) < CANCEL_R;
     ctx.globalAlpha = cancel ? 0.3 : 1;
-    ctx.setLineDash([6, 6]); ctx.strokeStyle = G.aiming ? 'rgba(250,204,21,.95)' : 'rgba(255,255,255,.75)'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(X(h.x), Y(h.y)); ctx.quadraticCurveTo(X(cx), Y(cy), X(ex), Y(ey)); ctx.stroke();
-    ctx.setLineDash([]);
+    drawFlightPath(h.x, h.y, cx, cy, ex, ey, throwDur(h.x, h.y, tx, ty), 0, G.aiming ? 0.95 : 0.7, G.aiming ? 3 : 2, [6, 5]);
+    ctx.strokeStyle = G.aiming ? 'rgba(250,204,21,.95)' : 'rgba(255,255,255,.75)'; ctx.lineWidth = 2;
     const er = (d * 0.03 + Math.abs(G.curve) * 0.8) * (1 + G.wind.kmh * 0.02) + Math.hypot(wx, wy) * 0.3;
     circle(X(ex), Y(ey), Math.max(er * S, 4)); ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.fill(); ctx.stroke();
     if (Math.hypot(wx, wy) > 0.6) {                         // croix = point visé, le vent emmène le disque jusqu'au cercle
@@ -1242,6 +1319,13 @@ function draw() {
     }
     ctx.restore();
   }
+
+  // Trajectoire restante du disque en vol, colorée selon la hauteur
+  if (disc.mode === 'air') {
+    const u0 = Math.min(1, disc.t / disc.dur);
+    drawFlightPath(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, disc.dur, u0, 0.7, 2.5, [5, 4]);
+  }
+  if (playing && (disc.mode === 'air' || (canThrow() && G.pointer.active))) drawHeightLegend();
 
   // Joueurs
   const r = 0.95 * S, swT = switchTarget(ME);
@@ -1259,6 +1343,11 @@ function draw() {
       ctx.strokeStyle = 'rgba(74,222,128,.95)'; ctx.lineWidth = 2.5; circle(X(p.x), Y(p.y), r + 3); ctx.stroke();
     }
     if (p === mySel && defending()) { ctx.strokeStyle = '#facc15'; ctx.lineWidth = 3; circle(X(p.x), Y(p.y), r + 5); ctx.stroke(); }
+    if (p === G.dbl && disc.mode === 'held') {                // défenseur en double team
+      ctx.save(); ctx.setLineDash([3, 3]); ctx.strokeStyle = '#f87171'; ctx.lineWidth = 3; circle(X(p.x), Y(p.y), r + 5); ctx.stroke(); ctx.restore();
+      ctx.fillStyle = '#fca5a5'; ctx.font = `800 ${Math.max(9, S * 1.2)}px system-ui`; ctx.textAlign = 'center';
+      ctx.fillText('double team', X(p.x), Y(p.y) + r + Math.max(12, S * 1.6));
+    }
     if (p === swT) { ctx.strokeStyle = 'rgba(203,213,225,.85)'; ctx.lineWidth = 3; circle(X(p.x), Y(p.y), r + 5); ctx.stroke(); }
     if (disc.mode === 'air' && p === disc.intended) {
       ctx.save(); ctx.setLineDash([3, 4]); ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 2;
@@ -1287,8 +1376,13 @@ function draw() {
   if (disc.mode !== 'dead') {
     let dx = disc.x, dy = disc.y;
     if (disc.mode === 'held') dx += 0.8 * dirOf(disc.holder.team);
-    if (disc.mode === 'air') { ctx.fillStyle = 'rgba(0,0,0,.3)'; circle(X(dx), Y(dy), 0.45 * S); ctx.fill(); }
     const lift = disc.mode === 'air' ? disc.z * S * 1.2 : 0;
+    if (disc.mode === 'air') {                                // ombre + anneau coloré = hauteur, trait = altitude
+      ctx.fillStyle = 'rgba(0,0,0,.3)'; circle(X(dx), Y(dy), 0.45 * S); ctx.fill();
+      ctx.strokeStyle = heightColor(disc.z, 0.95); ctx.lineWidth = 2.5; circle(X(dx), Y(dy), 1.05 * S); ctx.stroke();
+      ctx.strokeStyle = heightColor(disc.z, 0.7); ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(X(dx), Y(dy)); ctx.lineTo(X(dx), Y(dy) - lift); ctx.stroke();
+    }
     circle(X(dx), Y(dy) - lift, 0.5 * S * (1 + disc.z * 0.12));
     ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5; ctx.stroke();
   }
@@ -1333,8 +1427,8 @@ function updateHud() {
   $('diveB').style.display = $('switchD').style.display = att ? 'none' : '';
   document.body.classList.toggle('defend', !att && G.phase === 'play');
   $('hint').innerHTML = att
-    ? '<i>Attaque</i> : vise et relâche pour lancer (relâche sur ton joueur pour annuler). Anneau vert = coéquipier démarqué. Zone rouge = break side : ajoute de la courbe (A/E, molette) pour contourner la mark. Cercle pointillé = zone de stall.'
-    : '<i>Défense</i> : ton joueur (anneau jaune) suit la souris ou le doigt. <i>Clic / tap / F</i> = layout. <i>Espace</i> = switch vers le joueur en gris. Entre dans le cercle du handler pour lancer le stall, le petit cercle jaune indique la position de mark pour ta force.';
+    ? '<i>Attaque</i> : vise et relâche pour lancer (relâche sur ton joueur pour annuler). Anneau vert = coéquipier démarqué. Zone rouge = break side : ajoute de la courbe (A/E, molette) pour contourner la mark. Cercle pointillé = zone de stall. Couleur de la trajectoire : rouge = contrable, orange = contrable debout seulement, bleu = trop haut.'
+    : '<i>Défense</i> : ton joueur (anneau jaune) suit la souris ou le doigt. <i>Clic / tap / F</i> = layout. <i>Espace</i> = switch vers le joueur en gris. Entre dans le cercle du handler pour lancer le stall (un seul défenseur dedans, sinon double team). L’anneau sous le disque en vol : rouge = contrable, orange = debout seulement, bleu = trop haut.';
   resize();
 }
 
@@ -1740,7 +1834,7 @@ function snapshot() {
     p: players.map(p => [r2(p.x), r2(p.y), r2(p.vx), r2(p.vy), p.dive > 0 ? 1 : 0, p.down > 0 ? 1 : 0, p.tag, p.state, p.role, r2(p.cx), r2(p.cy), idx(p.match)]),
     d: [disc.mode, idx(disc.holder), r2(disc.x), r2(disc.y), r2(disc.sx), r2(disc.sy), r2(disc.cx), r2(disc.cy), r2(disc.ex), r2(disc.ey), r2(disc.t), r2(disc.dur), idx(disc.intended)],
     g: { score: G.score, off: G.off, phase: G.phase, stall: r2(G.stall), mk: idx(G.marker), msg: G.msg, mid: G.msgId,
-      wind: G.wind, gt: r2(G.gt), sel: [idx(G.sel[0]), idx(G.sel[1])], rec: G.receiving, speed: G.form.speed,
+      dbl: idx(G.dbl), wind: G.wind, gt: r2(G.gt), sel: [idx(G.sel[0]), idx(G.sel[1])], rec: G.receiving, speed: G.form.speed,
       op: G.oplay && { type: G.oplay.type, team: G.oplay.team }, dp: G.dplay && { type: G.dplay.type, team: G.dplay.team },
       order: [G.order[0].map(idx), G.order[1].map(idx)], cfg: myCfg() }
   };
@@ -1786,6 +1880,7 @@ function applySnapshot(m) {
   disc.netT = d[10]; disc.dur = d[11]; disc.intended = d[12] >= 0 ? players[d[12]] : null;
   const g = m.g;
   G.score = g.score; G.off = g.off; G.stall = g.stall; G.marker = g.mk >= 0 ? players[g.mk] : null;
+  G.dbl = g.dbl >= 0 ? players[g.dbl] : null;
   G.wind = g.wind; G.gt = g.gt; G.receiving = g.rec; G.form.speed = g.speed;
   G.sel = g.sel.map(i => (i >= 0 ? players[i] : null));
   G.oplay = g.op; G.dplay = g.dp; G.remoteCfg = g.cfg;
