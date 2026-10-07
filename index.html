@@ -222,6 +222,18 @@ const DRIFT = 0.5;                                          // dérive du disque
 const STALL_R = 4.5;                                        // rayon du stall count (agrandi par rapport aux 3 m réels)
 const CANCEL_R = 2.5;                                       // relâcher à moins de 2,5 m du handler annule le lancer
 const PEER_PREFIX = 'ultimate-frisbee-proto-v1-';
+// ---------------------------------------------------------------------
+//  RELAIS (TURN) — nécessaire quand un joueur est en 4G/5G ou sur un réseau strict.
+//  Crée un compte gratuit sur https://www.metered.ca/tools/openrelay/ (20 Go/mois),
+//  puis colle ici le nom de ton application et ta clé API :
+const TURN_APP = '';        // ex. 'monjeu'  (pour monjeu.metered.live)
+const TURN_KEY = '';        // ex. 'a1b2c3d4...'
+// ---------------------------------------------------------------------
+const BASE_ICE = [
+  { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
+  { urls: 'stun:stun.cloudflare.com:3478' },
+  { urls: ['turn:eu-0.turn.peerjs.com:3478', 'turn:us-0.turn.peerjs.com:3478'], username: 'peerjs', credential: 'peerjsp' }
+];
 const PEERJS_URLS = ['https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.5/peerjs.min.js',
   'https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js'];
 
@@ -1510,20 +1522,55 @@ function wireConn(c) {
   c.on('error', () => { if (conn === c) netError('Erreur de connexion avec l’adversaire.'); });
 }
 
+// Serveurs ICE : STUN publics + relais TURN (le tien si configuré)
+let iceCache = null;
+function iceServers() {
+  if (iceCache) return Promise.resolve(iceCache);
+  if (!TURN_APP || !TURN_KEY) return Promise.resolve(iceCache = BASE_ICE);
+  return fetch(`https://${TURN_APP}.metered.live/api/v1/turn/credentials?apiKey=${TURN_KEY}`)
+    .then(r => r.json())
+    .then(list => (iceCache = Array.isArray(list) && list.length ? BASE_ICE.concat(list) : BASE_ICE))
+    .catch(() => (iceCache = BASE_ICE));
+}
+function makePeer(id) {
+  return Promise.all([loadPeerJS(), iceServers()]).then(([, ice]) => {
+    const p = id ? new Peer(id, { config: { iceServers: ice }, debug: 1 }) : new Peer({ config: { iceServers: ice }, debug: 1 });
+    // sur téléphone, changer d'appli coupe la liaison avec le service : on la rétablit
+    p.on('disconnected', () => { if (peer === p && !p.destroyed) setTimeout(() => { try { p.reconnect(); } catch (e) { } }, 500); });
+    return p;
+  });
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && peer && peer.disconnected && !peer.destroyed) { try { peer.reconnect(); } catch (e) { } }
+});
+// Surveille la négociation WebRTC pour donner un message clair si elle échoue
+function watchIce(c, onFail) {
+  const pc = c.peerConnection;
+  if (!pc) return;
+  const check = () => { if (pc.iceConnectionState === 'failed') onFail(); };
+  pc.addEventListener('iceconnectionstatechange', check);
+}
+const ICE_FAIL_MSG = 'La partie a bien été trouvée, mais vos deux réseaux bloquent la connexion directe (fréquent en 4G/5G ou sur un wifi d’entreprise). Essayez tous les deux sur le même wifi, ou configurez un relais TURN (voir le haut du fichier index.html).';
+
 function hostGame() {
   $('lobbyHome').style.display = 'none'; $('lobbyHost').style.display = ''; $('lobbyErr').textContent = '';
   $('hostStatus').textContent = 'Connexion au service…'; $('hostCode').textContent = '····';
-  loadPeerJS().then(() => {
-    const code = newCode();
-    peer = new Peer(PEER_PREFIX + code);
-    peer.on('open', () => {
+  const code = newCode();
+  makePeer(PEER_PREFIX + code).then(p => {
+    peer = p;
+    p.on('open', () => {
       $('hostCode').textContent = code;
-      $('hostStatus').textContent = 'En attente de ton adversaire…';
+      $('hostStatus').textContent = 'En attente de ton adversaire… Garde cette page ouverte.';
       G.inviteUrl = location.href.split('#')[0] + '#join=' + code;
     });
-    peer.on('connection', c => {
+    p.on('connection', c => {
       if (conn && conn.open) { c.on('open', () => c.close()); return; }   // une seule partie à la fois
+      $('hostStatus').textContent = 'Un adversaire se connecte…';
+      let opened = false;
+      const to = setTimeout(() => { if (!opened) $('hostStatus').textContent = 'L’adversaire n’arrive pas à se connecter (réseau). En attente…'; }, 15000);
+      setTimeout(() => watchIce(c, () => { if (!opened) $('hostStatus').textContent = 'La connexion directe a échoué (réseau). En attente d’un nouvel essai…'; }), 0);
       c.on('open', () => {
+        opened = true; clearTimeout(to);
         wireConn(c);
         G.net = 'host'; G.me = 0; G.ctrl = ['local', 'remote'];
         G.score = [0, 0]; G.receiving = 0; G.phase = 'menu';
@@ -1531,23 +1578,36 @@ function hostGame() {
         showMenu('first');
       });
     });
-    peer.on('error', err => {
-      if (err && err.type === 'unavailable-id') { peer.destroy(); hostGame(); return; }
-      netError('Impossible de créer la partie (' + (err && err.type || 'réseau') + ').');
+    p.on('error', err => {
+      const t = err && err.type;
+      if (t === 'unavailable-id') { p.destroy(); hostGame(); return; }
+      if (t === 'network' || t === 'server-error' || t === 'socket-error' || t === 'socket-closed') {
+        if (!conn) $('hostStatus').textContent = 'Liaison avec le service perdue, reconnexion…';
+        return;                                             // 'disconnected' relance la connexion
+      }
+      if (conn) return;                                     // la partie est déjà en cours
+      netError('Impossible de créer la partie (' + (t || 'réseau') + ').');
     });
   }).catch(() => netError('Impossible de charger le module réseau. Vérifie ta connexion.'));
 }
 function joinGame(code) {
   code = (code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (code.length !== 4) { $('lobbyErr').textContent = 'Le code fait 4 caractères.'; return; }
-  $('lobbyErr').textContent = ''; $('joinStatus').textContent = 'Connexion…';
-  loadPeerJS().then(() => {
-    peer = new Peer();
-    peer.on('open', () => {
-      const c = peer.connect(PEER_PREFIX + code, { reliable: true, serialization: 'json' });
-      const to = setTimeout(() => { if (!conn) netError('Aucune partie trouvée avec ce code.'); }, 12000);
+  $('lobbyErr').textContent = ''; $('joinStatus').textContent = 'Connexion au service…';
+  makePeer(null).then(p => {
+    peer = p;
+    p.on('open', () => {
+      $('joinStatus').textContent = 'Recherche de la partie…';
+      const c = p.connect(PEER_PREFIX + code, { reliable: true, serialization: 'json' });
+      let opened = false;
+      const fail = msg => { if (!opened && !conn) netError(msg); };
+      const to = setTimeout(() => fail(ICE_FAIL_MSG), 20000);
+      setTimeout(() => {
+        if (!opened) $('joinStatus').textContent = 'Partie trouvée, établissement de la connexion…';
+        watchIce(c, () => { clearTimeout(to); fail(ICE_FAIL_MSG); });
+      }, 1500);
       c.on('open', () => {
-        clearTimeout(to);
+        opened = true; clearTimeout(to);
         wireConn(c);
         G.net = 'guest'; G.me = 1; G.ctrl = ['remote', 'local'];
         G.score = [0, 0]; G.receiving = 0; G.phase = 'menu';
@@ -1556,7 +1616,13 @@ function joinGame(code) {
         netSend({ t: 'hello' });                             // l'hôte répond avec le menu du premier point
       });
     });
-    peer.on('error', err => netError(err && err.type === 'peer-unavailable' ? 'Aucune partie trouvée avec ce code.' : 'Connexion impossible (' + (err && err.type || 'réseau') + ').'));
+    p.on('error', err => {
+      const t = err && err.type;
+      if (conn) return;
+      if (t === 'peer-unavailable') netError('Aucune partie trouvée avec ce code. Vérifie le code, et que la page de l’hôte est toujours ouverte au premier plan.');
+      else if (t === 'network' || t === 'socket-error' || t === 'server-error') netError('Le service de mise en relation ne répond pas. Réessaie dans un instant.');
+      else netError('Connexion impossible (' + (t || 'réseau') + ').');
+    });
   }).catch(() => netError('Impossible de charger le module réseau. Vérifie ta connexion.'));
 }
 
