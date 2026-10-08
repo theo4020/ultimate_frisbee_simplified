@@ -39,15 +39,23 @@
     <div id="lobbyHome">
       <p>Premier à 5 points, en 5 contre 5.</p>
       <button class="bigbtn" id="soloB">🤖 Solo<small>Contre l'ordinateur</small></button>
-      <button class="bigbtn" id="hostB">🌐 Créer une partie en ligne<small>Tu reçois un code à envoyer à ton adversaire</small></button>
-      <button class="bigbtn" id="joinB">🔗 Rejoindre une partie<small>Avec le code de ton adversaire</small></button>
+      <button class="bigbtn" id="hostB">🌐 Créer une partie en ligne<small>Jusqu'à 10 joueurs : contre l'IA ensemble ou en vrai 5 contre 5</small></button>
+      <button class="bigbtn" id="joinB">🔗 Rejoindre une partie<small>Avec le code de l'hôte</small></button>
     </div>
-    <div id="lobbyHost" style="display:none">
-      <p>Envoie ce code (ou le lien) à ton adversaire :</p>
-      <div class="code" id="hostCode">····</div>
-      <button id="copyLink" style="width:100%">Copier le lien d'invitation</button>
+    <div id="lobbyRoom" style="display:none">
+      <div id="roomCodeBox">
+        <p>Code de la partie à partager :</p>
+        <div class="code" id="hostCode">····</div>
+        <button id="copyLink" style="width:100%">Copier le lien d'invitation</button>
+      </div>
+      <div class="teams">
+        <div class="teamcol"><b class="blue">Bleus</b><ul id="rosterB"></ul><button id="teamB0">Rejoindre les Bleus</button></div>
+        <div class="teamcol"><b class="red">Rouges</b><ul id="rosterR"></ul><button id="teamB1">Rejoindre les Rouges</button></div>
+      </div>
+      <p class="net">Une équipe sans joueur humain est jouée par l'IA. 5 joueurs maximum par équipe. Le premier arrivé de chaque équipe en est le capitaine : il choisit la stratégie et fait le pull.</p>
       <p class="net" id="hostStatus">Connexion au service…</p>
-      <button id="backB1">← Retour</button>
+      <button id="startOnline" class="primary">Lancer la partie ▶</button>
+      <button id="backB1">← Quitter</button>
     </div>
     <div id="lobbyJoin" style="display:none">
       <p>Entre le code de la partie :</p>
@@ -60,6 +68,7 @@
   <div class="card" id="stratCard" style="display:none">
     <h1 id="ovTitle">Ultimate Frisbee</h1>
     <p id="ovText">Premier à 5 points. Tu joues les Bleus et tu attaques vers la droite.</p>
+    <p class="net" id="captainNote"></p>
     <div class="wind" id="ovWind"></div>
     <div id="hostOnlyWind">
     <div class="row"><span>Vent</span>
@@ -83,6 +92,7 @@
       <div class="desc">La flèche indique où va le vent : → = vers la droite (dans le dos des Bleus).</div>
     </div>
     </div>
+    <div id="stratRows">
     <div class="row"><span>Ton attaque</span>
       <button class="opt" data-g="off" data-v="vert">Vertical stack</button>
       <button class="opt" data-g="off" data-v="ho">Horizontal stack</button>
@@ -120,11 +130,24 @@
       </div>
       <div class="desc" id="descDPlay"></div>
     </div>
+    <div class="row"><span>Coéquipiers IA</span>
+      <button class="opt" data-g="allyLevel" data-v="facile">Facile</button>
+      <button class="opt" data-g="allyLevel" data-v="normal">Normal</button>
+      <button class="opt" data-g="allyLevel" data-v="difficile">Difficile</button>
+    </div>
+    <div class="desc" id="descAlly"></div>
+    </div>
     <div class="row" id="rowSpeed"><span>Vitesse</span>
       <button class="opt" data-g="speed" data-v="lent">Lente</button>
       <button class="opt" data-g="speed" data-v="normal">Normale</button>
       <button class="opt" data-g="speed" data-v="rapide">Rapide</button>
     </div>
+    <div class="row" id="rowLevel"><span>IA adverse</span>
+      <button class="opt" data-g="level" data-v="facile">Facile</button>
+      <button class="opt" data-g="level" data-v="normal">Normal</button>
+      <button class="opt" data-g="level" data-v="difficile">Difficile</button>
+    </div>
+    <div class="desc" id="descLevel"></div>
     <details>
       <summary>Comment jouer</summary>
       <b>Le pull</b> : chaque point commence par un pull de l'équipe qui défend. Clique (ou tape) sur la zone visée, règle la courbe (A/E, molette ou barre), puis arrête la jauge dans le <b>vert</b> : le pull part loin et reste longtemps en l'air, ce qui laisse à ta défense le temps de monter. Trop tôt, il est court. Tout au bout (rouge), il part trop fort et imprécis. S'il sort des limites, l'adversaire repart du brick.<br><br>
@@ -135,11 +158,13 @@
       • <b>Mark</b> : entre dans le cercle du handler pour lancer le stall count. Le petit cercle pointillé jaune montre où te placer pour respecter ta force.<br>
       • <b>Layout</b> (clic, tap ou F) : un plongeon vers le pointeur qui élargit ta zone de block. Tu restes au sol un instant si tu rates.<br>
       • <b>Switch</b> (Espace) : prendre le joueur entouré en gris (le plus proche du disque).<br><br>
+      <b>Layout en attaque</b> : quand ton équipe a lancé, F, clic ou le bouton Layout fait plonger le receveur vers le disque pour aller chercher une passe un peu trop longue (à plusieurs, c'est ton propre joueur qui plonge).<br><br>
       <b>Hauteur du disque</b> : la trajectoire et l'anneau sous le disque changent de couleur. Rouge : contrable, même en layout. Orange : contrable seulement debout (le layout passe dessous). Bleu : trop haut, personne ne peut le toucher.<br><br>
       <b>Double team</b> : seule la mark peut être dans le cercle de stall du handler. Si un deuxième défenseur y entre sans garder un autre attaquant, « Double team ! » est appelé : le compte perd une seconde et reste bloqué tant qu'il n'est pas sorti.<br><br>
       <b>Vent</b> : les traits blancs qui traversent le terrain montrent sa direction et sa force. Il fait dériver le disque. L'aperçu du lancer montre déjà la dérive : la croix est l'endroit visé, le cercle l'endroit où le disque arrivera. Contre le vent, les lancers longs sont plus difficiles.<br><br>
-      <b>Sur téléphone</b> : joue en paysage (bouton ⛶ pour le plein écran). En attaque, pose le doigt, glisse pour viser et relâche pour lancer ; la barre en bas règle la courbe. En défense, le joystick en bas à gauche déplace ton joueur ; les boutons ronds à droite font un layout (dans la direction du joystick) ou un switch. Tu peux aussi taper sur un de tes joueurs pour le prendre.<br><br>
-      <b>En ligne</b> : un joueur crée la partie et envoie le code, l'autre le rejoint. Chacun contrôle son équipe (l'hôte les Bleus, l'invité les Rouges) et choisit sa stratégie avant chaque point ; le point démarre quand les deux sont prêts.<br><br>
+      <b>Appeler un cut</b> : en attaque, <b>clic droit</b> (ou toucher le terrain sur téléphone) à un endroit : le coéquipier IA le plus proche coupe vers cet espace.<br><br>
+      <b>Sur téléphone</b> : joue en paysage (bouton ⛶ pour le plein écran). Le joystick en bas à gauche sert à <b>lancer</b> quand tu as le disque (la direction vise, l'inclinaison règle la distance, relâche pour lancer, reviens au centre pour annuler ; la barre du bas règle la courbe) et à <b>déplacer</b> ton joueur en défense. Les boutons ronds à droite font un layout ou un switch ; tape un de tes joueurs pour le prendre.<br><br>
+      <b>En ligne</b> : l'hôte crée la partie et partage le code ; jusqu'à 10 joueurs choisissent leur équipe dans la salle d'attente. Une équipe sans humain est jouée par l'IA. Seul dans ton équipe, tu lances pour tout le monde et tu choisis ton défenseur. À plusieurs, chacun a son joueur, en attaque comme en défense : il lance quand ce joueur a le disque, et peut prendre un autre joueur géré par l'IA (Espace, touches 1 à 5, ou tape sur téléphone). Le capitaine choisit la stratégie et fait le pull.<br><br>
       <b>Plays de départ</b> : avant chaque point, tu peux lancer une combinaison préparée. Les joueurs concernés portent un repère (★, 1, 2, S) pendant le play.<br><br>
       On marque en attrapant le disque dans l'en-but adverse.
     </details>
@@ -152,6 +177,7 @@
 <script src="js/config.js"></script>
 <script src="js/util.js"></script>
 <script src="js/state.js"></script>
+<script src="js/humans.js"></script>
 <script src="js/wind.js"></script>
 <script src="js/offense.js"></script>
 <script src="js/defense.js"></script>

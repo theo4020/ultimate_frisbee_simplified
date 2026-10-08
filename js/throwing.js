@@ -54,20 +54,34 @@ function aiThrow(h) {
       const ft = flightTime(dist(h.x, h.y, tx, ty));
       tx = p.x + p.vx * ft * 0.9; ty = p.y + p.vy * ft * 0.9;
     }
-    const d = dist(h.x, h.y, tx, ty);
-    if (d < 4 || d > 45 || tx < 0.8 || tx > W - 0.8 || ty < 0.8 || ty > H - 0.8) continue;
-    const [aimX, aimY] = aimFor(h, tx, ty);
-    if (dist(h.x, h.y, aimX, aimY) > 50) continue;
     const P = G.oplay, playBonus = P && P.team === t && P.targets.includes(p) ? 3 : 0;
     if (P && P.team === t && P.t < 3.5 && press < 5 && !playBonus) continue;   // l'IA joue son play jusqu'au bout
-    for (const curve of [-0.5, 0, 0.5]) {
-      const slack = laneSlack(h, aimX, aimY, tx, ty, curve, opp);
-      const gain = dir * (tx - h.x);
-      const v = clamp(slack, -1, 0.6) * 4 + gain * 0.2 + (inScoreZone(t, tx) ? 8 : 0)
-        + (G.stall > 5 && p.role === 'dump' ? 2.5 : 0) + playBonus - Math.abs(curve) * 0.6 - d * (0.02 + G.wind.kmh * 0.003);
-      const minSlack = playBonus && P.type === 'huck' ? -0.15 : 0.05;
-      if (slack < minSlack && press < 8.3) continue;
-      if (v > bv) { bv = v; best = { tx: aimX, ty: aimY, curve }; }
+    // cibles : là où sera le receveur, et pour un joueur qui file vers l'avant, l'espace devant lui (passe longue)
+    const cands = [[tx, ty]];
+    const fwd = dir * p.vx;
+    if (fwd > 3) {
+      for (const extra of [6, 12]) {
+        const sx = tx + dir * extra, sy = ty + (p.vy || 0) * 0.3;
+        const ft = flightTime(dist(h.x, h.y, sx, sy));
+        if (dist(p.x, p.y, sx, sy) / SPD.cut <= ft + 0.25) cands.push([sx, sy]);   // il peut y arriver à temps
+      }
+    }
+    for (const [cx0, cy0] of cands) {
+      const d = dist(h.x, h.y, cx0, cy0);
+      if (d < 4 || d > 48 || cx0 < 0.8 || cx0 > W - 0.8 || cy0 < 0.8 || cy0 > H - 0.8) continue;
+      const [aimX, aimY] = aimFor(h, cx0, cy0);
+      if (dist(h.x, h.y, aimX, aimY) > 50) continue;
+      const gain = dir * (cx0 - h.x), long = gain > 20;
+      for (const curve of [-0.5, 0, 0.5]) {
+        const slack = laneSlack(h, aimX, aimY, cx0, cy0, curve, opp);
+        // les passes qui font avancer le jeu valent plus, les longues encore plus (huck)
+        const v = clamp(slack, -1, 0.6) * 4 + gain * 0.3 + (long ? 2.2 : 0) + (inScoreZone(t, cx0) ? 8 : 0)
+          + (G.stall > 5 && p.role === 'dump' ? 2.5 : 0) + (p.free ? 4 : 0) + playBonus - Math.abs(curve) * 0.6 - d * (0.02 + G.wind.kmh * 0.003);
+        // un huck peut être un peu disputé : le disque passe au-dessus de la défense au milieu
+        const minSlack = (playBonus && P.type === 'huck' ? -0.15 : long || p.free ? -0.08 : 0.05) + aiLvl(t).safe;
+        if (slack < minSlack && press < 8.3) continue;
+        if (v > bv) { bv = v; best = { tx: aimX, ty: aimY, curve }; }
+      }
     }
   }
   if (!best && press > 9) {                                 // filet de sécurité : aucune option propre, on lance au plus proche
@@ -75,6 +89,6 @@ function aiThrow(h) {
     if (p) { const [ax2, ay2] = aimFor(h, clamp(p.x, 1, W - 1), clamp(p.y, 1, H - 1)); best = { tx: ax2, ty: ay2, curve: 0 }; bv = 9; }
   }
   if (!best || (bv < 3.2 - press * 0.35 && press < 6)) { h.think = 0.25; return; }
-  throwDisc(h, best.tx, best.ty, best.curve, 0.85);
+  throwDisc(h, best.tx, best.ty, best.curve, 0.85 * aiLvl(t).err);
 }
 

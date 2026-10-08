@@ -58,5 +58,5 @@ function bez(sx, sy, cx, cy, ex, ey, u) {
   return [a * a * sx + 2 * a * u * cx + u * u * ex, a * a * sy + 2 * a * u * cy + u * u * ey];
 }
 const flightTime = d => 0.35 + d / 24;
-const peakOf = dur => 0.6 + dur * 0.8;
+const peakOf = dur => 0.8 + dur * 1.1;                  // hauteur max du disque : plus haute = plus longtemps hors de portée
 

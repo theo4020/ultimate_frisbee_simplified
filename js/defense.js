@@ -99,11 +99,11 @@ function defenderAI(d, ax, ay, dir, closed, form, slots) {
   if (form === 'man') {
     const a = d.match;
     if (!a) { d.tx = d.x; d.ty = d.y; return; }
-    const marking = (disc.mode === 'held' && disc.holder === a) || (disc.mode === 'ground' && G.pickup === a);
+    const marking = ((disc.mode === 'held' || disc.mode === 'carry') && disc.holder === a) || (disc.mode === 'ground' && G.pickup === a);
     if (marking) {                                          // marquage : on se place côté fermé
       d.tx = disc.x + dir * 1.0; d.ty = disc.y + closed * 1.3; d.react = 0.08;
     } else {                                                // on anticipe la course et on protège le côté ouvert
-      const px = a.x + a.vx * 0.15, py = a.y + a.vy * 0.15;
+      const ant = aiLvl(d.team).anticip, px = a.x + a.vx * ant, py = a.y + a.vy * ant;
       const depth = dir * (a.x - ax);
       d.tx = px + dir * (depth > 17 ? 1.8 : 0.4);
       d.ty = py + open * 1.0;

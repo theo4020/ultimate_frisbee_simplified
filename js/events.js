@@ -4,13 +4,15 @@
 //  Événements de jeu
 // =====================================================================
 function holdDisc(p) {
-  disc.mode = 'held'; disc.holder = p; disc.x = p.x; disc.y = p.y; disc.z = 0;
+  disc.mode = 'held'; disc.holder = p; disc.x = p.x; disc.y = p.y; disc.z = 0; G.carryTo = null;
   p.vx = p.vy = 0;
   G.stall = 0; G.holdT = 0; G.marker = null; G.dbl = null; G.pickup = null;
   players.forEach(q => { q.inT = 0; }); p.think = rand(0.6, 1.4);
   assignRoles(p.team, p);
+  if (!G.pullPending) continuationCut(p.team, p);
   if (defFormOf(1 - p.team) === 'zone') assignZone(1 - p.team, p.x, p.y);
   playOnCatch(p);
+  for (const d of TEAMS[1 - p.team]) d.react = Math.min(d.react, rand(0.04, 0.1));   // la défense réagit tout de suite à la réception
   if (G.pullPending) { G.pullPending = false; afterPull(p); }   // première possession après le pull
 }
 
@@ -60,25 +62,5 @@ function scorePoint(t, label) {
   G.receiving = 1 - t;
   G.phase = G.score[t] >= WIN ? 'over' : 'between';
   G.betweenT = 1.6;
-}
-
-// =====================================================================
-//  Contrôle du joueur en défense
-// =====================================================================
-function updateSelected() {
-  for (let t = 0; t < 2; t++) {
-    G.sel[t] = human(t) && G.off !== t ? nearest(TEAMS[t], disc.x, disc.y) : null;
-    inputOf(t).last = -1e9;
-  }
-}
-// joueur que la touche Espace sélectionnera (entouré en gris)
-function switchTarget(t) {
-  if (G.phase !== 'play' || G.off === t || !human(t)) return null;
-  const [rx, ry] = disc.mode === 'air' ? [disc.ex, disc.ey] : [disc.x, disc.y];
-  return nearest(TEAMS[t], rx, ry, G.sel[t]);
-}
-function userControls(d) {
-  const t = d.team, inp = inputOf(t);
-  return human(t) && G.off !== t && d === G.sel[t] && (inp.down || G.time - inp.last < 2.5);
 }
 

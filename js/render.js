@@ -3,7 +3,7 @@
 // =====================================================================
 //  Rendu
 // =====================================================================
-function canThrow() { return G.phase === 'play' && G.off === G.me && disc.mode === 'held' && !!disc.holder; }
+function canThrow() { const h = throwerHuman(); return G.phase === 'play' && !!h && h.id === G.myId; }
 function defending() { return G.phase === 'play' && G.off !== G.me; }
 // couleur selon la hauteur : rouge = contrable (même en plongeon), orange = contrable debout, bleu = trop haut
 function heightColor(z, a) {
@@ -64,7 +64,7 @@ function draw() {
 
   drawStreaks();
   const playing = G.phase === 'play';
-  const myAttack = playing && G.off === G.me, ME = G.me, mySel = G.sel[ME];
+  const myAttack = playing && G.off === G.me, ME = G.me, mySel = (meH() || {}).sel || null;
 
   // Structure offensive de ton équipe (repère visuel)
   if (myAttack && disc.mode === 'held') {
@@ -141,7 +141,7 @@ function draw() {
   if (playing && (disc.mode === 'air' || (canThrow() && G.pointer.active))) drawHeightLegend();
 
   // Joueurs
-  const r = 0.95 * S, swT = switchTarget(ME);
+  const r = 0.95 * S, swT = switchTarget(meH());
   for (const p of players) { ctx.fillStyle = 'rgba(0,0,0,.25)'; circle(X(p.x) + 2, Y(p.y) + 3, r); ctx.fill(); }
   for (const p of players) {
     ctx.fillStyle = p.team === 0 ? '#3b82f6' : '#ef4444';
@@ -151,11 +151,11 @@ function draw() {
     if (p.dive > 0 || p.down > 0) ctx.ellipse(X(p.x), Y(p.y), r * 1.5, r * 0.7, Math.atan2(p.vy, p.vx) || 0, 0, Math.PI * 2);
     else ctx.arc(X(p.x), Y(p.y), r, 0, Math.PI * 2);
     ctx.fill(); ctx.stroke(); ctx.globalAlpha = 1;
-    if (p === disc.holder && disc.mode === 'held') { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; circle(X(p.x), Y(p.y), r + 4); ctx.stroke(); }
+    if (p === disc.holder && (disc.mode === 'held' || disc.mode === 'carry')) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; circle(X(p.x), Y(p.y), r + 4); ctx.stroke(); }
     if (myAttack && disc.mode === 'held' && p.team === ME && p !== disc.holder && nearestD(TEAMS[1 - ME], p.x, p.y)[1] > 2.8) {
       ctx.strokeStyle = 'rgba(74,222,128,.95)'; ctx.lineWidth = 2.5; circle(X(p.x), Y(p.y), r + 3); ctx.stroke();
     }
-    if (p === mySel && defending()) { ctx.strokeStyle = '#facc15'; ctx.lineWidth = 3; circle(X(p.x), Y(p.y), r + 5); ctx.stroke(); }
+    if (p === mySel && playing) { ctx.strokeStyle = '#facc15'; ctx.lineWidth = 3; circle(X(p.x), Y(p.y), r + 5); ctx.stroke(); }
     if (p === G.dbl && disc.mode === 'held') {                // défenseur en double team
       ctx.save(); ctx.setLineDash([3, 3]); ctx.strokeStyle = '#f87171'; ctx.lineWidth = 3; circle(X(p.x), Y(p.y), r + 5); ctx.stroke(); ctx.restore();
       ctx.fillStyle = '#fca5a5'; ctx.font = `800 ${Math.max(9, S * 1.2)}px system-ui`; ctx.textAlign = 'center';
@@ -166,6 +166,24 @@ function draw() {
       ctx.save(); ctx.setLineDash([3, 4]); ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 2;
       circle(X(p.x), Y(p.y), r + 4); ctx.stroke(); ctx.restore();
     }
+  }
+
+  // Humains : étiquette « J2 » au-dessus des joueurs contrôlés par d'autres personnes,
+  // et numéros 1 à 5 sous tes joueurs (touches du clavier pour en prendre un)
+  ctx.textAlign = 'center';
+  for (const h of G.humans) {
+    if (!h.sel || h.id === G.myId) continue;
+    const p = h.sel;
+    ctx.font = `800 ${Math.max(10, S * 1.25)}px system-ui`;
+    ctx.fillStyle = 'rgba(15,23,42,.8)'; ctx.fillRect(X(p.x) - S * 1.6, Y(p.y) + r + 2, S * 3.2, S * 1.6);
+    ctx.fillStyle = p.team === 0 ? '#93c5fd' : '#fca5a5'; ctx.fillText(humanLabel(h), X(p.x), Y(p.y) + r + 2 + S * 1.25);
+  }
+  if (playing && !isTouchUI() && canSwitchNow(meH())) {
+    ctx.font = `700 ${Math.max(9, S * 1.05)}px system-ui`;
+    TEAMS[ME].forEach((p, k) => {
+      if (takenByOther(p, meH())) return;
+      ctx.fillStyle = 'rgba(255,255,255,.75)'; ctx.fillText(String(k + 1), X(p.x) + r * 0.95, Y(p.y) + r * 1.25);
+    });
   }
 
   // Repères des plays
@@ -185,11 +203,20 @@ function draw() {
     ctx.fillText(n, X(disc.x), Y(disc.y) - r - 8);
   }
 
+  // remontée du disque : pointillés jusqu'à la ligne / au brick
+  if (disc.mode === 'carry' && G.carryTo && disc.holder) {
+    ctx.save(); ctx.setLineDash([4, 5]); ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(X(disc.holder.x), Y(disc.holder.y)); ctx.lineTo(X(G.carryTo.x), Y(G.carryTo.y)); ctx.stroke();
+    ctx.setLineDash([]); ctx.fillStyle = 'rgba(255,255,255,.9)'; circle(X(G.carryTo.x), Y(G.carryTo.y), 0.45 * S); ctx.fill();
+    ctx.font = `600 ${Math.max(9, S * 1.2)}px system-ui`; ctx.textAlign = 'center';
+    ctx.fillText('reprise du jeu', X(G.carryTo.x), Y(G.carryTo.y) - 0.9 * S);
+    ctx.restore();
+  }
   drawTrail();
   // Disque
   if (disc.mode !== 'dead') {
     let dx = disc.x, dy = disc.y;
-    if (disc.mode === 'held') dx += 0.8 * dirOf(disc.holder.team);
+    if (disc.mode === 'held' || disc.mode === 'carry') dx += 0.8 * dirOf(disc.holder.team);
     const lift = disc.mode === 'air' ? disc.z * S * 1.2 : 0;
     if (disc.mode === 'air') {                                // ombre + anneau coloré = hauteur, trait = altitude
       ctx.fillStyle = 'rgba(0,0,0,.3)'; circle(X(dx), Y(dy), 0.45 * S); ctx.fill();

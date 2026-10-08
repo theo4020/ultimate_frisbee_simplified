@@ -80,6 +80,10 @@ function closedOf(defT) {
   const y = disc.mode === 'air' ? disc.ey : disc.y;          // force middle : on bloque le côté de la ligne la plus proche
   return y < H / 2 ? -1 : 1;
 }
-function anchor() { return disc.mode === 'air' ? [disc.ex, disc.ey] : [disc.x, disc.y]; }
+function anchor() {
+  if (disc.mode === 'air') return [disc.ex, disc.ey];
+  if (disc.mode === 'carry' && G.carryTo) return [G.carryTo.x, G.carryTo.y];   // le jeu reprendra à cet endroit
+  return [disc.x, disc.y];
+}
 function flash(m, localOnly) { G.msg = m; G.msgT = 1.8; if (!localOnly) G.msgId++; }
 

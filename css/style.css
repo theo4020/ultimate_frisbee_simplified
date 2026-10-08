@@ -42,8 +42,9 @@ body.touch #controls button{padding:13px 22px;font-size:17px;font-weight:600}
 #tbtns button{width:var(--tb,72px);height:var(--tb,72px);border-radius:50%;padding:0;font-size:14px;font-weight:700;
   background:rgba(51,65,85,.85);border:2px solid rgba(255,255,255,.35);touch-action:none}
 #tbtns #tDive{background:rgba(180,83,9,.9)}
-body.touch.defend #joy{display:block}
-body.touch.defend #tbtns{display:flex}
+body.touch.joyon #joy{display:block}
+body.touch.canlayout #tbtns,body.touch.canswitch #tbtns{display:flex}
+body:not(.canlayout) #tDive,body:not(.canswitch) #tSwitch{display:none}
 body.touch #diveB,body.touch #switchD{display:none!important}
 body.touch.portrait #rotateHint{display:block}
 .net{font-size:13px;color:var(--muted)}
@@ -81,3 +82,11 @@ details b{color:var(--text)}
   .row{margin:5px 0 2px} .desc{font-size:12px;margin-bottom:4px;min-height:0} .wind{margin:2px 0 6px;padding:6px 10px}
   button{padding:7px 12px} .bigbtn{padding:10px 14px;margin:6px 0}
 }
+
+.teams{display:flex;gap:10px;margin:10px 0}
+.teamcol{flex:1;background:var(--bg);border-radius:10px;padding:10px}
+.teamcol ul{list-style:none;padding:0;margin:8px 0;min-height:70px;font-size:14px}
+.teamcol li{padding:3px 0}
+.teamcol li.ai{color:var(--muted);font-style:italic}
+.teamcol button{width:100%}
+#stratRows.locked{opacity:.55;pointer-events:none}

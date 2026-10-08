@@ -4,8 +4,24 @@
 //  Constantes (unités : mètres, secondes)
 // =====================================================================
 const W = 100, H = 37, EZ = 18, M = 2, N = 5, WIN = 5;
-const SPD = { jog: 4.6, cut: 7.6, def: 7.2, user: 7.5, sprint: 7.7, dive: 11 };
-const ACC = { atk: 24, def: 19 };
+const SPD = { jog: 4.6, cut: 7.6, def: 7.4, user: 7.5, sprint: 7.8, dive: 11 };
+const ACC = { atk: 24, def: 21 };
+// Réglages de la défense IA (plus les temps de réaction sont courts et l'anticipation forte, plus elle est dure)
+// Niveau de l'IA adverse (équipes sans aucun humain). Les coéquipiers IA restent toujours au niveau normal.
+//   react : multiplie les temps de réaction · anticip : anticipation des courses (s) · block / int : chances de contre
+//   speed : vitesse des joueurs · err : imprécision des lancers · safe : prudence dans le choix des passes
+const AI_LEVELS = {
+  facile:    { react: 1.6,  anticip: 0.1,  block: 0.42, int: 0.12, speed: 0.93, err: 1.6, safe: -0.05 },
+  normal:    { react: 1,    anticip: 0.3,  block: 0.6,  int: 0.2,  speed: 1,    err: 1,   safe: 0 },
+  difficile: { react: 0.72, anticip: 0.4,  block: 0.68, int: 0.25, speed: 1.04, err: 0.65, safe: 0.08 }
+};
+const DEF_TUNE = {
+  reactMan: [0.14, 0.24],   // temps de réaction en individuelle (s)
+  reactZone: [0.1, 0.16],   // temps de réaction en zone (s)
+  anticip: 0.3,             // anticipation de la course de l'attaquant (s)
+  block: 0.6,               // chance de contrer quand le disque passe à portée (debout)
+  int: 0.2                  // dont chance d'intercepter
+};
 const DIVE_T = 0.33, DOWN_T = 0.8;
 const SPEEDS = { lent: 0.6, normal: 0.78, rapide: 1 };
 const DRIFT = 0.5;                                          // dérive du disque : vent (m/s) × temps de vol × DRIFT

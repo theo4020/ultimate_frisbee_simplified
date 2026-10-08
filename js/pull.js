@@ -30,7 +30,8 @@ function startPull() {
   G.curve = 0; const cr = document.getElementById('curveRange'); if (cr) cr.value = 0;
 }
 
-const localPuller = () => G.phase === 'pull' && !!G.pull && G.ctrl[G.pull.team] === 'local';
+// c'est le capitaine de l'équipe qui pulle (le seul humain de l'équipe en solo)
+const localPuller = () => G.phase === 'pull' && !!G.pull && !!captain(G.pull.team) && captain(G.pull.team).id === G.myId;
 function pullFlash() {
   if (!G.pull) return;
   flash(G.pull.team === G.me ? 'À toi de puller !' : 'Pull adverse…', true);
@@ -75,7 +76,7 @@ function doPull(x, y, curve, q) {
 function pullTick(dt) {
   if (G.phase !== 'pull' || !G.pull) return;
   G.pull.t += dt;
-  if (G.ctrl[G.pull.team] === 'ai') { G.pull.aiT -= dt; if (G.pull.aiT <= 0) aiPull(); }
+  if (!human(G.pull.team)) { G.pull.aiT -= dt; if (G.pull.aiT <= 0) aiPull(); }
   else if (G.pull.t > PULL.AUTO_T) aiPull();                    // personne ne pulle : pull automatique
 }
 function aiPull() {
@@ -96,11 +97,17 @@ function launchPull(ax, ay, curve, q) {
   [ax, ay] = clampPullAim(h, ax, ay);
   const [p0, p1] = PULL.PERFECT;
   let f, err;
-  if (q > p1) { f = 1.12; err = 5; }                            // trop fort : long et imprécis
+  let lat = 0;                                                  // écart sur le côté (perpendiculaire au pull)
+  if (q > p1) {                                                 // trop fort : il part de travers et perd de la distance
+    const over = (q - p1) / (1 - p1);
+    f = 0.8 - over * 0.12; err = 1.5;
+    lat = (Math.random() < 0.5 ? -1 : 1) * rand(6, 9 + over * 5);
+  }
   else if (q >= p0) { f = 1; err = 1.2; }                       // parfait
   else { f = 0.5 + 0.5 * q / p0; err = 2.5; }                   // trop tôt : court
-  const hang = q > p1 ? 2.6 : 1.8 + 2.4 * Math.min(1, q / p0);  // temps de vol (s)
-  const tx = h.x + (ax - h.x) * f, ty = h.y + (ay - h.y) * f;
+  const hang = q > p1 ? 2.0 : 1.8 + 2.4 * Math.min(1, q / p0);  // temps de vol (s)
+  const pdx = ax - h.x, pdy = ay - h.y, pl = Math.hypot(pdx, pdy) || 1;
+  const tx = h.x + pdx * f - pdy / pl * lat, ty = h.y + pdy * f + pdx / pl * lat;
   const ea = rand(0, Math.PI * 2), er = err * Math.sqrt(Math.random());
   const aimX = tx + Math.cos(ea) * er, aimY = ty + Math.sin(ea) * er;
   const dur = Math.max(hang, flightTime(dist(h.x, h.y, aimX, aimY)) * 1.2);
@@ -122,19 +129,32 @@ function launchPull(ax, ay, curve, q) {
 function pullCaught(p) {
   const r = G.receiving;
   disc.pull = false;
-  if (p.x < 0 || p.x > W || p.y < 0 || p.y > H) { pullToSpot(goalLine(r) + dirOf(r) * PULL.BRICK, H / 2, p, 'Out ! Brick'); return; }
-  let x = p.x;
-  if (inScoreZone(1 - r, x)) x = goalLine(r);                   // attrapé dans son en-but : on repart de la ligne
-  p.x = x; fxEvent('catch', p.x, p.y, p.team);
+  fxEvent('catch', p.x, p.y, p.team);
+  if (p.x < 0 || p.x > W || p.y < 0 || p.y > H) { startCarry(p, brickX(r), H / 2, 'Out ! Brick'); return; }
+  if (inScoreZone(1 - r, p.x)) { startCarry(p, goalLine(r), clamp(p.y, 0.5, H - 0.5), ''); return; }   // attrapé dans son en-but
   holdDisc(p);
+}
+const brickX = r => goalLine(r) + dirOf(r) * PULL.BRICK;
+// le joueur ramène le disque à pied jusqu'à la ligne d'en-but ou au brick avant que le jeu reprenne
+function startCarry(p, x, y, msg) {
+  Object.assign(disc, { mode: 'carry', holder: p, x: p.x, y: p.y, z: 0 });
+  G.carryTo = { x, y }; G.pickup = null; G.stall = 0; G.marker = null;
+  p.vx = p.vy = 0;
+  assignRoles(p.team, p);
+  setupDefense(1 - p.team, p);
+  if (msg) flash(msg);
 }
 // le pull touche le sol sans être attrapé
 function pullLanded(ex, ey) {
   const r = G.receiving;
   disc.pull = false;
   const out = ex < 0 || ex > W || ey < 0 || ey > H;
-  if (out) { pullToSpot(goalLine(r) + dirOf(r) * PULL.BRICK, H / 2, null, 'Out ! Brick'); return; }
-  pullToSpot(inScoreZone(1 - r, ex) ? goalLine(r) : ex, clamp(ey, 0.5, H - 0.5), null, '');
+  // le disque est ramassé là où il s'arrête (ou là où il est sorti), puis ramené si besoin
+  const x = clamp(ex, 0.5, W - 0.5), y = clamp(ey, 0.5, H - 0.5);
+  if (out) G.carryTo = { x: brickX(r), y: H / 2 };
+  else if (inScoreZone(1 - r, x)) G.carryTo = { x: goalLine(r), y };
+  else G.carryTo = null;
+  pullToSpot(x, y, null, out ? 'Out ! Brick' : '');
 }
 function pullToSpot(x, y, catcher, msg) {
   const r = G.receiving;

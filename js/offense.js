@@ -37,6 +37,31 @@ function cutterSlot(p, t, ax, ay, dir, form) {
   return { x: clamp(ax + dir * depth, 1.5, W - 1.5), y: lanes[Math.min(idx, lanes.length - 1)] };
 }
 
+// un joueur resté loin derrière le jeu remonte en courant au lieu de trottiner
+function hustle(p, base) {
+  return dist(p.x, p.y, p.tx, p.ty) > 7 ? Math.max(base, SPD.cut * 0.92) : base;
+}
+
+// Juste après une réception, un cutter propose aussitôt la passe suivante (continuation),
+// de préférence celui qui est déjà lancé vers l'avant côté open.
+function continuationCut(t, h) {
+  if (G.oplay && G.oplay.team === t) return;
+  const dir = dirOf(t), open = -closedOf(1 - t);
+  const room = depthLeft(h.x, dir);
+  if (room < 4) return;
+  const tx = h.x + dir * Math.min(rand(8, 13), room - 1), ty = clamp(h.y + open * rand(3, 8), 2, H - 2);
+  let best = null, bv = 1e9;
+  for (const c of G.order[t]) {
+    const ahead = dir * (c.x - h.x);                          // déjà devant le disque = bien placé
+    const v = dist(c.x, c.y, tx, ty) - Math.max(0, Math.min(ahead, 12)) * 0.5 + Math.max(0, -dir * (c.vx || 0)) * 0.6;
+    if (v < bv) { bv = v; best = c; }
+  }
+  if (!best) return;
+  best.cx = tx; best.cy = ty; clampPt(best);
+  best.wx = best.x; best.wy = best.y;
+  best.role = 'cutter'; best.state = 'cut'; best.timer = 2.2;      // pas de feinte : il est déjà en mouvement
+  G.cutT = rand(0.8, 1.3);
+}
 function clampPt(o) { o.cx = clamp(o.cx, 1.5, W - 1.5); o.cy = clamp(o.cy, 1.5, H - 1.5); }
 
 // Un seul coupeur à la fois : c'est ce qui rend la structure lisible
@@ -49,7 +74,7 @@ function runCutSequencer(t, ax, ay, dir, open, form, dt) {
   const ready = ord.filter(p => p.state === 'stack' && dist(p.x, p.y, p.tx, p.ty) < 4);
   if (!ready.length) return;
   const room = depthLeft(ax, dir);
-  const deep = room > 20 && Math.random() < 0.33;
+  const deep = room > 20 && Math.random() < 0.45;            // deep cuts plus fréquents
   let c, sy = stackY(ay);
   if (form === 'vert') {
     c = deep ? ready[0] : ready[ready.length - 1];          // l'avant part en profondeur, l'arrière coupe vers le disque
@@ -68,11 +93,44 @@ function runCutSequencer(t, ax, ay, dir, open, form, dt) {
   G.cutT = rand(0.9, 1.5);                                   // cuts plus rapprochés : le stall count va vite
 }
 
+// Un attaquant laissé seul (son défenseur est parti ailleurs) file dans l'espace libre,
+// de préférence côté open et vers l'avant : laisser son joueur doit coûter cher.
+const FREE_R = 6;
+function isAbandoned(p, t) {
+  if (defFormOf(1 - t) !== 'man' || p === disc.holder) return false;
+  const dfn = TEAMS[1 - t], g = dfn.find(d => d.match === p);
+  return (!g || dist(g.x, g.y, p.x, p.y) > FREE_R + 2) && nearestD(dfn, p.x, p.y)[1] > 5;
+}
+function freeSpace(p, t, ax, ay, dir, open) {
+  const dfn = TEAMS[1 - t];
+  let best = null, bv = -1e9;
+  for (const k of [10, 14, 18, 23, 28]) {
+    const x = ax + dir * k;
+    if (x < 1 || x > W - 1) continue;
+    for (const y of [4, 10, 16, 21, 27, 33]) {
+      const room = Math.min(12, nearestD(dfn, x, y)[1]);
+      // il se place là où le handler peut lui lancer (ligne de passe dégagée)
+      const lane = disc.holder ? clamp(laneSlack(disc.holder, x, y, x, y, 0, dfn), -1, 0.6) : 0;
+      const v = room * 1.1 + lane * 6 + k * 0.18 + (open * (y - ay) > 0 ? 1.5 : 0) - dist(p.x, p.y, x, y) * 0.22;
+      if (v > bv) { bv = v; best = [x, y]; }
+    }
+  }
+  return best;
+}
 function attackerAI(p, t, ax, ay, dir, open, form, dt) {
   p.timer -= dt;
+  // attaquant lâché par son défenseur : il coupe tout de suite vers un espace libre où le handler peut le servir
+  p.freeAcc = isAbandoned(p, t) ? (p.freeAcc || 0) + dt : 0;   // lâché depuis un moment (pas juste un décalage)
+  p.free = p.freeAcc > 0.7;
+  if (p.free && disc.mode === 'held' && disc.holder && disc.holder.team === t && p.role === 'cutter'
+      && p.state !== 'jab' && p.state !== 'cut' && (p.freeT = (p.freeT || 0) - dt) <= 0) {
+    const sp = freeSpace(p, t, ax, ay, dir, open);
+    if (sp) { startCut(p, sp[0], sp[1], dir * (sp[0] - p.x) > 12); p.state = 'cut'; p.timer = 1.8; }
+    p.freeT = 0.8;
+  }
   if (p.role === 'holder') {                                // ancien porteur : il suit le jeu derrière
     const s = dumpSlot(ax, ay, dir, open);
-    p.tx = s.x - dir * 2; p.ty = clamp(s.y + open * 7, 2, H - 2); p.sp = SPD.jog; return;
+    p.tx = s.x - dir * 2; p.ty = clamp(s.y + open * 7, 2, H - 2); p.sp = hustle(p, SPD.jog); return;
   }
   if (p.role === 'dump') {
     const s = dumpSlot(ax, ay, dir, open);
@@ -92,7 +150,7 @@ function attackerAI(p, t, ax, ay, dir, open, form, dt) {
   }
   const slot = cutterSlot(p, t, ax, ay, dir, form);
   switch (p.state) {
-    case 'stack': p.tx = slot.x; p.ty = slot.y; p.sp = SPD.jog; break;
+    case 'stack': p.tx = slot.x; p.ty = slot.y; p.sp = hustle(p, SPD.jog); break;
     case 'park': p.tx = p.cx; p.ty = p.cy; p.sp = SPD.jog + 1; break;
     case 'jab':
       p.tx = p.wx; p.ty = p.wy; p.sp = SPD.cut * 0.8;
@@ -114,7 +172,7 @@ function attackerAI(p, t, ax, ay, dir, open, form, dt) {
       }
       break;
     case 'clear':
-      p.sp = SPD.jog + 1.5;
+      p.sp = hustle(p, SPD.jog + 1.5);
       if (!p.wDone) { p.tx = p.wx; p.ty = p.wy; if (dist(p.x, p.y, p.wx, p.wy) < 1.5) p.wDone = true; }
       else { p.tx = slot.x; p.ty = slot.y; if (dist(p.x, p.y, slot.x, slot.y) < 1.5) p.state = 'stack'; }
       if (p.timer <= 0) p.state = 'stack';

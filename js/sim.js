@@ -14,7 +14,7 @@ function steer(p, dt) {
     p.x += p.vx * dt; p.y += p.vy * dt; return;
   }
   const dx = p.tx - p.x, dy = p.ty - p.y, l = Math.hypot(dx, dy);
-  const want = Math.min(p.sp, l * 2.5);
+  const want = Math.min(p.sp * (controllerOf(p) ? 1 : aiLvl(p.team).speed), l * 2.5);
   const dvx = (l > 0.01 ? dx / l * want : 0) - p.vx, dvy = (l > 0.01 ? dy / l * want : 0) - p.vy;
   const dl = Math.hypot(dvx, dvy), maxd = (p.team === G.off ? ACC.atk : ACC.def) * dt;
   const k = dl > maxd ? maxd / dl : 1;
@@ -33,15 +33,21 @@ function update(dt) {
   for (const p of atk) {
     if (disc.mode === 'held' && disc.holder === p) { p.tx = p.x; p.ty = p.y; p.sp = 0; p.vx = p.vy = 0; continue; }
     if (disc.mode === 'ground' && G.pickup === p) { p.tx = disc.x; p.ty = disc.y; p.sp = SPD.cut; continue; }
+    if (disc.mode === 'carry' && disc.holder === p) { p.tx = G.carryTo.x; p.ty = G.carryTo.y; p.sp = 5.5; continue; }
+    if (userControls(p)) { const inp = inputOf(controllerOf(p)); p.tx = inp.x; p.ty = inp.y; p.sp = SPD.user; continue; }   // humain (à plusieurs par équipe)
+    if (disc.mode === 'air' && disc.intended === p && !disc.pull && !p.diveTried && !controllerOf(p)) {
+      const left = (1 - disc.t / disc.dur) * disc.dur, gap = dist(p.x, p.y, disc.ex, disc.ey);
+      if (left < 0.32 && gap > 1.6 && gap < 3.8) { p.diveTried = true; if (Math.random() < 0.6) diveTo(p, disc.ex, disc.ey); }
+    }
     if (disc.mode === 'air' && disc.intended === p) { p.tx = disc.ex; p.ty = disc.ey; p.sp = SPD.cut; continue; }
     attackerAI(p, off, ax, ay, dir, open, oform, dt);
   }
   const slots = zoneSlots(def, ax, ay, dir, closed);
   for (const d of dfn) {
-    if (userControls(d)) { const inp = inputOf(d.team); d.tx = inp.x; d.ty = inp.y; d.sp = SPD.user; continue; }
+    if (userControls(d)) { const inp = inputOf(controllerOf(d)); d.tx = inp.x; d.ty = inp.y; d.sp = SPD.user; continue; }
     d.react -= dt;
     if (d.react > 0) continue;                             // temps de réaction : c'est ce qui crée des démarquages
-    d.react = dform === 'zone' ? rand(0.1, 0.18) : rand(0.18, 0.3);
+    d.react = (dform === 'zone' ? rand(...DEF_TUNE.reactZone) : rand(...DEF_TUNE.reactMan)) * aiLvl(def).react;
     defenderAI(d, ax, ay, dir, closed, defFormOf(def), slots);
   }
 
@@ -82,7 +88,7 @@ function update(dt) {
     G.dbl = G.marker ? dbl : null;
     if (G.marker && !G.dbl) G.stall += dt * STALL_RATE;
     if (G.stall >= 10) { G.stats.stalls++; turnover(h.x, h.y, 'Stall 10 ! Turnover', 'stall'); return; }
-    if (G.ctrl[off] === 'ai') { h.think -= dt; if (h.think <= 0) aiThrow(h); }
+    if (!throwerHuman()) { h.think -= dt; if (h.think <= 0) aiThrow(h); }   // porteur sans humain : l'IA lance
   } else if (disc.mode === 'air') {
     disc.t += dt;
     const u = Math.min(1, disc.t / disc.dur);
@@ -98,10 +104,14 @@ function update(dt) {
         if (u > 0.03 && d < reach && disc.z < high && !disc.rolled.has(p)) {
           disc.rolled.add(p);
           const r = Math.random();
-          if (r < (diving ? 0.3 : 0.2)) { interception(p); return; }
-          if (r < (diving ? 0.85 : 0.6)) { G.stats.blocks++; turnover(disc.x, disc.y, diving ? 'Layout block !' : 'Block !', 'block'); return; }
+          const L = aiLvl(p.team);
+          if (r < (diving ? 0.3 : L.int)) { interception(p); return; }
+          if (r < (diving ? 0.85 : L.block)) { G.stats.blocks++; turnover(disc.x, disc.y, diving ? 'Layout block !' : 'Block !', 'block'); return; }
         }
-      } else if (u > 0.45 && d < 1.3 && disc.z < 2.3) { catchDisc(p); return; }
+      } else if (p.dive > 0 ? (u > 0.3 && d < 2.0 && disc.z < REACH_DIVE + 0.3) : (u > 0.45 && d < 1.3 && disc.z < 2.3)) {
+        if (p.dive > 0) flash('Layout !');                    // réception en plongeon
+        catchDisc(p); return;
+      }
     }
     if (u >= 1) {
       if (disc.pull) {
@@ -111,13 +121,19 @@ function update(dt) {
       }
       const out = disc.ex < 0 || disc.ex > W || disc.ey < 0 || disc.ey > H;
       const [c, cd] = nearestD(TEAMS[disc.team], disc.ex, disc.ey, disc.thrower);
-      if (!out && c && cd < 1.9) { catchDisc(c); return; }
+      if (!out && c && cd < (c.dive > 0 ? 2.6 : 1.9)) { if (c.dive > 0 || c.down > 0) flash('Layout !'); catchDisc(c); return; }
       if (out) G.stats.out++; else G.stats.ground++;
       turnover(disc.ex, disc.ey, out ? 'Out ! Turnover' : 'Turnover');
     }
   } else if (disc.mode === 'ground') {
     const p = G.pickup;
-    if (p && dist(p.x, p.y, disc.x, disc.y) < 1.2) { p.x = disc.x; p.y = disc.y; holdDisc(p); }
+    if (p && dist(p.x, p.y, disc.x, disc.y) < 1.2) {
+      p.x = disc.x; p.y = disc.y;
+      if (G.carryTo) startCarry(p, G.carryTo.x, G.carryTo.y, ''); else holdDisc(p);
+    }
+  } else if (disc.mode === 'carry') {                           // remontée du disque à pied
+    const h = disc.holder; disc.x = h.x; disc.y = h.y;
+    if (dist(h.x, h.y, G.carryTo.x, G.carryTo.y) < 0.4) { h.x = G.carryTo.x; h.y = G.carryTo.y; holdDisc(h); }
   }
 }
 

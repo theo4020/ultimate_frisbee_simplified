@@ -37,7 +37,8 @@ function startPoint() {
   G.dplay = dType === 'none' ? null : { type: dType, team: d, t: 0, throws: 0, d: null };
   G.pendingOPlay = oType;                                     // le play d'attaque démarre à la première possession
   startPull();                                                // chaque point commence par un pull (voir pull.js)
-  G.menuShown = false; G.ready = [false, false];
+  G.menuShown = false; G.readyIds = new Set();
+  updateSelected();
   document.getElementById('overlay').classList.add('hidden');
   pullFlash();
   if (G.net === 'host') netSend({ t: 'start', r });

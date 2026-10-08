@@ -69,6 +69,7 @@ const SOUNDS = {
   score: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.18, { type: 'triangle', vol: 0.18, delay: i * 0.09 })),
   stall: () => whistle(),
   double: () => { tone(440, 0.1, { type: 'square', vol: 0.08 }); tone(440, 0.1, { type: 'square', vol: 0.08, delay: 0.16 }); },
+  call: () => tone(660, 0.07, { type: 'triangle', vol: 0.1 }),
   land: () => noise(0.12, { filter: 'lowpass', freq: 700, vol: 0.18 }),
   tick: () => tone(880, 0.05, { vol: 0.05 }),
   tickHi: () => tone(1100, 0.06, { type: 'triangle', vol: 0.1 }),
@@ -111,6 +112,7 @@ function fxPlay(name, x, y, team) {
     case 'double': if (disc.holder) ring(disc.holder.x, disc.holder.y, '#f87171', STALL_R, 0.6); break;
     case 'stall': FX.shake = Math.max(FX.shake, 4); vibrate(80); break;
     case 'pull': ring(x, y, 'rgba(255,255,255,.8)', 3, 0.5); break;
+    case 'call': ring(x, y, '#facc15', 2.2, 0.6); ring(x, y, 'rgba(250,204,21,.6)', 3.4, 0.8); break;
     case 'land': burst(x, y, 6, { color: ['#d9f99d', '#a3e635'], speed: 2.5, life: 0.45, size: 0.25 }); break;
   }
 }
