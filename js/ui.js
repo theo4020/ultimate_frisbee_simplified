@@ -14,6 +14,10 @@ function updateHud() {
   const ct = canThrow();
   $('throwSel').style.display = ct || (att && G.phase === 'play' && soloStyle(ME)) ? '' : 'none';
   document.querySelectorAll('.tk').forEach(b => b.classList.toggle('on', b.dataset.k === G.throwKind));
+  if (isTouchUI()) {                                           // téléphone : la barre du bas n'apparaît que si elle sert
+    const used = $('throwSel').style.display !== 'none' || $('curveTouch').style.visibility === 'visible';
+    $('controls').style.visibility = used ? 'visible' : 'hidden';
+  } else $('controls').style.visibility = '';
   const key = [att, G.phase, pulling, G.phase === 'play', forceOf(0), forceOf(1), formOf(0), formOf(1), defFormOf(0), defFormOf(1), op, dp, G.wind.kmh, G.net, G.me, hk,
     tn(0), tn(1), tcol(0), tcol(1), G.spectator, !!G.gpActive, !!G.tuto].join('|');
   if (key === hudKey) return;
