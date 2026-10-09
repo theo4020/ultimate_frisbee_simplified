@@ -10,7 +10,11 @@ function loop(now) {
   computeTeams();
   gamepadFrame();
   const gdt = dt * SPEEDS[G.form.speed];
-  if (G.net === 'guest') { guestFrame(dt); G.gt += gdt; }
+  if (G.net === 'guest') {
+    guestFrame(dt); G.gt += gdt;
+    const hk = G.aiming && G.throwKind === 'high';            // passe haute préparée : l'hôte doit le savoir tout de suite
+    if (hk !== !!G.lastHk) { G.lastHk = hk; sendInput(true); }
+  }
   else {
     if (G.phase === 'play') { G.gt += gdt; update(gdt); }
     else if (G.phase === 'pull') pullTick(dt);
