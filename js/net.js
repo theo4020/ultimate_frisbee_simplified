@@ -345,6 +345,7 @@ function guestOnData(m) {
       refreshCaptainUI();
       break;
     case 'wind': G.wind = m.wind; hudKey = ''; refreshOptions(); break;
+    case 'rec': G.receiving = m.rec; placeForPoint(); refreshOptions(); updateFirstText(); break;
     case 'menu':
       G.score = m.score; G.receiving = m.rec; G.wind = m.wind;
       if (m.teams) G.netTeams = m.teams;

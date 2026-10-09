@@ -47,7 +47,7 @@ function storeSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } ca
 const SAVE_KEYS = {
   off: ['vert', 'ho', 'side'], def: ['man', 'zone', 'clam'], force: ['haut', 'bas', 'middle', 'straight'],
   speed: ['lent', 'normal', 'rapide'], level: ['facile', 'normal', 'difficile'], allyLevel: ['facile', 'normal', 'difficile'],
-  windMode: ['random', 'fixed'], points: ['3', '5', '7'], cb: ['0', '1']
+  windMode: ['random', 'fixed'], points: ['3', '5', '7'], cb: ['0', '1'], first: ['0', '1', 'r']
 };
 function loadSettings() {
   const o = storeGet('uf-settings', null);

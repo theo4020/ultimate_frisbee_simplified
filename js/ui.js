@@ -80,6 +80,10 @@ function refreshOptions() {
   $('hostOnlyWind').style.display = hostSide ? '' : 'none';
   $('rowSpeed').style.display = hostSide ? '' : 'none';
   $('rowPoints').style.display = hostSide && !G.series ? '' : 'none';
+  // première attaque : avant le début d'un match (premier menu, ou revanche)
+  $('rowFirst').style.display = hostSide && (G.lastMenu === 'first' || G.lastMenu === 'over') ? '' : 'none';
+  $('firstB0').textContent = tn(0) + (G.me === 0 && !G.spectator ? ' (toi)' : '');
+  $('firstB1').textContent = tn(1) + (G.me === 1 && !G.spectator ? ' (toi)' : '');
   $('rowLevel').style.display = $('descLevel').style.display = hostSide && !G.series ? '' : 'none';
   $('rowOpp').style.display = !G.net && !G.series ? '' : 'none';
   if (document.activeElement !== $('tname')) $('tname').value = G.form.tname;
@@ -118,7 +122,7 @@ function showLobby(err) {
 function showMenu(kind) {
   G.menuShown = true;
   if (G.net !== 'guest') newWind();
-  hudKey = '';
+  hudKey = ''; G.lastMenu = kind;
   computeTeams();
   $('lobbyCard').style.display = 'none'; $('seriesCard').style.display = 'none'; $('profileCard').style.display = 'none'; $('stratCard').style.display = '';
   const ME = G.me, side = `les ${tn(ME)} et tu attaques vers la ${ME === 0 ? 'droite' : 'gauche'}`;
@@ -137,6 +141,8 @@ function showMenu(kind) {
     if (G.spectator) $('ovText').textContent = 'Tu regardes la partie en spectateur.';
     $('go').textContent = 'Jouer le point ▶';
     renderSummary(null);
+    if (G.net !== 'guest') { G.receiving = firstReceiver(); placeForPoint(); }
+    updateFirstText();
   } else {
     $('ovTitle').textContent = `${tn(0)} ${G.score[0]} – ${G.score[1]} ${tn(1)}`;
     $('ovText').textContent = G.spectator ? 'Les capitaines choisissent leur stratégie…' : G.receiving === ME ? 'Tu reçois le disque : choisis ta stratégie.' : 'L’adversaire attaque : prépare ta défense.';
@@ -153,6 +159,11 @@ function showMenu(kind) {
   if (G.net === 'host') netSend({ t: 'menu', kind, score: G.score, rec: G.receiving, wind: G.wind, teams: G.teams, pts: winPts(), sum: kind === 'over' ? G.lastSummary : null });
 }
 // en ligne : seul le capitaine de chaque équipe choisit la stratégie et se déclare prêt
+function updateFirstText() {
+  if (G.lastMenu !== 'first' || G.spectator) return;
+  const base = $('ovText').textContent.replace(/ (Tu commences en attaque|L’adversaire commence en attaque)\.$/, '');
+  $('ovText').textContent = base + (G.receiving === G.me ? ' Tu commences en attaque.' : ' L’adversaire commence en attaque.');
+}
 function refreshCaptainUI() {
   if (!$('stratRows')) return;
   renderPullerRow();
@@ -168,6 +179,10 @@ function refreshCaptainUI() {
 }
 function setOpt(g, v) {
   G.form[g] = v;
+  if (g === 'first' && G.lastMenu === 'first') {              // premier menu : on applique tout de suite (plays proposés, texte)
+    G.receiving = firstReceiver(); placeForPoint(); updateFirstText();
+    if (G.net === 'host') netSend({ t: 'rec', rec: G.receiving });
+  }
   if (g === 'windMode') { newWind(); hudKey = ''; }
   refreshOptions(); saveSettings();
   if (G.net === 'host' && ['windMode'].includes(g)) netSend({ t: 'wind', wind: G.wind });

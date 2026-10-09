@@ -1,8 +1,15 @@
 // stats.js — Statistiques du match et résumé de fin de partie
 
 function newMatch() {
-  G.score = [0, 0]; G.receiving = 0;
+  G.score = [0, 0]; G.receiving = firstReceiver();
   newMatchStats();
+}
+// équipe qui commence en attaque (elle reçoit le premier pull) : choisie dans le menu, ou tirée au sort
+function firstReceiver() {
+  const f = G.form.first;
+  if (f === '0' || f === '1') return +f;
+  if (G.firstRoll !== 0 && G.firstRoll !== 1) G.firstRoll = Math.random() < 0.5 ? 0 : 1;
+  return G.firstRoll;
 }
 function newMatchStats() {
   G.ms = {

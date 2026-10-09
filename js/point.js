@@ -35,6 +35,7 @@ function startPoint() {
   G.ai.dplay = st ? pick(st.dplay) : Math.random() < 0.5 ? 'none' : pick(['safety', 'double', 'junk']);
   const r = G.receiving, d = 1 - r;
   if (!G.ms) newMatchStats();
+  G.firstRoll = null;                                          // prochain match : nouveau tirage au sort
   G.ms.ptT = 0;
   replayReset(); G.celebrate = null; G.scorer = null; FX.celebrate = null; G.throwKind = 'normal';
   const oType = cfg(r).play, dType = cfg(d).dplay;
