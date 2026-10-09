@@ -12,7 +12,7 @@ function loop(now) {
   const gdt = dt * SPEEDS[G.form.speed];
   if (G.net === 'guest') {
     guestFrame(dt); G.gt += gdt;
-    const hk = G.aiming && G.throwKind === 'high';            // passe haute préparée : l'hôte doit le savoir tout de suite
+    const hk = G.throwKind === 'high' && canThrow();         // passe haute armée : l'hôte doit le savoir tout de suite
     if (hk !== !!G.lastHk) { G.lastHk = hk; sendInput(true); }
   }
   else {
@@ -24,6 +24,9 @@ function loop(now) {
     }
     if (G.net === 'host') { netT += dt; if (netT >= 0.05) { netT = 0; netSend(snapshot()); } }
   }
+  const ctNow = canThrow();                                   // on perd le disque : la passe haute armée est annulée
+  if (G.lastCt && !ctNow) G.throwKind = 'normal';
+  G.lastCt = ctNow;
   if (G.tuto) tutoFrame(dt);
   replayRecord(dt);
   replayTick(dt);
