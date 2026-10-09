@@ -25,8 +25,8 @@ const DEF_TUNE = {
 const DIVE_T = 0.33, DOWN_T = 0.8;
 // saut : préparation (le joueur s'accroupit et ralentit), temps en l'air, gain de hauteur au sommet,
 // récupération à la réception (ralenti) et délai avant de pouvoir ressauter
-const JUMP_PREP = 0.25, JUMP_T = 0.5, JUMP_H = 1.0, JUMP_REC = 0.35, JUMP_CD = 0.7;
-const HIGH_WINDUP = 0.55;                                   // l'IA lève le disque au-dessus de sa tête avant une passe haute
+const JUMP_PREP = 0.25, JUMP_T = 0.5, JUMP_H = 1.0, JUMP_REC = 0.15, JUMP_CD = 0.35;
+const HIGH_WINDUP = [0.3, 1.2];                            // l'IA arme sa passe haute plus ou moins longtemps avant de lancer
 const SPEEDS = { lent: 0.6, normal: 0.78, rapide: 1 };
 const DRIFT = 0.5;                                          // dérive du disque : vent (m/s) × temps de vol × DRIFT
 const STALL_R = 4.5;                                        // rayon du stall count (agrandi par rapport aux 3 m réels)
@@ -112,4 +112,3 @@ const SERIES = [
 // Joueurs : prénoms affichés dans les statistiques
 const PLAYER_NAMES = [['Léo', 'Inès', 'Hugo', 'Maya', 'Noah'], ['Sam', 'Lina', 'Tom', 'Zoé', 'Max']];
 const EMOTES = ['👍', '👏', '🔥', '😅', 'Cut !', 'GG'];
-
