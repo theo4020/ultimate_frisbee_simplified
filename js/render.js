@@ -215,7 +215,7 @@ function draw() {
     const [wx, wy] = drift(dur, kind), ex = tx + wx, ey = ty + wy;
     ctx.save();
     const cancel = G.aiming && dist(G.pointer.x, G.pointer.y, h.x, h.y) < CANCEL_R;
-    ctx.globalAlpha = cancel ? 0.3 : 1;
+    ctx.globalAlpha = cancel ? 0.3 : kindLocked() ? 0.35 : 1;          // changement de passe en cours : aperçu estompé
     drawFlightPath(h.x, h.y, cx, cy, ex, ey, peakOf(dur, kind), 0, G.aiming ? 0.95 : 0.7, G.aiming ? 3 : 2, kind === 'high' ? [2, 5] : [6, 5], kind);
     ctx.strokeStyle = G.aiming ? 'rgba(250,204,21,.95)' : 'rgba(255,255,255,.75)'; ctx.lineWidth = 2;
     const er = throwErr(d, G.curve, kind) + Math.hypot(wx, wy) * 0.08;

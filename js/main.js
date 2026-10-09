@@ -9,6 +9,7 @@ function loop(now) {
   G.time += dt;
   computeTeams();
   gamepadFrame();
+  pendingThrowTick();
   const gdt = dt * SPEEDS[G.form.speed];
   if (G.net === 'guest') {
     guestFrame(dt); G.gt += gdt;

@@ -8,7 +8,7 @@ const TUTO_STEPS = [
     text: {
       mouse: 'Tu as le disque (anneau blanc). Vise un coéquipier démarqué (anneau vert), maintiens le clic et relâche pour lancer. <b>Réussis 2 passes.</b>',
       touch: 'Tu as le disque (anneau blanc). Pose le doigt <b>n’importe où</b> sur l’écran et glisse vers un coéquipier démarqué (anneau vert) : plus tu glisses loin, plus tu lances loin. Relâche pour lancer. <b>Réussis 2 passes.</b>',
-      pad: 'Tu as le disque (anneau blanc). Vise un coéquipier démarqué (anneau vert) avec le stick gauche, puis A pour lancer. <b>Réussis 2 passes.</b>'
+      pad: 'Tu as le disque (anneau blanc). Déplace le curseur de visée avec le stick gauche (doucement pour une passe courte) sur un coéquipier démarqué (anneau vert), puis A pour lancer. <b>Réussis 2 passes.</b>'
     },
     setup() {
       tutoReset();
@@ -77,7 +77,7 @@ const TUTO_STEPS = [
     text: {
       mouse: 'Tes coéquipiers sont tous marqués de près. Fais un <b>clic droit</b> dans un espace libre : le coéquipier le plus proche y coupe. Lance-lui le disque quand il est démarqué (anneau vert).',
       touch: 'Tes coéquipiers sont tous marqués de près. <b>Tape un espace libre</b> du terrain : le coéquipier le plus proche y coupe. Lance-lui le disque quand il est démarqué (anneau vert).',
-      pad: 'Tes coéquipiers sont tous marqués de près. Appuie sur <b>X</b> (le stick oriente l’appel vers le haut ou le bas) : un coéquipier coupe vers l’avant. Lance-lui le disque quand il est démarqué.'
+      pad: 'Tes coéquipiers sont tous marqués de près. Place le curseur de visée dans un espace libre et appuie sur <b>X</b> : un coéquipier coupe vers cet endroit. Lance-lui le disque quand il est démarqué.'
     },
     setup() {
       tutoReset(); G.tuto.wall = true;

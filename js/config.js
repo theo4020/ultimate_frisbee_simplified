@@ -94,6 +94,7 @@ const THROWS = {
   high: { name: 'Passe haute', dur: 1.4, peak: 2.4, drift: 1.3, min: 6, max: 30, drop: 0.04, dropWind: 0.002 }
 };
 const THROW_ORDER = ['normal', 'high'];
+const KIND_DELAY = 0.4;   // après un passage normal <-> passe haute, on ne peut pas lancer tout de suite (s)
 
 // Couleurs d'équipe : remplissage, contour, teinte de l'en-but
 const PALETTE = {
