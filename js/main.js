@@ -16,11 +16,13 @@ function loop(now) {
     if (hk !== !!G.lastHk) { G.lastHk = hk; sendInput(true); }
   }
   else {
-    if (G.phase === 'play') { G.gt += gdt; update(gdt); }
+    if (G.paused && !G.net) { /* confirmation ouverte : pause */ }
+    else if (G.phase === 'play') { G.gt += gdt; update(gdt); }
     else if (G.phase === 'pull') pullTick(dt);
     else if (G.phase === 'between' || G.phase === 'over') {
       celebrateTick(gdt);
-      if (!G.menuShown) { G.betweenT -= dt; if (G.betweenT <= 0) showMenu(G.phase); }
+      if (G.attract) attractTick(dt);
+      else if (!G.menuShown) { G.betweenT -= dt; if (G.betweenT <= 0) showMenu(G.phase); }
     }
     if (G.net === 'host') { netT += dt; if (netT >= 0.05) { netT = 0; netSend(snapshot()); } }
   }
@@ -28,6 +30,7 @@ function loop(now) {
   if (G.lastCt && !ctNow) G.throwKind = 'normal';
   G.lastCt = ctNow;
   if (G.tuto) tutoFrame(dt);
+  if (G.practice) practiceFrame(dt);
   replayRecord(dt);
   replayTick(dt);
   joyFrame();
@@ -36,6 +39,8 @@ function loop(now) {
   if (G.phase !== 'play') G.gt += dt * 0.5;            // les rafales continuent dans le menu
   updateStreaks(dt);
   fxUpdate(dt);
+  $('overlay').classList.toggle('attract', !!G.attract && $('lobbyCard').style.display !== 'none');
+  $('menuB').style.visibility = G.attract || ($('lobbyCard').style.display !== 'none' && !$('overlay').classList.contains('hidden') && !G.net) ? 'hidden' : 'visible';
   if (G.replay) drawReplay(); else draw();
   updateHud();
   requestAnimationFrame(loop);

@@ -81,7 +81,7 @@ function runCutSequencer(t, ax, ay, dir, open, form, dt) {
   const ready = ord.filter(p => p.state === 'stack' && dist(p.x, p.y, p.tx, p.ty) < 4);
   if (!ready.length) return;
   const room = depthLeft(ax, dir);
-  const deep = room > 20 && Math.random() < 0.45;            // deep cuts plus fréquents
+  const deep = room > 20 && Math.random() < clamp(0.45 + (aiStyle(t).huck - 1) * 0.18, 0.3, 0.65);   // deep cuts (plus encore chez les Faucons)
   let c, sy = lineY(t, ay, form);
   if (isColumn(form)) {
     c = deep ? ready[0] : ready[ready.length - 1];          // l'avant part en profondeur, l'arrière coupe vers le disque

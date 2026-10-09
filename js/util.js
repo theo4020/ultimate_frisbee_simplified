@@ -83,3 +83,4 @@ function heightAt(u, peak, kind) {
 const discZ = u => heightAt(u, discPeak(), disc.kind);
 // hauteur gagnée par un joueur en plein saut (0 au sol, JUMP_H au sommet)
 const jumpLift = p => (p.jump > 0 ? JUMP_H * Math.sin(Math.PI * (1 - p.jump / JUMP_T)) : 0);
+

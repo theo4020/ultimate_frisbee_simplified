@@ -27,11 +27,12 @@ function placeForPoint() {
 
 function startPoint() {
   const pick = o => o[Math.floor(Math.random() * o.length)];
-  G.ai.off = pick(['vert', 'vert', 'ho', 'side']);
-  G.ai.def = Math.random() < 0.55 ? 'man' : pick(['zone', 'zone', 'clam']);
-  G.ai.force = pick(['haut', 'bas', 'middle', 'haut', 'bas', 'straight']);
-  G.ai.play = Math.random() < 0.5 ? 'none' : pick(['huck', 'split', 'give', 'flood', 'swing']);
-  G.ai.dplay = Math.random() < 0.5 ? 'none' : pick(['safety', 'double', 'junk']);
+  const st = G.series && SERIES[G.series.cur].style;          // tournoi : chaque équipe a son style
+  G.ai.off = pick(st ? st.off : ['vert', 'vert', 'ho', 'side']);
+  G.ai.def = st ? pick(st.def) : Math.random() < 0.55 ? 'man' : pick(['zone', 'zone', 'clam']);
+  G.ai.force = pick(st ? st.force : ['haut', 'bas', 'middle', 'haut', 'bas', 'straight']);
+  G.ai.play = st ? pick(st.play) : Math.random() < 0.5 ? 'none' : pick(['huck', 'split', 'give', 'flood', 'swing']);
+  G.ai.dplay = st ? pick(st.dplay) : Math.random() < 0.5 ? 'none' : pick(['safety', 'double', 'junk']);
   const r = G.receiving, d = 1 - r;
   if (!G.ms) newMatchStats();
   G.ms.ptT = 0;
@@ -40,11 +41,33 @@ function startPoint() {
   G.dplay = dType === 'none' ? null : { type: dType, team: d, t: 0, throws: 0, d: null };
   G.pendingOPlay = oType;                                     // le play d'attaque démarre à la première possession
   startPull();                                                // chaque point commence par un pull (voir pull.js)
-  G.menuShown = false; G.readyIds = new Set();
+  G.readyIds = new Set();
   updateSelected();
+  if (G.attract) return;                                      // match de démonstration derrière le menu
+  G.menuShown = false;
   document.getElementById('overlay').classList.add('hidden');
   pullFlash();
   if (G.net === 'host') netSend({ t: 'start', r });
+}
+// ---------- match de démonstration (IA contre IA) derrière le menu principal ----------
+function startAttract() {
+  if (G.net || G.tuto || G.practice) return;
+  G.attract = true; G.humans = []; syncMe(); G.series = null;
+  G.score = [0, 0]; G.receiving = Math.random() < 0.5 ? 0 : 1;
+  newWind(); newMatchStats(); startPoint();
+}
+function stopAttract() {
+  if (!G.attract) return;
+  G.attract = false;
+  G.humans = [{ id: 0, team: 0, sel: null, name: myName() }]; syncMe();
+  G.phase = 'menu'; G.score = [0, 0]; G.receiving = 0; G.ms = null;
+  replayReset(); FX.parts.length = 0; G.msgT = 0;
+  placeForPoint();
+}
+function attractTick(dt) {                                    // entre deux points : on enchaîne tout seul
+  if (!G.attract || (G.phase !== 'between' && G.phase !== 'over')) return;
+  G.betweenT -= dt;
+  if (G.betweenT <= 0) { if (Math.max(...G.score) >= winPts()) G.score = [0, 0]; newWind(); startPoint(); }
 }
 function startFlash(r) {                                      // message de début de point, vu de chaque côté
   const mine = cfg(G.me);

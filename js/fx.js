@@ -74,6 +74,11 @@ const SOUNDS = {
   duel: () => { noise(0.12, { filter: 'lowpass', freq: 1400, vol: 0.3 }); tone(520, 0.1, { type: 'square', vol: 0.07, delay: 0.04 }); },
   land: () => noise(0.12, { filter: 'lowpass', freq: 700, vol: 0.18 }),
   tick: () => tone(880, 0.05, { vol: 0.05 }),
+  cheer: () => {                                             // le public : clameur et applaudissements
+    noise(1.5, { filter: 'bandpass', freq: 1400, q: 0.5, vol: 0.11 });
+    for (let i = 0; i < 16; i++) noise(0.05, { filter: 'highpass', freq: 2200, vol: 0.05, delay: 0.15 + Math.random() * 1.2 });
+  },
+  ooh: () => { tone(230, 0.55, { type: 'sine', to: 150, vol: 0.05 }); noise(0.5, { filter: 'lowpass', freq: 500, vol: 0.06 }); },
   tickHi: () => tone(1100, 0.06, { type: 'triangle', vol: 0.1 }),
   qte: q => q >= 0.82 && q <= 0.95 ? [1047, 1568].forEach((f, i) => tone(f, 0.16, { type: 'triangle', vol: 0.2, delay: i * 0.07 }))
     : tone(q > 0.95 ? 300 : 520, 0.14, { type: 'square', vol: 0.08 })
@@ -95,9 +100,18 @@ function vibrate(p) { try { if (navigator.vibrate && document.body.classList.con
 
 // ---------- événements ----------
 function fxPlay(name, x, y, team) {
-  try { if (SOUNDS[name]) SOUNDS[name](team); } catch (e) { }
+  if (!G.attract) try {
+    if (SOUNDS[name]) SOUNDS[name](team);
+    if (name === 'score') SOUNDS.cheer();
+    else if (name === 'block' || name === 'int') SOUNDS.ooh();
+  } catch (e) { }
   const c = teamColor(team);
   switch (name) {
+    case 'throw': {                                          // geste du lanceur
+      const p = nearest(players, x, y);
+      if (p) { p.throwT = 0.32; p.throwA = disc.mode === 'air' ? Math.atan2(disc.ey - p.y, disc.ex - p.x) : p.face; }
+      break;
+    }
     case 'catch': ring(x, y, 'rgba(255,255,255,.9)', 2.2, 0.35); break;
     case 'block': burst(x, y, 14, { color: ['#f87171', '#fb923c', '#fde68a'], speed: 9, life: 0.5 }); ring(x, y, '#f87171', 3, 0.4); FX.shake = Math.max(FX.shake, 7); vibrate(60); break;
     case 'int': burst(x, y, 18, { color: [c, '#fde68a', '#fff'], speed: 10, life: 0.6 }); ring(x, y, c, 3.5, 0.5); FX.shake = Math.max(FX.shake, 9); vibrate([40, 30, 60]); break;
@@ -130,6 +144,8 @@ function fxEvent(name, x, y, team) {
 
 // ---------- mise à jour et rendu ----------
 function fxUpdate(dt) {
+  FX.dt = dt;
+  for (const p of players) if (p.throwT > 0) p.throwT -= dt;
   for (let i = FX.parts.length - 1; i >= 0; i--) {
     const p = FX.parts[i];
     p.t += dt;

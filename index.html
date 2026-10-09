@@ -6,12 +6,20 @@
 <meta name="theme-color" content="#0f172a">
 <title>Ultimate Frisbee – prototype</title>
 <link rel="stylesheet" href="css/style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Ultimate">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 <body>
 <div id="wrap">
   <div id="hud">
     <div class="score"><span class="blue" id="nameB">Bleus (toi)</span> <span id="s0">0</span> – <span id="s1">0</span> <span class="red" id="nameR">Rouges</span></div>
     <div id="status"></div>
+    <button id="menuB" title="Menu principal">☰ Menu</button>
     <button id="muteB" title="Son">🔊</button>
     <div id="windBox">Vent <span id="windArrow">➜</span> <span id="windTxt"></span></div>
     <div id="curveBox">Courbe <div class="track"><div id="dot"></div></div></div>
@@ -22,6 +30,11 @@
     <div class="tutoHead"><b id="tutoTitle"></b><span id="tutoStep"></span></div>
     <div id="tutoText"></div>
     <div class="tutoBtns"><button id="tutoSkip">Passer l'étape ▸</button><button id="tutoQuit">Quitter ✕</button></div>
+  </div>
+  <div id="pracBox" style="display:none">
+    <div class="tutoHead"><b>Entraînement</b><span id="pracStats"></span></div>
+    <div id="pracText"></div>
+    <div class="tutoBtns pracBtns"><button id="pracWind">Vent</button><button id="pracDef">Défenseur</button><button id="pracQuit">Quitter ✕</button></div>
   </div>
   <div id="stage">
     <canvas id="c"></canvas>
@@ -44,17 +57,25 @@
   <div class="hint" id="hint"></div>
 </div>
 
+<div id="toast"></div>
+<div id="askBox" style="display:none"><div class="askCard"><p id="askText"></p>
+  <div class="askBtns"><button id="askNo">Annuler</button><button id="askYes" class="danger">Quitter</button></div></div></div>
 <div id="overlay">
   <div class="card" id="lobbyCard">
     <h1>Ultimate Frisbee 🥏</h1>
+    <div class="row namerow"><span>Ton pseudo</span><input id="pname" class="tname" maxlength="12" placeholder="Joueur" autocomplete="off" spellcheck="false"></div>
     <div id="lobbyHome">
-      <p>Premier à 5 points, en 5 contre 5.</p>
+      <p>Ultimate en 5 contre 5, en quelques minutes.</p>
       <button class="bigbtn" id="rejoinB" style="display:none">↩ Revenir dans la partie<small id="rejoinTxt"></small></button>
-      <button class="bigbtn" id="tutoB">🎓 Tutoriel<small id="tutoTxt">Apprends les bases en 2 minutes</small></button>
+      <button class="bigbtn" id="tutoB">🎓 Tutoriel<small id="tutoTxt">Apprends les bases en 3 minutes</small></button>
       <button class="bigbtn" id="soloB">🤖 Solo<small>Un match contre l'ordinateur</small></button>
+      <button class="bigbtn" id="pracB">🎯 Entraînement<small>Lance sur des cibles à ton rythme : courbe, passe haute, vent</small></button>
       <button class="bigbtn" id="seriesB">🏆 Mini-tournoi<small id="seriesTxt">Trois matchs contre des équipes de plus en plus fortes</small></button>
       <button class="bigbtn" id="hostB">🌐 Créer une partie en ligne<small>Jusqu'à 10 joueurs : contre l'IA ensemble ou en vrai 5 contre 5</small></button>
       <button class="bigbtn" id="joinB">🔗 Rejoindre une partie<small>Avec le code de l'hôte</small></button>
+      <button class="bigbtn" id="profileB">🏅 Profil<small>Tes statistiques de carrière et tes succès</small></button>
+      <button class="bigbtn" id="installB" style="display:none">📲 Installer le jeu<small>Sur l'écran d'accueil, en plein écran, jouable hors connexion en solo</small></button>
+      <p class="net" id="iosHint" style="display:none">📲 Pour installer le jeu sur iPhone : bouton Partager, puis « Sur l'écran d'accueil ».</p>
     </div>
     <div id="lobbyRoom" style="display:none">
       <div id="roomCodeBox">
@@ -79,6 +100,13 @@
       <button id="backB2">← Retour</button>
     </div>
     <div class="err" id="lobbyErr"></div>
+  </div>
+  <div class="card" id="profileCard" style="display:none">
+    <h1>🏅 Profil · <span id="profileName"></span></h1>
+    <div class="pgrid" id="profileStats"></div>
+    <h2 id="profileAchTitle">Succès</h2>
+    <div class="agrid" id="profileAch"></div>
+    <div class="row" style="justify-content:space-between"><button id="profileBack">← Menu principal</button><button id="profileReset">Effacer mon profil</button></div>
   </div>
   <div class="card" id="seriesCard" style="display:none">
     <h1>🏆 Mini-tournoi</h1>
@@ -178,12 +206,21 @@
       <button class="opt" data-g="speed" data-v="normal">Normale</button>
       <button class="opt" data-g="speed" data-v="rapide">Rapide</button>
     </div>
+    <div class="row" id="rowPoints"><span>Match</span>
+      <button class="opt" data-g="points" data-v="3">3 points</button>
+      <button class="opt" data-g="points" data-v="5">5 points</button>
+      <button class="opt" data-g="points" data-v="7">7 points</button>
+    </div>
     <div class="row" id="rowLevel"><span>IA adverse</span>
       <button class="opt" data-g="level" data-v="facile">Facile</button>
       <button class="opt" data-g="level" data-v="normal">Normal</button>
       <button class="opt" data-g="level" data-v="difficile">Difficile</button>
     </div>
     <div class="desc" id="descLevel"></div>
+    <div class="row"><span>Couleurs</span>
+      <button class="opt" data-g="cb" data-v="0">Standard</button>
+      <button class="opt" data-g="cb" data-v="1">Adaptées daltonisme</button>
+    </div>
     <details>
       <summary>Comment jouer</summary>
       <b>Le pull</b> : chaque point commence par un pull de l'équipe qui défend. Clique (ou tape) sur la zone visée, règle la courbe (A/E, molette ou barre), puis arrête la jauge dans le <b>vert</b> : le pull part loin et reste longtemps en l'air, ce qui laisse à ta défense le temps de monter. Trop tôt, il est court. Tout au bout (rouge), il part trop fort et imprécis. S'il sort des limites, l'adversaire repart du brick.<br><br>
@@ -210,6 +247,7 @@
       On marque en attrapant le disque dans l'en-but adverse.
     </details>
     <button id="go" class="primary">Jouer le point ▶</button>
+    <button id="menuBack" class="ghost">← Menu principal</button>
     <div id="oppReady"></div>
   </div>
 </div>
@@ -235,10 +273,13 @@
 <script src="js/render.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/series.js"></script>
+<script src="js/practice.js"></script>
+<script src="js/achievements.js"></script>
 <script src="js/tuto.js"></script>
 <script src="js/controls.js"></script>
 <script src="js/gamepad.js"></script>
 <script src="js/net.js"></script>
 <script src="js/main.js"></script>
+<script src="js/pwa.js"></script>
 </body>
 </html>

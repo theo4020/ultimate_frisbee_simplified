@@ -30,6 +30,7 @@ function gamepadFrame() {
 function gpPlay(sx, sy, m, press) {
   // menus
   if (G.replay) { if (press(0) || press(1) || press(9)) stopReplay(); return; }
+  if (press(8)) { goMainMenu(); return; }                    // Select / Back : menu principal
   const ov = !$('overlay').classList.contains('hidden');
   if (ov) {
     if (press(0) || press(9)) {

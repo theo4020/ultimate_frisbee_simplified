@@ -3,7 +3,7 @@
 // =====================================================================
 //  Constantes (unités : mètres, secondes)
 // =====================================================================
-const W = 100, H = 37, EZ = 18, M = 2, N = 5, WIN = 5;
+const W = 100, H = 37, EZ = 18, M = 2, N = 5, WIN = 5;   // WIN : points pour gagner par défaut (réglable, voir winPts)
 const SPD = { jog: 4.6, cut: 7.6, def: 7.4, user: 7.5, sprint: 7.8, dive: 11 };
 const ACC = { atk: 24, def: 21 };
 // Réglages de la défense IA (plus les temps de réaction sont courts et l'anticipation forte, plus elle est dure)
@@ -103,12 +103,18 @@ const PALETTE = {
 const DEFAULT_TEAMS = [{ name: 'Bleus', color: 'bleu' }, { name: 'Rouges', color: 'rouge' }];
 
 // Mini-tournoi : trois adversaires de plus en plus forts
+// style : stratégies qu'ils choisissent, goût pour les hucks et les passes hautes, bluff (armer une passe haute pour feinter)
 const SERIES = [
-  { name: 'Écureuils', color: 'orange', level: 'facile', blurb: 'Une équipe sympa qui débute. Idéal pour se chauffer.' },
-  { name: 'Faucons', color: 'violet', level: 'normal', blurb: 'Solides et organisés : il faudra construire tes attaques.' },
-  { name: 'Titans', color: 'noir', level: 'difficile', blurb: 'Les champions en titre. Rapides, précis, ils ne pardonnent rien.' }
+  { name: 'Écureuils', color: 'orange', level: 'facile', blurb: 'Une équipe sympa qui débute : petites passes, défense en individuelle. Idéal pour se chauffer.',
+    style: { off: ['vert'], def: ['man'], force: ['haut', 'bas'], play: ['none', 'none', 'give'], dplay: ['none'], huck: 0.5, high: 0.4, bluff: 0 } },
+  { name: 'Faucons', color: 'violet', level: 'normal', blurb: 'Des chasseurs de profondeur : ils lancent long dès qu’un cutter s’échappe. Protège le deep !',
+    style: { off: ['vert', 'side'], def: ['man', 'zone'], force: ['haut', 'bas', 'middle'], play: ['huck', 'huck', 'split', 'flood'], dplay: ['none', 'safety'], huck: 1.9, high: 0.8, bluff: 0.05 } },
+  { name: 'Titans', color: 'noir', level: 'difficile', blurb: 'Les champions en titre : zone étouffante, mark agressive, et des passes hautes avec du bluff.',
+    style: { off: ['ho', 'vert'], def: ['zone', 'clam', 'man'], force: ['straight', 'haut', 'bas'], play: ['swing', 'split', 'huck', 'none'], dplay: ['double', 'junk', 'none'], huck: 1.1, high: 2.2, bluff: 0.35 } }
 ];
+const DEFAULT_STYLE = { huck: 1, high: 1, bluff: 0.1 };
 
 // Joueurs : prénoms affichés dans les statistiques
 const PLAYER_NAMES = [['Léo', 'Inès', 'Hugo', 'Maya', 'Noah'], ['Sam', 'Lina', 'Tom', 'Zoé', 'Max']];
 const EMOTES = ['👍', '👏', '🔥', '😅', 'Cut !', 'GG'];
+

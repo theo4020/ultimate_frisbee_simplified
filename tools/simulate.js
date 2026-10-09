@@ -25,7 +25,7 @@ const code = files.map(f => fs.readFileSync(path.join(root, f), 'utf8')).join('\
 const games = +process.argv[2] || 20, level = process.argv[3] || 'normal';
 vm.runInContext(code + `
 ;(function () {
-  G.humans = []; G.myId = -1;
+  G.humans = []; G.myId = -1; G.attract = false;
   aiLvl = t => AI_LEVELS[t === 1 ? '${level}' : 'normal'];   // simulation : niveau imposé par équipe
   let won = [0, 0], thrDist = 0, thrN = 0, longN = 0, longOk = 0, pendingLong = false;
   const kinds = {}, strat = {};

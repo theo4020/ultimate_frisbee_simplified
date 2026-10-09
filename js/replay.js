@@ -6,7 +6,7 @@ const REPLAY = { frames: [], acc: 0, last: null, STEP: 0.05, KEEP: 7 };   // une
 
 function replayReset() { REPLAY.frames = []; REPLAY.acc = 0; }
 function replayRecord(dt) {
-  if (G.phase !== 'play' || G.tuto) return;
+  if (G.phase !== 'play' || G.tuto || G.attract || G.practice) return;
   REPLAY.acc += dt;
   if (REPLAY.acc < REPLAY.STEP) return;
   REPLAY.acc = 0;
@@ -19,7 +19,7 @@ function replayRecord(dt) {
 }
 // au moment du point (appelé par l'effet « score », donc aussi chez les invités)
 function replaySave(team) {
-  if (G.tuto) return;
+  if (G.tuto || G.attract) return;
   const n = Math.round(REPLAY.KEEP / REPLAY.STEP);
   const fr = REPLAY.frames.slice(-n);
   if (fr.length < 10) return;
@@ -52,12 +52,11 @@ function drawReplay() {
   players.forEach((p, j) => {
     const a = A.p[j], b = B.p[j], x = lerp(a[0], b[0]), y = lerp(a[1], b[1]);
     ctx.fillStyle = 'rgba(0,0,0,.25)'; circle(X(x) + 2, Y(y) + 3, r); ctx.fill();
-    ctx.fillStyle = tcol(p.team); ctx.strokeStyle = tdark(p.team); ctx.lineWidth = 2;
-    ctx.globalAlpha = a[2] === 2 ? 0.55 : 1;
-    ctx.beginPath();
-    if (a[2]) ctx.ellipse(X(x), Y(y), r * 1.5, r * 0.7, Math.atan2(a[4], a[3]) || 0, 0, Math.PI * 2);
-    else ctx.arc(X(x), Y(y), r, 0, Math.PI * 2);
-    ctx.fill(); ctx.stroke(); ctx.globalAlpha = 1;
+    ctx.globalAlpha = a[2] === 2 ? 0.6 : 1;
+    const sp = Math.hypot(a[3], a[4]), face = sp > 0.8 ? Math.atan2(a[4], a[3]) : (p.rface !== undefined ? p.rface : 0);
+    p.rface = face;
+    drawBody(p, X(x), Y(y), r * 1.06, face, { lying: !!a[2], swing: sp > 1 ? Math.sin(G.time * 9 + j) : 0 });
+    ctx.globalAlpha = 1;
   });
   const d = A.d, e = B.d;
   if (d[0] !== 'dead') {

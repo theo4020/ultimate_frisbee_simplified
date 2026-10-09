@@ -60,11 +60,13 @@ function update(dt) {
       p.tx = late ? disc.rx : disc.ex; p.ty = late ? disc.ry : disc.ey; p.sp = SPD.cut; continue;
     }
     if (G.tuto && tutoPin(p)) continue;                     // tutoriel : joueur placé par l'étape
+    if (G.practice && practicePin(p)) continue;             // entraînement
     attackerAI(p, off, ax, ay, dir, open, oform, dt);
   }
   const slots = zoneSlots(def, ax, ay, dir, closed);
   for (const d of dfn) {
     if (G.tuto && tutoPin(d)) continue;
+    if (G.practice && practicePin(d)) continue;
     if (userControls(d)) { const inp = inputOf(controllerOf(d)); d.tx = inp.x; d.ty = inp.y; d.sp = SPD.user; continue; }
     d.react -= dt;
     if (d.react > 0) continue;                             // temps de réaction : c'est ce qui crée des démarquages
@@ -110,7 +112,8 @@ function update(dt) {
     if (G.marker && !G.dbl) G.stall += dt * STALL_RATE;
     if (G.stall >= 10) { G.stats.stalls++; msTurnover(h, 'stall'); turnover(h.x, h.y, 'Stall 10 ! Turnover', 'stall'); return; }
     if (!throwerHuman()) {                                  // porteur sans humain : l'IA lance
-      if (h.windup) {                                       // passe haute armée : il choisit son moment
+      if (G.tuto && tutoHold(h, dt)) { /* tutoriel : lanceur scénarisé */ }
+      else if (h.windup) {                                       // passe haute armée : il choisit son moment
         const w = h.windup, mk = G.marker, L = aiLvl(h.team);
         w.t -= dt;
         if (mk && (mk.jprep > 0 || mk.jump > 0) && L.safe >= 0) w.t = Math.max(w.t, 0.08);   // la mark a sauté : il attend qu'elle retombe…
@@ -157,7 +160,7 @@ function update(dt) {
       blockers.forEach(o => disc.rolled.add(o)); disc.rolled.add(b);
       const near = q => dist(q.x, q.y, disc.x, disc.y) * 0.25;   // le mieux placé sous le disque a l'avantage
       const atk = jumpLift(catcher) + Math.random() * 0.8 - near(catcher), dfn = jumpLift(b) + Math.random() * 0.8 - near(b) + (aiLvl(b.team).block - 0.6) * 0.5;
-      if (atk >= dfn) { flash('Duel gagné !'); fxEvent('duel', disc.x, disc.y, catcher.team); catchDisc(catcher); return; }
+      if (atk >= dfn) { achEvent('duel', catcher.team); flash('Duel gagné !'); fxEvent('duel', disc.x, disc.y, catcher.team); catchDisc(catcher); return; }
       fxEvent('duel', disc.x, disc.y, b.team);
       if (Math.random() < 0.35) { interception(b); return; }
       G.stats.blocks++; msTurnover(disc.thrower, 'block', b); turnover(disc.x, disc.y, 'Duel perdu ! Block', 'block'); return;
@@ -166,11 +169,14 @@ function update(dt) {
       disc.rolled.add(p);
       const r = Math.random(), diving = p.dive > 0, L = aiLvl(p.team);
       if (!diving && p.jump > 0 && disc.z > REACH_STAND) {      // saut au bon endroit, au bon moment : contre assuré
+        achEvent('skyblock', p.team);
+        if (G.tuto) G.tuto.blocked = true;
         if (r < L.int * 0.5) { interception(p); return; }
         G.stats.blocks++; msTurnover(disc.thrower, 'block', p); turnover(disc.x, disc.y, 'Block en l’air !', 'block'); return;
       }
       if (r < (diving ? 0.3 : L.int)) { interception(p); return; }
-      if (r < (diving ? 0.85 : G.tuto && G.tuto.wall ? 1 : L.block)) { G.stats.blocks++; msTurnover(disc.thrower, 'block', p); turnover(disc.x, disc.y, diving ? 'Layout block !' : p.jump > 0 ? 'Block en l’air !' : 'Block !', 'block'); return; }
+      if (r < (diving ? 0.85 : G.tuto && G.tuto.wall ? 1 : L.block)) {
+        if (diving) achEvent('layoutblock', p.team); G.stats.blocks++; msTurnover(disc.thrower, 'block', p); turnover(disc.x, disc.y, diving ? 'Layout block !' : p.jump > 0 ? 'Block en l’air !' : 'Block !', 'block'); return; }
     }
     if (catcher) {
       if (catcher.dive > 0) flash('Layout !');              // réception en plongeon
@@ -178,6 +184,7 @@ function update(dt) {
       catchDisc(catcher); return;
     }
     if (u >= 1) {
+      if (G.practice) { practiceLanded(disc.ex, disc.ey); return; }
       if (disc.pull) {
         const [c, cd] = nearestD(TEAMS[disc.team], disc.ex, disc.ey);
         if (c && cd < 1.9) catchDisc(c); else pullLanded(disc.ex, disc.ey);
@@ -213,6 +220,7 @@ function jumpTo(p) {
 }
 // les joueurs IA sautent quand le disque va passer juste au-dessus d'eux (une seule tentative par lancer)
 function aiJumps(u) {
+  if (G.tuto) return;                                        // tutoriel : seuls les sauts du joueur comptent
   // arrivée disputée : attaquant et défenseur au point de chute, l'IA saute pour gagner le duel
   const left = disc.dur - disc.t;
   if (left < JUMP_PREP + JUMP_T * 0.55 && left > JUMP_PREP + JUMP_T * 0.3) {
@@ -253,6 +261,7 @@ function highTell() {
 // la mark IA voit le disque levé et programme son saut (plus ou moins bien synchronisé selon le niveau)
 // la mark IA ne peut pas réagir au lâcher (trop tard) : elle devine le moment, de temps en temps
 function markReads(dt) {
+  if (G.tuto) { for (const p of players) if (p.jumpAt && G.time >= p.jumpAt) { p.jumpAt = 0; jumpTo(p); } return; }
   const tell = highTell(), mk = G.marker;
   if (!tell) G.nextGuess = 0;
   else if (mk && !(controllerOf(mk) && userControls(mk)) && !mk.jumpAt && !(mk.jprep > 0) && !(mk.jump > 0) && !(mk.jumpCd > 0)) {

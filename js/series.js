@@ -43,6 +43,7 @@ function seriesPlay() {
 function onMatchOver() {
   computeTeams();
   G.lastSummary = matchSummary();
+  achMatchOver();
   if (!G.series) return;
   const s = seriesState(), k = G.series.cur, won = G.score[G.me] > G.score[1 - G.me];
   s.tries[k] = (s.tries[k] || 0) + 1;

@@ -7,8 +7,8 @@
 // sans vent, environ 1,2 m à 10 m, 3,4 m à 20 m, 6,6 m à 30 m (passe normale : 0,3 / 0,6 / 0,9 m).
 function throwErr(d, curve, kind) {
   const w = G.wind.kmh;
-  if (kind === 'high') return (0.07 * d + 0.005 * d * d + Math.abs(curve) * 1.2) * (1 + w * 0.04);
-  return (d * 0.03 + Math.abs(curve) * 0.8) * (1 + w * 0.02);
+  if (kind === 'high') return (0.07 * d + 0.005 * d * d + Math.abs(curve) * 1.2) * (1 + w * 0.012);
+  return (d * 0.03 + Math.abs(curve) * 0.8) * (1 + w * 0.022);
 }
 // kind : 'normal' ou 'high' (passe haute, par-dessus la défense), voir THROWS
 function throwDisc(h, tx, ty, curve, errScale, kind) {
@@ -23,7 +23,8 @@ function throwDisc(h, tx, ty, curve, errScale, kind) {
   const ax = tx + Math.cos(ea) * er, ay = ty + Math.sin(ea) * er;          // point réellement visé
   const dur = throwDur(h.x, h.y, ax, ay, kind);
   const [wx0, wy0] = drift(dur, kind);
-  const gk = rand(0.8, 1.2), ga = rand(-0.15, 0.15);                        // rafale imprévisible pendant le vol
+  const gv = kind === 'high' ? [0.07, 0.05] : [0.16, 0.11];                  // petite rafale imprévisible pendant le vol
+  const gk = rand(1 - gv[0], 1 + gv[0]), ga = rand(-gv[1], gv[1]);
   const wx = (wx0 * Math.cos(ga) - wy0 * Math.sin(ga)) * gk, wy = (wx0 * Math.sin(ga) + wy0 * Math.cos(ga)) * gk;
   const ex = ax + wx, ey = ay + wy;                                        // le vent déplace l'arrivée
   const [cx, cy] = ctrlFor(h.x, h.y, ax, ay, curve);
@@ -62,6 +63,7 @@ function laneSlack(h, aimX, aimY, tx, ty, curve, opp, kind) {
 function aiThrow(h, release) {
   const t = h.team, dir = dirOf(t), opp = TEAMS[1 - t];
   const press = Math.max(G.stall, G.holdT * 0.8);           // même sans marqueur, l'IA finit par lancer
+  const ST = aiStyle(t);
   let best = null, bv = -1e9;
   for (const p of TEAMS[t]) {
     if (p === h) continue;
@@ -76,7 +78,7 @@ function aiThrow(h, release) {
     const cands = [[tx, ty]];
     const fwd = dir * p.vx;
     if (fwd > 3) {
-      for (const extra of [6, 12]) {
+      for (const extra of ST.huck > 1.3 ? [6, 12, 18] : [6, 12]) {
         const sx = tx + dir * extra, sy = ty + (p.vy || 0) * 0.3;
         const ft = flightTime(dist(h.x, h.y, sx, sy));
         if (dist(p.x, p.y, sx, sy) / SPD.cut <= ft + 0.25) cands.push([sx, sy]);   // il peut y arriver à temps
@@ -95,12 +97,12 @@ function aiThrow(h, release) {
         const [aimX, aimY] = aimFor(h, cx0, cy0, kind);
         if (dist(h.x, h.y, aimX, aimY) > THROWS[kind].max) continue;
         const slack = laneSlack(h, aimX, aimY, cx0, cy0, curve, opp, kind);
-        const kindCost = kind === 'high' ? (release ? 0 : 0.1 + G.wind.kmh * 0.04 + throwErr(d, 0, kind) * 0.2) : 0;
+        const kindCost = kind === 'high' ? (release ? 0 : (0.1 + G.wind.kmh * 0.04 + throwErr(d, 0, kind) * 0.2) / ST.high + (ST.high < 1 ? 1.5 : 0)) : 0;
         // les passes qui font avancer le jeu valent plus, les longues encore plus (huck)
-        const v = clamp(slack, -1, 0.6) * 4 + gain * 0.3 + (long ? 2.2 : 0) + (inScoreZone(t, cx0) ? 8 : 0)
+        const v = clamp(slack, -1, 0.6) * 4 + gain * 0.3 + (long ? 2.2 * ST.huck : 0) + (inScoreZone(t, cx0) ? 8 : 0)
           + (G.stall > 5 && p.role === 'dump' ? 2.5 : 0) + (p.free ? 4 : 0) + playBonus - Math.abs(curve) * 0.6 - d * (0.02 + G.wind.kmh * 0.003) - kindCost;
         // un huck peut être un peu disputé : le disque passe au-dessus de la défense au milieu
-        const minSlack = (playBonus && P.type === 'huck' ? -0.15 : long || p.free ? -0.08 : 0.05) + aiLvl(t).safe + (kind === 'high' ? (release ? -0.15 : 0) : 0);
+        const minSlack = (playBonus && P.type === 'huck' ? -0.15 : long ? -0.08 - (ST.huck - 1) * 0.25 : p.free ? -0.08 : 0.05) + aiLvl(t).safe + (kind === 'high' ? (release ? -0.15 : 0) : 0);
         if (slack < minSlack && press < 8.3) continue;
         if (v > bv) { bv = v; best = { tx: aimX, ty: aimY, curve, kind }; }
       }
@@ -117,5 +119,10 @@ function aiThrow(h, release) {
   }
   if (!best || (bv < 3.2 - press * 0.35 && press < 6)) { h.think = 0.25; return; }
   if (best.kind === 'high') { h.windup = { t: rand(...HIGH_WINDUP) }; return; }   // il arme sa passe haute (visible), lancera plus tard
+  // bluff : il arme une passe haute sans vraiment la vouloir, pour faire sauter la mark (puis lance ce qui est ouvert)
+  if (G.marker && dist(G.marker.x, G.marker.y, h.x, h.y) < 3 && !h.bluffed && Math.random() < ST.bluff * 0.3) {
+    h.bluffed = true; h.windup = { t: rand(0.5, 1.1), bluff: true }; return;
+  }
   throwDisc(h, best.tx, best.ty, best.curve, 0.85 * aiLvl(t).err, best.kind);
 }
+

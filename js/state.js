@@ -17,7 +17,7 @@ const G = {
   score: [0, 0], off: 0, phase: 'menu', stall: 0, receiving: 0, time: 0,
   form: { off: 'vert', def: 'man', force: 'haut', play: 'none', dplay: 'none', speed: 'normal', level: 'normal', allyLevel: 'normal',
     windMode: 'random', windDir: 0, windKmh: 20,
-    tname: '', tcol: '', oname: '', ocol: '' },              // noms et couleurs (vide = par défaut)
+    tname: '', tcol: '', oname: '', ocol: '', points: '5', cb: '0' },   // points pour gagner, couleurs adaptées au daltonisme              // noms et couleurs (vide = par défaut)
   ai: { off: 'vert', def: 'man', force: 'bas', play: 'none', dplay: 'none' },
   oplay: null, dplay: null, wind: { x: 0, y: 0, kmh: 0 }, gt: 0,
   order: [[], []], cutT: 0,
@@ -30,7 +30,8 @@ const G = {
   teams: DEFAULT_TEAMS.map(o => Object.assign({}, o)),   // nom et couleur affichés de chaque équipe (voir teams.js)
   ms: null,                                  // statistiques du match en cours (voir stats.js)
   throwKind: 'normal',                       // type du prochain lancer : normal ou high (passe haute)
-  series: null, tuto: null, replay: null, emotes: [], spectator: false
+  series: null, tuto: null, replay: null, emotes: [], spectator: false,
+  attract: false, practice: null                             // match IA contre IA derrière le menu principal
 };
 const disc = { mode: 'held', holder: null, x: 0, y: 0, z: 0, sx: 0, sy: 0, cx: 0, cy: 0, ex: 0, ey: 0,
   t: 0, dur: 1, thrower: null, team: 0, intended: null, rolled: new Set(), kind: 'normal', curveV: 0 };

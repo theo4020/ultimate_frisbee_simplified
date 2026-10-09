@@ -124,6 +124,7 @@ function launchPull(ax, ay, curve, q) {
   fxEvent('pull', h.x, h.y, d);
   flash(q > p1 ? 'Pull trop fort !' : q >= p0 ? 'Pull parfait !' : 'Pull court');
   if (G.tuto) tutoEvent('pull', q);
+  if (q >= p0 && q <= p1 && captain(d) && captain(d).id === G.myId) achEvent('pull', d);
 }
 
 // réception du pull à la volée

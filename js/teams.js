@@ -12,6 +12,7 @@ function teamInfoRaw(t) {
   if (G.series && t !== G.me) return { name: SERIES[G.series.cur].name, color: SERIES[G.series.cur].color };
   const c = captain(t);
   if (c) { const cf = cfg(t); return { name: cf.tname || DEFAULT_TEAMS[t].name, color: PALETTE[cf.tcol] ? cf.tcol : DEFAULT_TEAMS[t].color }; }
+  if (!G.net && G.attract && t === 0) return { name: G.form.tname || DEFAULT_TEAMS[0].name, color: PALETTE[G.form.tcol] ? G.form.tcol : DEFAULT_TEAMS[0].color };
   if (!G.net) return { name: G.form.oname || DEFAULT_TEAMS[t].name, color: PALETTE[G.form.ocol] ? G.form.ocol : DEFAULT_TEAMS[t].color };
   return DEFAULT_TEAMS[t];
 }
@@ -23,6 +24,8 @@ function computeTeams() {
   }
   G.teams = [{ name: String(a.name).slice(0, 16), color: a.color }, { name: String(b.name).slice(0, 16), color: b.color }];
 }
+// points pour gagner : réglés par l'hôte (5 en tournoi)
+const winPts = () => (G.series ? WIN : G.net === 'guest' && G.netPts ? G.netPts : +G.form.points || WIN);
 const tn = t => (G.teams[t] || DEFAULT_TEAMS[t]).name;
 const tcol = t => (PALETTE[(G.teams[t] || DEFAULT_TEAMS[t]).color] || PALETTE.bleu)[0];
 const tdark = t => (PALETTE[(G.teams[t] || DEFAULT_TEAMS[t]).color] || PALETTE.bleu)[1];
@@ -44,7 +47,7 @@ function storeSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } ca
 const SAVE_KEYS = {
   off: ['vert', 'ho', 'side'], def: ['man', 'zone', 'clam'], force: ['haut', 'bas', 'middle', 'straight'],
   speed: ['lent', 'normal', 'rapide'], level: ['facile', 'normal', 'difficile'], allyLevel: ['facile', 'normal', 'difficile'],
-  windMode: ['random', 'fixed']
+  windMode: ['random', 'fixed'], points: ['3', '5', '7'], cb: ['0', '1']
 };
 function loadSettings() {
   const o = storeGet('uf-settings', null);

@@ -15,6 +15,8 @@ function aiLvl(t) {
   const lv = human(t) ? cfg(t).allyLevel : G.form.level;
   return AI_LEVELS[lv] || AI_LEVELS.normal;
 }
+// style de jeu de l'IA de l'équipe t (personnalité des équipes du tournoi)
+const aiStyle = t => (G.series && !human(t) ? SERIES[G.series.cur].style : DEFAULT_STYLE);
 const DEFAULT_CFG = { off: 'vert', def: 'man', force: 'haut', play: 'none', dplay: 'none', allyLevel: 'normal', tname: '', tcol: '' };
 G.humans = [{ id: 0, team: 0, sel: null }];
 G.myId = 0;
@@ -25,7 +27,10 @@ const captain = t => teamHumans(t)[0] || null;                // choisit la stra
 const meH = () => G.humans.find(h => h.id === G.myId) || null;
 const humanById = id => G.humans.find(h => h.id === id) || null;
 const soloStyle = t => teamHumans(t).length === 1;
-const humanLabel = h => 'J' + (h.id + 1);
+// nom affiché d'un humain : son pseudo, sinon J1, J2…
+const humanLabel = h => (h && h.name) || 'J' + (h.id + 1);
+const cleanName = n => String(n || '').replace(/[<>&"'`]/g, '').replace(/\s+/g, ' ').trim().slice(0, 12);
+const myName = () => cleanName(storeGet('uf-name', ''));
 // un spectateur (équipe -1) regarde la partie sans jouer ; l'écran le place côté Bleus
 function syncMe() { const m = meH(); G.spectator = !!m && m.team < 0; G.me = m && m.team >= 0 ? m.team : 0; }
 
@@ -120,6 +125,7 @@ function jumpTarget(h) {
 }
 function jumpFor(h) {
   const p = jumpTarget(h);
+  if (G.tuto && p) G.tuto.jumped = true;
   if (p && jumpTo(p) && h.sel === p) inputOf(h).last = G.time;
 }
 // meilleur point pour attraper : le premier point de la trajectoire restante qu'il peut atteindre en plongeant

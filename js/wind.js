@@ -92,5 +92,5 @@ function anchor() {
   if (disc.mode === 'carry' && G.carryTo) return [G.carryTo.x, G.carryTo.y];   // le jeu reprendra à cet endroit
   return [disc.x, disc.y];
 }
-function flash(m, localOnly) { G.msg = m; G.msgT = 1.8; if (!localOnly) G.msgId++; }
+function flash(m, localOnly) { if (G.attract) return; G.msg = m; G.msgT = 1.8; if (!localOnly) G.msgId++; }
 

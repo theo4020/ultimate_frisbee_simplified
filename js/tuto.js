@@ -143,6 +143,63 @@ const TUTO_STEPS = [
     }
   },
   {
+    title: 'Contrer une passe haute',
+    text: {
+      mouse: 'Tu marques le porteur. Il a <b>armé une passe haute</b> (disque levé) et la lancera quand il voudra, par-dessus toi. Saute (<b>S</b>) juste avant qu’il lance : ton saut met un quart de seconde à décoller. Réagir au lâcher est trop tard, il faut deviner !',
+      touch: 'Tu marques le porteur. Il a <b>armé une passe haute</b> (disque levé) et la lancera quand il voudra, par-dessus toi. Touche <b>Saut</b> juste avant qu’il lance : ton saut met un quart de seconde à décoller. Réagir au lâcher est trop tard, il faut deviner !',
+      pad: 'Tu marques le porteur. Il a <b>armé une passe haute</b> (disque levé) et la lancera quand il voudra, par-dessus toi. Saute (<b>A</b>) juste avant qu’il lance : ton saut met un quart de seconde à décoller. Il faut deviner !'
+    },
+    setup() {
+      tutoReset(); G.tuto.level = 'facile';
+      Object.assign(G.form, { def: 'man', force: 'straight', dplay: 'none', play: 'none' });
+      Object.assign(G.ai, { off: 'vert', def: 'man', force: 'haut', play: 'none', dplay: 'none' });
+      tutoPut(1, [[60, 18.5], [45, 18.5]], true);
+      tutoPut(0, [[58.6, 18.5], [6, 4], [6, 12], [6, 25], [6, 33]]);
+      tutoGive(TEAMS[1][0]);
+      G.tuto.armT = rand(1.0, 2.6);
+    },
+    pin(p) {
+      if (p.team === 1) return p.i === 1 ? [45, 18.5] : null;
+      return p.i === 0 ? null : [6, [4, 12, 25, 33][p.i - 1]];
+    },
+    pinD(d) { return d.i === 0 ? null : d.i === 1 ? [45, 18.5] : tutoFar(d); },
+    hold(h, dt) {                                            // le porteur arme puis lance après un délai imprévisible
+      const T = G.tuto;
+      if (T.done) return true;
+      if (!h.windup) h.windup = { t: T.armT };
+      h.windup.t -= dt;
+      if (h.windup.t <= 0) { h.windup = null; throwDisc(h, 45, 18.5, 0, 0.3, 'high'); }
+      return true;
+    },
+    on(ev, p) {
+      if (ev === 'turnover' && G.off === 0) { if (G.tuto.blocked) tutoSuccess('Contré ! Bien deviné 💪'); else tutoFail('Passe ratée par le lanceur : on recommence.'); }
+      if (ev === 'catch' && p.team === 1) tutoFail(G.tuto.jumped ? 'Mauvais moment… recommence !' : 'Il est passé : saute (S) au bon moment !');
+    }
+  },
+  {
+    title: 'Duel en l’air',
+    text: {
+      mouse: 'Ton receveur est collé par un défenseur. Lance-lui le disque, puis appuie sur <b>S</b> pour que ton receveur saute : le plus haut au bon moment gagne le <b>duel</b>. Sans saut, le défenseur contre.',
+      touch: 'Ton receveur est collé par un défenseur. Lance-lui le disque, puis touche <b>Saut</b> pour que ton receveur saute : le plus haut au bon moment gagne le <b>duel</b>. Sans saut, le défenseur contre.',
+      pad: 'Ton receveur est collé par un défenseur. Lance-lui le disque, puis appuie sur <b>A</b> pendant le vol pour que ton receveur saute : le plus haut au bon moment gagne le <b>duel</b>.'
+    },
+    setup() {
+      tutoReset(); G.tuto.wall = true;
+      tutoPut(0, [[38, 18.5], [52, 18.5], [30, 6], [30, 31], [26, 18.5]]);
+      tutoPut(1, [[95, 4], [51.2, 19.1]], true);
+      tutoGive(TEAMS[0][0]);
+    },
+    pin(p) {
+      if (p.team === 1) return p.i === 1 ? [51.2, 19.1] : tutoFar(p);
+      if (p === disc.holder) return null;
+      return [[38, 18.5], [52, 18.5], [30, 6], [30, 31], [26, 18.5]][p.i];
+    },
+    on(ev, p) {
+      if (ev === 'catch' && p.team === 0) { if (p.jump > 0) tutoSuccess('Duel gagné ! 🙌'); else tutoFail('Attrapé, mais saute pour gagner le duel !'); }
+      if (ev === 'turnover') tutoFail(disc.thrower && disc.intended && disc.intended.jump > 0 ? 'Duel perdu… saute un peu plus tôt !' : 'Contré : fais sauter ton receveur (S) !');
+    }
+  },
+  {
     title: 'Le pull',
     text: {
       mouse: 'Chaque point commence par un <b>pull</b> : l’équipe qui défend lance le disque à l’autre. Clique sur la zone visée dans le camp adverse, puis arrête la jauge dans le <b>vert</b> (clic ou Espace) pour un pull long et haut.',
@@ -164,11 +221,11 @@ const TUTO_STACK = [[46, 18.5], [50, 18.5], [54, 18.5], [58, 18.5]];
 
 // ---------- outils des étapes ----------
 function tutoReset() {
-  players.forEach(p => Object.assign(p, { vx: 0, vy: 0, dive: 0, down: 0, react: 0, tag: '', inT: 0, state: 'stack', role: 'cutter',
+  players.forEach(p => Object.assign(p, { vx: 0, vy: 0, dive: 0, down: 0, jump: 0, jprep: 0, jrec: 0, jumpCd: 0, jumpAt: 0, windup: null, react: 0, tag: '', inT: 0, state: 'stack', role: 'cutter',
     match: null, diveTried: false, called: 0, freeAcc: 0, free: false }));
   Object.assign(G, { oplay: null, dplay: null, pendingOPlay: null, pullPending: false, carryTo: null, stall: 0, marker: null, dbl: null,
     pickup: null, throwKind: 'normal', score: [0, 0], celebrate: null, scorer: null, phase: 'play', pull: null });
-  Object.assign(G.tuto, { wall: false, level: null, count: 0, called: false });
+  Object.assign(G.tuto, { wall: false, level: null, count: 0, called: false, jumped: false, blocked: false });
   G.wind = { x: 0, y: 0, kmh: 0 };                             // pas de vent pendant le tutoriel
   setCurve(0);
   disc.pull = false; disc.kind = 'normal';
@@ -248,10 +305,11 @@ function tutoFrame(dt) {
 }
 function tutoFinish() {
   storeSet('uf-tuto', true);
+  achEvent('tuto');
   const T = G.tuto; T.done = true; T.step = TUTO_STEPS.length;
   $('tutoTitle').textContent = 'Bravo ! 🎉';
   $('tutoStep').textContent = '';
-  $('tutoText').innerHTML = 'Tu connais les bases : lancer, courber, passe haute, appeler un cut, marquer, défendre et puller. Les menus d’avant-point te laissent aussi choisir ta stratégie et des combinaisons (plays). À toi de jouer !';
+  $('tutoText').innerHTML = 'Tu connais les bases : lancer, courber, passe haute, appeler un cut, marquer, défendre, contrer à la mark, gagner un duel et puller. Les menus d’avant-point te laissent aussi choisir ta stratégie et des combinaisons (plays). À toi de jouer !';
   $('tutoSkip').textContent = 'Jouer un match ▶';
   $('tutoQuit').textContent = 'Menu';
   resize();
@@ -273,4 +331,10 @@ if (typeof document !== 'undefined' && document.getElementById('tutoB')) {
     if (T.step >= TUTO_STEPS.length) { tutoCleanup(); G.series = null; newMatch(); showMenu('first'); return; }
     tutoGo(T.step + 1);
   });
+}
+
+// lanceur scénarisé par l'étape en cours (sinon l'IA normale)
+function tutoHold(h, dt) {
+  const S = G.tuto && TUTO_STEPS[G.tuto.step];
+  return !!(S && S.hold && S.hold(h, dt));
 }

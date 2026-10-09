@@ -21,11 +21,12 @@ function updateHud() {
   $('highB').innerHTML = G.throwKind === 'high' ? 'Armée ✓<br><small>annuler</small>' : 'Passe<br>haute';
   $('curveVThumb').style.top = ((G.curve + 1) / 2 * 100) + '%';
   const key = [att, G.phase, pulling, G.phase === 'play', forceOf(0), forceOf(1), formOf(0), formOf(1), defFormOf(0), defFormOf(1), op, dp, G.wind.kmh, G.net, G.me, hk,
-    tn(0), tn(1), tcol(0), tcol(1), G.spectator, !!G.gpActive, !!G.tuto].join('|');
+    tn(0), tn(1), tcol(0), tcol(1), G.spectator, !!G.gpActive, !!G.tuto, !!G.attract, !!G.practice].join('|');
   if (key === hudKey) return;
   hudKey = key;
   const lbl = t => {                                           // « toi », « toi + 2 », « IA », « 3 joueurs »
     const n = teamHumans(t).length;
+    if (G.attract) return 'IA';
     if (t === ME && !G.spectator) return n > 1 ? `toi + ${n - 1}` : 'toi';
     return n ? (n > 1 ? `${n} joueurs` : G.spectator ? '1 joueur' : 'adversaire') : 'IA';
   };
@@ -37,7 +38,7 @@ function updateHud() {
   const myPlay = (op && G.oplay.team === ME) ? op : (dp && G.dplay.team === ME) ? dp : '';
   const oppPlay = (op && G.oplay.team === OP) ? op : (dp && G.dplay.team === OP) ? dp : '';
   const playTxt = myPlay ? ` · play ${PLAY_NAMES[myPlay]}` : '', oppTxt = oppPlay ? ` · play ${PLAY_NAMES[oppPlay]}` : '';
-  $('status').innerHTML = G.spectator ? `<b>Spectateur</b> · tu regardes la partie` : G.phase === 'pull'
+  $('status').innerHTML = G.attract ? '<b>Match de démonstration</b>' : G.practice ? '<b>Entraînement</b> · lance dans la cible' : G.spectator ? `<b>Spectateur</b> · tu regardes la partie` : G.phase === 'pull'
     ? (pulling ? '<b>Pull</b> · vise, choisis la courbe, puis arrête la jauge dans le vert' : '<b>Pull</b> · ' + (G.receiving === ME ? 'tu reçois le pull' : 'ton équipe pulle'))
     : att
     ? `<b>Attaque</b> · ${NAMES[formOf(ME)]}${playTxt} — en face : ${NAMES[defFormOf(OP)]}, ${NAMES[forceOf(OP)]}${oppTxt}`
@@ -78,6 +79,7 @@ function refreshOptions() {
   const hostSide = G.net !== 'guest';                        // le vent et la vitesse sont réglés par l'hôte
   $('hostOnlyWind').style.display = hostSide ? '' : 'none';
   $('rowSpeed').style.display = hostSide ? '' : 'none';
+  $('rowPoints').style.display = hostSide && !G.series ? '' : 'none';
   $('rowLevel').style.display = $('descLevel').style.display = hostSide && !G.series ? '' : 'none';
   $('rowOpp').style.display = !G.net && !G.series ? '' : 'none';
   if (document.activeElement !== $('tname')) $('tname').value = G.form.tname;
@@ -99,12 +101,13 @@ function refreshOptions() {
 }
 function showLobby(err) {
   G.menuShown = true; G.series = null;
-  $('lobbyCard').style.display = ''; $('stratCard').style.display = 'none'; $('seriesCard').style.display = 'none';
+  $('lobbyCard').style.display = ''; $('stratCard').style.display = 'none'; $('seriesCard').style.display = 'none'; $('profileCard').style.display = 'none';
   const tutoDone = storeGet('uf-tuto', false), s = seriesState();
-  $('tutoTxt').textContent = tutoDone ? 'Revoir les bases (2 minutes)' : 'Nouveau ? Commence ici : les bases en 2 minutes';
+  $('tutoTxt').textContent = tutoDone ? 'Revoir les bases (3 minutes)' : 'Nouveau ? Commence ici : les bases en 3 minutes';
   $('tutoB').classList.toggle('primary', !tutoDone);
   $('seriesTxt').textContent = s.round >= SERIES.length ? 'Champion ! 🏆 Rejoue quand tu veux'
     : s.round > 0 || s.tries[0] ? `En cours : tour ${s.round + 1} sur 3 contre les ${SERIES[s.round].name}` : 'Trois matchs contre des équipes de plus en plus fortes';
+  if (!G.net && !G.attract) startAttract();                     // un vrai match se joue derrière le menu
   const rj = rejoinInfo();
   $('rejoinB').style.display = rj ? '' : 'none';
   if (rj) $('rejoinTxt').textContent = `Partie ${rj.code} : ta connexion a coupé, reprends ta place.`;
@@ -117,7 +120,7 @@ function showMenu(kind) {
   if (G.net !== 'guest') newWind();
   hudKey = '';
   computeTeams();
-  $('lobbyCard').style.display = 'none'; $('seriesCard').style.display = 'none'; $('stratCard').style.display = '';
+  $('lobbyCard').style.display = 'none'; $('seriesCard').style.display = 'none'; $('profileCard').style.display = 'none'; $('stratCard').style.display = '';
   const ME = G.me, side = `les ${tn(ME)} et tu attaques vers la ${ME === 0 ? 'droite' : 'gauche'}`;
   const S_ = G.series;
   if (kind === 'over') {
@@ -125,12 +128,12 @@ function showMenu(kind) {
     $('ovTitle').textContent = G.spectator ? `Victoire des ${tn(G.score[0] > G.score[1] ? 0 : 1)}` : won ? 'Victoire ! 🥏' : 'Défaite…';
     $('ovText').textContent = S_ ? (won ? (S_.cur === SERIES.length - 1 ? 'Tu remportes le tournoi ! 🏆' : `Tu passes au tour ${S_.cur + 2} !`) : 'Éliminé… tu peux retenter ce match depuis le tournoi.')
       : G.spectator ? 'Fin du match.' : 'Change de stratégie et retente ta chance.';
-    $('go').textContent = S_ ? 'Suite du tournoi ▶' : 'Rejouer ▶';
+    $('go').textContent = S_ ? 'Suite du tournoi ▶' : G.net ? 'Revanche ▶' : 'Rejouer ▶';
     if (G.net === 'guest' && G.netSummary) G.lastSummary = G.netSummary;
     renderSummary(G.lastSummary);
   } else if (kind === 'first') {
     $('ovTitle').textContent = S_ ? `Tournoi · tour ${S_.cur + 1} : contre les ${SERIES[S_.cur].name}` : G.net ? 'Partie en ligne' : 'Ultimate Frisbee';
-    $('ovText').textContent = (S_ ? SERIES[S_.cur].blurb + ' ' : '') + `Premier à 5 points. Tu joues ${side}.` + (G.spectator ? '' : '');
+    $('ovText').textContent = (S_ ? SERIES[S_.cur].blurb + ' ' : '') + `Premier à ${winPts()} points. Tu joues ${side}.` + (G.spectator ? '' : '');
     if (G.spectator) $('ovText').textContent = 'Tu regardes la partie en spectateur.';
     $('go').textContent = 'Jouer le point ▶';
     renderSummary(null);
@@ -147,7 +150,7 @@ function showMenu(kind) {
   refreshOptions();
   refreshCaptainUI();
   $('overlay').classList.remove('hidden');
-  if (G.net === 'host') netSend({ t: 'menu', kind, score: G.score, rec: G.receiving, wind: G.wind, teams: G.teams, sum: kind === 'over' ? G.lastSummary : null });
+  if (G.net === 'host') netSend({ t: 'menu', kind, score: G.score, rec: G.receiving, wind: G.wind, teams: G.teams, pts: winPts(), sum: kind === 'over' ? G.lastSummary : null });
 }
 // en ligne : seul le capitaine de chaque équipe choisit la stratégie et se déclare prêt
 function refreshCaptainUI() {
@@ -253,3 +256,28 @@ function doCall(x, y) {
   if (G.net === 'guest') { netSend({ t: 'call', x, y }); return; }
   callFor(meH(), x, y);
 }
+
+// ---------- retour au menu principal (depuis un match, le menu d'avant-point, le tutoriel, l'entraînement, en ligne) ----------
+// confirmation dans le jeu (les fenêtres du navigateur peuvent être bloquées) ; en solo, le jeu se met en pause
+function askConfirm(text, yesLabel, onYes) {
+  $('askText').textContent = text; $('askYes').textContent = yesLabel;
+  $('askBox').style.display = ''; G.paused = true;
+  const close = () => { $('askBox').style.display = 'none'; G.paused = false; $('askYes').onclick = $('askNo').onclick = null; };
+  $('askNo').onclick = close;
+  $('askYes').onclick = () => { close(); onYes(); };
+}
+function goMainMenu() {
+  const inMatch = !G.attract && (G.phase === 'play' || G.phase === 'pull' || G.score[0] + G.score[1] > 0);
+  if (G.net) { askConfirm(G.net === 'host' ? 'Quitter la partie ? Elle se terminera pour tous les joueurs.' : 'Quitter la partie en ligne ?', 'Quitter', leaveToMenu); return; }
+  if (!G.tuto && !G.practice && inMatch) { askConfirm('Abandonner le match en cours ?', 'Abandonner', leaveToMenu); return; }
+  leaveToMenu();
+}
+function leaveToMenu() {
+  G.replay = null; FX.parts.length = 0; G.msgT = 0;
+  if (G.tuto) { tutoQuit(); return; }
+  if (G.practice) { practiceQuit(); return; }
+  if (G.net) { storeSet('uf-rejoin', null); G.joinCode = null; netError(''); return; }
+  backToSolo(); showLobby();
+}
+$('menuB').addEventListener('click', goMainMenu);
+$('menuBack').addEventListener('click', goMainMenu);

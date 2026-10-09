@@ -77,7 +77,9 @@ function connectionLost(msg) {
   setTimeout(() => { if (G.net === 'guest' && !hostConn) joinGame(G.joinCode, true); }, 1200 * G.rejoin);
 }
 function backToSolo() {
-  G.net = null; G.myId = 0; G.humans = [{ id: 0, team: 0, sel: null }]; G.started = false; G.netCfg = null; G.netTeams = null; G.spectator = false;
+  G.attract = false;
+  if (G.practice) { G.practice = null; $('pracBox').style.display = 'none'; }
+  G.net = null; G.myId = 0; G.humans = [{ id: 0, team: 0, sel: null, name: myName() }]; G.started = false; G.netCfg = null; G.netTeams = null; G.spectator = false;
   G.netSummary = null; G.emotes = [];
   syncMe(); G.phase = 'menu'; G.score = [0, 0]; G.receiving = 0; hudKey = '';
   placeForPoint();
@@ -126,6 +128,7 @@ const ICE_FAIL_MSG = 'La partie a bien été trouvée, mais vos deux réseaux bl
 //  Hôte
 // =====================================================================
 function hostGame() {
+  stopAttract();
   showRoom(); $('lobbyErr').textContent = '';
   $('hostStatus').textContent = 'Connexion au service…'; $('hostCode').textContent = '····';
   const code = newCode();
@@ -133,7 +136,7 @@ function hostGame() {
     peer = p;
     p.on('open', () => {
       $('hostCode').textContent = code;
-      G.net = 'host'; G.myId = 0; G.humans = [{ id: 0, team: 0, sel: null }]; G.started = false; nextId = 1;
+      G.net = 'host'; G.myId = 0; G.humans = [{ id: 0, team: 0, sel: null, name: myName() }]; G.started = false; nextId = 1;
       syncMe(); renderRoom();
       G.inviteUrl = location.href.split('#')[0] + '#join=' + code;
     });
@@ -181,12 +184,12 @@ function admitGuest(c, m) {
   if (team < 0 && specs >= MAX_SPEC) { safeSend(c, { t: 'full' }); setTimeout(() => c.close(), 300); return null; }
   const id = ghost ? ghost.id : nextId++;
   conns.set(id, c); lastSeen.set(id, G.time);
-  const h = { id, team, sel: null, token, cfg: ghost ? ghost.cfg : undefined };
+  const h = { id, team, sel: null, token, cfg: ghost ? ghost.cfg : undefined, name: cleanName(m.name) };
   G.humans.push(h);
   if (token) ghosts.delete(token);
   sendTo(id, { t: 'welcome', id });
   sendTo(id, roomState());
-  if (G.started && G.menuShown) sendTo(id, { t: 'menu', kind: G.lastMenu || 'first', score: G.score, rec: G.receiving, wind: G.wind, teams: G.teams, sum: G.lastMenu === 'over' ? G.lastSummary : null });
+  if (G.started && G.menuShown) sendTo(id, { t: 'menu', kind: G.lastMenu || 'first', score: G.score, rec: G.receiving, wind: G.wind, teams: G.teams, pts: winPts(), sum: G.lastMenu === 'over' ? G.lastSummary : null });
   if (G.started && G.phase !== 'menu') updateSelected();
   broadcastRoom();
   if (G.started) flash(humanLabel(h) + (ghost ? ' est de retour' : team < 0 ? ' regarde la partie' : ' a rejoint la partie'));
@@ -204,7 +207,7 @@ function dropGuest(id, why) {
   if (G.started) { updateSelected(); tryStartOnline(); }
   broadcastRoom();
 }
-const roomState = () => ({ t: 'room', started: !!G.started, hum: G.humans.map(h => [h.id, h.team]) });
+const roomState = () => ({ t: 'room', started: !!G.started, hum: G.humans.map(h => [h.id, h.team, h.name || '']) });
 function broadcastRoom() { netSend(roomState()); renderRoom(); refreshCaptainUI(); }
 function setTeam(id, team) {
   const h = humanById(id);
@@ -233,6 +236,7 @@ function hostOnData(id, m) {
   switch (m.t) {
     case 'team': setTeam(id, m.team === 1 ? 1 : m.team === -1 ? -1 : 0); break;
     case 'emo': hostEmote(id, m.e | 0); break;
+    case 'name': h.name = cleanName(m.name); broadcastRoom(); break;
     case 'in': Object.assign(inputOf(h), { x: +m.x || 0, y: +m.y || 0, down: !!m.down, high: !!m.high, last: G.time }); break;
     case 'throw': if (G.phase === 'play' && throwerHuman() === h) throwDisc(disc.holder, +m.x, +m.y, clamp(+m.curve || 0, -1, 1), 1, THROWS[m.kind] ? m.kind : 'normal'); break;
     case 'dive': diveFor(h, +m.x, +m.y); break;
@@ -273,6 +277,7 @@ function snapshot() {
 //  Invité
 // =====================================================================
 function joinGame(code, retry, spec) {
+  stopAttract();
   code = (code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (code.length !== 4) { $('lobbyErr').textContent = 'Le code fait 4 caractères.'; return; }
   $('lobbyErr').textContent = ''; if (!retry) $('joinStatus').textContent = 'Connexion au service…';
@@ -300,7 +305,7 @@ function joinGame(code, retry, spec) {
         G.net = 'guest';
         $('joinStatus').textContent = retry ? 'Reconnecté !' : 'Connecté !';
         lastMid = -1;
-        netSend({ t: 'hello', token: myToken(), spec: !!spec });
+        netSend({ t: 'hello', token: myToken(), spec: !!spec, name: myName() });
       });
     });
     p.on('error', err => {
@@ -315,7 +320,11 @@ function joinGame(code, retry, spec) {
 window.netError = netError;
 function applyHumans(list) {
   const old = new Map(G.humans.map(h => [h.id, h]));
-  G.humans = list.map(([id, team, si]) => Object.assign(old.get(id) || { id }, { team, sel: si >= 0 ? players[si] : null }));
+  G.humans = list.map(([id, team, si, name]) => {
+    const h = Object.assign(old.get(id) || { id }, { team, sel: si >= 0 ? players[si] : null });
+    if (name !== undefined) h.name = cleanName(name);
+    return h;
+  });
   syncMe();
 }
 function guestOnData(m) {
@@ -329,7 +338,7 @@ function guestOnData(m) {
     case 'emo': if (EMOTES[m.e]) G.emotes.push({ id: m.id, e: EMOTES[m.e], t: G.time }); break;
     case 'full': netError('La partie est complète (5 joueurs par équipe).'); break;
     case 'room':
-      applyHumans(m.hum.map(([id, team]) => [id, team, -1]));
+      applyHumans(m.hum.map(([id, team, name]) => [id, team, -1, name]));
       G.started = m.started; hudKey = '';
       if (!G.started) { showRoom(); renderRoom(); }
       else if (G.phase === 'play' || G.phase === 'pull') { $('overlay').classList.add('hidden'); G.menuShown = false; }
@@ -339,8 +348,9 @@ function guestOnData(m) {
     case 'menu':
       G.score = m.score; G.receiving = m.rec; G.wind = m.wind;
       if (m.teams) G.netTeams = m.teams;
+      if (m.pts) G.netPts = m.pts;
       G.netSummary = m.sum || null;
-      if (m.kind === 'over') G.phase = 'over';
+      if (m.kind === 'over') { if (G.phase !== 'over') achGuestOver(m.score); G.phase = 'over'; }
       showMenu(m.kind);
       break;
     case 'start':
@@ -367,7 +377,6 @@ window.addEventListener('beforeunload', () => {
 });
 
 function applySnapshot(m) {
-  if (m.fx) for (const e of m.fx) fxPlay(e[0], e[1], e[2], e[3]);
   snapAt = G.time;
   m.p.forEach((a, i) => {
     const p = players[i];
@@ -394,6 +403,7 @@ function applySnapshot(m) {
   G.order = g.order.map(o => o.map(i => players[i]));
   if (g.phase === 'pull' && (G.phase !== 'pull' || !G.pull)) { G.pull = { team: g.pull, t: 0 }; G.pullUI = { stage: 'aim', t0: 0, x: 0, y: 0, q: 0 }; }
   if (g.phase !== G.phase) { G.phase = g.phase; if (g.phase !== 'play') G.aiming = false; }
+  if (m.fx) for (const e of m.fx) fxPlay(e[0], e[1], e[2], e[3]);   // effets après l'état (direction des lancers)
   if (lastMid === -1) lastMid = g.mid;
   else if (g.mid !== lastMid) { lastMid = g.mid; if (g.msg) flash(g.msg, true); }
 }
@@ -432,14 +442,14 @@ function renderRoom(note) {
   for (const t of [0, 1]) {
     const ul = $(t === 0 ? 'rosterB' : 'rosterR');
     const hs = teamHumans(t);
-    ul.innerHTML = hs.length ? hs.map(h => `<li>${humanLabel(h)}${h.id === 0 ? ' (hôte)' : ''}${h.id === G.myId ? ' — <b>toi</b>' : ''}${captain(t) === h ? ' · capitaine' : ''}</li>`).join('')
+    ul.innerHTML = hs.length ? hs.map(h => `<li>${esc(humanLabel(h))}${h.id === 0 ? ' (hôte)' : ''}${h.id === G.myId ? ' — <b>toi</b>' : ''}${captain(t) === h ? ' · capitaine' : ''}</li>`).join('')
       : '<li class="ai">IA</li>';
     const me = meH();
     $('teamB' + t).disabled = !me || me.team === t || hs.length >= MAX_PER_TEAM;
     $('teamB' + t).textContent = 'Rejoindre les ' + DEFAULT_TEAMS[t].name;
   }
   const sp = G.humans.filter(h => h.team < 0), me = meH();
-  $('rosterS').innerHTML = sp.length ? sp.map(h => humanLabel(h) + (h.id === G.myId ? ' (toi)' : '')).join(', ') : 'aucun';
+  $('rosterS').innerHTML = sp.length ? sp.map(h => esc(humanLabel(h)) + (h.id === G.myId ? ' (toi)' : '')).join(', ') : 'aucun';
   $('teamBS').disabled = !me || me.team < 0 || me.id === 0 || sp.length >= MAX_SPEC;
   const n = G.humans.filter(h => h.team >= 0).length;
   $('hostStatus').textContent = note || (G.net === 'host'
@@ -476,3 +486,13 @@ $('copyLink').addEventListener('click', () => {
   else prompt('Copie ce lien :', G.inviteUrl);
 });
 for (const id of ['backB1', 'backB2']) $(id).addEventListener('click', () => { storeSet('uf-rejoin', null); G.joinCode = null; netError(''); });
+
+// pseudo : mémorisé dans le navigateur, envoyé à l'hôte (et modifiable dans la salle d'attente)
+$('pname').value = myName();
+$('pname').addEventListener('input', e => {
+  storeSet('uf-name', cleanName(e.target.value));
+  const h = meH();
+  if (G.net === 'guest') netSend({ t: 'name', name: myName() });
+  else if (G.net === 'host' && h) { h.name = myName(); broadcastRoom(); }
+  else if (h) h.name = myName();
+});

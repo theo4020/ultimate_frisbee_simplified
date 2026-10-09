@@ -7,9 +7,11 @@ function canThrow() { const h = throwerHuman(); return G.phase === 'play' && !!h
 function defending() { return G.phase === 'play' && G.off !== G.me; }
 // couleur selon la hauteur : rouge = contrable (même en plongeon), orange = contrable debout,
 // violet = seulement en sautant, bleu = trop haut
+// mode daltonien (palette Okabe-Ito) : vermillon, jaune, rose, bleu ciel
+const HC = { std: ['248,113,113', '251,146,60', '196,181,253', '125,211,252'], cb: ['213,94,0', '240,228,66', '204,121,167', '86,180,233'] };
 function heightColor(z, a) {
-  return z < REACH_DIVE ? `rgba(248,113,113,${a})` : z < REACH_STAND ? `rgba(251,146,60,${a})`
-    : z < REACH_STAND + JUMP_H ? `rgba(196,181,253,${a})` : `rgba(125,211,252,${a})`;
+  const c = HC[G.form.cb === '1' ? 'cb' : 'std'];
+  return `rgba(${z < REACH_DIVE ? c[0] : z < REACH_STAND ? c[1] : z < REACH_STAND + JUMP_H ? c[2] : c[3]},${a})`;
 }
 function drawFlightPath(sx, sy, cx, cy, ex, ey, peak, u0, alpha, width, dash, kind) {
   const step = 0.025;
@@ -62,6 +64,52 @@ function drawEmotes() {
 }
 // état visuel du saut : -1 = accroupi (préparation), sinon hauteur gagnée en l'air
 const jumpVis = p => (G.net === 'guest' ? (p.lift || 0) : p.jprep > 0 ? -1 : jumpLift(p));
+// ---------- joueurs vus de dessus : épaules (maillot), tête, bras, numéro ----------
+const SKIN = ['#f1c7a3', '#d9a37a', '#a8714f', '#7a4b32', '#e8b88f'];
+const HAIR = ['#3b2f2a', '#1f2937', '#a16207', '#7c2d12', '#57534e'];
+// orientation lissée : sens de la course, sinon vers le disque (ou vers la cible pendant un lancer)
+function faceOf(p) {
+  let target;
+  if (p.throwT > 0 && p.throwA !== undefined) target = p.throwA;
+  else if (Math.hypot(p.vx, p.vy) > 0.8) target = Math.atan2(p.vy, p.vx);
+  else target = Math.atan2(disc.y - p.y, disc.x - p.x) || 0;
+  if (p.face === undefined || isNaN(p.face)) p.face = target;
+  const d = Math.atan2(Math.sin(target - p.face), Math.cos(target - p.face));
+  p.face += d * Math.min(1, (FX.dt || 0.016) * 12);
+  return p.face;
+}
+function roundRectPath(x, y, w, h, rr) {
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x, y, w, h, rr); else ctx.rect(x, y, w, h);
+}
+// lying = plongeon / au sol ; scale = saut (plus gros) ou accroupi (plus petit)
+function drawBody(p, x, y, r, face, o) {
+  const k = (p.team * 5 + p.i) % 5, light = (G.teams[p.team] || {}).color === 'blanc' || (G.teams[p.team] || {}).color === 'jaune';
+  ctx.save(); ctx.translate(x, y); ctx.rotate(face); ctx.scale(o.scale || 1, o.scale || 1);
+  ctx.lineCap = 'round';
+  const arm = (x1, y1, x2, y2) => { ctx.strokeStyle = SKIN[k]; ctx.lineWidth = r * 0.36; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); };
+  if (o.lying) {                                            // allongé, bras tendus vers l'avant
+    arm(r * 0.5, -r * 0.45, r * 1.9, -r * 0.35); arm(r * 0.5, r * 0.45, r * 1.9, r * 0.35);
+    ctx.fillStyle = tcol(p.team); ctx.strokeStyle = tdark(p.team); ctx.lineWidth = 2;
+    roundRectPath(-r * 1.3, -r * 0.62, r * 2.2, r * 1.24, r * 0.6); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = HAIR[k]; circle(r * 1.05, 0, r * 0.45); ctx.fill();
+  } else {
+    const sw = o.swing || 0;                                // balancement des bras en courant
+    if (o.throwing) { arm(0, r * 0.85, r * 1.75, r * 0.55); arm(0, -r * 0.85, -r * 0.3, -r * 1.15); }
+    else if (o.jumping) { arm(0, r * 0.8, r * 0.5, r * 1.5); arm(0, -r * 0.8, r * 0.5, -r * 1.5); }
+    else { arm(0, r * 0.85, sw * r * 0.75, r * 1.12); arm(0, -r * 0.85, -sw * r * 0.75, -r * 1.12); }
+    ctx.fillStyle = tcol(p.team); ctx.strokeStyle = tdark(p.team); ctx.lineWidth = 2;
+    roundRectPath(-r * 0.58, -r * 1.05, r * 1.16, r * 2.1, r * 0.56); ctx.fill(); ctx.stroke();
+    if (r >= 8) {                                           // numéro dans le dos
+      ctx.save(); ctx.rotate(-face); ctx.fillStyle = light ? 'rgba(15,23,42,.75)' : 'rgba(255,255,255,.85)';
+      ctx.font = `800 ${Math.round(r * 0.78)}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const bx = -Math.cos(face) * r * 0.62, by = -Math.sin(face) * r * 0.62;
+      ctx.fillText(String(p.i + 1), bx, by); ctx.restore();
+    }
+    ctx.fillStyle = HAIR[k]; circle(r * 0.12, 0, r * 0.5); ctx.fill();
+  }
+  ctx.restore();
+}
 function circle(x, y, r) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); }
 function arrow(x1, y1, x2, y2, color) {
   ctx.save(); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 2; ctx.setLineDash([5, 5]);
@@ -86,6 +134,16 @@ function drawField() {
   ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 2;
   ctx.strokeRect(X(0), Y(0), W * S, H * S);
   ctx.beginPath(); ctx.moveTo(X(EZ), Y(0)); ctx.lineTo(X(EZ), Y(H)); ctx.moveTo(X(W - EZ), Y(0)); ctx.lineTo(X(W - EZ), Y(H)); ctx.stroke();
+  // points de brick (croix) et plots orange aux coins des en-buts
+  ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 2; const kx = 0.6 * S;
+  for (const bx of [EZ + 12, W - EZ - 12]) { ctx.beginPath(); ctx.moveTo(X(bx) - kx, Y(H / 2) - kx); ctx.lineTo(X(bx) + kx, Y(H / 2) + kx); ctx.moveTo(X(bx) + kx, Y(H / 2) - kx); ctx.lineTo(X(bx) - kx, Y(H / 2) + kx); ctx.stroke(); }
+  for (const cx of [0, EZ, W - EZ, W]) for (const cy of [0, H]) {
+    ctx.fillStyle = '#f97316'; ctx.beginPath(); ctx.moveTo(X(cx), Y(cy) - 0.7 * S); ctx.lineTo(X(cx) + 0.55 * S, Y(cy) + 0.4 * S); ctx.lineTo(X(cx) - 0.55 * S, Y(cy) + 0.4 * S); ctx.closePath(); ctx.fill();
+  }
+  // léger vignettage
+  const vg = ctx.createRadialGradient(cw / 2, ch / 2, Math.min(cw, ch) * 0.35, cw / 2, ch / 2, Math.max(cw, ch) * 0.7);
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.22)');
+  ctx.fillStyle = vg; ctx.fillRect(-20, -20, cw + 40, ch + 40);
 }
 function draw() {
   const cw = canvas.width / dpr, ch = canvas.height / dpr;
@@ -93,8 +151,9 @@ function draw() {
   drawField();
 
   drawStreaks();
+  drawPractice();
   const playing = G.phase === 'play';
-  const myAttack = playing && G.off === G.me, ME = G.me, mySel = (meH() || {}).sel || null;
+  const myAttack = playing && G.off === G.me && !G.practice, ME = G.me, mySel = (meH() || {}).sel || null;
 
   // Structure offensive de ton équipe (repère visuel)
   if (myAttack && disc.mode === 'held') {
@@ -108,7 +167,7 @@ function draw() {
   }
 
   // Zone de stall et break side imposé par la force
-  if (playing && disc.mode === 'held') {
+  if (playing && disc.mode === 'held' && !G.practice) {
     const h = disc.holder, defT = 1 - G.off, closed = closedOf(defT), dir = dirOf(G.off);
     const counting = G.marker && G.stall > 0;
     ctx.save();
@@ -159,7 +218,7 @@ function draw() {
     ctx.globalAlpha = cancel ? 0.3 : 1;
     drawFlightPath(h.x, h.y, cx, cy, ex, ey, peakOf(dur, kind), 0, G.aiming ? 0.95 : 0.7, G.aiming ? 3 : 2, kind === 'high' ? [2, 5] : [6, 5], kind);
     ctx.strokeStyle = G.aiming ? 'rgba(250,204,21,.95)' : 'rgba(255,255,255,.75)'; ctx.lineWidth = 2;
-    const er = throwErr(d, G.curve, kind) + Math.hypot(wx, wy) * 0.3;
+    const er = throwErr(d, G.curve, kind) + Math.hypot(wx, wy) * 0.08;
     circle(X(ex), Y(ey), Math.max(er * S, 4)); ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.fill(); ctx.stroke();
     if (Math.hypot(wx, wy) > 0.6) {                         // croix = point visé, le vent emmène le disque jusqu'au cercle
       ctx.strokeStyle = 'rgba(125,211,252,.9)'; ctx.lineWidth = 2; const k = 5;
@@ -186,15 +245,15 @@ function draw() {
     ctx.fillStyle = `rgba(0,0,0,${0.25 - jl * 0.08})`; circle(X(p.x) + 2 + jl * 3, Y(p.y) + 3 + jl * 3, r * (1 - jl * 0.15)); ctx.fill();
   }
   for (const p of players) {
-    ctx.fillStyle = tcol(p.team);
-    ctx.strokeStyle = tdark(p.team); ctx.lineWidth = 2;
-    ctx.globalAlpha = p.down > 0 ? 0.55 : 1;
+    ctx.globalAlpha = p.down > 0 ? 0.6 : 1;
     const jv = jumpVis(p), jl = Math.max(0, jv), crouch = jv < 0;   // saut : accroupi, puis il grossit et s'élève
     const hop = celebrateHop(p) * S + jl * S * 0.9;              // (et saut de joie après un point)
-    ctx.beginPath();
-    if (p.dive > 0 || p.down > 0) ctx.ellipse(X(p.x), Y(p.y), r * 1.5, r * 0.7, Math.atan2(p.vy, p.vx) || 0, 0, Math.PI * 2);
-    else ctx.arc(X(p.x), Y(p.y) - hop, r * (1 + jl * 0.22) * (crouch ? 0.84 : 1), 0, Math.PI * 2);
-    ctx.fill(); ctx.stroke(); ctx.globalAlpha = 1;
+    const lying = p.dive > 0 || p.down > 0, face = lying ? (Math.atan2(p.vy, p.vx) || faceOf(p)) : faceOf(p);
+    if (lying) p.face = face;
+    p.stride = (p.stride || 0) + Math.hypot(p.vx, p.vy) * (FX.dt || 0.016) * 1.6;
+    drawBody(p, X(p.x), Y(p.y) - hop, r * 1.06, face, { lying, scale: (1 + jl * 0.22) * (crouch ? 0.84 : 1),
+      throwing: p.throwT > 0, jumping: jl > 0.05, swing: Math.hypot(p.vx, p.vy) > 1 ? Math.sin(p.stride) : 0 });
+    ctx.globalAlpha = 1;
     if (p === disc.holder && (disc.mode === 'held' || disc.mode === 'carry')) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; circle(X(p.x), Y(p.y), r + 4); ctx.stroke(); }
     if (myAttack && disc.mode === 'held' && p.team === ME && p !== disc.holder && nearestD(TEAMS[1 - ME], p.x, p.y)[1] > 2.8) {
       ctx.strokeStyle = 'rgba(74,222,128,.95)'; ctx.lineWidth = 2.5; circle(X(p.x), Y(p.y), r + 3); ctx.stroke();
@@ -212,14 +271,15 @@ function draw() {
     }
   }
 
-  // Humains : étiquette « J2 » au-dessus des joueurs contrôlés par d'autres personnes,
+  // Humains : étiquette (pseudo, ou « J2 ») sous des joueurs contrôlés par d'autres personnes,
   // et numéros 1 à 5 sous tes joueurs (touches du clavier pour en prendre un)
   ctx.textAlign = 'center';
   for (const h of G.humans) {
     if (!h.sel || h.id === G.myId) continue;
     const p = h.sel;
     ctx.font = `800 ${Math.max(10, S * 1.25)}px system-ui`;
-    ctx.fillStyle = 'rgba(15,23,42,.8)'; ctx.fillRect(X(p.x) - S * 1.6, Y(p.y) + r + 2, S * 3.2, S * 1.6);
+    const lw = ctx.measureText(humanLabel(h)).width + S * 0.8;
+    ctx.fillStyle = 'rgba(15,23,42,.8)'; ctx.fillRect(X(p.x) - lw / 2, Y(p.y) + r + 2, lw, S * 1.6);
     ctx.fillStyle = tlabel(p.team); ctx.fillText(humanLabel(h), X(p.x), Y(p.y) + r + 2 + S * 1.25);
   }
   drawEmotes();
@@ -262,7 +322,10 @@ function draw() {
   if (disc.mode !== 'dead') {
     let dx = disc.x, dy = disc.y;
     const tell = playing && highTell();                     // passe haute en préparation : disque levé au-dessus de la tête
-    if ((disc.mode === 'held' || disc.mode === 'carry') && !tell) dx += 0.8 * dirOf(disc.holder.team);
+    if ((disc.mode === 'held' || disc.mode === 'carry') && !tell) {   // dans la main, du côté où il regarde
+      const f = disc.holder.face !== undefined ? disc.holder.face : (dirOf(disc.holder.team) > 0 ? 0 : Math.PI);
+      dx += Math.cos(f + 0.5) * 0.95; dy += Math.sin(f + 0.5) * 0.95;
+    }
     const lift = disc.mode === 'air' ? disc.z * S * 1.2 : tell ? 1.9 * S : 0;
     if (tell) {
       ctx.save(); ctx.strokeStyle = 'rgba(196,181,253,.9)'; ctx.lineWidth = 2; ctx.setLineDash([2, 3]);
