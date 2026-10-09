@@ -255,3 +255,5 @@ body.touch #menuB{padding:0 8px;font-size:12px;height:22px}
 .askCard p{margin:0 0 12px;font-size:16px;line-height:1.4}
 .askBtns{display:flex;gap:8px;justify-content:flex-end}
 .danger{background:#dc2626;color:#fff;font-weight:700}
+.pullOpts{display:flex;gap:6px;flex-wrap:wrap;width:auto!important;font-weight:400!important}
+.popt.on{background:var(--blue);color:#fff}

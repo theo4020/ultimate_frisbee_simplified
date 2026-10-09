@@ -155,6 +155,7 @@ function showMenu(kind) {
 // en ligne : seul le capitaine de chaque équipe choisit la stratégie et se déclare prêt
 function refreshCaptainUI() {
   if (!$('stratRows')) return;
+  renderPullerRow();
   const c = captain(G.me), isCap = !G.net || (c && c.id === G.myId);
   $('stratRows').classList.toggle('locked', !isCap);
   $('stratRows').style.display = G.spectator ? 'none' : '';
@@ -188,7 +189,7 @@ document.querySelectorAll('.swatches').forEach(box => {
 for (const id of ['tname', 'oname']) $(id).addEventListener('input', e => { G.form[id] = e.target.value.slice(0, 16); hudKey = ''; computeTeams(); saveSettings(); });
 
 const myCfg = () => ({ off: G.form.off, def: G.form.def, force: G.form.force, play: G.form.play, dplay: G.form.dplay, allyLevel: G.form.allyLevel,
-  tname: G.form.tname, tcol: G.form.tcol });
+  tname: G.form.tname, tcol: G.form.tcol, puller: G.form.puller });
 $('replayB').addEventListener('click', startReplay);
 $('go').addEventListener('click', () => {
   saveSettings();
@@ -281,3 +282,20 @@ function leaveToMenu() {
 }
 $('menuB').addEventListener('click', goMainMenu);
 $('menuBack').addEventListener('click', goMainMenu);
+
+// ---------- qui pulle (en ligne : choisi par le capitaine) ----------
+function renderPullerRow() {
+  const show = !!G.net && !G.spectator && teamHumans(G.me).length > 0;
+  $('rowPuller').style.display = show ? '' : 'none';
+  if (!show) return;
+  const hs = teamHumans(G.me), valid = ['cap', 'rot', 'ai'].concat(hs.map(h => String(h.id)));
+  if (!valid.includes(String(G.form.puller))) G.form.puller = 'cap';
+  const opts = hs.map(h => [String(h.id), humanLabel(h) + (h.id === G.myId ? ' (moi)' : '')]);
+  if (hs.length > 1) opts.push(['rot', 'Chacun son tour']);
+  opts.push(['ai', 'IA']);
+  const cur = G.form.puller === 'cap' && captain(G.me) ? String(captain(G.me).id) : String(G.form.puller);
+  $('pullerOpts').innerHTML = opts.map(([v, l]) => `<button class="popt${v === cur ? ' on' : ''}" data-v="${esc(v)}">${esc(l)}</button>`).join('');
+  $('pullerOpts').querySelectorAll('.popt').forEach(b => b.addEventListener('click', () => { G.form.puller = b.dataset.v; renderPullerRow(); }));
+  $('descPuller').textContent = cur === 'rot' ? 'Les joueurs de ton équipe pullent à tour de rôle.' : cur === 'ai' ? 'Le pull est fait automatiquement par l’IA.'
+    : 'Ce joueur fera le pull quand ton équipe défend (il prend le disque à la place du pulleur).';
+}

@@ -208,7 +208,7 @@ function dropGuest(id, why) {
   broadcastRoom();
 }
 const roomState = () => ({ t: 'room', started: !!G.started, hum: G.humans.map(h => [h.id, h.team, h.name || '']) });
-function broadcastRoom() { netSend(roomState()); renderRoom(); refreshCaptainUI(); }
+function broadcastRoom() { syncMe(); netSend(roomState()); renderRoom(); refreshCaptainUI(); }
 function setTeam(id, team) {
   const h = humanById(id);
   if (!h || h.team === team) return;
@@ -244,7 +244,7 @@ function hostOnData(id, m) {
     case 'switch': { const n = switchTarget(h); if (n) selectFor(h, n); break; }
     case 'select': selectFor(h, players[m.i | 0]); break;
     case 'call': callFor(h, +m.x, +m.y); break;
-    case 'pull': if (G.phase === 'pull' && G.pull && captain(G.pull.team) === h) launchPull(+m.x, +m.y, m.curve, m.q); break;
+    case 'pull': if (G.phase === 'pull' && G.pull && G.pull.by === h.id) launchPull(+m.x, +m.y, m.curve, m.q); break;
     case 'ready':
       if (captain(h.team) === h) { h.cfg = Object.assign({}, DEFAULT_CFG, m.cfg); (G.readyIds = G.readyIds || new Set()).add(id); }
       refreshCaptainUI(); tryStartOnline(); break;
@@ -269,7 +269,7 @@ function snapshot() {
       hum: G.humans.map(h => [h.id, h.team, idx(h.sel)]),
       op: G.oplay && { type: G.oplay.type, team: G.oplay.team }, dp: G.dplay && { type: G.dplay.type, team: G.dplay.team },
       order: [G.order[0].map(idx), G.order[1].map(idx)], cfg: [cfg(0), cfg(1)], carry: G.carryTo,
-      pull: G.phase === 'pull' && G.pull ? G.pull.team : -1, teams: G.teams, tell: highTell() }
+      pull: G.phase === 'pull' && G.pull ? G.pull.team : -1, pullBy: G.pull ? G.pull.by : null, teams: G.teams, tell: highTell() }
   };
 }
 
@@ -356,7 +356,7 @@ function guestOnData(m) {
     case 'start':
       replayReset(); FX.celebrate = null;
       G.phase = 'pull'; G.menuShown = false; G.receiving = m.r;
-      G.pull = { team: 1 - m.r, t: 0 }; G.pullUI = { stage: 'aim', t0: 0, x: 0, y: 0, q: 0 };
+      G.pull = { team: 1 - m.r, t: 0, by: m.by == null ? null : m.by }; G.pullUI = { stage: 'aim', t0: 0, x: 0, y: 0, q: 0 };
       G.curve = 0; $('curveRange').value = 0;
       $('overlay').classList.add('hidden');
       pullFlash();
@@ -401,7 +401,8 @@ function applySnapshot(m) {
     $('overlay').classList.add('hidden'); G.menuShown = false;          // retour en cours de point : on montre le terrain
   }
   G.order = g.order.map(o => o.map(i => players[i]));
-  if (g.phase === 'pull' && (G.phase !== 'pull' || !G.pull)) { G.pull = { team: g.pull, t: 0 }; G.pullUI = { stage: 'aim', t0: 0, x: 0, y: 0, q: 0 }; }
+  if (g.phase === 'pull' && (G.phase !== 'pull' || !G.pull)) { G.pull = { team: g.pull, t: 0, by: g.pullBy }; G.pullUI = { stage: 'aim', t0: 0, x: 0, y: 0, q: 0 }; }
+  if (g.phase === 'pull' && G.pull) G.pull.by = g.pullBy;
   if (g.phase !== G.phase) { G.phase = g.phase; if (g.phase !== 'play') G.aiming = false; }
   if (m.fx) for (const e of m.fx) fxPlay(e[0], e[1], e[2], e[3]);   // effets après l'état (direction des lancers)
   if (lastMid === -1) lastMid = g.mid;

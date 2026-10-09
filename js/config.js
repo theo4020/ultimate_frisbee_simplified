@@ -25,7 +25,7 @@ const DEF_TUNE = {
 const DIVE_T = 0.33, DOWN_T = 0.8;
 // saut : préparation (le joueur s'accroupit et ralentit), temps en l'air, gain de hauteur au sommet,
 // récupération à la réception (ralenti) et délai avant de pouvoir ressauter
-const JUMP_PREP = 0.25, JUMP_T = 0.5, JUMP_H = 1.0, JUMP_REC = 0.15, JUMP_CD = 0.35;
+const JUMP_PREP = 0.12, JUMP_T = 0.5, JUMP_H = 1.0, JUMP_REC = 0.15, JUMP_CD = 0.35;
 const HIGH_WINDUP = [0.3, 1.2];                            // l'IA arme sa passe haute plus ou moins longtemps avant de lancer
 const SPEEDS = { lent: 0.6, normal: 0.78, rapide: 1 };
 const DRIFT = 0.5;                                          // dérive du disque : vent (m/s) × temps de vol × DRIFT

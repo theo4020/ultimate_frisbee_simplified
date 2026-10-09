@@ -145,9 +145,9 @@ const TUTO_STEPS = [
   {
     title: 'Contrer une passe haute',
     text: {
-      mouse: 'Tu marques le porteur. Il a <b>armé une passe haute</b> (disque levé) et la lancera quand il voudra, par-dessus toi. Saute (<b>S</b>) juste avant qu’il lance : ton saut met un quart de seconde à décoller. Réagir au lâcher est trop tard, il faut deviner !',
-      touch: 'Tu marques le porteur. Il a <b>armé une passe haute</b> (disque levé) et la lancera quand il voudra, par-dessus toi. Touche <b>Saut</b> juste avant qu’il lance : ton saut met un quart de seconde à décoller. Réagir au lâcher est trop tard, il faut deviner !',
-      pad: 'Tu marques le porteur. Il a <b>armé une passe haute</b> (disque levé) et la lancera quand il voudra, par-dessus toi. Saute (<b>A</b>) juste avant qu’il lance : ton saut met un quart de seconde à décoller. Il faut deviner !'
+      mouse: 'Tu marques le porteur. Il a <b>armé une passe haute</b> (disque levé) et la lancera quand il voudra, par-dessus toi. Saute (<b>S</b>) juste avant qu’il lance : ton saut met un court instant à décoller. Réagir au lâcher est trop tard, il faut deviner !',
+      touch: 'Tu marques le porteur. Il a <b>armé une passe haute</b> (disque levé) et la lancera quand il voudra, par-dessus toi. Touche <b>Saut</b> juste avant qu’il lance : ton saut met un court instant à décoller. Réagir au lâcher est trop tard, il faut deviner !',
+      pad: 'Tu marques le porteur. Il a <b>armé une passe haute</b> (disque levé) et la lancera quand il voudra, par-dessus toi. Saute (<b>A</b>) juste avant qu’il lance : ton saut met un court instant à décoller. Il faut deviner !'
     },
     setup() {
       tutoReset(); G.tuto.level = 'facile';

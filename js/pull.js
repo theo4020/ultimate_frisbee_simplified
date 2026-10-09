@@ -24,17 +24,37 @@ function placeForPull() {
 function startPull() {
   placeForPull();
   G.phase = 'pull';
-  G.pull = { team: 1 - G.receiving, t: 0, aiT: rand(1.0, 1.8) };
+  const pt = 1 - G.receiving;
+  G.pull = { team: pt, t: 0, aiT: rand(1.0, 1.8), by: choosePuller(pt) };
+  G.pullCount = G.pullCount || [0, 0]; G.pullCount[pt]++;
   G.pullUI = { stage: 'aim', t0: 0, x: 0, y: 0, q: 0 };
   G.pullPending = false;
   G.curve = 0; const cr = document.getElementById('curveRange'); if (cr) cr.value = 0;
 }
 
 // c'est le capitaine de l'équipe qui pulle (le seul humain de l'équipe en solo)
-const localPuller = () => G.phase === 'pull' && !!G.pull && !!captain(G.pull.team) && captain(G.pull.team).id === G.myId;
+// qui pulle : choisi par le capitaine (lui-même, un coéquipier, chacun son tour, ou l'IA). null = l'IA pulle
+function choosePuller(t) {
+  const hs = teamHumans(t);
+  if (!hs.length) return null;
+  const v = String(cfg(t).puller || 'cap');
+  if (v === 'ai') return null;
+  if (v === 'rot') return hs[((G.pullCount || [0, 0])[t]) % hs.length].id;
+  const h = hs.find(o => String(o.id) === v);
+  return (h || hs[0]).id;
+}
+const localPuller = () => G.phase === 'pull' && !!G.pull && G.pull.by != null && G.pull.by === G.myId;
+// le joueur choisi prend le disque pour pulle (son joueur sur le terrain échange sa place avec le pulleur)
+function pullerToSelected() {
+  const h = G.pull && G.pull.by != null && humanById(G.pull.by), p = h && h.sel, q = disc.holder;
+  if (!p || !q || p === q || p.team !== q.team) return;
+  [p.x, q.x] = [q.x, p.x]; [p.y, q.y] = [q.y, p.y]; p.tx = p.x; p.ty = p.y; q.tx = q.x; q.ty = q.y;
+  disc.holder = p; disc.x = p.x; disc.y = p.y;
+}
 function pullFlash() {
   if (!G.pull) return;
-  flash(G.spectator ? 'Pull !' : G.pull.team === G.me ? (localPuller() ? 'À toi de puller !' : 'Ton équipe pulle…') : 'Pull adverse…', true);
+  const by = G.pull.by != null && humanById(G.pull.by);
+  flash(G.spectator ? 'Pull !' : G.pull.team === G.me ? (localPuller() ? 'À toi de puller !' : by ? `${humanLabel(by)} pulle…` : 'Ton équipe pulle…') : 'Pull adverse…', true);
 }
 
 // position de la jauge (0 → 1 → 0…), en temps réel
@@ -68,6 +88,7 @@ function pullStop() {
 }
 function pullBack() { if (localPuller() && G.pullUI.stage === 'power') G.pullUI.stage = 'aim'; }
 function doPull(x, y, curve, q) {
+  if (!localPuller()) return;                                 // seul le pulleur désigné peut pulle
   if (G.net === 'guest') netSend({ t: 'pull', x, y, curve, q });
   else launchPull(x, y, curve, q);
 }
@@ -76,7 +97,8 @@ function doPull(x, y, curve, q) {
 function pullTick(dt) {
   if (G.phase !== 'pull' || !G.pull) return;
   G.pull.t += dt;
-  if (!human(G.pull.team)) { G.pull.aiT -= dt; if (G.pull.aiT <= 0) aiPull(); }
+  if (G.pull.by != null && !humanById(G.pull.by)) G.pull.by = null;   // le pulleur choisi est parti : l'IA prend le relais
+  if (G.pull.by == null) { G.pull.aiT -= dt; if (G.pull.aiT <= 0) aiPull(); }
   else if (G.pull.t > PULL.AUTO_T) aiPull();                    // personne ne pulle : pull automatique
 }
 function aiPull() {
@@ -92,6 +114,7 @@ function aiPull() {
 // ---------- le pull part ----------
 function launchPull(ax, ay, curve, q) {
   if (G.phase !== 'pull' || !disc.holder) return;
+  const pulledBy = G.pull ? G.pull.by : null;
   const r = G.receiving, d = 1 - r, h = disc.holder;
   curve = clamp(+curve || 0, -1, 1); q = clamp(+q || 0, 0, 1);
   [ax, ay] = clampPullAim(h, ax, ay);
@@ -124,7 +147,7 @@ function launchPull(ax, ay, curve, q) {
   fxEvent('pull', h.x, h.y, d);
   flash(q > p1 ? 'Pull trop fort !' : q >= p0 ? 'Pull parfait !' : 'Pull court');
   if (G.tuto) tutoEvent('pull', q);
-  if (q >= p0 && q <= p1 && captain(d) && captain(d).id === G.myId) achEvent('pull', d);
+  if (q >= p0 && q <= p1 && pulledBy === G.myId) achEvent('pull', d);
 }
 
 // réception du pull à la volée
@@ -189,7 +212,12 @@ function drawPullUI() {
     ctx.fillStyle = 'rgba(15,23,42,.72)'; ctx.fillRect(X(W / 2) - w / 2, y - fs * 1.1, w, fs * 1.6);
     ctx.fillStyle = '#f8fafc'; ctx.fillText(txt, X(W / 2), y);
   };
-  if (!localPuller()) { label('L’adversaire prépare son pull…', Y(2.5) + fs); ctx.restore(); return; }
+  if (!localPuller()) {
+    const by = G.pull && G.pull.by != null && humanById(G.pull.by);
+    label(G.pull && G.pull.team === G.me && !G.spectator ? (by ? `${humanLabel(by)} prépare le pull…` : 'Ton équipe prépare le pull…')
+      : by ? `${humanLabel(by)} prépare son pull…` : 'L’adversaire prépare son pull…', Y(2.5) + fs);
+    ctx.restore(); return;
+  }
   const ui = G.pullUI;
   let ax, ay;
   if (ui.stage === 'aim') {

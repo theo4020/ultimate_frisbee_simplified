@@ -43,11 +43,12 @@ function startPoint() {
   startPull();                                                // chaque point commence par un pull (voir pull.js)
   G.readyIds = new Set();
   updateSelected();
+  pullerToSelected();
   if (G.attract) return;                                      // match de démonstration derrière le menu
   G.menuShown = false;
   document.getElementById('overlay').classList.add('hidden');
   pullFlash();
-  if (G.net === 'host') netSend({ t: 'start', r });
+  if (G.net === 'host') netSend({ t: 'start', r, by: G.pull ? G.pull.by : null });
 }
 // ---------- match de démonstration (IA contre IA) derrière le menu principal ----------
 function startAttract() {
