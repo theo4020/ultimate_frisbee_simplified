@@ -28,8 +28,12 @@ vm.runInContext(code + `
   G.humans = []; G.myId = -1;
   aiLvl = t => AI_LEVELS[t === 1 ? '${level}' : 'normal'];   // simulation : niveau imposé par équipe
   let won = [0, 0], thrDist = 0, thrN = 0, longN = 0, longOk = 0, pendingLong = false;
-  const _td = throwDisc; throwDisc = function (h, x, y, c, e) { const d = dist(h.x, h.y, x, y); thrDist += d; thrN++; pendingLong = d > 25; if (d > 25) longN++; return _td(h, x, y, c, e); };
-  const _cd = catchDisc; catchDisc = function (p) { if (pendingLong && !disc.pull && p.team === disc.team) longOk++; pendingLong = false; return _cd(p); };
+  const kinds = {}, strat = {};
+  const sk = () => formOf(G.off) + '/' + defFormOf(1 - G.off) + (defFormOf(1 - G.off) !== 'zone' ? '-' + forceOf(1 - G.off) : '');
+  const _td = throwDisc; throwDisc = function (h, x, y, c, e, k) { const d = dist(h.x, h.y, x, y); thrDist += d; thrN++; pendingLong = d > 25; if (d > 25) longN++;
+    k = k || 'normal'; (kinds[k] = kinds[k] || [0, 0])[0]++; const st = sk(); (strat[st] = strat[st] || [0, 0])[0]++; return _td(h, x, y, c, e, k); };
+  const _cd = catchDisc; catchDisc = function (p) { if (pendingLong && !disc.pull && p.team === disc.team) longOk++; pendingLong = false;
+    if (!disc.pull && p.team === disc.team) { kinds[disc.kind][1]++; const st = sk(); (strat[st] = strat[st] || [0, 0])[1]++; } return _cd(p); };
   const _to = turnover; turnover = function (...a) { pendingLong = false; return _to(...a); };
   let pts = 0, secs = [], stuck = 0, pullPerfect = 0, pulls = 0, dbl = 0;
   const _lp = launchPull; launchPull = function (x, y, c, q) { pulls++; if (q >= 0.82 && q <= 0.95) pullPerfect++; return _lp(x, y, c, q); };
@@ -55,5 +59,6 @@ vm.runInContext(code + `
   const s = G.stats;
   console.log(JSON.stringify({ 'niveau Rouges': '${level}', 'points Bleus/Rouges': won.join(' / '), matchs: ${games}, points: pts, bloques: stuck, 'sec/point (médiane)': +secs[secs.length >> 1].toFixed(0),
     'lancer moyen (m)': +(thrDist / thrN).toFixed(1), 'lancers > 25 m %': +(100 * longN / thrN).toFixed(0), 'réussite > 25 m %': +(100 * longOk / Math.max(1, longN)).toFixed(0), 'passes réussies %': +(100 * s.comps / s.throws).toFixed(0), 'turnovers/point': +((s.blocks + s.ints + s.stalls + s.ground + s.out + (s.drops || 0)) / pts).toFixed(2),
-    pulls, 'pulls parfaits': pullPerfect, 'double teams': dbl, stalls: s.stalls, blocks: s.blocks, ints: s.ints, drops: s.drops || 0 }));
+    pulls, 'pulls parfaits': pullPerfect, kinds: Object.fromEntries(Object.entries(kinds).map(([k, [a, b]]) => [k, a + ' (' + Math.round(100 * b / a) + '%)'])),
+    strat: Object.fromEntries(Object.entries(strat).sort().map(([k, [a, b]]) => [k, a + ' (' + Math.round(100 * b / a) + '%)'])), 'double teams': dbl, stalls: s.stalls, blocks: s.blocks, ints: s.ints, drops: s.drops || 0 }));
 })();`, sandbox);

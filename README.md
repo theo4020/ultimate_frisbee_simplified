@@ -1,6 +1,6 @@
 # Ultimate Frisbee – prototype
 
-Petit jeu d'ultimate en vue du dessus, jouable dans le navigateur (ordinateur et téléphone), en solo contre l'IA ou à deux en ligne. Aucun outil de compilation : ce sont de simples fichiers HTML, CSS et JavaScript.
+Petit jeu d'ultimate en vue du dessus, jouable dans le navigateur (ordinateur et téléphone), en solo contre l'IA (match simple ou mini-tournoi), ou jusqu'à 10 en ligne (plus des spectateurs). Un tutoriel interactif présente les bases. Se joue à la souris, au clavier, au doigt ou à la manette. Aucun outil de compilation : ce sont de simples fichiers HTML, CSS et JavaScript.
 
 ## Lancer le jeu en local
 
@@ -17,20 +17,27 @@ Les scripts sont chargés dans cet ordre par `index.html` et partagent le même 
 | `js/config.js` | Constantes (terrain, vitesses, règles), textes des stratégies et des plays |
 | `js/util.js` | Canvas, conversion mètres → pixels, outils mathématiques |
 | `js/state.js` | État du jeu : joueurs, disque, configuration de chaque équipe |
+| `js/humans.js` | Qui contrôle quoi (humains, IA, spectateurs), niveaux de l'IA |
+| `js/teams.js` | Noms et couleurs des équipes, réglages mémorisés dans le navigateur |
 | `js/wind.js` | Vent, rafales, dérive du disque, force (break side) |
 | `js/offense.js` | IA offensive : handler, dump, stack, cuts |
 | `js/defense.js` | IA défensive : man, zone, interceptions, layout, double team |
-| `js/throwing.js` | Lancers : trajectoire, erreur, choix de passe de l'IA |
+| `js/throwing.js` | Lancers (normal, passe haute) : trajectoire, erreur, choix de passe de l'IA |
+| `js/stats.js` | Statistiques du match et résumé de fin de partie (MVP) |
 | `js/events.js` | Réception, interception, turnover, point, sélection du défenseur |
 | `js/sim.js` | Boucle de simulation : déplacements, stall count, vol du disque |
 | `js/point.js` | Lancement d'un point |
 | `js/plays.js` | Plays de départ (attaque et défense) |
 | `js/fx.js` | Sons synthétisés, particules, secousses, vibrations |
 | `js/pull.js` | Le pull : visée, courbe, jauge de puissance, réception et brick |
+| `js/replay.js` | Ralenti du dernier point, célébration après un point |
 | `js/render.js` | Dessin du terrain, des joueurs et des repères |
 | `js/ui.js` | HUD et menus |
+| `js/series.js` | Mini-tournoi (3 adversaires, progression mémorisée) |
+| `js/tuto.js` | Tutoriel interactif en 7 étapes |
 | `js/controls.js` | Souris, clavier, tactile, joystick virtuel |
-| `js/net.js` | Multijoueur en ligne (PeerJS) |
+| `js/gamepad.js` | Manette (API Gamepad) |
+| `js/net.js` | Multijoueur en ligne (PeerJS) : salle d'attente, spectateurs, reconnexion, émojis |
 | `js/main.js` | Boucle principale et démarrage |
 | `tools/simulate.js` | Matchs IA contre IA sans navigateur : `node tools/simulate.js 20` |
 

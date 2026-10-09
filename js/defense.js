@@ -13,6 +13,7 @@ function assignMan(defT, h) {
 }
 
 function zoneSlots(defT, ax, ay, dir, closed) {
+  if (defFormOf(defT) === 'clam') return clamSlots(defT, ax, ay, dir, closed);
   const open = -closed, atk = TEAMS[1 - defT], s = [];
   s[0] = { x: ax + dir * 1.0, y: ay + closed * 1.3 };                       // marqueur
   let deepA = null, dd = -1e9;
@@ -39,6 +40,27 @@ function zoneSlots(defT, ax, ay, dir, closed) {
     if (dep > 6 && dep < 21) { const sc = Math.abs(a.y - H / 2) + Math.abs(dep - 12) * 0.5; if (sc < best) { best = sc; midA = a; } }
   }
   s[4] = midA ? { x: midA.x - dir * 1, y: midA.y * 0.7 + ay * 0.3 } : { x: ax + dir * 12, y: H / 2 * 0.5 + ay * 0.5 };
+  return keepOutOfCircle(s, ax, ay);
+}
+// Clam : la mark, deux « pinces » devant le disque (under cuts côté open et au centre), deux deep qui se partagent la largeur
+function clamSlots(defT, ax, ay, dir, closed) {
+  const open = -closed, atk = TEAMS[1 - defT].filter(a => a !== disc.holder), s = [];
+  const [mx, my] = markSpot(defT, ax, ay);
+  s[0] = { x: mx, y: my };
+  const near = (x, y, r) => { const [a, d] = nearestD(atk, x, y); return a && d < r ? a : null; };
+  const pinch = (x, y) => { const a = near(x, y, 7); return a ? { x: (x + a.x) / 2 + dir * 0.6, y: (y + a.y) / 2 } : { x, y }; };
+  s[2] = pinch(ax + dir * 8, ay + open * 6);                                // pince côté open
+  s[3] = pinch(ax + dir * 10, ay * 0.4 + H / 2 * 0.6 - open * 1.5);         // pince centrale
+  let dd = 18;
+  for (const a of atk) dd = Math.max(dd, dir * (a.x - ax) + 2.5);
+  const deepY = side => { let best = side < 0 ? H * 0.28 : H * 0.72;        // chaque deep suit l'attaquant le plus profond de sa moitié
+    let bd = -1e9; for (const a of atk) { if ((a.y - H / 2) * side < 0) continue; const dep = dir * (a.x - ax); if (dep > bd) { bd = dep; best = a.y * 0.6 + best * 0.4; } }
+    return best; };
+  s[1] = { x: ax + dir * dd, y: deepY(-1) };
+  s[4] = { x: ax + dir * dd, y: deepY(1) };
+  return keepOutOfCircle(s, ax, ay);
+}
+function keepOutOfCircle(s, ax, ay) {
   for (let k = 1; k < 5; k++) {                                              // seul le marqueur entre dans le cercle de stall
     const o = s[k], dd = dist(o.x, o.y, ax, ay), lim = STALL_R + 0.9;
     if (dd < lim) { const f = lim / Math.max(dd, 0.01); o.x = ax + (o.x - ax) * f; o.y = ay + (o.y - ay) * f; }
@@ -62,10 +84,10 @@ function setupDefense(defT, h) {
 
 // Où un défenseur peut-il couper la trajectoire avant le disque ?
 function bestIntercept(d) {
-  const u0 = disc.t / disc.dur, peak = peakOf(disc.dur);
+  const u0 = disc.t / disc.dur, peak = discPeak();
   for (let u = u0 + 0.03; u <= 1.001; u += 0.04) {
     const [x, y] = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u);
-    if (Math.sin(Math.PI * u) * peak > 1.9) continue;
+    if (heightAt(u, peak, disc.kind) > 1.9) continue;
     const tA = (u - u0) * disc.dur;
     const r = dist(d.x, d.y, x, y);
     if (Math.max(0, r - 0.9) / SPD.sprint + 0.12 <= tA) return { x, y, tA, r };
@@ -89,7 +111,7 @@ function defenderAI(d, ax, ay, dir, closed, form, slots) {
   if (DP && DP.d === d && DP.team === d.team) {
     if (DP.type === 'safety') {
       const s = slots[1];
-      d.tx = s.x; d.ty = clamp(s.y + (form === 'zone' ? (s.y > H / 2 ? -7 : 7) : 0), 1, H - 1); return;
+      d.tx = s.x; d.ty = clamp(s.y + (form !== 'man' ? (s.y > H / 2 ? -7 : 7) : 0), 1, H - 1); return;
     }
     if (DP.type === 'double' && disc.mode === 'held') {            // juste hors du cercle, côté open
       const k = (STALL_R + 0.7) / Math.hypot(0.6, 1);
@@ -100,8 +122,8 @@ function defenderAI(d, ax, ay, dir, closed, form, slots) {
     const a = d.match;
     if (!a) { d.tx = d.x; d.ty = d.y; return; }
     const marking = ((disc.mode === 'held' || disc.mode === 'carry') && disc.holder === a) || (disc.mode === 'ground' && G.pickup === a);
-    if (marking) {                                          // marquage : on se place côté fermé
-      d.tx = disc.x + dir * 1.0; d.ty = disc.y + closed * 1.3; d.react = 0.08;
+    if (marking) {                                          // marquage : côté fermé (ou devant en straight up)
+      [d.tx, d.ty] = markSpot(d.team, disc.x, disc.y); d.react = 0.08;
     } else {                                                // on anticipe la course et on protège le côté ouvert
       const ant = aiLvl(d.team).anticip, px = a.x + a.vx * ant, py = a.y + a.vy * ant;
       const depth = dir * (a.x - ax);
@@ -140,7 +162,7 @@ function avoidDoubleTeam(d, form) {
   d.tx = clamp(h.x + ux * lim, 0.5, W - 0.5); d.ty = clamp(h.y + uy * lim, 0.5, H - 0.5);
 }
 function diveTo(p, x, y) {
-  if (p.dive > 0 || p.down > 0) return;
+  if (p.dive > 0 || p.down > 0 || p.jump > 0 || p.jprep > 0) return;
   let dx = x - p.x, dy = y - p.y, l = Math.hypot(dx, dy);
   if (l < 0.3) { dx = p.vx; dy = p.vy; l = Math.hypot(dx, dy); }
   if (l < 0.01) { dx = 1; dy = 0; l = 1; }

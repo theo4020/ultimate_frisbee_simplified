@@ -11,7 +11,7 @@ const goalLine = t => (t === 0 ? EZ : W - EZ);   // ligne d'en-but que l'équipe
 function placeForPull() {
   const r = G.receiving, d = 1 - r, ys = [4, 11, 18.5, 26, 33];
   players.forEach(p => {
-    p.vx = p.vy = 0; p.dive = p.down = 0; p.react = 0; p.tag = ''; p.inT = 0;
+    p.vx = p.vy = 0; p.dive = p.down = 0; p.jump = p.jprep = p.jrec = p.jumpAt = 0; p.windup = null; p.react = 0; p.tag = ''; p.inT = 0;
     p.state = 'stack'; p.role = 'cutter'; p.match = null;
   });
   TEAMS[r].forEach((p, k) => { p.x = p.tx = goalLine(r); p.y = p.ty = ys[k]; });
@@ -34,7 +34,7 @@ function startPull() {
 const localPuller = () => G.phase === 'pull' && !!G.pull && !!captain(G.pull.team) && captain(G.pull.team).id === G.myId;
 function pullFlash() {
   if (!G.pull) return;
-  flash(G.pull.team === G.me ? 'À toi de puller !' : 'Pull adverse…', true);
+  flash(G.spectator ? 'Pull !' : G.pull.team === G.me ? (localPuller() ? 'À toi de puller !' : 'Ton équipe pulle…') : 'Pull adverse…', true);
 }
 
 // position de la jauge (0 → 1 → 0…), en temps réel
@@ -114,7 +114,7 @@ function launchPull(ax, ay, curve, q) {
   const [wx, wy] = drift(dur);
   const [cx, cy] = ctrlFor(h.x, h.y, aimX, aimY, curve);
   Object.assign(disc, { mode: 'air', holder: null, sx: h.x, sy: h.y, ex: aimX + wx, ey: aimY + wy, cx, cy,
-    t: 0, dur, thrower: h, team: r, rolled: new Set(), pull: true });
+    t: 0, dur, thrower: h, team: r, rolled: new Set(), pull: true, kind: 'normal', curveV: curve });
   disc.intended = nearest(TEAMS[r], disc.ex, disc.ey);
   G.phase = 'play'; G.off = r; G.pullPending = true; G.pull = null;
   assignRoles(r, disc.intended);
@@ -123,6 +123,7 @@ function launchPull(ax, ay, curve, q) {
   players.forEach(p => { p.react = 0; p.diveTried = true; });
   fxEvent('pull', h.x, h.y, d);
   flash(q > p1 ? 'Pull trop fort !' : q >= p0 ? 'Pull parfait !' : 'Pull court');
+  if (G.tuto) tutoEvent('pull', q);
 }
 
 // réception du pull à la volée

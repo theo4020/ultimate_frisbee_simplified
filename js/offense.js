@@ -7,6 +7,13 @@ function dumpSlot(ax, ay, dir, open) {
   return { x: clamp(ax - dir * 4, 1, W - 1), y: clamp(ay - open * 5, 2, H - 2) };
 }
 function stackY(ay) { return clamp(H / 2 + (ay - H / 2) * 0.3, 9, H - 9); }
+// ligne du stack : au centre (vertical) ou le long de la ligne côté break (side stack)
+const isColumn = form => form === 'vert' || form === 'side';
+function lineY(t, ay, form) {
+  if (form !== 'side') return stackY(ay);
+  const open = -closedOf(1 - t);
+  return clamp(H / 2 - open * 11, 5, H - 5);
+}
 
 function assignRoles(t, h) {
   const dir = dirOf(t), open = -closedOf(1 - t);
@@ -14,7 +21,7 @@ function assignRoles(t, h) {
   const ds = dumpSlot(h.x, h.y, dir, open);
   const dump = nearest(others, ds.x, ds.y);
   const cutters = others.filter(p => p !== dump);
-  if (formOf(t) === 'vert') cutters.sort((a, b) => dir * (a.x - b.x));
+  if (isColumn(formOf(t))) cutters.sort((a, b) => dir * (a.x - b.x));
   else cutters.sort((a, b) => a.y - b.y);
   G.order[t] = cutters;
   cutters.forEach(p => { p.role = 'cutter'; p.state = 'stack'; p.timer = 0; });
@@ -27,10 +34,10 @@ function cutterSlot(p, t, ax, ay, dir, form) {
   const ord = G.order[t], n = Math.max(1, ord.length);
   let idx = ord.indexOf(p); if (idx < 0) idx = n - 1;
   const avail = depthLeft(ax, dir);
-  if (form === 'vert') {
+  if (isColumn(form)) {
     const start = Math.min(9, Math.max(3, avail * 0.3));
     const sp = clamp((avail - start) / Math.max(1, n - 0.5), 1.6, 4.5);
-    return { x: clamp(ax + dir * (start + sp * idx), 1.5, W - 1.5), y: stackY(ay) };
+    return { x: clamp(ax + dir * (start + sp * idx), 1.5, W - 1.5), y: lineY(t, ay, form) };
   }
   const lanes = n >= 3 ? [6, H / 2, H - 6] : n === 2 ? [10, H - 10] : [H / 2];
   const depth = Math.min(14, Math.max(4, avail * 0.55));
@@ -75,11 +82,12 @@ function runCutSequencer(t, ax, ay, dir, open, form, dt) {
   if (!ready.length) return;
   const room = depthLeft(ax, dir);
   const deep = room > 20 && Math.random() < 0.45;            // deep cuts plus fréquents
-  let c, sy = stackY(ay);
-  if (form === 'vert') {
+  let c, sy = lineY(t, ay, form);
+  if (isColumn(form)) {
     c = deep ? ready[0] : ready[ready.length - 1];          // l'avant part en profondeur, l'arrière coupe vers le disque
-    if (deep) { c.cx = ax + dir * rand(22, 30); c.cy = sy + open * rand(2, 7); }
-    else { c.cx = ax + dir * rand(5, 9); c.cy = sy + open * rand(8, 12); }
+    const side = form === 'side' ? 1.6 : 1;                   // side stack : les cuts traversent tout l'open side
+    if (deep) { c.cx = ax + dir * rand(22, 30); c.cy = sy + open * rand(2, 7) * side; }
+    else { c.cx = ax + dir * rand(5, 9); c.cy = sy + open * rand(8, 12) * side; }
   } else {
     const byOpen = ready.slice().sort((a, b) => open * (b.y - a.y));
     c = deep ? byOpen[Math.floor(Math.random() * byOpen.length)] : byOpen[0];
@@ -164,10 +172,10 @@ function attackerAI(p, t, ax, ay, dir, open, form, dt) {
       p.tx = p.cx; p.ty = p.cy; p.sp = 1.5;
       if (p.timer <= 0) {
         p.state = 'clear'; p.timer = 4;
-        if (form === 'vert') {                               // dégage côté fermé puis retourne au bout de la colonne
+        if (isColumn(form)) {                                // dégage côté fermé puis retourne au bout de la colonne
           const ord = G.order[t], i = ord.indexOf(p);
           if (i >= 0) { ord.splice(i, 1); ord.push(p); }
-          p.wx = p.x + dir * 2; p.wy = clamp(stackY(ay) - open * 5, 2, H - 2); p.wDone = false;
+          p.wx = p.x + dir * 2; p.wy = clamp(lineY(t, ay, form) - open * (form === 'side' ? 2 : 5), 2, H - 2); p.wDone = false;
         } else p.wDone = true;
       }
       break;

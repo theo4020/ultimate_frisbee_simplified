@@ -8,6 +8,7 @@ function setCurve(v) { G.curve = clamp(v, -1, 1); $('curveRange').value = G.curv
 function switchDefender() { if (canSwitchNow(meH())) doSwitch(); }
 // layout possible en défense, et en attaque quand ton équipe a le disque en l'air
 const canLayout = () => G.phase === 'play' && (defending() || (disc.mode === 'air' && disc.team === G.me && !disc.pull));
+function userJump() { if (canJump()) { doJump(); G.pointer.last = G.time; } }
 function userDive() { if (canLayout()) { doDive(G.pointer.x, G.pointer.y); G.pointer.last = G.time; } }
 function toWorld(e) { const r = canvas.getBoundingClientRect(); return { x: (e.clientX - r.left) / S - M, y: (e.clientY - r.top) / S - M }; }
 function setPointer(e) { const w = toWorld(e); G.pointer.x = w.x; G.pointer.y = w.y; G.pointer.active = true; G.pointer.last = G.time; sendInput(); }
@@ -26,6 +27,8 @@ const touchField = e => e.pointerType !== 'mouse' && isTouch() && G.phase === 'p
 canvas.addEventListener('pointermove', e => { if (!touchField(e)) setPointer(e); });
 canvas.addEventListener('pointerdown', e => {
   e.preventDefault();
+  G.gpActive = false;
+  if (G.replay) { stopReplay(); return; }
   if (G.phase === 'pull') {                                  // pull : choisir la cible, puis arrêter la jauge
     setPointer(e); const w = toWorld(e); pullPointerDown(w.x, w.y); return;
   }
@@ -71,8 +74,10 @@ canvas.addEventListener('pointercancel', e => { G.pointer.down = false; G.aiming
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 canvas.addEventListener('wheel', e => { e.preventDefault(); adjustCurve(e.deltaY > 0 ? 0.1 : -0.1); }, { passive: false });
 window.addEventListener('keydown', e => {
-  if (e.target && e.target.tagName === 'INPUT' && e.target.type === 'text') { if (e.key === 'Enter') $('joinGo').click(); return; }
+  if (e.target && e.target.tagName === 'INPUT' && e.target.type !== 'range') { if (e.key === 'Enter' && e.target.id === 'joinCode') $('joinGo').click(); return; }
   const k = e.key.toLowerCase();
+  if (G.replay) { if (k === 'escape' || k === ' ' || k === 'enter') { e.preventDefault(); stopReplay(); } return; }
+  if (k === 'z' || k === 'w') { cycleThrowKind(); return; }
   if (k === 'a' || k === 'q' || k === 'arrowleft') adjustCurve(-0.25);
   else if (k === 'e' || k === 'd' || k === 'arrowright') adjustCurve(0.25);
   else if ((k === ' ' || k === 'enter') && localPuller()) { e.preventDefault(); pullStop(); }
@@ -83,6 +88,7 @@ window.addEventListener('keydown', e => {
     if (canSwitchNow(h) && p && !takenByOther(p, h)) doSelect(p);
   }
   else if (k === 'f' || k === 'shift') userDive();
+  else if (k === 's') userJump();
   else if (k === 'enter' && G.menuShown && $('stratCard').style.display !== 'none' && !$('go').disabled) $('go').click();
 });
 $('curveL').addEventListener('click', () => adjustCurve(-0.25));
@@ -90,6 +96,7 @@ $('curveR').addEventListener('click', () => adjustCurve(0.25));
 $('curveRange').addEventListener('input', e => setCurve(+e.target.value));
 $('switchD').addEventListener('click', switchDefender);
 $('diveB').addEventListener('click', userDive);
+$('jumpB').addEventListener('click', userJump);
 $('muteB').addEventListener('click', toggleMute);
 if (FX.muted) $('muteB').textContent = '🔇';
 
@@ -138,6 +145,7 @@ function joyFrame() {
   document.body.classList.toggle('joyon', !!mode);
   document.body.classList.toggle('canlayout', canLayout());
   document.body.classList.toggle('canswitch', canSwitchNow(meH()));
+  document.body.classList.toggle('canjump', canJump());
   if (!joy.active) return;
   if (joy.mode !== mode) { joy.mode = mode; joy.aim = null; G.aiming = false; }
   const m = Math.hypot(joy.dx, joy.dy);
@@ -164,7 +172,7 @@ function touchDive() {
   const l = Math.hypot(dx, dy) || 1;
   doDive(sel.x + dx / l * 3, sel.y + dy / l * 3);
 }
-for (const [id, fn] of [['tDive', touchDive], ['tSwitch', switchDefender]])
+for (const [id, fn] of [['tDive', touchDive], ['tSwitch', switchDefender], ['tJump', userJump]])
   $(id).addEventListener('pointerdown', e => { e.preventDefault(); fn(); });
 const fsOK = document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen;
 if (!fsOK) $('fsB').style.setProperty('display', 'none', 'important');

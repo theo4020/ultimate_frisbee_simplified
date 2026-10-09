@@ -44,7 +44,11 @@ body.touch #controls button{padding:13px 22px;font-size:17px;font-weight:600}
 #tbtns #tDive{background:rgba(180,83,9,.9)}
 body.touch.joyon #joy{display:block}
 body.touch.canlayout #tbtns,body.touch.canswitch #tbtns{display:flex}
-body:not(.canlayout) #tDive,body:not(.canswitch) #tSwitch{display:none}
+body:not(.canlayout) #tDive,body:not(.canswitch) #tSwitch,body:not(.canjump) #tJump{display:none}
+#tbtns #tJump{background:rgba(14,116,144,.9)}
+body.touch.canjump #tbtns{display:flex}
+#jumpB{background:#0e7490}
+body.touch #jumpB{display:none!important}
 body.touch #diveB,body.touch #switchD{display:none!important}
 body.touch.portrait #rotateHint{display:block}
 .net{font-size:13px;color:var(--muted)}
@@ -90,3 +94,57 @@ details b{color:var(--text)}
 .teamcol li.ai{color:var(--muted);font-style:italic}
 .teamcol button{width:100%}
 #stratRows.locked{opacity:.55;pointer-events:none}
+
+/* types de lancer */
+#throwSel{display:flex;gap:0;align-items:center;border-radius:8px;overflow:hidden}
+#throwSel .tk{border-radius:0;padding:9px 12px;background:var(--panel)}
+#throwSel .tk.on{background:var(--accent);color:#1e293b;font-weight:700}
+#throwSel .kbd{color:var(--muted);font-size:13px;margin-left:6px}
+body.touch #throwSel .tk{padding:12px 14px;font-size:15px}
+/* chat rapide */
+#emoBar{position:absolute;top:8px;right:8px;display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;max-width:60%}
+#emoBar button{padding:4px 8px;font-size:15px;background:rgba(15,23,42,.6);border:1px solid rgba(255,255,255,.2)}
+/* tutoriel */
+#tutoBox{max-width:900px;margin:0 auto 8px;background:rgba(15,23,42,.92);display:flex;flex-wrap:wrap;gap:4px 14px;align-items:center;
+  border:2px solid var(--accent);border-radius:12px;padding:8px 12px;font-size:14px;line-height:1.4}
+#tutoBox .tutoHead{flex-direction:column;margin:0;min-width:110px}
+#tutoText{flex:1;min-width:240px}
+.tutoHead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
+.tutoHead b{font-size:16px;color:var(--accent)} .tutoHead span{font-size:12px;color:var(--muted)}
+#tutoText b{color:#fff}
+.tutoBtns{display:flex;gap:8px;justify-content:flex-end}
+.tutoBtns button{padding:6px 12px;font-size:13px}
+#tutoSkip{background:var(--accent);color:#1e293b;font-weight:700}
+@media (max-height:520px){#tutoBox{font-size:12px;padding:4px 8px;margin-bottom:4px}.tutoHead b{font-size:14px}#tutoBox .tutoHead{min-width:0}}
+/* résumé de fin de match */
+#summary{background:var(--bg);border-radius:10px;padding:10px 12px;margin:6px 0 10px;font-size:14px}
+.sumScore{text-align:center;font-size:18px;font-weight:700}
+.sumScore b{font-size:24px;margin:0 8px;color:var(--text)}
+.sumDots{display:flex;gap:4px;justify-content:center;margin:6px 0}
+.sumDots i{width:12px;height:12px;border-radius:50%;display:inline-block;border:1px solid rgba(255,255,255,.3)}
+.mvp{text-align:center;margin:6px 0 8px;color:var(--text)}
+.sumT,.sumP{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px}
+.sumT td,.sumT th,.sumP td,.sumP th{padding:3px 6px;text-align:center;border-bottom:1px solid var(--panel2)}
+.sumT td:first-child,.sumP td:first-child,.sumP th:first-child{text-align:left;color:var(--muted)}
+.sumP td:first-child{color:var(--text)}
+#summary details{margin:8px 0 0}
+#summary small{color:var(--muted)}
+#replayB{width:100%;margin:0 0 8px}
+/* tournoi */
+#seriesList{list-style:none;padding:0;margin:10px 0}
+#seriesList li{display:flex;align-items:center;gap:10px;background:var(--bg);border-radius:10px;padding:10px;margin:6px 0}
+#seriesList li i{width:18px;height:18px;border-radius:50%;flex:none;border:2px solid rgba(255,255,255,.3)}
+#seriesList li div{flex:1} #seriesList li small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+#seriesList li.cur{outline:2px solid var(--accent)} #seriesList li.lock{opacity:.55}
+.sres{font-size:13px;font-weight:700;white-space:nowrap} .sres.win{color:#4ade80}
+#seriesCard .row button{width:auto}
+/* équipes : noms et couleurs */
+.tname{font:inherit;width:140px;padding:7px 9px;border-radius:8px;border:1px solid var(--panel2);background:var(--bg);color:var(--text)}
+.swatches{display:flex;gap:4px;flex-wrap:wrap;width:auto!important}
+.sw{width:24px;height:24px;padding:0;border-radius:50%;border:2px solid rgba(255,255,255,.25)}
+.sw.on{outline:3px solid var(--accent);outline-offset:1px}
+/* salle d'attente : spectateurs */
+.specrow{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:14px;color:var(--muted);margin:-2px 0 8px}
+.specrow b{color:var(--text);font-weight:600}
+.bigbtn.primary{background:var(--accent);color:#1e293b}
+.bigbtn.primary small{color:#334155}

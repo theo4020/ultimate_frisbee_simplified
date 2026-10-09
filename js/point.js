@@ -27,12 +27,15 @@ function placeForPoint() {
 
 function startPoint() {
   const pick = o => o[Math.floor(Math.random() * o.length)];
-  G.ai.off = pick(['vert', 'ho']);
-  G.ai.def = Math.random() < 0.6 ? 'man' : 'zone';
-  G.ai.force = pick(['haut', 'bas', 'middle']);
-  G.ai.play = Math.random() < 0.5 ? 'none' : pick(['huck', 'split', 'give', 'flood']);
+  G.ai.off = pick(['vert', 'vert', 'ho', 'side']);
+  G.ai.def = Math.random() < 0.55 ? 'man' : pick(['zone', 'zone', 'clam']);
+  G.ai.force = pick(['haut', 'bas', 'middle', 'haut', 'bas', 'straight']);
+  G.ai.play = Math.random() < 0.5 ? 'none' : pick(['huck', 'split', 'give', 'flood', 'swing']);
   G.ai.dplay = Math.random() < 0.5 ? 'none' : pick(['safety', 'double', 'junk']);
   const r = G.receiving, d = 1 - r;
+  if (!G.ms) newMatchStats();
+  G.ms.ptT = 0;
+  replayReset(); G.celebrate = null; G.scorer = null; FX.celebrate = null; G.throwKind = 'normal';
   const oType = cfg(r).play, dType = cfg(d).dplay;
   G.dplay = dType === 'none' ? null : { type: dType, team: d, t: 0, throws: 0, d: null };
   G.pendingOPlay = oType;                                     // le play d'attaque démarre à la première possession

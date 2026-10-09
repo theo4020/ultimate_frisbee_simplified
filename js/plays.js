@@ -26,6 +26,11 @@ function startOPlay() {
     dump.tag = '1'; dump.state = 'park'; dump.role = 'cutter';
     dump.cx = clamp(h.x - dir * 1.5, 1, W - 1); dump.cy = clamp(h.y + open * 6.5, 2, H - 2);
     P.targets = [dump];
+  } else if (P.type === 'swing') {                           // le dump se place derrière, côté break
+    P.b = dump; P.giver = h; P.dur = 8;
+    dump.tag = '1'; dump.state = 'park'; dump.role = 'cutter';
+    dump.cx = clamp(h.x - dir * 3, 1, W - 1); dump.cy = clamp(h.y - open * 6.5, 2, H - 2);
+    P.targets = [dump];
   } else if (P.type === 'flood') {
     P.a = byOpen[0]; P.a.tag = '1'; P.dur = 7;
     P.a.state = 'park'; P.a.cx = h.x + dir * 13; P.a.cy = H / 2 + open * 3; clampPt(P.a);
@@ -84,6 +89,13 @@ function playOnCatch(p) {
     }
     P.b.tag = ''; g.tag = '2'; P.a = g; P.targets = [g]; P.phase = 1; P.dur = P.t + 3;
     return;
+  }
+  if (P.type === 'swing' && P.phase === 0 && p === P.b) {    // le dump a le disque : un cutter attaque l'autre côté
+    const dir = dirOf(p.team), side = Math.sign(p.y - P.giver.y) || 1;
+    const tx = p.x + dir * rand(8, 11), ty = clamp(p.y + side * rand(6, 9), 2, H - 2);
+    const c = nearest(G.order[p.team].filter(q => q !== p && q !== P.giver), tx, ty);
+    P.b.tag = '';
+    if (c) { startCut(c, tx, ty, false); c.tag = '2'; P.a = c; P.targets = [c]; P.phase = 1; P.dur = P.t + 3.5; return; }
   }
   if (P.t > 0.05) endOPlay();
 }

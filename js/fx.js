@@ -70,6 +70,8 @@ const SOUNDS = {
   stall: () => whistle(),
   double: () => { tone(440, 0.1, { type: 'square', vol: 0.08 }); tone(440, 0.1, { type: 'square', vol: 0.08, delay: 0.16 }); },
   call: () => tone(660, 0.07, { type: 'triangle', vol: 0.1 }),
+  jump: () => tone(300, 0.14, { type: 'triangle', to: 620, vol: 0.09 }),
+  duel: () => { noise(0.12, { filter: 'lowpass', freq: 1400, vol: 0.3 }); tone(520, 0.1, { type: 'square', vol: 0.07, delay: 0.04 }); },
   land: () => noise(0.12, { filter: 'lowpass', freq: 700, vol: 0.18 }),
   tick: () => tone(880, 0.05, { vol: 0.05 }),
   tickHi: () => tone(1100, 0.06, { type: 'triangle', vol: 0.1 }),
@@ -79,7 +81,7 @@ const SOUNDS = {
 function whistle() { tone(2300, 0.32, { type: 'sine', vol: 0.12 }); tone(2450, 0.32, { type: 'sine', vol: 0.06 }); }
 
 // ---------- particules ----------
-const TEAM_COL = ['#3b82f6', '#ef4444'];
+const teamColor = t => (t === 0 || t === 1 ? tcol(t) : '#fff');
 function burst(x, y, n, opt) {
   for (let i = 0; i < n; i++) {
     const a = Math.random() * Math.PI * 2, sp = (opt.speed || 6) * (0.4 + Math.random() * 0.8);
@@ -94,7 +96,7 @@ function vibrate(p) { try { if (navigator.vibrate && document.body.classList.con
 // ---------- événements ----------
 function fxPlay(name, x, y, team) {
   try { if (SOUNDS[name]) SOUNDS[name](team); } catch (e) { }
-  const c = TEAM_COL[team] || '#fff';
+  const c = teamColor(team);
   switch (name) {
     case 'catch': ring(x, y, 'rgba(255,255,255,.9)', 2.2, 0.35); break;
     case 'block': burst(x, y, 14, { color: ['#f87171', '#fb923c', '#fde68a'], speed: 9, life: 0.5 }); ring(x, y, '#f87171', 3, 0.4); FX.shake = Math.max(FX.shake, 7); vibrate(60); break;
@@ -107,11 +109,16 @@ function fxPlay(name, x, y, team) {
         FX.parts.push({ x: ex + (Math.random() - 0.5) * EZ, y: Math.random() * H, vx: (Math.random() - 0.5) * 4, vy: -2 - Math.random() * 5,
           t: 0, life: 1.2 + Math.random() * 0.8, color: [c, '#facc15', '#fff'][i % 3], size: 0.85, kind: 'confetti', rot: Math.random() * 6, vr: (Math.random() - 0.5) * 14, drag: 0.6, grav: 5 });
       }
-      FX.shake = Math.max(FX.shake, 5); FX.pop = 1; vibrate([60, 40, 120]); break;
+      FX.shake = Math.max(FX.shake, 5); FX.pop = 1; vibrate([60, 40, 120]);
+      FX.celebrate = { team, t: 0 };
+      replaySave(team);
+      break;
     }
     case 'double': if (disc.holder) ring(disc.holder.x, disc.holder.y, '#f87171', STALL_R, 0.6); break;
     case 'stall': FX.shake = Math.max(FX.shake, 4); vibrate(80); break;
     case 'pull': ring(x, y, 'rgba(255,255,255,.8)', 3, 0.5); break;
+    case 'duel': burst(x, y, 12, { color: [c, '#fde68a', '#fff'], speed: 7, life: 0.5 }); ring(x, y, c, 2.6, 0.45); FX.shake = Math.max(FX.shake, 5); vibrate(40); break;
+    case 'jump': ring(x, y, 'rgba(255,255,255,.5)', 1.4, 0.3); break;
     case 'call': ring(x, y, '#facc15', 2.2, 0.6); ring(x, y, 'rgba(250,204,21,.6)', 3.4, 0.8); break;
     case 'land': burst(x, y, 6, { color: ['#d9f99d', '#a3e635'], speed: 2.5, life: 0.45, size: 0.25 }); break;
   }
@@ -134,6 +141,7 @@ function fxUpdate(dt) {
     }
   }
   FX.shake = Math.max(0, FX.shake - dt * 30);
+  if (FX.celebrate) FX.celebrate.t += dt;
   FX.pop = Math.max(0, FX.pop - dt * 1.5);
   // traînée du disque en vol
   if (disc.mode === 'air') { FX.trail.push([disc.x, disc.y, disc.z]); if (FX.trail.length > 14) FX.trail.shift(); }

@@ -52,12 +52,12 @@ function drawStreaks() {
   ctx.restore();
 }
 // Temps de vol : un disque lancé contre le vent flotte plus longtemps, avec le vent il file
-function throwDur(sx, sy, ax, ay) {
+function throwDur(sx, sy, ax, ay, kind) {
   const d = dist(sx, sy, ax, ay) || 0.01, [wx, wy] = windNow();
   const along = (wx * (ax - sx) + wy * (ay - sy)) / d;       // > 0 : vent dans le dos du lanceur
-  return flightTime(d) * clamp(1 - 0.01 * along, 0.85, 1.15);
+  return flightTime(d) * clamp(1 - 0.01 * along, 0.85, 1.15) * (THROWS[kind] || THROWS.normal).dur;
 }
-function drift(dur) { const [wx, wy] = windNow(); return [wx * dur * DRIFT, wy * dur * DRIFT]; }
+function drift(dur, kind) { const [wx, wy] = windNow(), k = dur * DRIFT * (THROWS[kind] || THROWS.normal).drift; return [wx * k, wy * k]; }
 function windLabel() {
   const { x, y, kmh } = G.wind;
   if (kmh < 4) return 'presque nul';
@@ -66,19 +66,26 @@ function windLabel() {
   return k + (y < 0 ? ', de côté (vers le haut)' : ', de côté (vers le bas)');
 }
 // Où viser pour que le disque arrive en (tx, ty) malgré le vent
-function aimFor(h, tx, ty) {
+function aimFor(h, tx, ty, kind) {
   let ax = tx, ay = ty;
-  for (let i = 0; i < 3; i++) { const [dx, dy] = drift(throwDur(h.x, h.y, ax, ay)); ax = tx - dx; ay = ty - dy; }
+  for (let i = 0; i < 3; i++) { const [dx, dy] = drift(throwDur(h.x, h.y, ax, ay, kind), kind); ax = tx - dx; ay = ty - dy; }
   return [ax, ay];
 }
 // côté « break » (bloqué par la mark) : -1 = haut du terrain (y petit), +1 = bas
-function forceOf(defT) { return defFormOf(defT) === 'zone' ? 'middle' : cfg(defT).force; }
+function forceOf(defT) { return defFormOf(defT) === 'zone' ? 'middle' : (cfg(defT).force || 'haut'); }
 function closedOf(defT) {
   const f = forceOf(defT);
   if (f === 'haut') return 1;                               // force haut : on bloque le bas
   if (f === 'bas') return -1;
-  const y = disc.mode === 'air' ? disc.ey : disc.y;          // force middle : on bloque le côté de la ligne la plus proche
+  // force middle (et straight up) : le côté de la ligne la plus proche
+  const y = disc.mode === 'air' ? disc.ey : disc.y;
   return y < H / 2 ? -1 : 1;
+}
+// où se place la mark : côté fermé, ou pile devant en straight up
+function markSpot(defT, ax, ay) {
+  const dir = dirOf(1 - defT);
+  if (forceOf(defT) === 'straight') return [ax + dir * 1.4, ay];
+  return [ax + dir * 1.0, ay + closedOf(defT) * 1.3];
 }
 function anchor() {
   if (disc.mode === 'air') return [disc.ex, disc.ey];
