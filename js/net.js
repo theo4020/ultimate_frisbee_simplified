@@ -50,7 +50,7 @@ function sendInput(force) {
   if (G.net !== 'guest') return;
   if (!force && G.time - inT < 0.033) return;
   inT = G.time;
-  netSend({ t: 'in', x: +G.pointer.x.toFixed(2), y: +G.pointer.y.toFixed(2), down: G.pointer.down, high: G.aiming && G.throwKind === 'high' });
+  netSend({ t: 'in', x: +G.pointer.x.toFixed(2), y: +G.pointer.y.toFixed(2), down: G.pointer.down, high: G.throwKind === 'high' && canThrow() });
 }
 function netError(msg) {
   for (const c of conns.values()) { try { c.close(); } catch (e) { } }
