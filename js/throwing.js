@@ -58,7 +58,8 @@ function laneSlack(h, aimX, aimY, tx, ty, curve, opp, kind) {
   return min;
 }
 
-function aiThrow(h) {
+// release = fin de l'armement d'une passe haute : on choisit la meilleure passe haute à cet instant
+function aiThrow(h, release) {
   const t = h.team, dir = dirOf(t), opp = TEAMS[1 - t];
   const press = Math.max(G.stall, G.holdT * 0.8);           // même sans marqueur, l'IA finit par lancer
   let best = null, bv = -1e9;
@@ -88,28 +89,33 @@ function aiThrow(h) {
       const gain = dir * (cx0 - h.x), long = gain > 20;
       // lancers essayés : normal avec 3 courbes ; passe haute par-dessus la défense (receveur peu mobile, pas trop loin)
       const opts = [['normal', -0.5], ['normal', 0], ['normal', 0.5]];
-      if (d >= 8 && d <= 26 && pSpeed < 6) opts.push(['high', 0]);
+      if (d >= 8 && d <= 26 && pSpeed < (release ? 8 : 6)) opts.push(['high', 0]);
       for (const [kind, curve] of opts) {
+        if (release && kind !== 'high') continue;
         const [aimX, aimY] = aimFor(h, cx0, cy0, kind);
         if (dist(h.x, h.y, aimX, aimY) > THROWS[kind].max) continue;
         const slack = laneSlack(h, aimX, aimY, cx0, cy0, curve, opp, kind);
-        const kindCost = kind === 'high' ? 0.5 + G.wind.kmh * 0.05 + throwErr(d, 0, kind) * 0.35 : 0;
+        const kindCost = kind === 'high' ? (release ? 0 : 0.1 + G.wind.kmh * 0.04 + throwErr(d, 0, kind) * 0.2) : 0;
         // les passes qui font avancer le jeu valent plus, les longues encore plus (huck)
         const v = clamp(slack, -1, 0.6) * 4 + gain * 0.3 + (long ? 2.2 : 0) + (inScoreZone(t, cx0) ? 8 : 0)
           + (G.stall > 5 && p.role === 'dump' ? 2.5 : 0) + (p.free ? 4 : 0) + playBonus - Math.abs(curve) * 0.6 - d * (0.02 + G.wind.kmh * 0.003) - kindCost;
         // un huck peut être un peu disputé : le disque passe au-dessus de la défense au milieu
-        const minSlack = (playBonus && P.type === 'huck' ? -0.15 : long || p.free ? -0.08 : 0.05) + aiLvl(t).safe + (kind === 'high' ? 0.1 : 0);
+        const minSlack = (playBonus && P.type === 'huck' ? -0.15 : long || p.free ? -0.08 : 0.05) + aiLvl(t).safe + (kind === 'high' ? (release ? -0.15 : 0) : 0);
         if (slack < minSlack && press < 8.3) continue;
         if (v > bv) { bv = v; best = { tx: aimX, ty: aimY, curve, kind }; }
       }
     }
+  }
+  if (release) {                                            // passe haute armée : on la lance, ou on renonce
+    if (best && best.kind === 'high') throwDisc(h, best.tx, best.ty, best.curve, 0.85 * aiLvl(t).err, 'high');
+    else h.think = 0.2;
+    return;
   }
   if (!best && press > 9) {                                 // filet de sécurité : aucune option propre, on lance au plus proche
     const p = nearest(TEAMS[t], h.x + dir * 8, h.y, h);
     if (p) { const [ax2, ay2] = aimFor(h, clamp(p.x, 1, W - 1), clamp(p.y, 1, H - 1)); best = { tx: ax2, ty: ay2, curve: 0 }; bv = 9; }
   }
   if (!best || (bv < 3.2 - press * 0.35 && press < 6)) { h.think = 0.25; return; }
-  if (best.kind === 'high') { h.windup = { b: best, t: HIGH_WINDUP }; return; }   // le geste d'une passe haute se voit
+  if (best.kind === 'high') { h.windup = { t: rand(...HIGH_WINDUP) }; return; }   // il arme sa passe haute (visible), lancera plus tard
   throwDisc(h, best.tx, best.ty, best.curve, 0.85 * aiLvl(t).err, best.kind);
 }
-
