@@ -186,3 +186,22 @@ body.touch #tutoBox .tutoHead{min-width:0}
 body.touch .tutoHead b{font-size:13px}
 body.touch .tutoBtns button{padding:4px 8px;font-size:12px}
 body.touch #rotateHint{position:fixed;top:30px;left:10px;right:10px;z-index:8}
+
+/* téléphone : joystick flottant pour lancer, courbe et passe haute sur le bord droit */
+#fjoy,#curveV,#highB{display:none}
+#fjoy{position:fixed;transform:translate(-50%,-50%);border-radius:50%;border:2px dashed rgba(255,255,255,.55);
+  background:rgba(15,23,42,.18);pointer-events:none;z-index:4}
+#fknob{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;background:rgba(250,204,21,.85);
+  box-shadow:0 2px 8px rgba(0,0,0,.4)}
+body.touch.curveon #curveV{display:flex}
+#curveV{position:fixed;right:max(10px,env(safe-area-inset-right));top:34px;height:min(46vh,190px);width:46px;flex-direction:column;align-items:center;
+  gap:2px;background:rgba(15,23,42,.6);border-radius:23px;padding:4px 0;z-index:5;touch-action:none;color:#cbd5e1;font-size:16px;user-select:none;-webkit-user-select:none}
+.cvtrack{position:relative;flex:1;width:8px;border-radius:4px;background:#475569}
+.cvmid{position:absolute;left:-6px;right:-6px;top:50%;height:2px;background:#94a3b8}
+#curveVThumb{position:absolute;left:50%;top:50%;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;background:var(--accent);box-shadow:0 2px 6px rgba(0,0,0,.4)}
+body.touch.highon #highB{display:block}
+#highB{position:fixed;right:max(6px,env(safe-area-inset-right));top:calc(40px + min(46vh,190px));width:56px;padding:6px 0;font-size:11px;font-weight:700;
+  line-height:1.15;border-radius:12px;background:rgba(51,65,85,.9);border:2px solid rgba(196,181,253,.6);z-index:5;touch-action:none}
+#highB.on{background:#7c3aed;border-color:#ddd6fe;color:#fff}
+body.touch #controls{display:none!important}
+body.touch #emoBar{left:max(8px,env(safe-area-inset-left));right:auto;justify-content:flex-start}
