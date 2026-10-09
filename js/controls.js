@@ -4,7 +4,10 @@
 //  Contrôles (souris, clavier, tactile)
 // =====================================================================
 function adjustCurve(v) { setCurve(Math.round((G.curve + v) * 100) / 100); }
-function setCurve(v) { G.curve = clamp(v, -1, 1); $('curveRange').value = G.curve; }
+function setCurve(v) {
+  G.curve = clamp(v, -1, 1); $('curveRange').value = G.curve;
+  const th = $('curveVThumb'); if (th) th.style.top = ((G.curve + 1) / 2 * 100) + '%';
+}
 function switchDefender() { if (canSwitchNow(meH())) doSwitch(); }
 // layout possible en défense, et en attaque quand ton équipe a le disque en l'air
 const canLayout = () => G.phase === 'play' && (defending() || (disc.mode === 'air' && disc.team === G.me && !disc.pull));
@@ -27,6 +30,7 @@ const touchField = e => e.pointerType !== 'mouse' && isTouch() && G.phase === 'p
 canvas.addEventListener('pointermove', e => { if (!touchField(e)) setPointer(e); });
 canvas.addEventListener('pointerdown', e => {
   e.preventDefault();
+  if (FD && FD.id === e.pointerId) return;                   // lancer « glissé » en cours (téléphone)
   G.gpActive = false;
   if (G.replay) { stopReplay(); return; }
   if (G.phase === 'pull') {                                  // pull : choisir la cible, puis arrêter la jauge
@@ -49,6 +53,7 @@ canvas.addEventListener('pointerdown', e => {
   sendInput(true);
 });
 function pointerEnd(e) {
+  if (FD && FD.id === e.pointerId) return;
   if (G.phase === 'pull') return;
   if (touchField(e)) {
     const tap = G.tap; G.tap = null;
@@ -70,7 +75,7 @@ function pointerEnd(e) {
   sendInput(true);
 }
 canvas.addEventListener('pointerup', pointerEnd);
-canvas.addEventListener('pointercancel', e => { G.pointer.down = false; G.aiming = false; G.tap = null; sendInput(true); });
+canvas.addEventListener('pointercancel', e => { if (FD && FD.id === e.pointerId) return; G.pointer.down = false; G.aiming = false; G.tap = null; sendInput(true); });
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 canvas.addEventListener('wheel', e => { e.preventDefault(); adjustCurve(e.deltaY > 0 ? 0.1 : -0.1); }, { passive: false });
 window.addEventListener('keydown', e => {
@@ -108,7 +113,7 @@ const JOY_DEAD = 0.18, JOY_MAXD = 50;
 const joy = { active: false, id: null, dx: 0, dy: 0, aim: null, mode: null };
 function joyMode() {
   if (G.phase !== 'play') return null;
-  if (canThrow()) return 'throw';
+  if (canThrow()) return isTouch() ? null : 'throw';           // téléphone : on lance en glissant n'importe où (voir plus bas)
   const h = meH();
   if (h && h.sel && (defending() || !soloStyle(h.team))) return 'move';
   return null;
@@ -186,3 +191,64 @@ $('fsB').addEventListener('click', () => {
   setTimeout(resize, 300);
 });
 
+
+// ---------- téléphone : lancer en glissant depuis n'importe où ----------
+// Le doigt se pose n'importe où (hors boutons) : un joystick apparaît sous lui. La direction du glissé vise,
+// sa longueur règle la distance, relâcher lance. Revenir près du point de départ annule.
+// Un simple tap (sans glisser) garde son rôle : prendre un joueur ou appeler un cut.
+let FD = null;
+const FD_DEAD = 16;                                          // px : en dessous, pas de lancer (annulation)
+const fdRadius = () => clamp(window.innerHeight * 0.32, 80, 150);
+const fdOnUI = t => !!(t && t.closest && t.closest('button, input, #controls, #tbtns, #joy, #tutoBox, #overlay, #hud, #emoBar, #curveV, #highB'));
+window.addEventListener('pointerdown', e => {
+  if (!isTouch() || e.pointerType === 'mouse' || FD || !canThrow() || fdOnUI(e.target)) return;
+  FD = { id: e.pointerId, x0: e.clientX, y0: e.clientY, len: 0, aim: null, t: G.time };
+  const el = $('fjoy'); el.style.left = e.clientX + 'px'; el.style.top = e.clientY + 'px';
+  el.style.width = el.style.height = fdRadius() * 2 + 'px'; el.style.display = 'block';
+  $('fknob').style.transform = '';
+}, true);
+window.addEventListener('pointermove', e => {
+  if (!FD || e.pointerId !== FD.id) return;
+  const R = fdRadius();
+  let dx = e.clientX - FD.x0, dy = e.clientY - FD.y0;
+  const len = Math.hypot(dx, dy); FD.len = len;
+  const k = len > R ? R / len : 1;
+  $('fknob').style.transform = `translate(${dx * k}px, ${dy * k}px)`;
+  if (!canThrow()) return;
+  const h = disc.holder;
+  if (len < FD_DEAD) { FD.aim = null; G.aiming = false; G.pointer.active = false; return; }
+  const m = Math.min(1, (len - FD_DEAD) / (R - FD_DEAD)), d = 3 + m * JOY_MAXD;
+  FD.aim = [h.x + dx / len * d, h.y + dy / len * d];
+  G.pointer.x = FD.aim[0]; G.pointer.y = FD.aim[1]; G.pointer.active = true; G.aiming = true;
+}, true);
+function fdEnd(e, cancel) {
+  if (!FD || e.pointerId !== FD.id) return;
+  const f = FD; FD = null;
+  $('fjoy').style.display = 'none';
+  G.aiming = false; G.pointer.active = false;
+  if (cancel) return;
+  if (f.aim && canThrow()) { doThrow(f.aim[0], f.aim[1], G.curve); return; }
+  if (f.len < 12 && G.time - f.t < 0.4) {                    // simple tap : prendre un joueur ou appeler un cut
+    const r = canvas.getBoundingClientRect();
+    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
+    const w = toWorld(e);
+    if (!trySelectAt(w) && attacking()) doCall(w.x, w.y);
+  }
+}
+window.addEventListener('pointerup', e => fdEnd(e, false), true);
+window.addEventListener('pointercancel', e => fdEnd(e, true), true);
+
+// ---------- téléphone : curseur de courbe vertical sur le bord droit ----------
+// haut = courbe ↶ (comme A), bas = courbe ↷ (comme E)
+function curveVFrom(e) {
+  const r = $('curveV').getBoundingClientRect();
+  const v = clamp(((e.clientY - r.top) / r.height) * 2 - 1, -1, 1);
+  setCurve(Math.round(v * 20) / 20);
+}
+let curveVId = null;
+$('curveV').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); curveVId = e.pointerId; $('curveV').setPointerCapture(e.pointerId); curveVFrom(e); });
+$('curveV').addEventListener('pointermove', e => { if (e.pointerId === curveVId) curveVFrom(e); });
+$('curveV').addEventListener('pointerup', e => { if (e.pointerId === curveVId) curveVId = null; });
+$('curveV').addEventListener('pointercancel', () => { curveVId = null; });
+$('curveV').addEventListener('dblclick', () => setCurve(0));
+$('highB').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); toggleHigh(); });
