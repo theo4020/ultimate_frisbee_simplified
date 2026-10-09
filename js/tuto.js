@@ -7,7 +7,7 @@ const TUTO_STEPS = [
     title: 'Lancer',
     text: {
       mouse: 'Tu as le disque (anneau blanc). Vise un coéquipier démarqué (anneau vert), maintiens le clic et relâche pour lancer. <b>Réussis 2 passes.</b>',
-      touch: 'Tu as le disque (anneau blanc). Incline le joystick vers un coéquipier démarqué (anneau vert) : plus tu l’inclines, plus tu lances loin. Relâche pour lancer. <b>Réussis 2 passes.</b>',
+      touch: 'Tu as le disque (anneau blanc). Pose le doigt <b>n’importe où</b> sur l’écran et glisse vers un coéquipier démarqué (anneau vert) : plus tu glisses loin, plus tu lances loin. Relâche pour lancer. <b>Réussis 2 passes.</b>',
       pad: 'Tu as le disque (anneau blanc). Vise un coéquipier démarqué (anneau vert) avec le stick gauche, puis A pour lancer. <b>Réussis 2 passes.</b>'
     },
     setup() {
@@ -29,7 +29,7 @@ const TUTO_STEPS = [
     title: 'La courbe',
     text: {
       mouse: 'Un défenseur bloque la ligne droite vers ton coéquipier. Ajoute de la <b>courbe</b> avant de lancer : touches <b>A</b> / <b>E</b> ou la molette. L’aperçu montre la trajectoire : fais-la passer à côté du défenseur.',
-      touch: 'Un défenseur bloque la ligne droite vers ton coéquipier. Ajoute de la <b>courbe</b> avec la barre en bas de l’écran avant de lancer : l’aperçu montre la trajectoire, fais-la passer à côté du défenseur.',
+      touch: 'Un défenseur bloque la ligne droite vers ton coéquipier. Ajoute de la <b>courbe</b> avec le curseur sur le <b>bord droit</b> de l’écran avant de lancer : l’aperçu montre la trajectoire, fais-la passer à côté du défenseur.',
       pad: 'Un défenseur bloque la ligne droite vers ton coéquipier. Ajoute de la <b>courbe</b> avec LB / RB avant de lancer : l’aperçu montre la trajectoire, fais-la passer à côté du défenseur.'
     },
     setup() {
@@ -52,9 +52,9 @@ const TUTO_STEPS = [
   {
     title: 'La passe haute',
     text: {
-      mouse: 'Cette fois, tout un mur bloque le passage. Appuie sur <b>Z</b> (ou le bouton <b>Passe haute</b> sous le terrain) : le disque passe très haut, par-dessus la défense. Attention, elle est imprécise : le cercle d’arrivée grossit avec la distance et le vent.',
-      touch: 'Cette fois, tout un mur bloque le passage. Touche le bouton <b>Passe haute</b> sous le terrain : le disque passe très haut, par-dessus la défense. Attention, elle est imprécise : le cercle d’arrivée grossit avec la distance et le vent.',
-      pad: 'Cette fois, tout un mur bloque le passage. Appuie sur <b>Y</b> pour la <b>passe haute</b> : le disque passe par-dessus la défense. Attention, elle est imprécise avec la distance et le vent. Puis vise et lance avec A.'
+      mouse: 'Cette fois, tout un mur bloque le passage. Appuie sur <b>Z</b> pour <b>armer</b> une passe haute (la défense voit ton disque levé), puis vise et lance quand tu veux : le disque passe par-dessus la défense. Attention, elle est imprécise avec la distance et le vent.',
+      touch: 'Cette fois, tout un mur bloque le passage. Touche <b>Passe haute</b> (bord droit) pour l’<b>armer</b> (la défense voit ton disque levé), puis glisse pour lancer quand tu veux : le disque passe par-dessus la défense. Attention, elle est imprécise avec la distance et le vent.',
+      pad: 'Cette fois, tout un mur bloque le passage. Appuie sur <b>Y</b> pour <b>armer</b> une passe haute, puis vise et lance avec A quand tu veux : le disque passe par-dessus la défense. Attention, elle est imprécise avec la distance et le vent.'
     },
     setup() {
       tutoReset(); G.tuto.wall = true;
