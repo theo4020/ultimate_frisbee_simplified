@@ -128,16 +128,30 @@ function jumpFor(h) {
   if (G.tuto && p) G.tuto.jumped = true;
   if (p && jumpTo(p) && h.sel === p) inputOf(h).last = G.time;
 }
-// meilleur point pour attraper : le premier point de la trajectoire restante qu'il peut atteindre en plongeant
+// meilleur point pour plonger : là où sera le disque quand le plongeon y arrive (premier point attrapable de la trajectoire
+// restante qu'il atteint à temps) ; sinon le point de la trajectoire le plus proche de lui
 function catchPoint(p) {
   const u0 = disc.t / disc.dur, peak = discPeak();
-  for (let u = Math.max(u0 + 0.03, 0.35); u <= 1.001; u += 0.03) {
+  let best = null, bd = 1e9;
+  for (let u = Math.min(1, u0 + 0.01); u <= 1.001; u += 0.02) {
     const [x, y] = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u);
-    if (heightAt(u, peak, disc.kind) > REACH_DIVE + 0.3) continue;
     const tA = (u - u0) * disc.dur, r = dist(p.x, p.y, x, y);
-    if (r <= SPD.dive * DIVE_T + 1.8 + tA * 2) return [x, y];
+    if (u > 0.3 && heightAt(u, peak, disc.kind) <= REACH_DIVE + 0.25 && tA <= DIVE_T + 0.35 && r <= SPD.dive * Math.min(tA, DIVE_T) + 1.7) return [x, y, true];
+    if (r < bd) { bd = r; best = [x, y, false]; }
   }
-  return [disc.ex, disc.ey];
+  return best || [disc.ex, disc.ey, false];
+}
+// receveur IA : il attaque le disque — il court vers le premier point de la trajectoire qu'il peut atteindre avant le disque
+// (au lieu d'attendre au point d'arrivée, où le défenseur a le temps de revenir)
+function runPoint(p) {
+  const u0 = disc.t / disc.dur, peak = discPeak(), sp = SPD.cut * aiLvl(p.team).speed;
+  for (let u = Math.max(u0 + 0.02, 0.5); u <= 1.001; u += 0.025) {
+    if (heightAt(u, peak, disc.kind) > 2.1) continue;
+    const [x, y] = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u);
+    const d = dist(p.x, p.y, x, y), need = d > 0.9 ? (d - 0.9) / sp + 0.12 : 0, tA = (u - u0) * disc.dur;
+    if (need <= Math.max(0, tA - 0.06)) return [x, y, true];
+  }
+  return [disc.ex, disc.ey, false];
 }
 // « attaque cet espace » : le coéquipier IA le plus proche coupe vers le point demandé
 function callFor(h, x, y) {

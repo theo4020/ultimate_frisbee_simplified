@@ -203,7 +203,7 @@ const TUTO_STEPS = [
     title: 'Le pull',
     text: {
       mouse: 'Chaque point commence par un <b>pull</b> : l’équipe qui défend lance le disque à l’autre. Clique sur la zone visée dans le camp adverse, puis arrête la jauge dans le <b>vert</b> (clic ou Espace) pour un pull long et haut.',
-      touch: 'Chaque point commence par un <b>pull</b> : l’équipe qui défend lance le disque à l’autre. Tape la zone visée dans le camp adverse, puis tape encore pour arrêter la jauge dans le <b>vert</b>.',
+      touch: 'Chaque point commence par un <b>pull</b> : l’équipe qui défend lance le disque à l’autre. Pose le doigt n’importe où et glisse vers la zone visée dans le camp adverse (plus tu glisses loin, plus le pull est long), relâche, puis tape pour arrêter la jauge dans le <b>vert</b>.',
       pad: 'Chaque point commence par un <b>pull</b>. Vise avec le stick, A pour valider, puis A pour arrêter la jauge dans le <b>vert</b>.'
     },
     setup() {

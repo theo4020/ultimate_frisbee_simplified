@@ -150,7 +150,7 @@ function showMenu(kind) {
     if (G.spectator) $('ovText').textContent = 'Tu regardes la partie en spectateur.';
     $('go').textContent = 'Jouer le point ▶';
     renderSummary(null);
-    if (G.net !== 'guest') { G.receiving = firstReceiver(); placeForPoint(); }
+    if (G.net !== 'guest') { G.receiving = firstReceiver(); placeOnPullLines(); }
     updateFirstText();
   } else {
     $('ovTitle').textContent = `${tn(0)} ${G.score[0]} – ${G.score[1]} ${tn(1)}`;
@@ -189,7 +189,7 @@ function refreshCaptainUI() {
 function setOpt(g, v) {
   G.form[g] = v;
   if (g === 'first' && G.lastMenu === 'first') {              // premier menu : on applique tout de suite (plays proposés, texte)
-    G.receiving = firstReceiver(); placeForPoint(); updateFirstText();
+    G.receiving = firstReceiver(); placeOnPullLines(); updateFirstText();
     if (G.net === 'host') netSend({ t: 'rec', rec: G.receiving });
   }
   if (g === 'windMode') { newWind(); hudKey = ''; }

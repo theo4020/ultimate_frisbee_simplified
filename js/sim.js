@@ -50,14 +50,17 @@ function update(dt) {
     if (disc.mode === 'ground' && G.pickup === p) { p.tx = disc.x; p.ty = disc.y; p.sp = SPD.cut; continue; }
     if (disc.mode === 'carry' && disc.holder === p) { p.tx = G.carryTo.x; p.ty = G.carryTo.y; p.sp = 5.5; continue; }
     if (userControls(p)) { const inp = inputOf(controllerOf(p)); p.tx = inp.x; p.ty = inp.y; p.sp = SPD.user; continue; }   // humain (à plusieurs par équipe)
-    if (disc.mode === 'air' && disc.intended === p && !disc.pull && !p.diveTried && !controllerOf(p)) {
-      const left = (1 - disc.t / disc.dur) * disc.dur, gap = dist(p.x, p.y, disc.ex, disc.ey);
-      if (left < 0.32 && gap > 1.6 && gap < 3.8) { p.diveTried = true; if (Math.random() < 0.6) diveTo(p, disc.ex, disc.ey); }
-    }
     if (disc.mode === 'air' && disc.intended === p) {
       // une passe haute se lit mal : le receveur court d'abord vers l'endroit visé, et ne corrige qu'à la fin du vol
       const late = disc.kind === 'high' && disc.t / disc.dur < 0.75 && disc.rx !== undefined;
-      p.tx = late ? disc.rx : disc.ex; p.ty = late ? disc.ry : disc.ey; p.sp = SPD.cut; continue;
+      if (late) { p.tx = disc.rx; p.ty = disc.ry; p.sp = SPD.cut; continue; }
+      const [rx, ry, ok] = runPoint(p);                    // sinon il attaque le disque sur sa trajectoire
+      p.tx = rx; p.ty = ry; p.sp = SPD.cut;
+      if (!ok && !disc.pull && !p.diveTried && !controllerOf(p) && (1 - disc.t / disc.dur) * disc.dur < DIVE_T + 0.15) {
+        const [cx, cy, can] = catchPoint(p);               // il n'arrivera pas à temps en courant : layout
+        if (can && dist(p.x, p.y, cx, cy) > 1.2) { p.diveTried = true; if (Math.random() < 0.6) diveTo(p, cx, cy); }
+      }
+      continue;
     }
     if (G.tuto && tutoPin(p)) continue;                     // tutoriel : joueur placé par l'étape
     if (G.practice && practicePin(p)) continue;             // entraînement

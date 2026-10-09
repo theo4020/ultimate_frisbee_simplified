@@ -19,9 +19,9 @@ function loop(now) {
   else {
     if (G.paused && !G.net) { /* confirmation ouverte : pause */ }
     else if (G.phase === 'play') { G.gt += gdt; update(gdt); }
-    else if (G.phase === 'pull') pullTick(dt);
+    else if (G.phase === 'pull') pullTick(dt, gdt);
     else if (G.phase === 'between' || G.phase === 'over') {
-      celebrateTick(gdt);
+      if (G.menuShown && G.phase === 'between' && !G.attract) regroupTick(gdt); else celebrateTick(gdt);
       if (G.attract) attractTick(dt);
       else if (!G.menuShown) { G.betweenT -= dt; if (G.betweenT <= 0) showMenu(G.phase); }
     }

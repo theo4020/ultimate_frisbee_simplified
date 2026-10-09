@@ -8,24 +8,70 @@
 const PULL = { BRICK: 12, MAX: 72, AUTO_T: 25, GAUGE_HZ: 0.8, PERFECT: [0.82, 0.95] };
 const goalLine = t => (t === 0 ? EZ : W - EZ);   // ligne d'en-but que l'équipe t défend
 
+const PULL_YS = [4, 11, 18.5, 26, 33], REGROUP_SPD = 11;   // places sur la ligne · vitesse de mise en place (m/s)
+// joueur qui va pulle : celui de l'humain désigné s'il a un joueur fixe, sinon le plus proche du centre de la ligne
+function pullerPlayer(d, by) {
+  const h = by != null && humanById(by);
+  if (h && h.sel && h.sel.team === d && teamHumans(d).length > 1) return h.sel;
+  return nearest(TEAMS[d], goalLine(d), H / 2);
+}
+// chacun rejoint sa place sur sa ligne d'en-but en marchant (pas de téléportation) ; le pulleur prend le centre
+function setPullSpots(puller) {
+  const r = G.receiving, d = 1 - r;
+  const spots = (team, center) => {
+    const rest = TEAMS[team].filter(p => p !== center).sort((a, b) => a.y - b.y);
+    const ys = center ? PULL_YS.filter((y, k) => k !== 2) : PULL_YS;
+    rest.forEach((p, k) => { p.tx = goalLine(team); p.ty = ys[k]; });
+    if (center) { center.tx = goalLine(team); center.ty = PULL_YS[2]; }
+  };
+  spots(r, null); spots(d, puller || null);
+}
+function regroupStep(dt) {
+  for (const p of players) {
+    if (p.dive > 0 || p.down > 0 || p.jump > 0 || p.jprep > 0) { steer(p, dt); continue; }
+    p.sp = REGROUP_SPD; steer(p, dt);
+  }
+  if ((disc.mode === 'held' || disc.mode === 'carry') && disc.holder) { disc.x = disc.holder.x; disc.y = disc.holder.y; }
+}
+// entre deux points (menu de stratégie ouvert) : les joueurs vont déjà se placer pour le pull suivant
+function regroupTick(dt) {
+  if (G.phase !== 'between') return;
+  const d = 1 - G.receiving, by = choosePuller(d);
+  setPullSpots(pullerPlayer(d, by));
+  regroupStep(dt);
+}
+// l'équipe qui pulle doit être en place sur sa ligne avant de pouvoir lancer
+function pullReady() {
+  if (G.net === 'guest') return !!G.netPullReady;
+  if (!G.pull || !disc.holder) return false;
+  const d = G.pull.team;
+  return TEAMS[d].every(p => dist(p.x, p.y, p.tx, p.ty) < (p === disc.holder ? 0.6 : 8));   // le pulleur à sa place, les autres presque arrivés
+}
+// début de match (derrière le premier menu) : les équipes sont déjà alignées sur leurs lignes
+function placeOnPullLines() {
+  const d = 1 - G.receiving, puller = pullerPlayer(d, choosePuller(d));
+  setPullSpots(puller);
+  players.forEach(p => { p.x = p.tx; p.y = p.ty; p.vx = p.vy = 0; p.dive = p.down = 0; });
+  Object.assign(disc, { mode: 'held', holder: puller, x: puller.x, y: puller.y, z: 0, pull: false });
+  G.off = G.receiving;
+}
 function placeForPull() {
-  const r = G.receiving, d = 1 - r, ys = [4, 11, 18.5, 26, 33];
+  const r = G.receiving, d = 1 - r;
   players.forEach(p => {
-    p.vx = p.vy = 0; p.dive = p.down = 0; p.jump = p.jprep = p.jrec = p.jumpAt = 0; p.windup = null; p.react = 0; p.tag = ''; p.inT = 0;
+    p.dive = p.down = 0; p.jump = p.jprep = p.jrec = p.jumpAt = 0; p.windup = null; p.react = 0; p.tag = ''; p.inT = 0;
     p.state = 'stack'; p.role = 'cutter'; p.match = null;
   });
-  TEAMS[r].forEach((p, k) => { p.x = p.tx = goalLine(r); p.y = p.ty = ys[k]; });
-  TEAMS[d].forEach((p, k) => { p.x = p.tx = goalLine(d); p.y = p.ty = ys[k]; });
-  const puller = TEAMS[d][2];
+  const puller = pullerPlayer(d, G.pull ? G.pull.by : null);
+  setPullSpots(puller);
   Object.assign(disc, { mode: 'held', holder: puller, x: puller.x, y: puller.y, z: 0, pull: false });
   Object.assign(G, { off: r, oplay: null, stall: 0, marker: null, dbl: null, pickup: null, sel: [null, null], order: [[], []] });
 }
 
 function startPull() {
-  placeForPull();
-  G.phase = 'pull';
   const pt = 1 - G.receiving;
   G.pull = { team: pt, t: 0, aiT: rand(1.0, 1.8), by: choosePuller(pt) };
+  placeForPull();
+  G.phase = 'pull';
   G.pullCount = G.pullCount || [0, 0]; G.pullCount[pt]++;
   G.pullUI = { stage: 'aim', t0: 0, x: 0, y: 0, q: 0 };
   G.pullPending = false;
@@ -44,13 +90,8 @@ function choosePuller(t) {
   return (h || hs[0]).id;
 }
 const localPuller = () => G.phase === 'pull' && !!G.pull && G.pull.by != null && G.pull.by === G.myId;
-// le joueur choisi prend le disque pour pulle (son joueur sur le terrain échange sa place avec le pulleur)
-function pullerToSelected() {
-  const h = G.pull && G.pull.by != null && humanById(G.pull.by), p = h && h.sel, q = disc.holder;
-  if (!p || !q || p === q || p.team !== q.team) return;
-  [p.x, q.x] = [q.x, p.x]; [p.y, q.y] = [q.y, p.y]; p.tx = p.x; p.ty = p.y; q.tx = q.x; q.ty = q.y;
-  disc.holder = p; disc.x = p.x; disc.y = p.y;
-}
+// (le pulleur est choisi dans placeForPull : il marche jusqu'au centre de la ligne)
+function pullerToSelected() { }
 function pullFlash() {
   if (!G.pull) return;
   const by = G.pull.by != null && humanById(G.pull.by);
@@ -74,6 +115,7 @@ function pullPointerDown(wx, wy) {
   const ui = G.pullUI, h = disc.holder;
   if (!localPuller() || !h) return;
   if (ui.stage === 'aim') {
+    if (!pullReady()) { flash('Attends que ton équipe soit en place', true); return; }
     [ui.x, ui.y] = clampPullAim(h, wx, wy);
     ui.stage = 'power'; ui.t0 = G.time;
   } else if (ui.stage === 'power') pullStop();
@@ -94,8 +136,10 @@ function doPull(x, y, curve, q) {
 }
 
 // ---------- IA et temps limite ----------
-function pullTick(dt) {
+function pullTick(dt, gdt) {
   if (G.phase !== 'pull' || !G.pull) return;
+  regroupStep(gdt || dt);                                      // mise en place en marchant
+  if (!pullReady()) return;                                    // on attend que l'équipe qui pulle soit en place
   G.pull.t += dt;
   if (G.pull.by != null && !humanById(G.pull.by)) G.pull.by = null;   // le pulleur choisi est parti : l'IA prend le relais
   if (G.pull.by == null) { G.pull.aiT -= dt; if (G.pull.aiT <= 0) aiPull(); }
@@ -212,6 +256,10 @@ function drawPullUI() {
     ctx.fillStyle = 'rgba(15,23,42,.72)'; ctx.fillRect(X(W / 2) - w / 2, y - fs * 1.1, w, fs * 1.6);
     ctx.fillStyle = '#f8fafc'; ctx.fillText(txt, X(W / 2), y);
   };
+  if (!pullReady()) {
+    label(G.pull && G.pull.team === G.me && !G.spectator ? 'Mise en place pour le pull…' : 'L’autre équipe se met en place…', Y(2.5) + fs);
+    ctx.restore(); return;
+  }
   if (!localPuller()) {
     const by = G.pull && G.pull.by != null && humanById(G.pull.by);
     label(G.pull && G.pull.team === G.me && !G.spectator ? (by ? `${humanLabel(by)} prépare le pull…` : 'Ton équipe prépare le pull…')
@@ -236,7 +284,7 @@ function drawPullUI() {
     ctx.beginPath(); ctx.moveTo(X(ax) - k, Y(ay) - k); ctx.lineTo(X(ax) + k, Y(ay) + k); ctx.moveTo(X(ax) + k, Y(ay) - k); ctx.lineTo(X(ax) - k, Y(ay) + k); ctx.stroke();
   }
   if (ui.stage === 'aim') {
-    label(isTouchUI() ? 'Pull : tape la zone visée (courbe : barre du bas)' : 'Pull : clique sur la zone visée (courbe : A/E ou molette)', Y(2.5) + fs);
+    label(isTouchUI() ? 'Pull : pose le doigt n’importe où et glisse pour viser (courbe : bord droit)' : 'Pull : clique sur la zone visée (courbe : A/E ou molette)', Y(2.5) + fs);
   } else {
     // jauge QTE
     const bw = Math.min(W * 0.45 * S, 420), bh = Math.max(14, S * 1.6), bx = X(W / 2) - bw / 2, by = Y(H - 3.5);

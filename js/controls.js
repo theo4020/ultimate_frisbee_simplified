@@ -27,13 +27,17 @@ function trySelectAt(w) {
 const isTouch = () => document.body.classList.contains('touch');
 // sur téléphone, le terrain sert à taper (prendre un joueur, appeler un cut) ; le joystick gère le reste
 const touchField = e => e.pointerType !== 'mouse' && isTouch() && G.phase === 'play';
-canvas.addEventListener('pointermove', e => { if (!touchField(e)) setPointer(e); });
+canvas.addEventListener('pointermove', e => { if (FD && FD.id === e.pointerId) return; if (G.phase === 'pull' && e.pointerType !== 'mouse' && isTouch()) return; if (!touchField(e)) setPointer(e); });
 canvas.addEventListener('pointerdown', e => {
   e.preventDefault();
   if (FD && FD.id === e.pointerId) return;                   // lancer « glissé » en cours (téléphone)
   G.gpActive = false;
   if (G.replay) { stopReplay(); return; }
   if (G.phase === 'pull') {                                  // pull : choisir la cible, puis arrêter la jauge
+    if (e.pointerType !== 'mouse' && isTouch()) {            // téléphone : on vise en glissant (voir plus bas), on tape pour arrêter la jauge
+      if (G.pullUI && G.pullUI.stage === 'power') pullStop();
+      return;
+    }
     setPointer(e); const w = toWorld(e); pullPointerDown(w.x, w.y); return;
   }
   if (touchField(e)) {                                       // téléphone : on note le tap, on agit au relâchement
@@ -196,13 +200,15 @@ $('fsB').addEventListener('click', () => {
 // Le doigt se pose n'importe où (hors boutons) : un joystick apparaît sous lui. La direction du glissé vise,
 // sa longueur règle la distance, relâcher lance. Revenir près du point de départ annule.
 // Un simple tap (sans glisser) garde son rôle : prendre un joueur ou appeler un cut.
+// Même geste pour viser le pull (relâcher lance la jauge, puis on tape pour l'arrêter).
+const fdPull = () => G.phase === 'pull' && localPuller() && G.pullUI && G.pullUI.stage === 'aim' && !!disc.holder;
 let FD = null;
 const FD_DEAD = 16;                                          // px : en dessous, pas de lancer (annulation)
 const fdRadius = () => clamp(window.innerHeight * 0.32, 80, 150);
 const fdOnUI = t => !!(t && t.closest && t.closest('button, input, #controls, #tbtns, #joy, #tutoBox, #overlay, #hud, #emoBar, #curveV, #highB'));
 window.addEventListener('pointerdown', e => {
-  if (!isTouch() || e.pointerType === 'mouse' || FD || !canThrow() || fdOnUI(e.target)) return;
-  FD = { id: e.pointerId, x0: e.clientX, y0: e.clientY, len: 0, aim: null, t: G.time };
+  if (!isTouch() || e.pointerType === 'mouse' || FD || !(canThrow() || fdPull()) || fdOnUI(e.target)) return;
+  FD = { id: e.pointerId, x0: e.clientX, y0: e.clientY, len: 0, aim: null, t: G.time, pull: fdPull() };
   const el = $('fjoy'); el.style.left = e.clientX + 'px'; el.style.top = e.clientY + 'px';
   el.style.width = el.style.height = fdRadius() * 2 + 'px'; el.style.display = 'block';
   $('fknob').style.transform = '';
@@ -214,6 +220,15 @@ window.addEventListener('pointermove', e => {
   const len = Math.hypot(dx, dy); FD.len = len;
   const k = len > R ? R / len : 1;
   $('fknob').style.transform = `translate(${dx * k}px, ${dy * k}px)`;
+  if (FD.pull) {                                             // pull : direction + distance (25 à 72 m)
+    if (!fdPull()) return;
+    const h = disc.holder;
+    if (len < FD_DEAD) { FD.aim = null; G.pointer.active = false; return; }
+    const m = Math.min(1, (len - FD_DEAD) / (R - FD_DEAD)), d = 25 + m * (PULL.MAX - 25);
+    FD.aim = [h.x + dx / len * d, h.y + dy / len * d];
+    G.pointer.x = FD.aim[0]; G.pointer.y = FD.aim[1]; G.pointer.active = true;
+    return;
+  }
   if (!canThrow()) return;
   const h = disc.holder;
   if (len < FD_DEAD) { FD.aim = null; G.aiming = false; G.pointer.active = false; return; }
@@ -227,6 +242,7 @@ function fdEnd(e, cancel) {
   $('fjoy').style.display = 'none';
   G.aiming = false; G.pointer.active = false;
   if (cancel) return;
+  if (f.pull) { if (f.aim && fdPull()) { G.pointer.active = true; pullPointerDown(f.aim[0], f.aim[1]); } return; }
   if (f.aim && canThrow()) { doThrow(f.aim[0], f.aim[1], G.curve); return; }
   if (f.len < 12 && G.time - f.t < 0.4) {                    // simple tap : prendre un joueur ou appeler un cut
     const r = canvas.getBoundingClientRect();

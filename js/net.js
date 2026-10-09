@@ -269,7 +269,7 @@ function snapshot() {
       hum: G.humans.map(h => [h.id, h.team, idx(h.sel)]),
       op: G.oplay && { type: G.oplay.type, team: G.oplay.team }, dp: G.dplay && { type: G.dplay.type, team: G.dplay.team },
       order: [G.order[0].map(idx), G.order[1].map(idx)], cfg: [cfg(0), cfg(1)], carry: G.carryTo,
-      pull: G.phase === 'pull' && G.pull ? G.pull.team : -1, pullBy: G.pull ? G.pull.by : null, teams: G.teams, tell: highTell() }
+      pull: G.phase === 'pull' && G.pull ? G.pull.team : -1, pullBy: G.pull ? G.pull.by : null, pready: G.phase === 'pull' && pullReady(), teams: G.teams, tell: highTell() }
   };
 }
 
@@ -404,6 +404,7 @@ function applySnapshot(m) {
   G.order = g.order.map(o => o.map(i => players[i]));
   if (g.phase === 'pull' && (G.phase !== 'pull' || !G.pull)) { G.pull = { team: g.pull, t: 0, by: g.pullBy }; G.pullUI = { stage: 'aim', t0: 0, x: 0, y: 0, q: 0 }; }
   if (g.phase === 'pull' && G.pull) G.pull.by = g.pullBy;
+  G.netPullReady = !!g.pready;
   if (g.phase !== G.phase) { G.phase = g.phase; if (g.phase !== 'play') G.aiming = false; }
   if (m.fx) for (const e of m.fx) fxPlay(e[0], e[1], e[2], e[3]);   // effets après l'état (direction des lancers)
   if (lastMid === -1) lastMid = g.mid;
