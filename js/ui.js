@@ -14,10 +14,12 @@ function updateHud() {
   const ct = canThrow();
   $('throwSel').style.display = ct || (att && G.phase === 'play' && soloStyle(ME)) ? '' : 'none';
   document.querySelectorAll('.tk').forEach(b => b.classList.toggle('on', b.dataset.k === G.throwKind));
-  if (isTouchUI()) {                                           // téléphone : la barre du bas n'apparaît que si elle sert
-    const used = $('throwSel').style.display !== 'none' || $('curveTouch').style.visibility === 'visible';
-    $('controls').style.visibility = used ? 'visible' : 'hidden';
-  } else $('controls').style.visibility = '';
+  // téléphone : courbe (bord droit) quand on lance ou qu'on pulle, bouton passe haute quand on a le disque
+  document.body.classList.toggle('curveon', ct || localPuller());
+  document.body.classList.toggle('highon', ct);
+  $('highB').classList.toggle('on', G.throwKind === 'high');
+  $('highB').innerHTML = G.throwKind === 'high' ? 'Armée ✓<br><small>annuler</small>' : 'Passe<br>haute';
+  $('curveVThumb').style.top = ((G.curve + 1) / 2 * 100) + '%';
   const key = [att, G.phase, pulling, G.phase === 'play', forceOf(0), forceOf(1), formOf(0), formOf(1), defFormOf(0), defFormOf(1), op, dp, G.wind.kmh, G.net, G.me, hk,
     tn(0), tn(1), tcol(0), tcol(1), G.spectator, !!G.gpActive, !!G.tuto].join('|');
   if (key === hudKey) return;
@@ -55,7 +57,7 @@ function updateHud() {
     : att
     ? (multi ? '<i>Attaque à plusieurs</i> : ton joueur (anneau jaune) suit la souris ; quand il a le disque, vise et relâche pour lancer. <i>Espace / 1 à 5</i> = prendre un joueur géré par l’IA.'
              : '<i>Attaque</i> : vise et relâche pour lancer (relâche sur ton joueur pour annuler).')
-    + ' <i>Z</i> = passe haute (par-dessus la défense, mais imprécise avec la distance et le vent). <i>S</i> = saut du receveur pendant le vol (duel en l’air). <i>Clic droit</i> sur le terrain = le coéquipier IA le plus proche attaque cet espace. <i>F / clic pendant le vol</i> = layout du receveur. Anneau vert = coéquipier démarqué. Zone rouge = break side : ajoute de la courbe (A/E, molette) pour contourner la mark. Cercle pointillé = zone de stall. Couleur de la trajectoire : rouge = contrable, orange = contrable debout seulement, violet = en sautant, bleu = trop haut.'
+    + ' <i>Z</i> = armer / désarmer la passe haute (la défense voit le disque levé et doit deviner quand tu lances). <i>S</i> = saut du receveur pendant le vol (duel en l’air). <i>Clic droit</i> sur le terrain = le coéquipier IA le plus proche attaque cet espace. <i>F / clic pendant le vol</i> = layout du receveur. Anneau vert = coéquipier démarqué. Zone rouge = break side : ajoute de la courbe (A/E, molette) pour contourner la mark. Cercle pointillé = zone de stall. Couleur de la trajectoire : rouge = contrable, orange = contrable debout seulement, violet = en sautant, bleu = trop haut.'
     : '<i>Défense</i> : ton joueur (anneau jaune) suit la souris ou le doigt. <i>Clic / tap / F</i> = layout. <i>S</i> = saut (contrer une passe haute au lâcher à la mark, ou à l’arrivée). <i>Espace</i> = switch vers le joueur en gris, <i>1 à 5</i> = prendre ce joueur. Entre dans le cercle du handler pour lancer le stall (un seul défenseur dedans, sinon double team). L’anneau sous le disque en vol : rouge = contrable, orange = debout seulement, violet = en sautant, bleu = trop haut.';
   if (G.gpActive) $('hint').innerHTML = '🎮 <i>Manette</i> : stick gauche = viser / courir · A = lancer (sans le disque : saut) · B = layout · X = switch ou appel · Y = passe haute · LB/RB = courbe · Start = menu. ' + $('hint').innerHTML;
   $('emoBar').style.display = G.net && G.started ? '' : 'none';
@@ -214,6 +216,8 @@ function doThrow(x, y, curve) {
   if (canThrow()) throwDisc(disc.holder, x, y, curve, 1, kind);
 }
 function setThrowKind(k) { if (THROWS[k]) G.throwKind = k; }
+// armer / désarmer la passe haute (les défenseurs voient le disque levé tant qu'elle est armée)
+function toggleHigh() { G.throwKind = G.throwKind === 'high' ? 'normal' : 'high'; }
 function cycleThrowKind() { G.throwKind = THROW_ORDER[(THROW_ORDER.indexOf(G.throwKind) + 1) % THROW_ORDER.length]; }
 document.querySelectorAll('.tk').forEach(b => b.addEventListener('click', () => setThrowKind(b.dataset.k)));
 
