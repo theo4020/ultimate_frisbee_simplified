@@ -66,6 +66,7 @@ function updateHud() {
 }
 
 function refreshOptions() {
+  renderPullerRow();
   document.querySelectorAll('.opt').forEach(b => b.classList.toggle('on', G.form[b.dataset.g] === b.dataset.v));
   $('descOff').textContent = DESCS[G.form.off];
   $('descDef').textContent = DESCS[G.form.def];
@@ -300,12 +301,12 @@ $('menuBack').addEventListener('click', goMainMenu);
 
 // ---------- qui pulle (en ligne : choisi par le capitaine) ----------
 function renderPullerRow() {
-  const show = !!G.net && !G.spectator && teamHumans(G.me).length > 0;
+  const show = !G.spectator && !G.tuto && teamHumans(G.me).length > 0;
   $('rowPuller').style.display = show ? '' : 'none';
   if (!show) return;
   const hs = teamHumans(G.me), valid = ['cap', 'rot', 'ai'].concat(hs.map(h => String(h.id)));
   if (!valid.includes(String(G.form.puller))) G.form.puller = 'cap';
-  const opts = hs.map(h => [String(h.id), humanLabel(h) + (h.id === G.myId ? ' (moi)' : '')]);
+  const opts = hs.map(h => [String(h.id), !G.net ? 'Moi' : humanLabel(h) + (h.id === G.myId ? ' (moi)' : '')]);
   if (hs.length > 1) opts.push(['rot', 'Chacun son tour']);
   opts.push(['ai', 'IA']);
   const cur = G.form.puller === 'cap' && captain(G.me) ? String(captain(G.me).id) : String(G.form.puller);
