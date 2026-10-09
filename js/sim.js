@@ -28,7 +28,7 @@ function steer(p, dt) {
   }
   const dx = p.tx - p.x, dy = p.ty - p.y, l = Math.hypot(dx, dy);
   let want = Math.min(p.sp * (controllerOf(p) ? 1 : aiLvl(p.team).speed), l * 2.5);
-  if (p.jrec > 0) { p.jrec -= dt; want *= 0.35; }            // réception d'un saut : il repart lentement
+  if (p.jrec > 0) { p.jrec -= dt; want *= 0.5; }            // réception d'un saut : il repart lentement
   const dvx = (l > 0.01 ? dx / l * want : 0) - p.vx, dvy = (l > 0.01 ? dy / l * want : 0) - p.vy;
   const dl = Math.hypot(dvx, dvy), maxd = (p.team === G.off ? ACC.atk : ACC.def) * dt;
   const k = dl > maxd ? maxd / dl : 1;
@@ -110,9 +110,12 @@ function update(dt) {
     if (G.marker && !G.dbl) G.stall += dt * STALL_RATE;
     if (G.stall >= 10) { G.stats.stalls++; msTurnover(h, 'stall'); turnover(h.x, h.y, 'Stall 10 ! Turnover', 'stall'); return; }
     if (!throwerHuman()) {                                  // porteur sans humain : l'IA lance
-      if (h.windup) {                                       // passe haute : il lève d'abord le disque
-        h.windup.t -= dt;
-        if (h.windup.t <= 0) { const b = h.windup.b; h.windup = null; throwDisc(h, b.tx, b.ty, b.curve, 0.85 * aiLvl(h.team).err, 'high'); return; }
+      if (h.windup) {                                       // passe haute armée : il choisit son moment
+        const w = h.windup, mk = G.marker, L = aiLvl(h.team);
+        w.t -= dt;
+        if (mk && (mk.jprep > 0 || mk.jump > 0) && L.safe >= 0) w.t = Math.max(w.t, 0.08);   // la mark a sauté : il attend qu'elle retombe…
+        else if (mk && mk.jumpCd > 0 && w.t > 0.1 && L.safe >= 0) w.t = 0.06;                 // …et lance pendant qu'elle récupère
+        if (w.t <= 0 || G.stall > 8) { h.windup = null; aiThrow(h, true); if (disc.mode !== 'held') return; }
       } else { h.think -= dt; if (h.think <= 0) aiThrow(h); }
     }
     markReads(dt);
@@ -238,24 +241,25 @@ function aiJumps(u) {
 }
 
 // ---------- passe haute : le lanceur lève le disque (signal visible), la mark peut tenter de la lire ----------
-// vrai quand le porteur prépare une passe haute : l'IA pendant sa préparation, un humain quand il vise en passe haute
+// vrai quand le porteur a armé une passe haute (IA pendant sa préparation, humain tant qu'il l'a armée)
 function highTell() {
   if (disc.mode !== 'held' || !disc.holder) return false;
   if (G.net === 'guest') return !!G.netTell;
   if (disc.holder.windup) return true;
   const th = throwerHuman();
   if (!th) return false;
-  return th.id === G.myId ? G.aiming && G.throwKind === 'high' : !!inputOf(th).high;
+  return th.id === G.myId ? G.throwKind === 'high' : !!inputOf(th).high;
 }
 // la mark IA voit le disque levé et programme son saut (plus ou moins bien synchronisé selon le niveau)
+// la mark IA ne peut pas réagir au lâcher (trop tard) : elle devine le moment, de temps en temps
 function markReads(dt) {
   const tell = highTell(), mk = G.marker;
-  if (tell && !G.tellSeen && mk && !(controllerOf(mk) && userControls(mk))) {
-    const L = aiLvl(mk.team), h = disc.holder;
-    if (Math.random() < L.block) {
-      // l'IA connaît la durée de la préparation ; contre un humain, elle devine
-      const base = h.windup ? h.windup.t + 0.07 - (JUMP_PREP + JUMP_T * 0.5) : rand(0.2, 0.9);
-      mk.jumpAt = G.time + Math.max(0.02, base + rand(-0.12, 0.12) * L.react);
+  if (!tell) G.nextGuess = 0;
+  else if (mk && !(controllerOf(mk) && userControls(mk)) && !mk.jumpAt && !(mk.jprep > 0) && !(mk.jump > 0) && !(mk.jumpCd > 0)) {
+    if (!G.nextGuess) G.nextGuess = G.time + rand(0.1, 0.5);
+    if (G.time >= G.nextGuess) {
+      G.nextGuess = G.time + rand(0.7, 1.6);
+      if (Math.random() < aiLvl(mk.team).block * 0.8) mk.jumpAt = G.time + rand(0, 0.5);
     }
   }
   G.tellSeen = tell;
