@@ -240,14 +240,14 @@ body.touch .pracBtns button{padding:3px 8px;font-size:11px}
 @media (max-width:560px){.pgrid{grid-template-columns:1fr}}
 /* menu principal : boutons sur deux colonnes */
 #lobbyHome{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-#lobbyHome > p,#lobbyHome #rejoinB,#lobbyHome #iosHint{grid-column:1 / -1}
+#lobbyHome > p,#lobbyHome #iosHint{grid-column:1 / -1}
 #lobbyHome .bigbtn{margin:0}
 @media (max-width:480px){#lobbyHome{grid-template-columns:1fr}}
 body.touch .bigbtn{padding:8px 12px;font-size:15px}
 body.touch .bigbtn small{font-size:11.5px}
 body.touch .card{padding:10px 14px}
-#menuB{padding:4px 10px;font-size:13px;background:transparent;border:1px solid var(--panel2)}
-body.touch #menuB{padding:0 8px;font-size:12px;height:22px}
+#menuB,#teamsB{padding:4px 10px;font-size:13px;background:transparent;border:1px solid var(--panel2)}
+body.touch #menuB,body.touch #teamsB{padding:0 8px;font-size:12px;height:22px}
 .ghost{background:transparent;border:1px solid var(--panel2);width:100%;margin-top:6px}
 /* confirmation intégrée au jeu */
 #askBox{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.6);padding:16px}
