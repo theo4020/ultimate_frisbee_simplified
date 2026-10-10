@@ -1,12 +1,11 @@
 // replay.js — Ralenti du dernier point marqué, et petite célébration des buteurs.
-// Chaque écran enregistre lui-même les positions pendant le jeu (aussi les invités en ligne),
-// le ralenti est donc local : il ne gêne personne.
+// Solo uniquement (pas de ralenti en multijoueur).
 
 const REPLAY = { frames: [], acc: 0, last: null, STEP: 0.05, KEEP: 7 };   // une image toutes les 50 ms, on garde les 7 dernières secondes
 
 function replayReset() { REPLAY.frames = []; REPLAY.acc = 0; }
 function replayRecord(dt) {
-  if (G.phase !== 'play' || G.tuto || G.attract || G.practice) return;
+  if (G.phase !== 'play' || G.net || G.tuto || G.attract || G.practice) return;
   REPLAY.acc += dt;
   if (REPLAY.acc < REPLAY.STEP) return;
   REPLAY.acc = 0;
@@ -19,7 +18,7 @@ function replayRecord(dt) {
 }
 // au moment du point (appelé par l'effet « score », donc aussi chez les invités)
 function replaySave(team) {
-  if (G.tuto || G.attract) return;
+  if (G.net || G.tuto || G.attract) return;
   const n = Math.round(REPLAY.KEEP / REPLAY.STEP);
   const fr = REPLAY.frames.slice(-n);
   if (fr.length < 10) return;
@@ -28,7 +27,7 @@ function replaySave(team) {
   REPLAY.last = { frames: fr, team, score: G.score.slice() };
 }
 function startReplay() {
-  if (!REPLAY.last) return;
+  if (!REPLAY.last || G.net) return;
   G.replay = { t: 0, frames: REPLAY.last.frames, team: REPLAY.last.team };
   $('overlay').classList.add('hidden');
 }
