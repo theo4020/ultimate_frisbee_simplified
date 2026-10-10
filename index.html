@@ -20,6 +20,7 @@
     <div class="score"><span class="blue" id="nameB">Bleus (toi)</span> <span id="s0">0</span> – <span id="s1">0</span> <span class="red" id="nameR">Rouges</span></div>
     <div id="status"></div>
     <button id="menuB" title="Menu principal">☰ Menu</button>
+    <button id="teamsB" title="Changer d'équipe" style="display:none">👥 Équipes</button>
     <button id="muteB" title="Son">🔊</button>
     <div id="windBox">Vent <span id="windArrow">➜</span> <span id="windTxt"></span></div>
     <div id="curveBox">Courbe <div class="track"><div id="dot"></div></div></div>
@@ -66,7 +67,6 @@
     <div class="row namerow"><span>Ton pseudo</span><input id="pname" class="tname" maxlength="12" placeholder="Joueur" autocomplete="off" spellcheck="false"></div>
     <div id="lobbyHome">
       <p>Ultimate en 5 contre 5, en quelques minutes.</p>
-      <button class="bigbtn" id="rejoinB" style="display:none">↩ Revenir dans la partie<small id="rejoinTxt"></small></button>
       <button class="bigbtn" id="tutoB">🎓 Tutoriel<small id="tutoTxt">Apprends les bases en 3 minutes</small></button>
       <button class="bigbtn" id="soloB">🤖 Solo<small>Un match contre l'ordinateur</small></button>
       <button class="bigbtn" id="pracB">🎯 Entraînement<small>Lance sur des cibles à ton rythme : courbe, passe haute, vent</small></button>
@@ -88,9 +88,10 @@
         <div class="teamcol"><b class="red">Rouges</b><ul id="rosterR"></ul><button id="teamB1">Rejoindre les Rouges</button></div>
       </div>
       <div class="specrow"><span>👀 Spectateurs : <b id="rosterS">aucun</b></span><button id="teamBS">Regarder sans jouer</button></div>
-      <p class="net">Une équipe sans joueur humain est jouée par l'IA. 5 joueurs maximum par équipe. Le premier arrivé de chaque équipe en est le capitaine : il choisit la stratégie et fait le pull.</p>
+      <p class="net">Tout le monde arrive en spectateur, puis choisit son équipe (ici, ou en cours de partie avec le bouton 👥 Équipes). Une équipe sans joueur humain est jouée par l'IA. 5 joueurs maximum par équipe. Le premier arrivé de chaque équipe en est le capitaine : il choisit la stratégie.</p>
       <p class="net" id="hostStatus">Connexion au service…</p>
       <button id="startOnline" class="primary">Lancer la partie ▶</button>
+      <button id="roomBack" class="primary" style="display:none">← Retour au jeu</button>
       <button id="backB1">← Quitter</button>
     </div>
     <div id="lobbyJoin" style="display:none">
