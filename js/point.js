@@ -44,9 +44,8 @@ function startPoint() {
   startPull();                                                // chaque point commence par un pull (voir pull.js)
   G.readyIds = new Set();
   updateSelected();
-  pullerToSelected();
   if (G.attract) return;                                      // match de démonstration derrière le menu
-  G.menuShown = false;
+  G.menuShown = false; G.teamsOpen = null;
   document.getElementById('overlay').classList.add('hidden');
   pullFlash();
   if (G.net === 'host') netSend({ t: 'start', r, by: G.pull ? G.pull.by : null });
