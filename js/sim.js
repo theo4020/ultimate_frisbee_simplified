@@ -50,6 +50,7 @@ function update(dt) {
     if (disc.mode === 'ground' && G.pickup === p) { p.tx = disc.x; p.ty = disc.y; p.sp = SPD.cut; continue; }
     if (disc.mode === 'carry' && disc.holder === p) { p.tx = G.carryTo.x; p.ty = G.carryTo.y; p.sp = 5.5; continue; }
     if (userControls(p)) { const inp = inputOf(controllerOf(p)); p.tx = inp.x; p.ty = inp.y; p.sp = SPD.user; continue; }   // humain (à plusieurs par équipe)
+    if (G.tuto && TUTO_STEPS[G.tuto.step] && TUTO_STEPS[G.tuto.step].still && tutoPin(p)) continue;   // tutoriel : receveur immobile
     if (disc.mode === 'air' && disc.intended === p) {
       // une passe haute se lit mal : le receveur court d'abord vers l'endroit visé, et ne corrige qu'à la fin du vol
       const late = disc.kind === 'high' && disc.t / disc.dur < 0.75 && disc.rx !== undefined;
@@ -177,9 +178,9 @@ function update(dt) {
         if (r < L.int * 0.5) { interception(p); return; }
         G.stats.blocks++; msTurnover(disc.thrower, 'block', p); turnover(disc.x, disc.y, 'Block en l’air !', 'block'); return;
       }
-      if (r < (diving ? 0.3 : L.int)) { interception(p); return; }
+      if (r < (diving ? 0.3 : L.int)) { if (diving && G.tuto) G.tuto.lblock = true; interception(p); return; }
       if (r < (diving ? 0.85 : G.tuto && G.tuto.wall ? 1 : L.block)) {
-        if (diving) achEvent('layoutblock', p.team); G.stats.blocks++; msTurnover(disc.thrower, 'block', p); turnover(disc.x, disc.y, diving ? 'Layout block !' : p.jump > 0 ? 'Block en l’air !' : 'Block !', 'block'); return; }
+        if (diving) { achEvent('layoutblock', p.team); if (G.tuto) G.tuto.lblock = true; } G.stats.blocks++; msTurnover(disc.thrower, 'block', p); turnover(disc.x, disc.y, diving ? 'Layout block !' : p.jump > 0 ? 'Block en l’air !' : 'Block !', 'block'); return; }
     }
     if (catcher) {
       if (catcher.dive > 0) flash('Layout !');              // réception en plongeon
@@ -203,8 +204,8 @@ function update(dt) {
   } else if (disc.mode === 'ground') {
     const p = G.pickup;
     if (p && dist(p.x, p.y, disc.x, disc.y) < 1.2) {
-      p.x = disc.x; p.y = disc.y;
-      if (G.carryTo) startCarry(p, G.carryTo.x, G.carryTo.y, ''); else holdDisc(p);
+      p.x = disc.x; p.y = disc.y; p.vx = p.vy = 0;
+      if (groundReady()) { if (G.carryTo) startCarry(p, G.carryTo.x, G.carryTo.y, ''); else holdDisc(p); }
     }
   } else if (disc.mode === 'carry') {                           // remontée du disque à pied
     const h = disc.holder; disc.x = h.x; disc.y = h.y;
@@ -212,6 +213,13 @@ function update(dt) {
   }
 }
 
+
+// disque au sol : on ne le ramasse qu'une fois les joueurs (à peu près) en place — au moins 1 s, au plus 4 s
+function groundReady() {
+  const t = G.gt - (G.groundAt || 0);
+  if (t < 1) return false;
+  return t >= 4 || players.every(q => q === G.pickup || Math.hypot(q.vx, q.vy) < 1.8 || dist(q.x, q.y, q.tx, q.ty) < 2);
+}
 
 // ---------- saut ----------
 function jumpTo(p) {
