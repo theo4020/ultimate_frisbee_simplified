@@ -41,6 +41,7 @@ function loop(now) {
   updateStreaks(dt);
   fxUpdate(dt);
   $('overlay').classList.toggle('attract', !!G.attract && $('lobbyCard').style.display !== 'none');
+  $('teamsB').style.display = G.net && G.started ? '' : 'none';
   $('menuB').style.visibility = G.attract || ($('lobbyCard').style.display !== 'none' && !$('overlay').classList.contains('hidden') && !G.net) ? 'hidden' : 'visible';
   if (G.replay) drawReplay(); else draw();
   updateHud();
