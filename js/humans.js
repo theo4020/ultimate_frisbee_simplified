@@ -101,20 +101,20 @@ function switchTarget(h) {
 function selectFor(h, p) {
   if (!canSwitchNow(h) || !p || p.team !== h.team || takenByOther(p, h)) return false;
   h.sel = p; inputOf(h).last = -1e9;
+  if (G.tuto) tutoEvent('switch');
   return true;
 }
+// layout : en défense, ou à plusieurs dans l'équipe, ton joueur plonge vers (x, y) quand tu veux (sauf s'il a le disque) ;
+// seul en attaque, c'est le receveur du disque en vol qui plonge. Le receveur visé plonge vers le point où sera le disque.
 function diveFor(h, x, y) {
   if (!h || h.team < 0 || G.phase !== 'play') return;
-  if (G.off !== h.team) {                                      // défense : layout pour contrer
-    if (h.sel) { diveTo(h.sel, x, y); inputOf(h).last = G.time; }
-    return;
-  }
-  // attaque : layout pour aller chercher un disque de ton équipe en vol
-  if (disc.mode !== 'air' || disc.team !== h.team || disc.pull) return;
-  const p = !soloStyle(h.team) && h.sel ? h.sel : (disc.intended || nearest(TEAMS[h.team], disc.ex, disc.ey, disc.thrower));
-  if (!p || p === disc.thrower) return;
-  const [cx, cy] = catchPoint(p);
-  diveTo(p, cx, cy);
+  const air = disc.mode === 'air' && disc.team === h.team && !disc.pull;
+  let p;
+  if (G.off === h.team && soloStyle(h.team)) { if (!air) return; p = disc.intended || nearest(TEAMS[h.team], disc.ex, disc.ey, disc.thrower); }
+  else p = h.sel;
+  if (!p || (disc.holder === p && (disc.mode === 'held' || disc.mode === 'carry')) || (air && p === disc.thrower)) return;
+  if (air && G.off === h.team && p === disc.intended) [x, y] = catchPoint(p);
+  diveTo(p, x, y);
   if (h.sel === p) inputOf(h).last = G.time;
 }
 // saut : en défense ou à plusieurs, ton joueur ; seul en attaque, le receveur du disque en vol
