@@ -1,4 +1,4 @@
-// tuto.js — Tutoriel interactif : 7 petites étapes guidées, chacune passable.
+// tuto.js — Tutoriel interactif : petites étapes guidées (toutes les commandes du jeu), chacune passable.
 // Les étapes placent les joueurs, en « figent » certains (pin), et attendent un événement de jeu
 // (réception, point, turnover, pull) pour valider.
 
@@ -104,6 +104,53 @@ const TUTO_STEPS = [
     }
   },
   {
+    title: 'Layout en attaque',
+    text: {
+      mouse: 'Ton coéquipier (anneau vert) ne bouge pas. Lance <b>2 à 4 m à côté de lui</b>, puis pendant le vol <b>clic</b> (ou <b>F</b>) : il plonge en <b>layout</b> pour attraper le disque.',
+      touch: 'Ton coéquipier (anneau vert) ne bouge pas. Lance <b>2 à 4 m à côté de lui</b>, puis pendant le vol touche <b>Layout</b> : il plonge pour attraper le disque.',
+      pad: 'Ton coéquipier (anneau vert) ne bouge pas. Lance <b>2 à 4 m à côté de lui</b>, puis pendant le vol appuie sur <b>B</b> : il plonge en <b>layout</b> pour attraper le disque.'
+    },
+    still: true,                                               // le receveur reste immobile : c'est toi qui le fais plonger
+    setup() {
+      tutoReset(); G.tuto.wall = true;
+      tutoPut(0, [[36, 18.5], [50, 18.5], [28, 5], [28, 32], [24, 18.5]]);
+      tutoFarDefense();
+      tutoGive(TEAMS[0][0]);
+    },
+    pin(p) {
+      if (p.team === 1) return tutoFar(p);
+      if (p === disc.holder && disc.mode === 'held') return null;
+      return [[36, 18.5], [50, 18.5], [28, 5], [28, 32], [24, 18.5]][p.i];
+    },
+    on(ev, p) {
+      if (ev === 'catch' && p.team === 0) { if (p.dive > 0 || p.down > 0) tutoSuccess('Superbe layout ! 🙌'); else tutoFail('Attrapé sans plonger : vise un peu plus loin de lui.'); }
+      if (ev === 'turnover') tutoFail(TEAMS[0].some(q => q.down > 0 || q.dive > 0) ? 'Raté : plonge un peu plus tôt ou vise plus près.' : 'Plonge pendant le vol du disque !');
+    }
+  },
+  {
+    title: 'Duel en l’air',
+    text: {
+      mouse: 'Ton receveur est collé par un défenseur. Lance-lui le disque, puis appuie sur <b>S</b> pour que ton receveur saute : le plus haut au bon moment gagne le <b>duel</b>. Sans saut, le défenseur contre.',
+      touch: 'Ton receveur est collé par un défenseur. Lance-lui le disque, puis touche <b>Saut</b> pour que ton receveur saute : le plus haut au bon moment gagne le <b>duel</b>. Sans saut, le défenseur contre.',
+      pad: 'Ton receveur est collé par un défenseur. Lance-lui le disque, puis appuie sur <b>A</b> pendant le vol pour que ton receveur saute : le plus haut au bon moment gagne le <b>duel</b>.'
+    },
+    setup() {
+      tutoReset(); G.tuto.wall = true;
+      tutoPut(0, [[38, 18.5], [52, 18.5], [30, 6], [30, 31], [26, 18.5]]);
+      tutoPut(1, [[95, 4], [51.2, 19.1]], true);
+      tutoGive(TEAMS[0][0]);
+    },
+    pin(p) {
+      if (p.team === 1) return p.i === 1 ? [51.2, 19.1] : tutoFar(p);
+      if (p === disc.holder) return null;
+      return [[38, 18.5], [52, 18.5], [30, 6], [30, 31], [26, 18.5]][p.i];
+    },
+    on(ev, p) {
+      if (ev === 'catch' && p.team === 0) { if (p.jump > 0) tutoSuccess('Duel gagné ! 🙌'); else tutoFail('Attrapé, mais saute pour gagner le duel !'); }
+      if (ev === 'turnover') tutoFail(disc.thrower && disc.intended && disc.intended.jump > 0 ? 'Duel perdu… saute un peu plus tôt !' : 'Contré : fais sauter ton receveur (S) !');
+    }
+  },
+  {
     title: 'Marquer',
     text: {
       mouse: 'Maintenant pour de vrai : la défense joue (niveau facile). Fais avancer le disque et fais-le attraper dans l’<b>en-but adverse</b> (la zone colorée à droite). Lance avant que le compte du marqueur arrive à 10 !',
@@ -120,6 +167,56 @@ const TUTO_STEPS = [
     on(ev, t) {
       if (ev === 'score') { if (t === 0) tutoSuccess('POINT ! 🎉'); else tutoFail('L’adversaire a marqué, on recommence.'); }
       if (ev === 'turnover' && G.off === 1) tutoFail('Turnover ! On recommence.');
+    }
+  },
+  {
+    title: 'Changer de joueur',
+    text: {
+      mouse: 'En défense, tu contrôles un seul joueur (anneau jaune), et il est loin du disque. <b>Espace</b> : tu prends le défenseur le plus proche du disque (entouré en gris). Tu peux aussi <b>cliquer sur un de tes joueurs</b> ou utiliser les touches <b>1 à 5</b>.',
+      touch: 'En défense, tu contrôles un seul joueur (anneau jaune), et il est loin du disque. Touche <b>Switch</b> : tu prends le défenseur le plus proche du disque (entouré en gris). Tu peux aussi <b>taper un de tes joueurs</b>.',
+      pad: 'En défense, tu contrôles un seul joueur (anneau jaune), et il est loin du disque. Appuie sur <b>X</b> : tu prends le défenseur le plus proche du disque (entouré en gris).'
+    },
+    setup() {
+      tutoReset();
+      tutoPut(1, [[62, 18.5], [54, 10], [54, 27], [70, 6], [70, 31]]);
+      tutoPut(0, [[56, 18.5], [50, 10], [50, 27], [40, 4], [40, 33]]);
+      tutoGive(TEAMS[1][0]);
+      const h = meH(); if (h) h.sel = TEAMS[0][3];               // ton joueur est loin du disque
+    },
+    pin(p) { return [[62, 18.5], [54, 10], [54, 27], [70, 6], [70, 31]][p.i]; },
+    pinD(d) { return [[56, 18.5], [50, 10], [50, 27], [40, 4], [40, 33]][d.i]; },
+    hold() { return true; },                                   // le porteur garde le disque
+    on(ev) { if (ev === 'switch') tutoSuccess('Bien vu, tu as pris le bon joueur !'); }
+  },
+  {
+    title: 'Plonger en défense',
+    text: {
+      mouse: 'L’adversaire va lancer à son coéquipier, juste à côté de toi. Ton défenseur ne bouge pas : <b>clique sur la trajectoire</b> (ou <b>F</b>) juste avant que le disque passe pour plonger en <b>layout</b> et le contrer.',
+      touch: 'L’adversaire va lancer à son coéquipier, juste à côté de toi. Oriente le <b>joystick</b> vers la trajectoire et touche <b>Layout</b> juste avant que le disque passe pour le contrer.',
+      pad: 'L’adversaire va lancer à son coéquipier, juste à côté de toi. Oriente le <b>stick</b> vers la trajectoire et appuie sur <b>B</b> juste avant que le disque passe pour le contrer.'
+    },
+    still: true,
+    setup() {
+      tutoReset();
+      Object.assign(G.form, { def: 'man', force: 'straight', dplay: 'none', play: 'none' });
+      tutoPut(1, [[64, 18.5], [48, 18.5], [80, 5], [80, 32], [76, 18.5]]);
+      tutoPut(0, [[51, 21.2], [95, 4], [95, 11], [95, 26], [95, 33]]);
+      tutoGive(TEAMS[1][0]);
+      const h = meH(); if (h) h.sel = TEAMS[0][0];
+      G.tuto.armT = rand(2.2, 3.2);
+    },
+    pin(p) { return p === disc.holder && disc.mode === 'held' ? null : [[64, 18.5], [48, 18.5], [80, 5], [80, 32], [76, 18.5]][p.i]; },
+    pinD(d) { return d.i === 0 ? [51, 21.2] : tutoFar(d); },
+    hold(h, dt) {
+      const T = G.tuto;
+      if (T.thrown || T.done) return true;
+      T.holdT = (T.holdT || 0) + dt;
+      if (T.holdT >= T.armT) { T.thrown = true; throwDisc(h, 48, 18.5, 0, 0.05); }
+      return true;
+    },
+    on(ev, p) {
+      if (ev === 'turnover' && G.off === 0) { if (G.tuto.lblock) tutoSuccess('Layout block ! 💪'); else tutoFail('Passe ratée par le lanceur : on recommence.'); }
+      if (ev === 'catch' && p.team === 1) tutoFail(TEAMS[0][0].down > 0 || TEAMS[0][0].dive > 0 ? 'Pas loin ! Plonge un peu plus tôt, vers la trajectoire.' : 'Plonge juste avant que le disque passe !');
     }
   },
   {
@@ -177,29 +274,6 @@ const TUTO_STEPS = [
     }
   },
   {
-    title: 'Duel en l’air',
-    text: {
-      mouse: 'Ton receveur est collé par un défenseur. Lance-lui le disque, puis appuie sur <b>S</b> pour que ton receveur saute : le plus haut au bon moment gagne le <b>duel</b>. Sans saut, le défenseur contre.',
-      touch: 'Ton receveur est collé par un défenseur. Lance-lui le disque, puis touche <b>Saut</b> pour que ton receveur saute : le plus haut au bon moment gagne le <b>duel</b>. Sans saut, le défenseur contre.',
-      pad: 'Ton receveur est collé par un défenseur. Lance-lui le disque, puis appuie sur <b>A</b> pendant le vol pour que ton receveur saute : le plus haut au bon moment gagne le <b>duel</b>.'
-    },
-    setup() {
-      tutoReset(); G.tuto.wall = true;
-      tutoPut(0, [[38, 18.5], [52, 18.5], [30, 6], [30, 31], [26, 18.5]]);
-      tutoPut(1, [[95, 4], [51.2, 19.1]], true);
-      tutoGive(TEAMS[0][0]);
-    },
-    pin(p) {
-      if (p.team === 1) return p.i === 1 ? [51.2, 19.1] : tutoFar(p);
-      if (p === disc.holder) return null;
-      return [[38, 18.5], [52, 18.5], [30, 6], [30, 31], [26, 18.5]][p.i];
-    },
-    on(ev, p) {
-      if (ev === 'catch' && p.team === 0) { if (p.jump > 0) tutoSuccess('Duel gagné ! 🙌'); else tutoFail('Attrapé, mais saute pour gagner le duel !'); }
-      if (ev === 'turnover') tutoFail(disc.thrower && disc.intended && disc.intended.jump > 0 ? 'Duel perdu… saute un peu plus tôt !' : 'Contré : fais sauter ton receveur (S) !');
-    }
-  },
-  {
     title: 'Le pull',
     text: {
       mouse: 'Chaque point commence par un <b>pull</b> : l’équipe qui défend lance le disque à l’autre. Clique sur la zone visée dans le camp adverse, puis arrête la jauge dans le <b>vert</b> (clic ou Espace) pour un pull long et haut.',
@@ -225,7 +299,7 @@ function tutoReset() {
     match: null, diveTried: false, called: 0, freeAcc: 0, free: false }));
   Object.assign(G, { oplay: null, dplay: null, pendingOPlay: null, pullPending: false, carryTo: null, stall: 0, marker: null, dbl: null,
     pickup: null, throwKind: 'normal', score: [0, 0], celebrate: null, scorer: null, phase: 'play', pull: null });
-  Object.assign(G.tuto, { wall: false, level: null, count: 0, called: false, jumped: false, blocked: false });
+  Object.assign(G.tuto, { wall: false, level: null, count: 0, called: false, jumped: false, blocked: false, lblock: false, thrown: false, holdT: 0 });
   G.wind = { x: 0, y: 0, kmh: 0 };                             // pas de vent pendant le tutoriel
   setCurve(0);
   disc.pull = false; disc.kind = 'normal';
@@ -309,7 +383,7 @@ function tutoFinish() {
   const T = G.tuto; T.done = true; T.step = TUTO_STEPS.length;
   $('tutoTitle').textContent = 'Bravo ! 🎉';
   $('tutoStep').textContent = '';
-  $('tutoText').innerHTML = 'Tu connais les bases : lancer, courber, passe haute, appeler un cut, marquer, défendre, contrer à la mark, gagner un duel et puller. Les menus d’avant-point te laissent aussi choisir ta stratégie et des combinaisons (plays). À toi de jouer !';
+  $('tutoText').innerHTML = 'Tu connais toutes les commandes : lancer, courber, passe haute, appeler un cut, layout en attaque, duel en l’air, marquer, changer de joueur, layout en défense, défendre, contrer à la mark et puller. Les menus d’avant-point te laissent aussi choisir ta stratégie et des combinaisons (plays). À toi de jouer !';
   $('tutoSkip').textContent = 'Jouer un match ▶';
   $('tutoQuit').textContent = 'Menu';
   resize();
