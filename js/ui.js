@@ -60,7 +60,7 @@ function updateHud() {
   $('jumpB').style.display = G.phase === 'pull' || G.spectator ? 'none' : '';
   $('switchD').style.display = G.phase === 'pull' || (att && !multi) ? 'none' : '';
   document.body.classList.toggle('defend', !att && G.phase === 'play');
-  $('hint').innerHTML = G.spectator ? '<i>Mode spectateur</i> : tu regardes la partie. Les boutons d’émojis permettent quand même d’encourager les joueurs.'
+  $('hint').innerHTML = G.spectator ? '<i>Mode spectateur</i> : tu regardes la partie. Bouton <b>👥 Équipes</b> (en haut) pour rejoindre une équipe s’il reste une place. Les émojis permettent d’encourager les joueurs.'
     : G.phase === 'pull'
     ? (pulling ? '<i>Pull</i> : clique sur la zone visée (A/E ou molette pour la courbe), puis arrête la jauge dans le vert (clic ou Espace). Échap pour revenir à la visée. Un pull long et haut laisse le temps à ta défense de monter.' : '<i>Pull</i> : le disque arrive, ton équipe se met en place.')
     : att
@@ -113,23 +113,20 @@ function refreshOptions() {
   $('windKmhTxt').textContent = G.form.windKmh + ' km/h';
 }
 function showLobby(err) {
-  G.menuShown = true; G.series = null;
+  G.menuShown = true; G.teamsOpen = null; G.series = null;
   $('lobbyCard').style.display = ''; $('stratCard').style.display = 'none'; $('seriesCard').style.display = 'none'; $('profileCard').style.display = 'none';
   const tutoDone = storeGet('uf-tuto', false), s = seriesState();
-  $('tutoTxt').textContent = tutoDone ? 'Revoir les bases (3 minutes)' : 'Nouveau ? Commence ici : les bases en 3 minutes';
+  $('tutoTxt').textContent = tutoDone ? 'Revoir les commandes (5 minutes)' : 'Nouveau ? Commence ici : toutes les commandes en 5 minutes';
   $('tutoB').classList.toggle('primary', !tutoDone);
   $('seriesTxt').textContent = s.round >= SERIES.length ? 'Champion ! 🏆 Rejoue quand tu veux'
     : s.round > 0 || s.tries[0] ? `En cours : tour ${s.round + 1} sur 3 contre les ${SERIES[s.round].name}` : 'Trois matchs contre des équipes de plus en plus fortes';
   if (!G.net && !G.attract) startAttract();                     // un vrai match se joue derrière le menu
-  const rj = rejoinInfo();
-  $('rejoinB').style.display = rj ? '' : 'none';
-  if (rj) $('rejoinTxt').textContent = `Partie ${rj.code} : ta connexion a coupé, reprends ta place.`;
   $('lobbyHome').style.display = ''; $('lobbyRoom').style.display = 'none'; $('lobbyJoin').style.display = 'none';
   $('lobbyErr').textContent = err || '';
   $('overlay').classList.remove('hidden');
 }
 function showMenu(kind) {
-  G.menuShown = true;
+  G.menuShown = true; G.teamsOpen = null;
   if (G.net !== 'guest') newWind();
   hudKey = ''; G.lastMenu = kind;
   computeTeams();
@@ -158,7 +155,7 @@ function showMenu(kind) {
     $('go').textContent = 'Jouer le point ▶';
     renderSummary(null);
   }
-  $('replayB').style.display = kind !== 'first' && REPLAY.last ? '' : 'none';
+  $('replayB').style.display = kind !== 'first' && REPLAY.last && !G.net ? '' : 'none';
   $('stratCard').scrollTop = 0;
   G.readyIds = new Set(); G.lastMenu = kind;
   $('go').disabled = false;
@@ -179,7 +176,7 @@ function refreshCaptainUI() {
   const c = captain(G.me), isCap = !G.net || (c && c.id === G.myId);
   $('stratRows').classList.toggle('locked', !isCap);
   $('stratRows').style.display = G.spectator ? 'none' : '';
-  $('captainNote').textContent = G.spectator ? 'Mode spectateur : les capitaines choisissent leur stratégie.' : G.net && !isCap && c ? `Stratégie choisie par ton capitaine (${humanLabel(c)}).` : '';
+  $('captainNote').textContent = G.spectator ? 'Mode spectateur : les capitaines choisissent leur stratégie. Bouton 👥 Équipes pour jouer.' : G.net && !isCap && c ? `Stratégie choisie par ton capitaine (${humanLabel(c)}).` : '';
   $('go').style.display = isCap ? '' : 'none';
   if (!G.net) { $('oppReady').textContent = ''; return; }
   const waiting = [0, 1].map(captain).filter(h => h && !(G.readyIds && G.readyIds.has(h.id)) && h.id !== G.myId);
@@ -312,7 +309,7 @@ function leaveToMenu() {
   G.replay = null; FX.parts.length = 0; G.msgT = 0;
   if (G.tuto) { tutoQuit(); return; }
   if (G.practice) { practiceQuit(); return; }
-  if (G.net) { storeSet('uf-rejoin', null); G.joinCode = null; netError(''); return; }
+  if (G.net) { netError(''); return; }
   backToSolo(); showLobby();
 }
 $('menuB').addEventListener('click', goMainMenu);
