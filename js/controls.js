@@ -10,7 +10,24 @@ function setCurve(v) {
 }
 function switchDefender() { if (canSwitchNow(meH())) doSwitch(); }
 // layout possible en défense, et en attaque quand ton équipe a le disque en l'air
-const canLayout = () => G.phase === 'play' && (defending() || (disc.mode === 'air' && disc.team === G.me && !disc.pull));
+// layout : en défense ; à plusieurs dans l'équipe, à tout moment avec ton joueur (s'il n'a pas le disque) ;
+// seul en attaque, quand ton équipe a le disque en l'air
+function canLayout() {
+  if (G.phase !== 'play' || G.spectator) return false;
+  if (defending()) return true;
+  const h = meH();
+  if (h && !soloStyle(G.me)) return !!h.sel && !(disc.holder === h.sel && (disc.mode === 'held' || disc.mode === 'carry'));
+  return disc.mode === 'air' && disc.team === G.me && !disc.pull;
+}
+// point visé par un layout au stick (téléphone, manette) : dans la direction du stick, sinon de sa course, sinon vers le disque
+function stickDive(dx, dy) {
+  const sel = (meH() || {}).sel;
+  if (!sel || (attacking() && soloStyle(G.me))) return [disc.ex, disc.ey];   // seul en attaque : le receveur va au disque
+  if (Math.hypot(dx, dy) < 0.2) { dx = sel.vx; dy = sel.vy; }
+  if (Math.hypot(dx, dy) < 0.2) { dx = disc.x - sel.x; dy = disc.y - sel.y; }
+  const l = Math.hypot(dx, dy) || 1;
+  return [sel.x + dx / l * 3, sel.y + dy / l * 3];
+}
 function userJump() { if (canJump()) { doJump(); G.pointer.last = G.time; } }
 function userDive() { if (canLayout()) { doDive(G.pointer.x, G.pointer.y); G.pointer.last = G.time; } }
 function toWorld(e) { const r = canvas.getBoundingClientRect(); return { x: (e.clientX - r.left) / S - M, y: (e.clientY - r.top) / S - M }; }
@@ -171,16 +188,7 @@ function joyFrame() {
     sendInput();
   }
 }
-function touchDive() {
-  if (!canLayout()) return;
-  if (!defending()) { doDive(disc.ex, disc.ey); return; }   // attaque : le receveur plonge vers le disque
-  const sel = (meH() || {}).sel; if (!sel) return;
-  let dx = joy.dx, dy = joy.dy;
-  if (Math.hypot(dx, dy) < 0.2) { dx = sel.vx; dy = sel.vy; }            // sinon dans le sens de sa course
-  if (Math.hypot(dx, dy) < 0.2) { dx = disc.x - sel.x; dy = disc.y - sel.y; } // sinon vers le disque
-  const l = Math.hypot(dx, dy) || 1;
-  doDive(sel.x + dx / l * 3, sel.y + dy / l * 3);
-}
+function touchDive() { if (canLayout()) doDive(...stickDive(joy.dx, joy.dy)); }
 for (const [id, fn] of [['tDive', touchDive], ['tSwitch', switchDefender], ['tJump', userJump]])
   $(id).addEventListener('pointerdown', e => { e.preventDefault(); fn(); });
 const fsOK = document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen;
