@@ -1,31 +1,14 @@
 // net.js — Multijoueur en ligne (PeerJS : connexions directes entre navigateurs)
 // L'hôte fait tourner la partie et envoie l'état ~20 fois par seconde à chaque invité.
 // Les invités envoient seulement leurs actions (pointeur, lancer, layout, switch, appel, pull).
-// Jusqu'à 5 humains par équipe ; une équipe sans humain est jouée par l'IA. Les autres peuvent regarder (spectateurs).
-// Si un invité perd la connexion, il retente tout seul de se reconnecter et retrouve sa place (jeton gardé dans le navigateur).
+// Tout invité arrive en spectateur ; il rejoint une équipe quand il veut (bouton 👥 Équipes), partie lancée ou non,
+// s'il y reste une place (5 humains max par équipe). Une équipe sans humain est jouée par l'IA. L'hôte joue toujours.
 
 let peer = null, hostConn = null, netT = 0, inT = 0, lastMid = 0, snapAt = 0, lastRecv = 0, pingT = 0;
 const conns = new Map();                                     // côté hôte : id d'invité → connexion
 const lastSeen = new Map();
 let nextId = 1;
-const MAX_PER_TEAM = 5, MAX_SPEC = 6;
-const ghosts = new Map();                                    // côté hôte : jeton → place d'un joueur déconnecté (pour son retour)
-// jeton de ce navigateur : permet à l'hôte de reconnaître un joueur qui revient après une coupure
-// (propre à l'onglet : deux onglets du même navigateur restent deux joueurs différents)
-let tokenMem = null;
-function myToken() {
-  try { tokenMem = tokenMem || sessionStorage.getItem('uf-token'); } catch (e) { }
-  if (typeof tokenMem !== 'string' || tokenMem.length < 8) {
-    tokenMem = Math.random().toString(36).slice(2, 12) + Math.random().toString(36).slice(2, 8);
-    try { sessionStorage.setItem('uf-token', tokenMem); } catch (e) { }
-  }
-  return tokenMem;
-}
-// partie à laquelle on peut revenir (coupure de moins de 10 minutes)
-function rejoinInfo() {
-  const r = storeGet('uf-rejoin', null);
-  return r && typeof r.code === 'string' && Date.now() - r.at < 10 * 60 * 1000 && !G.net ? r : null;
-}
+const MAX_PER_TEAM = 5, MAX_SPEC = 10;
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const newCode = () => Array.from({ length: 4 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join('');
 
@@ -54,28 +37,14 @@ function sendInput(force) {
 }
 function netError(msg) {
   for (const c of conns.values()) { try { c.close(); } catch (e) { } }
-  conns.clear(); lastSeen.clear(); ghosts.clear();
-  G.rejoin = 0;
+  conns.clear(); lastSeen.clear();
   try { if (hostConn) hostConn.close(); } catch (e) { }
   try { if (peer) peer.destroy(); } catch (e) { }
   peer = hostConn = null;
   backToSolo();
   showLobby(msg);
 }
-// coupure côté invité : on retente plusieurs fois avant d'abandonner
-function connectionLost(msg) {
-  if (G.net !== 'guest' || !G.joinCode) { netError(msg); return; }
-  G.rejoin = (G.rejoin || 0) + 1;
-  if (G.rejoin > 4) { netError(msg + ' La reconnexion a échoué.'); return; }
-  const c = hostConn; hostConn = null;
-  try { if (c) c.close(); } catch (e) { }
-  try { if (peer) peer.destroy(); } catch (e) { }
-  peer = null;
-  showLobby(); $('lobbyHome').style.display = 'none'; $('lobbyJoin').style.display = '';
-  $('joinCode').value = G.joinCode;
-  $('joinStatus').textContent = `Connexion perdue, reconnexion… (essai ${G.rejoin} sur 4)`;
-  setTimeout(() => { if (G.net === 'guest' && !hostConn) joinGame(G.joinCode, true); }, 1200 * G.rejoin);
-}
+const connectionLost = msg => netError(msg);
 function backToSolo() {
   G.attract = false;
   if (G.practice) { G.practice = null; $('pracBox').style.display = 'none'; }
@@ -159,7 +128,7 @@ function hostGame() {
     });
   }).catch(() => netError('Impossible de charger le module réseau. Vérifie ta connexion.'));
 }
-// l'invité se présente (« hello ») avec son jeton : nouveau joueur, retour après coupure, ou spectateur
+// l'invité se présente (« hello ») : il arrive en spectateur
 function addGuest(c) {
   let id = null;
   c.on('data', m => {
@@ -172,27 +141,16 @@ function addGuest(c) {
   setTimeout(() => { if (id === null) { try { c.close(); } catch (e) { } } }, 15000);
 }
 function admitGuest(c, m) {
-  for (const [k, g] of ghosts) if (G.time - g.t > 600) ghosts.delete(k);
-  const token = typeof m.token === 'string' ? m.token.slice(0, 40) : '';
-  let ghost = token && ghosts.get(token);
-  if (ghost && humanById(ghost.id)) ghost = null;
-  const counts = [teamHumans(0).length, teamHumans(1).length], specs = G.humans.filter(h => h.team < 0).length;
-  let team;
-  if (ghost && ghost.team >= 0 && counts[ghost.team] < MAX_PER_TEAM) team = ghost.team;
-  else if (!m.spec && Math.min(counts[0], counts[1]) < MAX_PER_TEAM) team = counts[1] <= counts[0] ? 1 : 0;   // on remplit l'équipe la moins nombreuse
-  else team = -1;
-  if (team < 0 && specs >= MAX_SPEC) { safeSend(c, { t: 'full' }); setTimeout(() => c.close(), 300); return null; }
-  const id = ghost ? ghost.id : nextId++;
+  if (G.humans.filter(h => h.team < 0).length >= MAX_SPEC) { safeSend(c, { t: 'full' }); setTimeout(() => c.close(), 300); return null; }
+  const id = nextId++;
   conns.set(id, c); lastSeen.set(id, G.time);
-  const h = { id, team, sel: null, token, cfg: ghost ? ghost.cfg : undefined, name: cleanName(m.name) };
+  const h = { id, team: -1, sel: null, name: cleanName(m.name) };
   G.humans.push(h);
-  if (token) ghosts.delete(token);
   sendTo(id, { t: 'welcome', id });
   sendTo(id, roomState());
   if (G.started && G.menuShown) sendTo(id, { t: 'menu', kind: G.lastMenu || 'first', score: G.score, rec: G.receiving, wind: G.wind, teams: G.teams, pts: winPts(), sum: G.lastMenu === 'over' ? G.lastSummary : null });
-  if (G.started && G.phase !== 'menu') updateSelected();
   broadcastRoom();
-  if (G.started) flash(humanLabel(h) + (ghost ? ' est de retour' : team < 0 ? ' regarde la partie' : ' a rejoint la partie'));
+  if (G.started) flash(humanLabel(h) + ' regarde la partie');
   return id;
 }
 function dropGuest(id, why) {
@@ -201,10 +159,9 @@ function dropGuest(id, why) {
   conns.delete(id); lastSeen.delete(id);
   const h = humanById(id);
   G.humans = G.humans.filter(o => o.id !== id);
-  if (h && h.token) ghosts.set(h.token, { id, team: h.team, cfg: h.cfg, t: G.time });   // sa place l'attend s'il revient
   if (G.readyIds) G.readyIds.delete(id);
   if (h) flash(humanLabel(h) + ' ' + why);
-  if (G.started) { updateSelected(); tryStartOnline(); }
+  if (G.started) { if (G.phase === 'play') updateSelected(); tryStartOnline(); }
   broadcastRoom();
 }
 const roomState = () => ({ t: 'room', started: !!G.started, hum: G.humans.map(h => [h.id, h.team, h.name || '']) });
@@ -213,13 +170,12 @@ function setTeam(id, team) {
   const h = humanById(id);
   if (!h || h.team === team) return;
   if (team >= 0 && teamHumans(team).length >= MAX_PER_TEAM) return;
-  if (team < 0 && G.humans.filter(o => o.team < 0).length >= MAX_SPEC) return;
-  if (G.started && (G.phase === 'play' || G.phase === 'pull') && team >= 0) return;   // on entre dans une équipe entre deux points
   if (id === 0 && team < 0) return;                          // l'hôte joue toujours
-  h.team = team; h.sel = null;
+  h.team = team; h.sel = null;                               // partie en cours : il prend tout de suite un joueur de l'équipe
   if (G.readyIds) G.readyIds.delete(id);
-  if (G.started && G.phase !== 'menu') updateSelected();
+  if (G.started && G.phase === 'play') updateSelected();
   broadcastRoom();
+  if (G.started) flash(humanLabel(h) + (team < 0 ? ' regarde la partie' : ' rejoint les ' + tn(team)));
 }
 function startOnline() {
   if (G.net !== 'host') return;
@@ -276,13 +232,11 @@ function snapshot() {
 // =====================================================================
 //  Invité
 // =====================================================================
-function joinGame(code, retry, spec) {
+function joinGame(code) {
   stopAttract();
   code = (code || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (code.length !== 4) { $('lobbyErr').textContent = 'Le code fait 4 caractères.'; return; }
-  $('lobbyErr').textContent = ''; if (!retry) $('joinStatus').textContent = 'Connexion au service…';
-  G.joinCode = code;
-  const netError = msg => (retry ? connectionLost(msg) : window.netError(msg));
+  $('lobbyErr').textContent = ''; $('joinStatus').textContent = 'Connexion au service…';
   makePeer(null).then(p => {
     peer = p;
     p.on('open', () => {
@@ -301,11 +255,11 @@ function joinGame(code, retry, spec) {
         c.on('data', m => { lastRecv = G.time; if (m && typeof m === 'object') guestOnData(m); });
         c.on('close', () => { if (hostConn === c) connectionLost('La connexion avec l’hôte a été perdue.'); });
         c.on('error', () => { if (hostConn === c) connectionLost('Erreur de connexion avec l’hôte.'); });
-        if (!retry) { G.score = [0, 0]; G.receiving = 0; G.phase = 'menu'; }
+        G.score = [0, 0]; G.receiving = 0; G.phase = 'menu';
         G.net = 'guest';
-        $('joinStatus').textContent = retry ? 'Reconnecté !' : 'Connecté !';
+        $('joinStatus').textContent = 'Connecté !';
         lastMid = -1;
-        netSend({ t: 'hello', token: myToken(), spec: !!spec, name: myName() });
+        netSend({ t: 'hello', name: myName() });
       });
     });
     p.on('error', err => {
@@ -317,7 +271,6 @@ function joinGame(code, retry, spec) {
     });
   }).catch(() => netError('Impossible de charger le module réseau. Vérifie ta connexion.'));
 }
-window.netError = netError;
 function applyHumans(list) {
   const old = new Map(G.humans.map(h => [h.id, h]));
   G.humans = list.map(([id, team, si, name]) => {
@@ -331,16 +284,15 @@ function guestOnData(m) {
   switch (m.t) {
     case 's': applySnapshot(m); break;
     case 'welcome':
-      G.myId = m.id; G.rejoin = 0;
-      storeSet('uf-rejoin', { code: G.joinCode, at: Date.now() });
+      G.myId = m.id;
       if (!G.started) showRoom();
       break;
     case 'emo': if (EMOTES[m.e]) G.emotes.push({ id: m.id, e: EMOTES[m.e], t: G.time }); break;
-    case 'full': netError('La partie est complète (5 joueurs par équipe).'); break;
+    case 'full': netError('La partie est complète.'); break;
     case 'room':
       applyHumans(m.hum.map(([id, team, name]) => [id, team, -1, name]));
       G.started = m.started; hudKey = '';
-      if (!G.started) { showRoom(); renderRoom(); }
+      if (!G.started || G.teamsOpen) { showRoom(); renderRoom(); }
       else if (G.phase === 'play' || G.phase === 'pull') { $('overlay').classList.add('hidden'); G.menuShown = false; }
       refreshCaptainUI();
       break;
@@ -355,7 +307,7 @@ function guestOnData(m) {
       showMenu(m.kind);
       break;
     case 'start':
-      replayReset(); FX.celebrate = null;
+      replayReset(); FX.celebrate = null; G.teamsOpen = null;
       G.phase = 'pull'; G.menuShown = false; G.receiving = m.r;
       G.pull = { team: 1 - m.r, t: 0, by: m.by == null ? null : m.by }; G.pullUI = { stage: 'aim', t0: 0, x: 0, y: 0, q: 0 };
       G.curve = 0; $('curveRange').value = 0;
@@ -398,8 +350,8 @@ function applySnapshot(m) {
   G.oplay = g.op; G.dplay = g.dp; G.netCfg = g.cfg;
   if (g.teams) G.netTeams = g.teams;
   G.netTell = !!g.tell;
-  if ((g.phase === 'play' || g.phase === 'pull') && G.started && !$('overlay').classList.contains('hidden') && $('stratCard').style.display === 'none') {
-    $('overlay').classList.add('hidden'); G.menuShown = false;          // retour en cours de point : on montre le terrain
+  if ((g.phase === 'play' || g.phase === 'pull') && G.started && !G.teamsOpen && !$('overlay').classList.contains('hidden') && $('stratCard').style.display === 'none') {
+    $('overlay').classList.add('hidden'); G.menuShown = false;          // arrivée en cours de point : on montre le terrain
   }
   G.order = g.order.map(o => o.map(i => players[i]));
   if (g.phase === 'pull' && (G.phase !== 'pull' || !G.pull)) { G.pull = { team: g.pull, t: 0, by: g.pullBy }; G.pullUI = { stage: 'aim', t0: 0, x: 0, y: 0, q: 0 }; }
@@ -429,16 +381,28 @@ function guestFrame(dt) {
 // =====================================================================
 //  Lobby (salle d'attente : choix des équipes)
 // =====================================================================
+// avant le match : salle d'attente ; partie lancée : le même écran s'ouvre par-dessus le jeu (bouton 👥 Équipes)
 function showRoom() {
+  if (G.started && !G.teamsOpen) G.teamsOpen = { menu: G.menuShown };
   G.menuShown = true;
-  $('lobbyCard').style.display = ''; $('stratCard').style.display = 'none';
+  for (const id of ['stratCard', 'seriesCard', 'profileCard']) $(id).style.display = 'none';
+  $('lobbyCard').style.display = '';
   for (const id of ['lobbyHome', 'lobbyJoin']) $(id).style.display = 'none';
   $('lobbyRoom').style.display = '';
   const host = G.net === 'host' || !G.net;
   $('roomCodeBox').style.display = host ? '' : 'none';
-  $('startOnline').style.display = host ? '' : 'none';
+  $('startOnline').style.display = host && !G.started ? '' : 'none';
+  $('roomBack').style.display = G.started ? '' : 'none';
+  $('backB1').style.display = G.started ? 'none' : '';
   $('overlay').classList.remove('hidden');
   renderRoom();
+}
+function closeTeams() {
+  const T = G.teamsOpen; if (!T) return;
+  G.teamsOpen = null;
+  $('lobbyCard').style.display = 'none';
+  if (T.menu && (G.phase === 'menu' || G.phase === 'between' || G.phase === 'over')) { $('stratCard').style.display = ''; G.menuShown = true; refreshCaptainUI(); }
+  else { G.menuShown = false; $('overlay').classList.add('hidden'); }
 }
 function renderRoom(note) {
   if (!$('rosterB')) return;
@@ -457,12 +421,13 @@ function renderRoom(note) {
   const n = G.humans.filter(h => h.team >= 0).length;
   $('hostStatus').textContent = note || (G.net === 'host'
     ? (n > 1 ? `${n} joueurs connectés. Lance la partie quand tout le monde est là.` : 'En attente de joueurs… (tu peux aussi lancer seul contre l’IA)')
-    : 'En attente que l’hôte lance la partie…');
+    : G.started ? 'Partie en cours : choisis une équipe s’il reste une place.' : 'En attente que l’hôte lance la partie…');
 }
 function chooseTeam(t) {
   if (t < 0 && G.net !== 'guest') return;
   if (G.net === 'guest') netSend({ t: 'team', team: t });
   else if (G.net === 'host') setTeam(0, t);
+  if (G.started) closeTeams();
 }
 
 $('soloB').addEventListener('click', () => { backToSolo(); G.series = null; newMatch(); showMenu('first'); });
@@ -475,11 +440,8 @@ $('joinGo').addEventListener('click', () => joinGame($('joinCode').value));
 $('teamB0').addEventListener('click', () => chooseTeam(0));
 $('teamB1').addEventListener('click', () => chooseTeam(1));
 $('teamBS').addEventListener('click', () => chooseTeam(-1));
-$('rejoinB').addEventListener('click', () => {
-  const r = rejoinInfo(); if (!r) return;
-  $('lobbyHome').style.display = 'none'; $('lobbyJoin').style.display = ''; $('joinCode').value = r.code;
-  joinGame(r.code);
-});
+$('roomBack').addEventListener('click', closeTeams);
+$('teamsB').addEventListener('click', () => { if (G.net && G.started) showRoom(); });
 $('startOnline').addEventListener('click', startOnline);
 $('copyLink').addEventListener('click', () => {
   if (!G.inviteUrl) return;
@@ -488,7 +450,7 @@ $('copyLink').addEventListener('click', () => {
   else if (navigator.clipboard) navigator.clipboard.writeText(G.inviteUrl).then(done, () => prompt('Copie ce lien :', G.inviteUrl));
   else prompt('Copie ce lien :', G.inviteUrl);
 });
-for (const id of ['backB1', 'backB2']) $(id).addEventListener('click', () => { storeSet('uf-rejoin', null); G.joinCode = null; netError(''); });
+for (const id of ['backB1', 'backB2']) $(id).addEventListener('click', () => netError(''));
 
 // pseudo : mémorisé dans le navigateur, envoyé à l'hôte (et modifiable dans la salle d'attente)
 $('pname').value = myName();
@@ -498,4 +460,4 @@ $('pname').addEventListener('input', e => {
   if (G.net === 'guest') netSend({ t: 'name', name: myName() });
   else if (G.net === 'host' && h) { h.name = myName(); broadcastRoom(); }
   else if (h) h.name = myName();
-});
+});;
