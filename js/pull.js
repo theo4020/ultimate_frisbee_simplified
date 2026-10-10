@@ -90,8 +90,6 @@ function choosePuller(t) {
   return (h || hs[0]).id;
 }
 const localPuller = () => G.phase === 'pull' && !!G.pull && G.pull.by != null && G.pull.by === G.myId;
-// (le pulleur est choisi dans placeForPull : il marche jusqu'au centre de la ligne)
-function pullerToSelected() { }
 function pullFlash() {
   if (!G.pull) return;
   const by = G.pull.by != null && humanById(G.pull.by);
@@ -199,8 +197,13 @@ function pullCaught(p) {
   const r = G.receiving;
   disc.pull = false;
   fxEvent('catch', p.x, p.y, p.team);
-  if (p.x < 0 || p.x > W || p.y < 0 || p.y > H) { startCarry(p, brickX(r), H / 2, 'Out ! Brick'); return; }
-  if (inScoreZone(1 - r, p.x)) { startCarry(p, goalLine(r), clamp(p.y, 0.5, H - 0.5), ''); return; }   // attrapé dans son en-but
+  const outside = p.x < 0 || p.x > W || p.y < 0 || p.y > H;
+  const landsOut = disc.ex < 0 || disc.ex > W || disc.ey < 0 || disc.ey > H;
+  if (outside && landsOut) { startCarry(p, brickX(r), H / 2, 'Out ! Brick'); return; }   // pull qui sortait : brick
+  // attrapé hors du terrain alors qu'il allait retomber dedans : réception valable, on rentre le disque au plus près
+  let x = clamp(p.x, 0, W), y = clamp(p.y, 0.5, H - 0.5);
+  if (inScoreZone(1 - r, x)) x = goalLine(r);                  // dans son en-but : on le ramène sur la ligne
+  if (outside || x !== p.x) { startCarry(p, x, y, ''); return; }
   holdDisc(p);
 }
 const brickX = r => goalLine(r) + dirOf(r) * PULL.BRICK;
@@ -228,6 +231,7 @@ function pullLanded(ex, ey) {
 function pullToSpot(x, y, catcher, msg) {
   const r = G.receiving;
   Object.assign(disc, { mode: 'ground', holder: null, x, y, z: 0 });
+  G.groundAt = G.gt;
   G.pickup = catcher || nearest(TEAMS[r], x, y);
   assignRoles(r, G.pickup);
   setupDefense(1 - r, G.pickup);
