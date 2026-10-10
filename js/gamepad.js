@@ -94,17 +94,7 @@ function gpPlay(sx, sy, m, press) {
     } else if (G.pointer.down) { G.pointer.x = sel.x; G.pointer.y = sel.y; G.pointer.down = false; G.pointer.last = G.time; sendInput(true); }
   }
   if (press(1) && !canLayout()) gpNoLayout();
-  if (press(1) && canLayout()) {
-    if (!defending()) doDive(disc.ex, disc.ey);
-    else if (sel) {
-      let dx = sx, dy = sy;
-      if (Math.hypot(dx, dy) < 0.2) { dx = sel.vx; dy = sel.vy; }
-      if (Math.hypot(dx, dy) < 0.2) { dx = disc.x - sel.x; dy = disc.y - sel.y; }
-      const l = Math.hypot(dx, dy) || 1;
-      doDive(sel.x + dx / l * 3, sel.y + dy / l * 3);
-    }
-    G.pointer.last = G.time;
-  }
+  if (press(1) && canLayout()) { doDive(...stickDive(sx, sy)); G.pointer.last = G.time; }
   if (press(2)) {
     if (canSwitchNow(h)) doSwitch();
     else if (attacking() && disc.mode === 'held' && disc.holder) {
