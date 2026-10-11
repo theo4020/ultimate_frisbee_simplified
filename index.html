@@ -59,6 +59,7 @@
 </div>
 
 <div id="toast"></div>
+<div id="pauseBanner" style="display:none"><span id="pauseText"></span><button id="pauseResume">▶ Relancer</button></div>
 <div id="askBox" style="display:none"><div class="askCard"><p id="askText"></p>
   <div class="askBtns"><button id="askNo">Annuler</button><button id="askYes" class="danger">Quitter</button></div></div></div>
 <div id="overlay">
@@ -73,6 +74,7 @@
       <button class="bigbtn" id="seriesB">🏆 Mini-tournoi<small id="seriesTxt">Trois matchs contre des équipes de plus en plus fortes</small></button>
       <button class="bigbtn" id="hostB">🌐 Créer une partie en ligne<small>Jusqu'à 10 joueurs : contre l'IA ensemble ou en vrai 5 contre 5</small></button>
       <button class="bigbtn" id="joinB">🔗 Rejoindre une partie<small>Avec le code de l'hôte</small></button>
+      <button class="bigbtn" id="ctrlB">⚙️ Commandes<small>Gestes ou joystick sur téléphone, touches du clavier</small></button>
       <button class="bigbtn" id="profileB">🏅 Profil<small>Tes statistiques de carrière et tes succès</small></button>
       <button class="bigbtn" id="installB" style="display:none">📲 Installer le jeu<small>Sur l'écran d'accueil, en plein écran, jouable hors connexion en solo</small></button>
       <p class="net" id="iosHint" style="display:none">📲 Pour installer le jeu sur iPhone : bouton Partager, puis « Sur l'écran d'accueil ».</p>
@@ -90,6 +92,7 @@
       <div class="specrow"><span>👀 Spectateurs : <b id="rosterS">aucun</b></span><button id="teamBS">Regarder sans jouer</button></div>
       <p class="net">Tout le monde arrive en spectateur, puis choisit son équipe (ici, ou en cours de partie avec le bouton 👥 Équipes). Une équipe sans joueur humain est jouée par l'IA. 5 joueurs maximum par équipe. Le premier arrivé de chaque équipe en est le capitaine : il choisit la stratégie.</p>
       <p class="net" id="hostStatus">Connexion au service…</p>
+      <button class="testNet ghost">📶 Tester la connexion</button><p class="net"></p>
       <button id="startOnline" class="primary">Lancer la partie ▶</button>
       <button id="roomBack" class="primary" style="display:none">← Retour au jeu</button>
       <button id="backB1">← Quitter</button>
@@ -98,9 +101,32 @@
       <p>Entre le code de la partie :</p>
       <div class="row" style="justify-content:center"><input id="joinCode" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false"><button id="joinGo" class="primary" style="width:auto;margin:0">Rejoindre</button></div>
       <p class="net" id="joinStatus"></p>
+      <button class="testNet ghost">📶 Tester la connexion</button><p class="net"></p>
       <button id="backB2">← Retour</button>
     </div>
     <div class="err" id="lobbyErr"></div>
+  </div>
+  <div class="card" id="gameMenuCard" style="display:none">
+    <h1>Menu</h1>
+    <button class="bigbtn primary" id="gmResume">▶ Reprendre</button>
+    <button class="bigbtn" id="gmPause">⏸ Pause pour tout le monde</button>
+    <button class="bigbtn" id="gmCtrl">⚙️ Commandes</button>
+    <button class="bigbtn" id="gmReport">🐞 Signaler un problème</button>
+    <button class="bigbtn" id="gmQuit">✕ Quitter la partie</button>
+  </div>
+  <div class="card" id="ctrlCard" style="display:none">
+    <h1>⚙️ Commandes</h1>
+    <div id="ctrlBody"></div>
+    <button id="ctrlBack" class="primary">← Retour</button>
+  </div>
+  <div class="card" id="reportCard" style="display:none">
+    <h1>🐞 Signaler un problème</h1>
+    <p>Décris ce qui s’est passé, puis copie le rapport et colle-le dans ta conversation avec Claude. Il contient l’état du jeu et ses 10 dernières secondes, pour retrouver la situation exacte.</p>
+    <textarea id="repDesc" rows="3" placeholder="Ce que j’ai fait, ce que j’attendais, ce qui s’est passé…"></textarea>
+    <button id="repCopy" class="primary">Copier le rapport</button>
+    <p class="net" id="repStatus"></p>
+    <textarea id="repOut" rows="4" readonly style="display:none"></textarea>
+    <button id="repBack">← Retour</button>
   </div>
   <div class="card" id="profileCard" style="display:none">
     <h1>🏅 Profil · <span id="profileName"></span></h1>
@@ -294,9 +320,12 @@
 <script src="js/practice.js"></script>
 <script src="js/achievements.js"></script>
 <script src="js/tuto.js"></script>
+<script src="js/ctrl.js"></script>
 <script src="js/controls.js"></script>
+<script src="js/gestures.js"></script>
 <script src="js/gamepad.js"></script>
 <script src="js/net.js"></script>
+<script src="js/menu.js"></script>
 <script src="js/main.js"></script>
 <script src="js/pwa.js"></script>
 </body>

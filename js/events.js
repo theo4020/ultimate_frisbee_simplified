@@ -1,4 +1,4 @@
-// events.js — Événements : réception, turnover, point ; sélection du défenseur
+// events.js — Événements : réception, interception, turnover, point ; sélection du défenseur
 
 // =====================================================================
 //  Événements de jeu
@@ -37,6 +37,32 @@ function catchDisc(p) {
   if (scored) { G.scorer = p; scorePoint(p.team); return; }
   if (!inField(p.x, p.y)) { startCarry(p, clamp(p.x, 0.5, W - 0.5), clamp(p.y, 0.5, H - 0.5), ''); return; }   // attrapé depuis l'extérieur : il rentre
   holdDisc(p);
+}
+
+// interception : le défenseur garde le disque (dans l'en-but adverse, c'est toujours un Callahan : point immédiat)
+function interception(p) {
+  if (G.practice) { practiceMiss('Intercepté !'); return; }
+  G.stats.ints++;
+  msTurnover(disc.thrower, 'int', p);
+  fxEvent('int', p.x, p.y, p.team);
+  if (G.oplay) endOPlay();
+  if (G.dplay) endDPlay();
+  G.off = p.team;
+  if (inScoreZone(p.team, disc.x)) { if (G.ms) msPl(p).gol++; G.scorer = p; achEvent('callahan', p.team); achEvent('goal', p.team); scorePoint(p.team, 'Callahan !'); return; }
+  p.dive = 0; p.down = 0;
+  const x = clamp(p.x, 0.5, W - 0.5), y = clamp(p.y, 0.5, H - 0.5), L = lineSpot(x, y);
+  if (L) startCarry(p, L.x, L.y, '');                          // intercepté dans son en-but : il ramène le disque à la ligne
+  else if (x !== p.x || y !== p.y) startCarry(p, x, y, '');    // depuis l'extérieur : il rentre
+  else holdDisc(p);
+  setupDefense(1 - p.team, p); updateSelected();
+  flash('Interception !');
+  if (G.tuto) tutoEvent('turnover');
+}
+// un défenseur arrête la passe : 1 fois sur 3 il l'intercepte, et toujours dans l'en-but adverse (Callahan) ; sinon block
+const INT_CHANCE = 1 / 3;
+function defStop(p, msg) {
+  if (inScoreZone(p.team, disc.x) || Math.random() < INT_CHANCE) { interception(p); return; }
+  G.stats.blocks++; msTurnover(disc.thrower, 'block', p); turnover(disc.x, disc.y, msg, 'block');
 }
 
 function turnover(x, y, msg, kind) {

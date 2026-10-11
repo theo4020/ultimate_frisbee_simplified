@@ -103,7 +103,7 @@ function fxPlay(name, x, y, team) {
   if (!G.attract) try {
     if (SOUNDS[name]) SOUNDS[name](team);
     if (name === 'score') SOUNDS.cheer();
-    else if (name === 'block') SOUNDS.ooh();
+    else if (name === 'block' || name === 'int') SOUNDS.ooh();
   } catch (e) { }
   const c = teamColor(team);
   switch (name) {
@@ -114,6 +114,7 @@ function fxPlay(name, x, y, team) {
     }
     case 'catch': ring(x, y, 'rgba(255,255,255,.9)', 2.2, 0.35); break;
     case 'block': burst(x, y, 14, { color: ['#f87171', '#fb923c', '#fde68a'], speed: 9, life: 0.5 }); ring(x, y, '#f87171', 3, 0.4); FX.shake = Math.max(FX.shake, 7); vibrate(60); break;
+    case 'int': burst(x, y, 18, { color: [c, '#fde68a', '#fff'], speed: 10, life: 0.6 }); ring(x, y, c, 3.5, 0.5); FX.shake = Math.max(FX.shake, 9); vibrate([40, 30, 60]); break;
     case 'layout': burst(x, y, 10, { color: ['#a3e635', '#65a30d', '#d9f99d'], speed: 4, life: 0.5, size: 0.3 }); vibrate(25); break;
     case 'turn': burst(x, y, 8, { color: ['#cbd5e1', '#94a3b8'], speed: 3, life: 0.5, size: 0.28 }); break;
     case 'score': {

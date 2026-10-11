@@ -10,6 +10,7 @@ const ACH = [
   { id: 'layout', icon: '🤸', name: 'Plongeon', desc: 'Attraper ou contrer le disque en layout' },
   { id: 'skyblock', icon: '✋', name: 'Contre en l’air', desc: 'Contrer un disque en sautant' },
   { id: 'duel', icon: '👑', name: 'Roi des airs', desc: 'Gagner un duel en l’air' },
+  { id: 'callahan', icon: '🦅', name: 'Callahan', desc: 'Intercepter le disque dans l’en-but adverse' },
   { id: 'pull', icon: '🎯', name: 'Pull parfait', desc: 'Arrêter la jauge du pull dans le vert' },
   { id: 'practice10', icon: '🏹', name: 'Tireur d’élite', desc: 'Enchaîner 10 cibles à l’entraînement' },
   { id: 'online', icon: '🌐', name: 'Esprit d’équipe', desc: 'Gagner un match en ligne' },
@@ -56,6 +57,7 @@ function achEvent(type, a, b) {
       break;
     }
     case 'goal': if (mineT(a)) unlock('goal'); break;
+    case 'callahan': if (mineT(a)) unlock('callahan'); break;
     case 'duel': if (mineT(a)) { unlock('duel'); careerAdd('duels'); } break;
     case 'skyblock': if (mineT(a)) unlock('skyblock'); break;
     case 'layoutblock': if (mineT(a)) unlock('layout'); break;
@@ -69,7 +71,7 @@ function achMatchOver() {
   const c = careerGet();
   c.matches++; if (won) c.wins++;
   c.scored += G.score[me]; c.conceded += G.score[op];
-  if (G.ms) { const T = G.ms.team[me]; c.passes += T.comp; c.throws += T.thr; c.blocks += T.blk; }
+  if (G.ms) { const T = G.ms.team[me]; c.passes += T.comp; c.throws += T.thr; c.blocks += T.blk + T.int; }
   if (won && G.series && G.series.cur === SERIES.length - 1) c.titles++;
   careerSet(c);
   if (won) unlock('win');
@@ -93,7 +95,7 @@ function showProfile() {
   const c = careerGet(), a = achGet(), n = ACH.filter(x => a[x.id]).length;
   const pct = c.throws ? Math.round(100 * c.passes / c.throws) + ' %' : '–';
   const rows = [['Matchs joués', c.matches], ['Victoires', c.wins + (c.matches ? ` (${Math.round(100 * c.wins / c.matches)} %)` : '')],
-    ['Points marqués / encaissés', `${c.scored} / ${c.conceded}`], ['Passes réussies', `${c.passes} (${pct})`], ['Blocks', c.blocks],
+    ['Points marqués / encaissés', `${c.scored} / ${c.conceded}`], ['Passes réussies', `${c.passes} (${pct})`], ['Blocks et interceptions', c.blocks],
     ['Plus longue passe', c.longest ? c.longest + ' m' : '–'], ['Hucks réussis (> 25 m)', c.hucks], ['Passes hautes réussies', c.high],
     ['Duels gagnés', c.duels], ['Pulls parfaits', c.pulls], ['Record à l’entraînement', c.practiceBest + ' cibles'], ['Tournois gagnés', c.titles]];
   $('profileName').textContent = myName() || 'Joueur';

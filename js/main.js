@@ -17,7 +17,7 @@ function loop(now) {
     if (hk !== !!G.lastHk) { G.lastHk = hk; sendInput(true); }
   }
   else {
-    if (G.paused && !G.net) { /* confirmation ouverte : pause */ }
+    if ((G.paused && !G.net) || G.pz) { /* pause (solo : menu ou confirmation ouverts ; en ligne : pause pour tous) */ }
     else if (G.phase === 'play') { G.gt += gdt; update(gdt); }
     else if (G.phase === 'pull') pullTick(dt, gdt);
     else if (G.phase === 'between' || G.phase === 'over') {
@@ -25,7 +25,7 @@ function loop(now) {
       if (G.attract) attractTick(dt);
       else if (!G.menuShown) { G.betweenT -= dt; if (G.betweenT <= 0) showMenu(G.phase); }
     }
-    if (G.net === 'host') { netT += dt; if (netT >= 0.05) { netT = 0; netSend(snapshot()); } }
+    if (G.net === 'host') { netT += dt; if (netT >= 0.05) { netT = 0; sendSnapshot(); } }
   }
   const ctNow = canThrow();                                   // on perd le disque : la passe haute armée est annulée
   if (G.lastCt && !ctNow) G.throwKind = 'normal';
@@ -33,6 +33,8 @@ function loop(now) {
   if (G.tuto) tutoFrame(dt);
   if (G.practice) practiceFrame(dt);
   replayRecord(dt);
+  dbgRecord(dt);
+  pauseFrame();
   replayTick(dt);
   joyFrame();
   netHeartbeat(dt);

@@ -60,14 +60,15 @@ function updateHud() {
   $('jumpB').style.display = G.phase === 'pull' || G.spectator ? 'none' : '';
   $('switchD').style.display = G.phase === 'pull' || (att && !multi) ? 'none' : '';
   document.body.classList.toggle('defend', !att && G.phase === 'play');
+  const K = a => keysOf(a).map(keyName).join('/');            // touches réglées dans le panneau Commandes
   $('hint').innerHTML = G.spectator ? '<i>Mode spectateur</i> : tu regardes la partie. Bouton <b>👥 Équipes</b> (en haut) pour rejoindre une équipe s’il reste une place. Les émojis permettent d’encourager les joueurs.'
     : G.phase === 'pull'
-    ? (pulling ? '<i>Pull</i> : clique sur la zone visée (A/E ou molette pour la courbe), puis arrête la jauge dans le vert (clic ou Espace). Échap pour revenir à la visée. Un pull long et haut laisse le temps à ta défense de monter.' : '<i>Pull</i> : le disque arrive, ton équipe se met en place.')
+    ? (pulling ? '<i>Pull</i> : clique sur la zone visée (' + K('curveL') + ' / ' + K('curveR') + ' ou molette pour la courbe), puis arrête la jauge dans le vert (clic ou Espace). Échap pour revenir à la visée. Un pull long et haut laisse le temps à ta défense de monter.' : '<i>Pull</i> : le disque arrive, ton équipe se met en place.')
     : att
-    ? (multi ? '<i>Attaque à plusieurs</i> : ton joueur (anneau jaune) suit la souris ; quand il a le disque, vise et relâche pour lancer. <i>Espace / 1 à 5</i> = prendre un joueur géré par l’IA.'
+    ? (multi ? '<i>Attaque à plusieurs</i> : ton joueur (anneau jaune) suit la souris ; quand il a le disque, vise et relâche pour lancer. <i>' + K('switch') + ' / 1 à 5</i> = prendre un joueur géré par l’IA.'
              : '<i>Attaque</i> : vise et relâche pour lancer (relâche sur ton joueur pour annuler).')
-    + ' <i>Z</i> = armer / désarmer la passe haute (la défense voit le disque levé et doit deviner quand tu lances). <i>S</i> = saut du receveur pendant le vol (duel en l’air). <i>Clic droit</i> sur le terrain = le coéquipier IA le plus proche attaque cet espace. <i>F / clic pendant le vol</i> = layout du receveur. Anneau vert = coéquipier démarqué. Zone rouge = break side : ajoute de la courbe (A/E, molette) pour contourner la mark. Cercle pointillé = zone de stall. Couleur de la trajectoire : rouge = contrable, orange = contrable debout seulement, violet = en sautant, bleu = trop haut.'
-    : '<i>Défense</i> : ton joueur (anneau jaune) suit la souris ou le doigt. <i>Clic / tap / F</i> = layout. <i>S</i> = saut (contrer une passe haute au lâcher à la mark, ou à l’arrivée). <i>Espace</i> = switch vers le joueur en gris, <i>1 à 5</i> = prendre ce joueur. Entre dans le cercle du handler pour lancer le stall (un seul défenseur dedans, sinon double team). L’anneau sous le disque en vol : rouge = contrable, orange = debout seulement, violet = en sautant, bleu = trop haut.';
+    + ' <i>' + K('high') + '</i> = armer / désarmer la passe haute (la défense voit le disque levé et doit deviner quand tu lances). <i>' + K('jump') + '</i> = saut du receveur pendant le vol (duel en l’air). <i>Clic droit</i> sur le terrain = le coéquipier IA le plus proche attaque cet espace. <i>' + K('dive') + ' / clic pendant le vol</i> = layout du receveur. Anneau vert = coéquipier démarqué. Zone rouge = break side : ajoute de la courbe (' + K('curveL') + ' / ' + K('curveR') + ', molette) pour contourner la mark. Cercle pointillé = zone de stall. Couleur de la trajectoire : rouge = contrable, orange = contrable debout seulement, violet = en sautant, bleu = trop haut.'
+    : '<i>Défense</i> : ton joueur (anneau jaune) suit la souris ou le doigt. <i>Clic / ' + K('dive') + '</i> = layout. <i>' + K('jump') + '</i> = saut (contrer une passe haute au lâcher à la mark, ou à l’arrivée). <i>' + K('switch') + '</i> = switch vers le joueur en gris, <i>1 à 5</i> = prendre ce joueur. Entre dans le cercle du handler pour lancer le stall (un seul défenseur dedans, sinon double team). L’anneau sous le disque en vol : rouge = contrable, orange = debout seulement, violet = en sautant, bleu = trop haut.';
   if (G.gpActive) $('hint').innerHTML = '🎮 <i>Manette</i> : stick gauche = déplacer le curseur de visée / courir (stick droit = visée fine) · A ou RT = lancer au curseur (sans le disque : saut) · B = layout · X = appel de cut au curseur (sans le disque : switch) · Y = passe haute · LB/RB = courbe · Start = menu. ' + $('hint').innerHTML;
   $('emoBar').style.display = G.net && G.started ? '' : 'none';
   resize();
@@ -313,7 +314,6 @@ function leaveToMenu() {
   if (G.net) { netError(''); return; }
   backToSolo(); showLobby();
 }
-$('menuB').addEventListener('click', goMainMenu);
 $('menuBack').addEventListener('click', goMainMenu);
 
 // ---------- qui pulle (en ligne : choisi par le capitaine) ----------

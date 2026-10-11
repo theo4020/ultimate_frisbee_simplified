@@ -26,7 +26,7 @@ const G = {
   net: null, msgId: 0,                       // humains et contrôles : voir humans.js
   pointer: { x: 60, y: H / 2, active: false, down: false, last: -1e9, downT: 0, downX: 0, downY: 0, type: 'mouse' },
   msg: '', msgT: 0, pickup: null, betweenT: 0, menuShown: true,
-  stats: { throws: 0, comps: 0, blocks: 0, stalls: 0, ground: 0, out: 0, dives: 0 },
+  stats: { throws: 0, comps: 0, blocks: 0, ints: 0, stalls: 0, ground: 0, out: 0, dives: 0 },
   teams: DEFAULT_TEAMS.map(o => Object.assign({}, o)),   // nom et couleur affichés de chaque équipe (voir teams.js)
   ms: null,                                  // statistiques du match en cours (voir stats.js)
   throwKind: 'normal',                       // type du prochain lancer : normal ou high (passe haute)

@@ -1,5 +1,5 @@
 // net.js — Multijoueur en ligne (PeerJS : connexions directes entre navigateurs)
-// L'hôte fait tourner la partie et envoie l'état ~20 fois par seconde à chaque invité.
+// L'hôte fait tourner la partie et envoie l'état ~20 fois par seconde à chaque invité (sans jamais saturer sa connexion).
 // Les invités envoient seulement leurs actions (pointeur, lancer, layout, switch, appel, pull).
 // Tout invité arrive en spectateur ; il rejoint une équipe quand il veut (bouton 👥 Équipes), partie lancée ou non,
 // s'il y reste une place (5 humains max par équipe). Une équipe sans humain est jouée par l'IA. L'hôte joue toujours.
@@ -49,7 +49,7 @@ function backToSolo() {
   G.attract = false;
   if (G.practice) { G.practice = null; $('pracBox').style.display = 'none'; }
   G.net = null; G.myId = 0; G.humans = [{ id: 0, team: 0, sel: null, name: myName() }]; G.started = false; G.netCfg = null; G.netTeams = null; G.spectator = false;
-  G.netSummary = null; G.emotes = [];
+  G.netSummary = null; G.emotes = []; G.pz = null;
   syncMe(); G.phase = 'menu'; G.score = [0, 0]; G.receiving = 0; hudKey = '';
   placeForPoint();
 }
@@ -58,20 +58,20 @@ function backToSolo() {
 let iceCache = null;
 function iceServers() {
   if (iceCache) return Promise.resolve(iceCache);
-  if (TURN_USER && TURN_PASS) {
+  if (TURN_USER && TURN_PASS) {                                // relais configuré : un STUN + le relais (trop de serveurs ralentit la connexion)
     const cred = { username: TURN_USER, credential: TURN_PASS };
-    return Promise.resolve(iceCache = BASE_ICE.concat([
-      { urls: 'stun:stun.relay.metered.ca:80' },
+    return Promise.resolve(iceCache = [
+      { urls: 'stun:stun.l.google.com:19302' },
       Object.assign({ urls: 'turn:global.relay.metered.ca:80' }, cred),
       Object.assign({ urls: 'turn:global.relay.metered.ca:80?transport=tcp' }, cred),
       Object.assign({ urls: 'turn:global.relay.metered.ca:443' }, cred),
       Object.assign({ urls: 'turns:global.relay.metered.ca:443?transport=tcp' }, cred)
-    ]));
+    ]);
   }
   if (!TURN_APP || !TURN_KEY) return Promise.resolve(iceCache = BASE_ICE);
   return fetch(`https://${TURN_APP}.metered.live/api/v1/turn/credentials?apiKey=${TURN_KEY}`)
     .then(r => r.json())
-    .then(list => (iceCache = Array.isArray(list) && list.length ? BASE_ICE.concat(list) : BASE_ICE))
+    .then(list => (iceCache = Array.isArray(list) && list.length ? [{ urls: 'stun:stun.l.google.com:19302' }].concat(list) : BASE_ICE))
     .catch(() => (iceCache = BASE_ICE));
 }
 function makePeer(id) {
@@ -91,7 +91,33 @@ function watchIce(c, onFail) {
   if (!pc) return;
   pc.addEventListener('iceconnectionstatechange', () => { if (pc.iceConnectionState === 'failed') onFail(); });
 }
-const ICE_FAIL_MSG = 'La partie a bien été trouvée, mais vos deux réseaux bloquent la connexion directe (fréquent en 4G/5G ou sur un wifi d’entreprise). Essayez sur le même wifi, ou configurez un relais TURN (voir README : secrets TURN_USER / TURN_PASS).';
+const hasRelay = () => !!((TURN_USER && TURN_PASS) || (TURN_APP && TURN_KEY));
+const iceFailMsg = () => hasRelay()
+  ? 'La partie a été trouvée, mais la connexion n’a pas pu s’établir, même par le relais. Réessaie ; si ça se répète, appuie sur « Tester la connexion » sur chaque appareil.'
+  : 'La partie a été trouvée, mais vos réseaux bloquent la connexion directe (fréquent en 4G/5G ou sur un wifi d’entreprise), et ce site n’a pas de relais configuré. Essayez sur le même wifi.';
+
+// test du relais : on demande au navigateur un chemin passant UNIQUEMENT par le relais TURN
+function testRelay(out) {
+  out.textContent = 'Test en cours…';
+  iceServers().then(ice => {
+    const turn = ice.filter(s => [].concat(s.urls).some(u => /^turns?:/.test(u)) && s.username !== 'peerjs');
+    if (!turn.length) { out.textContent = '⚠️ Aucun relais configuré sur ce site : la connexion ne marchera qu’entre réseaux ouverts.'; return; }
+    let pc, done = false;
+    const end = ok => {
+      if (done) return; done = true;
+      try { pc.close(); } catch (e) { }
+      out.textContent = ok ? '✅ Le relais répond : la connexion devrait marcher, même en 4G.'
+        : '❌ Le relais ne répond pas (identifiants refusés, quota épuisé, ou réseau qui bloque). Préviens l’hôte du site.';
+    };
+    try {
+      pc = new RTCPeerConnection({ iceServers: turn, iceTransportPolicy: 'relay' });
+      pc.createDataChannel('test');
+      pc.onicecandidate = e => { if (e.candidate && / typ relay /.test(e.candidate.candidate)) end(true); else if (!e.candidate) end(false); };
+      pc.createOffer().then(o => pc.setLocalDescription(o)).catch(() => end(false));
+      setTimeout(() => end(false), 8000);
+    } catch (e) { end(false); }
+  });
+}
 
 // =====================================================================
 //  Hôte
@@ -160,6 +186,7 @@ function dropGuest(id, why) {
   const h = humanById(id);
   G.humans = G.humans.filter(o => o.id !== id);
   if (G.readyIds) G.readyIds.delete(id);
+  if (G.pz && G.pz.by === id) G.pz = null;                     // celui qui avait mis en pause est parti
   if (h) flash(humanLabel(h) + ' ' + why);
   if (G.started) { if (G.phase === 'play') updateSelected(); tryStartOnline(); }
   broadcastRoom();
@@ -200,6 +227,7 @@ function hostOnData(id, m) {
     case 'switch': { const n = switchTarget(h); if (n) selectFor(h, n); break; }
     case 'select': selectFor(h, players[m.i | 0]); break;
     case 'call': callFor(h, +m.x, +m.y); break;
+    case 'pause': setPause(id, !!m.on); break;
     case 'pull': if (G.phase === 'pull' && G.pull && G.pull.by === h.id) launchPull(+m.x, +m.y, m.curve, m.q); break;
     case 'ready':
       if (captain(h.team) === h) { h.cfg = Object.assign({}, DEFAULT_CFG, m.cfg); (G.readyIds = G.readyIds || new Set()).add(id); }
@@ -214,19 +242,35 @@ function hostEmote(id, k) {
   netSend({ t: 'emo', id, e: k });
 }
 const idx = p => (p ? players.indexOf(p) : -1);
-const r2 = v => Math.round(v * 100) / 100;
+const r1 = v => Math.round(v * 10) / 10, r2 = v => Math.round(v * 100) / 100;
+// état envoyé ~20 fois par seconde : le minimum qui bouge (positions arrondies au décimètre) ;
+// le reste (stratégies, équipes, humains, vent…) seulement quand il change, et au moins une fois par seconde
+let metaJson = '', metaAt = -9;
 function snapshot() {
+  const meta = { wind: G.wind, rec: G.receiving, speed: G.form.speed, hum: G.humans.map(h => [h.id, h.team, idx(h.sel)]),
+    op: G.oplay && { type: G.oplay.type, team: G.oplay.team }, dp: G.dplay && { type: G.dplay.type, team: G.dplay.team },
+    order: [G.order[0].map(idx), G.order[1].map(idx)], cfg: [cfg(0), cfg(1)], teams: G.teams };
+  const mj = JSON.stringify(meta), sendMeta = mj !== metaJson || G.time - metaAt > 1;
+  if (sendMeta) { metaJson = mj; metaAt = G.time; }
   return {
-    t: 's', fx: FX.out.splice(0),
-    p: players.map(p => [r2(p.x), r2(p.y), r2(p.vx), r2(p.vy), p.dive > 0 ? 1 : 0, p.down > 0 ? 1 : 0, p.tag, p.state, p.role, r2(p.cx), r2(p.cy), idx(p.match), p.jprep > 0 ? -1 : r2(jumpLift(p))]),
-    d: [disc.mode, idx(disc.holder), r2(disc.x), r2(disc.y), r2(disc.sx), r2(disc.sy), r2(disc.cx), r2(disc.cy), r2(disc.ex), r2(disc.ey), r2(disc.t), r2(disc.dur), idx(disc.intended), disc.kind],
-    g: { score: G.score, off: G.off, phase: G.phase, stall: r2(G.stall), mk: idx(G.marker), msg: G.msg, mid: G.msgId,
-      dbl: idx(G.dbl), wind: G.wind, gt: r2(G.gt), rec: G.receiving, speed: G.form.speed,
-      hum: G.humans.map(h => [h.id, h.team, idx(h.sel)]),
-      op: G.oplay && { type: G.oplay.type, team: G.oplay.team }, dp: G.dplay && { type: G.dplay.type, team: G.dplay.team },
-      order: [G.order[0].map(idx), G.order[1].map(idx)], cfg: [cfg(0), cfg(1)], carry: G.carryTo,
-      pull: G.phase === 'pull' && G.pull ? G.pull.team : -1, pullBy: G.pull ? G.pull.by : null, pready: G.phase === 'pull' && pullReady(), teams: G.teams, tell: highTell() }
+    t: 's', m: sendMeta ? meta : undefined,
+    p: players.map(p => [r1(p.x), r1(p.y), r1(p.vx), r1(p.vy), p.dive > 0 ? 1 : 0, p.down > 0 ? 1 : 0, p.tag, p.state, p.role, r1(p.cx), r1(p.cy), idx(p.match), p.jprep > 0 ? -1 : r1(jumpLift(p))]),
+    d: [disc.mode, idx(disc.holder), r1(disc.x), r1(disc.y), r1(disc.sx), r1(disc.sy), r1(disc.cx), r1(disc.cy), r1(disc.ex), r1(disc.ey), r2(disc.t), r2(disc.dur), idx(disc.intended), disc.kind],
+    g: { score: G.score, off: G.off, phase: G.phase, stall: r1(G.stall), mk: idx(G.marker), msg: G.msg, mid: G.msgId,
+      dbl: idx(G.dbl), gt: r1(G.gt), carry: G.carryTo,
+      pull: G.phase === 'pull' && G.pull ? G.pull.team : -1, pullBy: G.pull ? G.pull.by : null, pready: G.phase === 'pull' && pullReady(), tell: highTell(), pz: G.pz || null }
   };
+}
+// envoi aux invités : on n'empile jamais les états chez un invité dont la connexion sature
+// (sinon le retard grandit jusqu'à la coupure) ; ses effets sonores en attente partent avec l'état suivant
+function sendSnapshot() {
+  const snap = snapshot(), fx = FX.out.splice(0);
+  for (const c of conns.values()) {
+    c.fxq = (c.fxq || []).concat(fx);
+    const busy = (c.dataChannel && c.dataChannel.bufferedAmount > 48000) || c.bufferSize > 0;
+    if (busy || !c.open) { if (snap.m) metaAt = -9; continue; }   // métadonnées renvoyées au prochain état
+    snap.fx = c.fxq; safeSend(c, snap); c.fxq = [];
+  }
 }
 
 // =====================================================================
@@ -244,10 +288,10 @@ function joinGame(code) {
       const c = p.connect(PEER_PREFIX + code, { reliable: true, serialization: 'json' });
       let opened = false;
       const fail = msg => { if (!opened && !hostConn) netError(msg); };
-      const to = setTimeout(() => fail(ICE_FAIL_MSG), 20000);
+      const to = setTimeout(() => fail(iceFailMsg()), 20000);
       setTimeout(() => {
         if (!opened) $('joinStatus').textContent = 'Partie trouvée, établissement de la connexion…';
-        watchIce(c, () => { clearTimeout(to); fail(ICE_FAIL_MSG); });
+        watchIce(c, () => { clearTimeout(to); fail(iceFailMsg()); });
       }, 1500);
       c.on('open', () => {
         opened = true; clearTimeout(to);
@@ -293,7 +337,7 @@ function guestOnData(m) {
       applyHumans(m.hum.map(([id, team, name]) => [id, team, -1, name]));
       G.started = m.started; hudKey = '';
       if (!G.started || G.teamsOpen) { showRoom(); renderRoom(); }
-      else if (G.phase === 'play' || G.phase === 'pull') { $('overlay').classList.add('hidden'); G.menuShown = false; }
+      else if ((G.phase === 'play' || G.phase === 'pull') && !cardStack.length) { $('overlay').classList.add('hidden'); G.menuShown = false; }
       refreshCaptainUI();
       break;
     case 'wind': G.wind = m.wind; hudKey = ''; refreshOptions(); break;
@@ -307,7 +351,7 @@ function guestOnData(m) {
       showMenu(m.kind);
       break;
     case 'start':
-      replayReset(); FX.celebrate = null; G.teamsOpen = null;
+      replayReset(); FX.celebrate = null; G.teamsOpen = null; resetCards();
       G.phase = 'pull'; G.menuShown = false; G.receiving = m.r;
       G.pull = { team: 1 - m.r, t: 0, by: m.by == null ? null : m.by }; G.pullUI = { stage: 'aim', t0: 0, x: 0, y: 0, q: 0 };
       G.curve = 0; $('curveRange').value = 0;
@@ -344,16 +388,19 @@ function applySnapshot(m) {
   disc.netT = d[10]; disc.dur = d[11]; disc.intended = d[12] >= 0 ? players[d[12]] : null; disc.kind = THROWS[d[13]] ? d[13] : 'normal';
   const g = m.g;
   G.score = g.score; G.off = g.off; G.stall = g.stall; G.marker = g.mk >= 0 ? players[g.mk] : null;
-  G.dbl = g.dbl >= 0 ? players[g.dbl] : null; G.carryTo = g.carry || null;
-  G.wind = g.wind; G.gt = g.gt; G.receiving = g.rec; G.form.speed = g.speed;
-  applyHumans(g.hum);
-  G.oplay = g.op; G.dplay = g.dp; G.netCfg = g.cfg;
-  if (g.teams) G.netTeams = g.teams;
-  G.netTell = !!g.tell;
-  if ((g.phase === 'play' || g.phase === 'pull') && G.started && !G.teamsOpen && !$('overlay').classList.contains('hidden') && $('stratCard').style.display === 'none') {
+  G.dbl = g.dbl >= 0 ? players[g.dbl] : null; G.carryTo = g.carry || null; G.gt = g.gt;
+  const mt = m.m;
+  if (mt) {
+    G.wind = mt.wind; G.receiving = mt.rec; G.form.speed = mt.speed;
+    applyHumans(mt.hum);
+    G.oplay = mt.op; G.dplay = mt.dp; G.netCfg = mt.cfg;
+    if (mt.teams) G.netTeams = mt.teams;
+    G.order = mt.order.map(o => o.map(i => players[i]));
+  }
+  G.netTell = !!g.tell; G.pz = g.pz || null;
+  if ((g.phase === 'play' || g.phase === 'pull') && G.started && !G.teamsOpen && !cardStack.length && !$('overlay').classList.contains('hidden') && $('stratCard').style.display === 'none') {
     $('overlay').classList.add('hidden'); G.menuShown = false;          // arrivée en cours de point : on montre le terrain
   }
-  G.order = g.order.map(o => o.map(i => players[i]));
   if (g.phase === 'pull' && (G.phase !== 'pull' || !G.pull)) { G.pull = { team: g.pull, t: 0, by: g.pullBy }; G.pullUI = { stage: 'aim', t0: 0, x: 0, y: 0, q: 0 }; }
   if (g.phase === 'pull' && G.pull) G.pull.by = g.pullBy;
   G.netPullReady = !!g.pready;
@@ -364,7 +411,7 @@ function applySnapshot(m) {
 }
 // l'invité ne simule rien : il lisse les positions reçues
 function guestFrame(dt) {
-  const since = Math.min(0.15, G.time - snapAt), k = Math.min(1, dt * 14), sp = SPEEDS[G.form.speed];
+  const since = G.pz ? 0 : Math.min(0.15, G.time - snapAt), k = Math.min(1, dt * 14), sp = SPEEDS[G.form.speed];
   for (const p of players) {
     if (p.nx === undefined) continue;
     const tx = p.nx + p.vx * since * sp, ty = p.ny + p.vy * since * sp;
@@ -441,6 +488,7 @@ $('teamB0').addEventListener('click', () => chooseTeam(0));
 $('teamB1').addEventListener('click', () => chooseTeam(1));
 $('teamBS').addEventListener('click', () => chooseTeam(-1));
 $('roomBack').addEventListener('click', closeTeams);
+document.querySelectorAll('.testNet').forEach(b => b.addEventListener('click', () => testRelay(b.nextElementSibling)));
 $('teamsB').addEventListener('click', () => { if (G.net && G.started) showRoom(); });
 $('startOnline').addEventListener('click', startOnline);
 $('copyLink').addEventListener('click', () => {

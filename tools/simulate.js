@@ -58,7 +58,7 @@ vm.runInContext(code + `
   secs.sort((a, b) => a - b);
   const s = G.stats;
   console.log(JSON.stringify({ 'niveau Rouges': '${level}', 'points Bleus/Rouges': won.join(' / '), matchs: ${games}, points: pts, bloques: stuck, 'sec/point (médiane)': +secs[secs.length >> 1].toFixed(0),
-    'lancer moyen (m)': +(thrDist / thrN).toFixed(1), 'lancers > 25 m %': +(100 * longN / thrN).toFixed(0), 'réussite > 25 m %': +(100 * longOk / Math.max(1, longN)).toFixed(0), 'passes réussies %': +(100 * s.comps / s.throws).toFixed(0), 'turnovers/point': +((s.blocks + s.stalls + s.ground + s.out + (s.drops || 0)) / pts).toFixed(2),
+    'lancer moyen (m)': +(thrDist / thrN).toFixed(1), 'lancers > 25 m %': +(100 * longN / thrN).toFixed(0), 'réussite > 25 m %': +(100 * longOk / Math.max(1, longN)).toFixed(0), 'passes réussies %': +(100 * s.comps / s.throws).toFixed(0), 'turnovers/point': +((s.blocks + s.ints + s.stalls + s.ground + s.out + (s.drops || 0)) / pts).toFixed(2),
     pulls, 'pulls parfaits': pullPerfect, kinds: Object.fromEntries(Object.entries(kinds).map(([k, [a, b]]) => [k, a + ' (' + Math.round(100 * b / a) + '%)'])),
-    strat: Object.fromEntries(Object.entries(strat).sort().map(([k, [a, b]]) => [k, a + ' (' + Math.round(100 * b / a) + '%)'])), 'double teams': dbl, stalls: s.stalls, blocks: s.blocks, drops: s.drops || 0 }));
+    strat: Object.fromEntries(Object.entries(strat).sort().map(([k, [a, b]]) => [k, a + ' (' + Math.round(100 * b / a) + '%)'])), 'double teams': dbl, stalls: s.stalls, blocks: s.blocks, ints: s.ints, drops: s.drops || 0 }));
 })();`, sandbox);

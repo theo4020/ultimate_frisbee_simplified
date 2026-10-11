@@ -29,11 +29,29 @@ function steer(p, dt) {
   const dx = p.tx - p.x, dy = p.ty - p.y, l = Math.hypot(dx, dy);
   let want = Math.min(p.sp * (controllerOf(p) ? 1 : aiLvl(p.team).speed), l * 2.5);
   if (p.jrec > 0) { p.jrec -= dt; want *= 0.5; }            // réception d'un saut : il repart lentement
-  const dvx = (l > 0.01 ? dx / l * want : 0) - p.vx, dvy = (l > 0.01 ? dy / l * want : 0) - p.vy;
+  let ux = l > 0.01 ? dx / l : 0, uy = l > 0.01 ? dy / l : 0;
+  if (p.avoid && l > 0.8) [ux, uy] = avoidDir(p, ux, uy, l);  // pas d'écran : il contourne les autres joueurs
+  const dvx = ux * want - p.vx, dvy = uy * want - p.vy;
   const dl = Math.hypot(dvx, dvy), maxd = (p.team === G.off ? ACC.atk : ACC.def) * dt;
   const k = dl > maxd ? maxd / dl : 1;
   p.vx += dvx * k; p.vy += dvy * k;
   p.x += p.vx * dt; p.y += p.vy * dt;
+}
+
+// les attaquants IA ne passent pas à ras des autres : 2,5 m des joueurs, 4 m du porteur (les écrans sont interdits)
+function avoidDir(p, ux, uy, l) {
+  let ax = 0, ay = 0;
+  for (const q of players) {
+    if (q === p) continue;
+    const R = q === disc.holder && disc.mode === 'held' ? 4 : 2.5, rx = q.x - p.x, ry = q.y - p.y, d = Math.hypot(rx, ry);
+    if (d > R || d < 0.01 || d > l + 1) continue;             // trop loin, ou au-delà de sa destination
+    if (rx * ux + ry * uy <= 0) continue;                      // seulement ceux qui sont devant lui
+    const w = (R - d) / R * 1.6, left = ux * ry - uy * rx > 0;
+    ax += (left ? uy : -uy) * w; ay += (left ? -ux : ux) * w;  // il s'écarte du côté opposé
+  }
+  if (!ax && !ay) return [ux, uy];
+  const nx = ux + ax, ny = uy + ay, n = Math.hypot(nx, ny) || 1;
+  return [nx / n, ny / n];
 }
 
 function update(dt) {
@@ -46,6 +64,7 @@ function update(dt) {
   updatePlays(dt, ax, ay, dir, open);
   runCutSequencer(off, ax, ay, dir, open, oform, dt);
   for (const p of atk) {
+    p.avoid = false;
     if (disc.mode === 'held' && disc.holder === p) { p.tx = p.x; p.ty = p.y; p.sp = 0; p.vx = p.vy = 0; continue; }
     if (disc.mode === 'ground' && G.pickup === p) { p.tx = disc.x; p.ty = disc.y; p.sp = pickupSpeed(p); continue; }
     if (disc.mode === 'carry' && disc.holder === p) { p.tx = G.carryTo.x; p.ty = G.carryTo.y; p.sp = 5.5; continue; }
@@ -65,10 +84,12 @@ function update(dt) {
     }
     if (G.tuto && tutoPin(p)) continue;                     // tutoriel : joueur placé par l'étape
     if (G.practice && practicePin(p)) continue;             // entraînement
+    p.avoid = true;
     attackerAI(p, off, ax, ay, dir, open, oform, dt);
   }
   const slots = zoneSlots(def, ax, ay, dir, closed);
   for (const d of dfn) {
+    d.avoid = false;
     if (G.tuto && tutoPin(d)) continue;
     if (G.practice && practicePin(d)) continue;
     if (userControls(d)) { const inp = inputOf(controllerOf(d)); d.tx = inp.x; d.ty = inp.y; d.sp = SPD.user; continue; }
@@ -167,7 +188,7 @@ function update(dt) {
       const atk = jumpLift(catcher) + Math.random() * 0.8 - near(catcher), dfn = jumpLift(b) + Math.random() * 0.8 - near(b) + (aiLvl(b.team).block - 0.6) * 0.5;
       if (atk >= dfn) { achEvent('duel', catcher.team); flash('Duel gagné !'); fxEvent('duel', disc.x, disc.y, catcher.team); catchDisc(catcher); return; }
       fxEvent('duel', disc.x, disc.y, b.team);
-      G.stats.blocks++; msTurnover(disc.thrower, 'block', b); turnover(disc.x, disc.y, 'Duel perdu ! Block', 'block'); return;
+      defStop(b, 'Duel perdu ! Block'); return;
     }
     for (const p of blockers) {
       disc.rolled.add(p);
@@ -175,10 +196,10 @@ function update(dt) {
       if (!diving && p.jump > 0 && disc.z > REACH_STAND) {      // saut au bon endroit, au bon moment : contre assuré
         achEvent('skyblock', p.team);
         if (G.tuto) G.tuto.blocked = true;
-        G.stats.blocks++; msTurnover(disc.thrower, 'block', p); turnover(disc.x, disc.y, 'Block en l’air !', 'block'); return;
+        defStop(p, 'Block en l’air !'); return;
       }
       if (r < (diving ? 0.85 : G.tuto && G.tuto.wall ? 1 : L.block)) {
-        if (diving) { achEvent('layoutblock', p.team); if (G.tuto) G.tuto.lblock = true; } G.stats.blocks++; msTurnover(disc.thrower, 'block', p); turnover(disc.x, disc.y, diving ? 'Layout block !' : p.jump > 0 ? 'Block en l’air !' : 'Block !', 'block'); return; }
+        if (diving) { achEvent('layoutblock', p.team); if (G.tuto) G.tuto.lblock = true; } defStop(p, diving ? 'Layout block !' : p.jump > 0 ? 'Block en l’air !' : 'Block !'); return; }
     }
     if (catcher) {
       if (catcher.dive > 0) flash('Layout !');              // réception en plongeon

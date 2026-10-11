@@ -6,9 +6,10 @@ const TUTO_STEPS = [
   {
     title: 'Lancer',
     text: {
-      mouse: 'Tu as le disque (anneau blanc). Vise un coéquipier démarqué (anneau vert), maintiens le clic et relâche pour lancer. <b>Réussis 2 passes.</b>',
-      touch: 'Tu as le disque (anneau blanc). Pose le doigt <b>n’importe où</b> sur l’écran et glisse vers un coéquipier démarqué (anneau vert) : plus tu glisses loin, plus tu lances loin. Relâche pour lancer. <b>Réussis 2 passes.</b>',
-      pad: 'Tu as le disque (anneau blanc). Déplace le curseur de visée avec le stick gauche (doucement pour une passe courte) sur un coéquipier démarqué (anneau vert), puis A pour lancer. <b>Réussis 2 passes.</b>'
+      mouse: 'Vise un coéquipier libre (anneau vert) : <b>maintiens le clic</b>, puis relâche. Réussis 2 passes.',
+      touch: () => CTRL.sling ? 'Pose le doigt n’importe où et <b>tire en arrière</b>, à l’opposé de la passe, puis relâche. Réussis 2 passes.' : 'Pose le doigt n’importe où et <b>glisse vers ton coéquipier</b>, puis relâche. Réussis 2 passes.',
+      joy: 'Pose le doigt n’importe où et <b>glisse vers ton coéquipier</b>, puis relâche. Réussis 2 passes.',
+      pad: 'Mets le curseur sur un coéquipier libre avec le stick gauche, puis <b>A</b>. Réussis 2 passes.'
     },
     setup() {
       tutoReset();
@@ -28,9 +29,10 @@ const TUTO_STEPS = [
   {
     title: 'La courbe',
     text: {
-      mouse: 'Un défenseur bloque la ligne droite vers ton coéquipier. Ajoute de la <b>courbe</b> avant de lancer : touches <b>A</b> / <b>E</b> ou la molette. L’aperçu montre la trajectoire : fais-la passer à côté du défenseur.',
-      touch: 'Un défenseur bloque la ligne droite vers ton coéquipier. Ajoute de la <b>courbe</b> avec le curseur sur le <b>bord droit</b> de l’écran avant de lancer : l’aperçu montre la trajectoire, fais-la passer à côté du défenseur.',
-      pad: 'Un défenseur bloque la ligne droite vers ton coéquipier. Ajoute de la <b>courbe</b> avec LB / RB avant de lancer : l’aperçu montre la trajectoire, fais-la passer à côté du défenseur.'
+      mouse: 'Un défenseur bloque la ligne droite. Ajoute de la <b>courbe</b> (A / E ou molette) pour passer à côté.',
+      touch: 'Un défenseur bloque la ligne droite. Pendant que tu vises, glisse un <b>2<sup>e</sup> doigt sur le côté</b> pour courber la passe.',
+      joy: 'Un défenseur bloque la ligne droite. Règle la <b>courbe</b> avec le curseur du bord droit, puis lance à côté de lui.',
+      pad: 'Un défenseur bloque la ligne droite. Ajoute de la <b>courbe</b> avec LB / RB, puis lance à côté de lui.'
     },
     setup() {
       tutoReset(); G.tuto.wall = true;
@@ -52,9 +54,10 @@ const TUTO_STEPS = [
   {
     title: 'La passe haute',
     text: {
-      mouse: 'Cette fois, tout un mur bloque le passage. Appuie sur <b>Z</b> pour <b>armer</b> une passe haute (la défense voit ton disque levé), puis vise et lance quand tu veux : le disque passe par-dessus la défense. Attention, elle est imprécise avec la distance et le vent.',
-      touch: 'Cette fois, tout un mur bloque le passage. Touche <b>Passe haute</b> (bord droit) pour l’<b>armer</b> (la défense voit ton disque levé), puis glisse pour lancer quand tu veux : le disque passe par-dessus la défense. Attention, elle est imprécise avec la distance et le vent.',
-      pad: 'Cette fois, tout un mur bloque le passage. Appuie sur <b>Y</b> pour <b>armer</b> une passe haute, puis vise et lance avec A quand tu veux : le disque passe par-dessus la défense. Attention, elle est imprécise avec la distance et le vent.'
+      mouse: 'Un mur bloque le passage. <b>Z</b> arme la passe haute, puis lance par-dessus.',
+      touch: 'Un mur bloque le passage. <b>Tape ton porteur</b> pour armer la passe haute, puis lance par-dessus.',
+      joy: 'Un mur bloque le passage. Touche <b>Passe haute</b> (bord droit), puis lance par-dessus.',
+      pad: 'Un mur bloque le passage. <b>Y</b> arme la passe haute, puis lance par-dessus avec A.'
     },
     setup() {
       tutoReset(); G.tuto.wall = true;
@@ -75,9 +78,9 @@ const TUTO_STEPS = [
   {
     title: 'Appeler un cut',
     text: {
-      mouse: 'Tes coéquipiers sont tous marqués de près. Fais un <b>clic droit</b> dans un espace libre : le coéquipier le plus proche y coupe. Lance-lui le disque quand il est démarqué (anneau vert).',
-      touch: 'Tes coéquipiers sont tous marqués de près. <b>Tape un espace libre</b> du terrain : le coéquipier le plus proche y coupe. Lance-lui le disque quand il est démarqué (anneau vert).',
-      pad: 'Tes coéquipiers sont tous marqués de près. Place le curseur de visée dans un espace libre et appuie sur <b>X</b> : un coéquipier coupe vers cet endroit. Lance-lui le disque quand il est démarqué.'
+      mouse: 'Tes coéquipiers sont marqués. <b>Clic droit</b> sur un espace libre : l’un d’eux y court. Lance-lui.',
+      touch: 'Tes coéquipiers sont marqués. <b>Tape un espace libre</b> : l’un d’eux y court. Lance-lui.',
+      pad: 'Tes coéquipiers sont marqués. Mets le curseur sur un espace libre et appuie sur <b>X</b>, puis lance-lui.'
     },
     setup() {
       tutoReset(); G.tuto.wall = true;
@@ -106,9 +109,10 @@ const TUTO_STEPS = [
   {
     title: 'Layout en attaque',
     text: {
-      mouse: 'Ton coéquipier (anneau vert) ne bouge pas. Lance <b>2 à 4 m à côté de lui</b>, puis pendant le vol <b>clic</b> (ou <b>F</b>) : il plonge en <b>layout</b> pour attraper le disque.',
-      touch: 'Ton coéquipier (anneau vert) ne bouge pas. Lance <b>2 à 4 m à côté de lui</b>, puis pendant le vol touche <b>Layout</b> : il plonge pour attraper le disque.',
-      pad: 'Ton coéquipier (anneau vert) ne bouge pas. Lance <b>2 à 4 m à côté de lui</b>, puis pendant le vol appuie sur <b>B</b> : il plonge en <b>layout</b> pour attraper le disque.'
+      mouse: 'Ton coéquipier ne bouge pas. Lance à 2–4 m de lui, puis <b>clic</b> (ou F) pendant le vol : il plonge.',
+      touch: 'Ton coéquipier ne bouge pas. Lance à 2–4 m de lui, puis <b>glisse vite</b> n’importe où pendant le vol : il plonge.',
+      joy: 'Ton coéquipier ne bouge pas. Lance à 2–4 m de lui, puis touche <b>Layout</b> pendant le vol : il plonge.',
+      pad: 'Ton coéquipier ne bouge pas. Lance à 2–4 m de lui, puis <b>B</b> pendant le vol : il plonge.'
     },
     still: true,                                               // le receveur reste immobile : c'est toi qui le fais plonger
     setup() {
@@ -130,9 +134,10 @@ const TUTO_STEPS = [
   {
     title: 'Duel en l’air',
     text: {
-      mouse: 'Ton receveur est collé par un défenseur. Lance-lui le disque, puis appuie sur <b>S</b> pour que ton receveur saute : le plus haut au bon moment gagne le <b>duel</b>. Sans saut, le défenseur contre.',
-      touch: 'Ton receveur est collé par un défenseur. Lance-lui le disque, puis touche <b>Saut</b> pour que ton receveur saute : le plus haut au bon moment gagne le <b>duel</b>. Sans saut, le défenseur contre.',
-      pad: 'Ton receveur est collé par un défenseur. Lance-lui le disque, puis appuie sur <b>A</b> pendant le vol pour que ton receveur saute : le plus haut au bon moment gagne le <b>duel</b>.'
+      mouse: 'Ton receveur est collé. Lance-lui, puis <b>S</b> pendant le vol : il saute et gagne le duel.',
+      touch: 'Ton receveur est collé. Lance-lui, puis <b>tape ton receveur</b> pendant le vol : il saute et gagne le duel.',
+      joy: 'Ton receveur est collé. Lance-lui, puis touche <b>Saut</b> pendant le vol : il gagne le duel.',
+      pad: 'Ton receveur est collé. Lance-lui, puis <b>A</b> pendant le vol : il saute et gagne le duel.'
     },
     setup() {
       tutoReset(); G.tuto.wall = true;
@@ -151,30 +156,12 @@ const TUTO_STEPS = [
     }
   },
   {
-    title: 'Marquer',
-    text: {
-      mouse: 'Maintenant pour de vrai : la défense joue (niveau facile). Fais avancer le disque et fais-le attraper dans l’<b>en-but adverse</b> (la zone colorée à droite). Lance avant que le compte du marqueur arrive à 10 !',
-      touch: 'Maintenant pour de vrai : la défense joue (niveau facile). Fais avancer le disque et fais-le attraper dans l’<b>en-but adverse</b> (la zone colorée à droite). Lance avant que le compte du marqueur arrive à 10 !',
-      pad: 'Maintenant pour de vrai : la défense joue (niveau facile). Fais avancer le disque et fais-le attraper dans l’<b>en-but adverse</b> (à droite). Lance avant que le compte arrive à 10 !'
-    },
-    setup() {
-      tutoReset(); G.tuto.level = 'facile';
-      Object.assign(G.ai, { off: 'vert', def: 'man', force: 'haut', play: 'none', dplay: 'none' });
-      tutoPut(0, [[60, 18.5], [56, 12], [66, 18], [71, 18], [76, 18]]);
-      tutoPut(1, [[61, 17.2], [57, 13], [67, 19], [72, 19], [77, 19]]);
-      tutoGive(TEAMS[0][0]);
-    },
-    on(ev, t) {
-      if (ev === 'score') { if (t === 0) tutoSuccess('POINT ! 🎉'); else tutoFail('L’adversaire a marqué, on recommence.'); }
-      if (ev === 'turnover' && G.off === 1) tutoFail('Turnover ! On recommence.');
-    }
-  },
-  {
     title: 'Changer de joueur',
     text: {
-      mouse: 'En défense, tu contrôles un seul joueur (anneau jaune), et il est loin du disque. <b>Espace</b> : tu prends le défenseur le plus proche du disque (entouré en gris). Tu peux aussi <b>cliquer sur un de tes joueurs</b> ou utiliser les touches <b>1 à 5</b>.',
-      touch: 'En défense, tu contrôles un seul joueur (anneau jaune), et il est loin du disque. Touche <b>Switch</b> : tu prends le défenseur le plus proche du disque (entouré en gris). Tu peux aussi <b>taper un de tes joueurs</b>.',
-      pad: 'En défense, tu contrôles un seul joueur (anneau jaune), et il est loin du disque. Appuie sur <b>X</b> : tu prends le défenseur le plus proche du disque (entouré en gris).'
+      mouse: 'Ton défenseur (anneau jaune) est loin du disque. <b>Espace</b> prend le plus proche (entouré en gris), ou clique sur un joueur.',
+      touch: 'Ton défenseur (anneau jaune) est loin du disque. <b>Tape le défenseur</b> le plus proche pour le prendre.',
+      joy: 'Ton défenseur (anneau jaune) est loin du disque. Touche <b>Switch</b> pour prendre le plus proche.',
+      pad: 'Ton défenseur (anneau jaune) est loin du disque. <b>X</b> prend le plus proche (entouré en gris).'
     },
     setup() {
       tutoReset();
@@ -191,9 +178,10 @@ const TUTO_STEPS = [
   {
     title: 'Plonger en défense',
     text: {
-      mouse: 'L’adversaire va lancer à son coéquipier, juste à côté de toi. Ton défenseur ne bouge pas : <b>clique sur la trajectoire</b> (ou <b>F</b>) juste avant que le disque passe pour plonger en <b>layout</b> et le contrer.',
-      touch: 'L’adversaire va lancer à son coéquipier, juste à côté de toi. Oriente le <b>joystick</b> vers la trajectoire et touche <b>Layout</b> juste avant que le disque passe pour le contrer.',
-      pad: 'L’adversaire va lancer à son coéquipier, juste à côté de toi. Oriente le <b>stick</b> vers la trajectoire et appuie sur <b>B</b> juste avant que le disque passe pour le contrer.'
+      mouse: 'Une passe va passer à côté de toi. Juste avant, <b>clique sur sa trajectoire</b> (ou F) : layout block.',
+      touch: 'Une passe va passer à côté de toi. Juste avant, <b>glisse vite vers sa trajectoire</b> : layout block.',
+      joy: 'Une passe va passer à côté de toi. Juste avant, oriente le joystick vers elle et touche <b>Layout</b>.',
+      pad: 'Une passe va passer à côté de toi. Juste avant, stick vers elle et <b>B</b> : layout block.'
     },
     still: true,
     setup() {
@@ -215,36 +203,17 @@ const TUTO_STEPS = [
       return true;
     },
     on(ev, p) {
-      if (ev === 'turnover' && G.off === 0) { if (G.tuto.lblock) tutoSuccess('Layout block ! 💪'); else tutoFail('Passe ratée par le lanceur : on recommence.'); }
+      if (ev === 'turnover' && G.off === 0) tutoSuccess(G.tuto.lblock ? 'Layout block ! 💪' : 'Contré !');
       if (ev === 'catch' && p.team === 1) tutoFail(TEAMS[0][0].down > 0 || TEAMS[0][0].dive > 0 ? 'Pas loin ! Plonge un peu plus tôt, vers la trajectoire.' : 'Plonge juste avant que le disque passe !');
-    }
-  },
-  {
-    title: 'Défendre',
-    text: {
-      mouse: 'À toi de défendre. Ton joueur (anneau jaune) suit la souris : colle ton attaquant. Quand le disque passe à ta portée, <b>clic</b> (ou F) pour plonger en layout. <b>Espace</b> prend le joueur le plus proche du disque. <b>Récupère le disque !</b>',
-      touch: 'À toi de défendre. Déplace ton joueur (anneau jaune) avec le joystick et colle ton attaquant. Bouton <b>Layout</b> pour plonger sur un disque à ta portée, <b>Switch</b> pour prendre le joueur le plus proche du disque. <b>Récupère le disque !</b>',
-      pad: 'À toi de défendre. Déplace ton joueur (anneau jaune) avec le stick gauche et colle ton attaquant. <b>B</b> pour plonger en layout, <b>X</b> pour changer de joueur. <b>Récupère le disque !</b>'
-    },
-    setup() {
-      tutoReset(); G.tuto.level = 'facile';
-      Object.assign(G.form, { def: 'man', force: 'haut', dplay: 'none', play: 'none' });
-      Object.assign(G.ai, { off: 'vert', def: 'man', force: 'haut', play: 'none', dplay: 'none' });
-      tutoPut(1, [[62, 18.5], [58, 26], [52, 18], [47, 18], [42, 18]]);
-      tutoPut(0, [[61, 19.8], [57, 25], [51, 19], [46, 19], [41, 19]]);
-      tutoGive(TEAMS[1][0]);
-    },
-    on(ev, t) {
-      if (ev === 'turnover' && G.off === 0) tutoSuccess('Disque récupéré ! 💪');
-      if (ev === 'score') tutoFail('Ils ont marqué… recommence !');
     }
   },
   {
     title: 'Contrer une passe haute',
     text: {
-      mouse: 'Tu marques le porteur. Il a <b>armé une passe haute</b> (disque levé) et la lancera quand il voudra, par-dessus toi. Saute (<b>S</b>) juste avant qu’il lance : ton saut met un court instant à décoller. Réagir au lâcher est trop tard, il faut deviner !',
-      touch: 'Tu marques le porteur. Il a <b>armé une passe haute</b> (disque levé) et la lancera quand il voudra, par-dessus toi. Touche <b>Saut</b> juste avant qu’il lance : ton saut met un court instant à décoller. Réagir au lâcher est trop tard, il faut deviner !',
-      pad: 'Tu marques le porteur. Il a <b>armé une passe haute</b> (disque levé) et la lancera quand il voudra, par-dessus toi. Saute (<b>A</b>) juste avant qu’il lance : ton saut met un court instant à décoller. Il faut deviner !'
+      mouse: 'Le porteur a armé une passe haute. <b>Saute (S)</b> juste avant qu’il lance : il faut deviner !',
+      touch: 'Le porteur a armé une passe haute. <b>Tape ton joueur</b> pour sauter juste avant qu’il lance : il faut deviner !',
+      joy: 'Le porteur a armé une passe haute. Touche <b>Saut</b> juste avant qu’il lance : il faut deviner !',
+      pad: 'Le porteur a armé une passe haute. <b>A</b> pour sauter juste avant qu’il lance : il faut deviner !'
     },
     setup() {
       tutoReset(); G.tuto.level = 'facile';
@@ -276,9 +245,10 @@ const TUTO_STEPS = [
   {
     title: 'Le pull',
     text: {
-      mouse: 'Chaque point commence par un <b>pull</b> : l’équipe qui défend lance le disque à l’autre. Clique sur la zone visée dans le camp adverse, puis arrête la jauge dans le <b>vert</b> (clic ou Espace) pour un pull long et haut.',
-      touch: 'Chaque point commence par un <b>pull</b> : l’équipe qui défend lance le disque à l’autre. Pose le doigt n’importe où et glisse vers la zone visée dans le camp adverse (plus tu glisses loin, plus le pull est long), relâche, puis tape pour arrêter la jauge dans le <b>vert</b>.',
-      pad: 'Chaque point commence par un <b>pull</b>. Vise avec le stick, A pour valider, puis A pour arrêter la jauge dans le <b>vert</b>.'
+      mouse: 'Clique sur la zone visée, puis arrête la jauge dans le <b>vert</b> (clic ou Espace).',
+      touch: () => (CTRL.sling ? 'Tire en arrière pour viser' : 'Glisse vers la zone visée') + ', relâche, puis <b>tape</b> pour arrêter la jauge dans le vert.',
+      joy: 'Glisse vers la zone visée, relâche, puis <b>tape</b> pour arrêter la jauge dans le vert.',
+      pad: 'Vise avec le stick, <b>A</b>, puis A pour arrêter la jauge dans le vert.'
     },
     setup() {
       tutoReset();
@@ -343,14 +313,14 @@ function tutoGo(k) {
   TUTO_STEPS[k].setup();
   tutoText(true);
 }
-function tutoInput() { return G.gpActive ? 'pad' : isTouchUI() ? 'touch' : 'mouse'; }
+function tutoInput() { return G.gpActive ? 'pad' : isTouchUI() ? (gestures() ? 'touch' : 'joy') : 'mouse'; }
 function tutoText(force) {
   const T = G.tuto, S = TUTO_STEPS[T.step], inp = tutoInput();
   if (!S || (!force && inp === T.inp)) return;
   T.inp = inp;
   $('tutoTitle').textContent = S.title;
   $('tutoStep').textContent = `Étape ${T.step + 1} / ${TUTO_STEPS.length}`;
-  $('tutoText').innerHTML = S.text[inp];
+  const tx = S.text[inp] || S.text.touch; $('tutoText').innerHTML = typeof tx === 'function' ? tx() : tx;
   $('tutoSkip').style.display = ''; $('tutoSkip').textContent = 'Passer l’étape ▸';
   $('tutoQuit').textContent = 'Quitter ✕';
   resize();
@@ -383,7 +353,7 @@ function tutoFinish() {
   const T = G.tuto; T.done = true; T.step = TUTO_STEPS.length;
   $('tutoTitle').textContent = 'Bravo ! 🎉';
   $('tutoStep').textContent = '';
-  $('tutoText').innerHTML = 'Tu connais toutes les commandes : lancer, courber, passe haute, appeler un cut, layout en attaque, duel en l’air, marquer, changer de joueur, layout en défense, défendre, contrer à la mark et puller. Les menus d’avant-point te laissent aussi choisir ta stratégie et des combinaisons (plays). À toi de jouer !';
+  $('tutoText').innerHTML = 'Tu connais toutes les commandes : lancer, courber, passe haute, appeler un cut, layout, duel en l’air, changer de joueur, layout block, contre en saut et pull. Les menus d’avant-point te laissent aussi choisir ta stratégie et des combinaisons (plays). À toi de jouer !';
   $('tutoSkip').textContent = 'Jouer un match ▶';
   $('tutoQuit').textContent = 'Menu';
   resize();

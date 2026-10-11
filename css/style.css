@@ -257,3 +257,21 @@ body.touch #menuB,body.touch #teamsB{padding:0 8px;font-size:12px;height:22px}
 .danger{background:#dc2626;color:#fff;font-weight:700}
 .pullOpts{display:flex;gap:6px;flex-wrap:wrap;width:auto!important;font-weight:400!important}
 .popt.on{background:var(--blue);color:#fff}
+
+/* téléphone, schéma « gestes » : aucun bouton sur le terrain */
+body.gestes #joy,body.gestes #tbtns,body.gestes #curveV,body.gestes #highB{display:none!important}
+body.gestes #fknob{opacity:.7}
+/* menu en jeu, commandes, signalement, pause */
+#gameMenuCard{max-width:380px}
+#gameMenuCard .bigbtn{text-align:center}
+#ctrlCard h2{font-size:16px;margin:14px 0 4px}
+#ctrlCard .row span{width:150px}
+.copt.on,.kbtn.on{background:var(--blue);color:#fff}
+.kbtn{min-width:120px}
+#reportCard textarea{width:100%;font:inherit;font-size:14px;padding:8px;border-radius:8px;border:1px solid var(--panel2);background:var(--bg);color:var(--text);margin:4px 0}
+#pauseBanner{position:fixed;top:40%;left:50%;transform:translate(-50%,-50%);z-index:20;background:rgba(15,23,42,.92);border:2px solid var(--accent);
+  border-radius:14px;padding:14px 18px;display:flex;gap:14px;align-items:center;font-size:17px;font-weight:700}
+/* tutoriel : texte court, plus gros */
+#tutoBox{font-size:16px}
+#tutoText{line-height:1.35}
+body.touch #tutoBox{font-size:13.5px;line-height:1.3;padding:4px 10px}

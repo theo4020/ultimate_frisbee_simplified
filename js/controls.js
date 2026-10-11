@@ -44,12 +44,16 @@ function trySelectAt(w) {
 const isTouch = () => document.body.classList.contains('touch');
 // sur téléphone, le terrain sert à taper (prendre un joueur, appeler un cut) ; le joystick gère le reste
 const touchField = e => e.pointerType !== 'mouse' && isTouch() && G.phase === 'play';
-canvas.addEventListener('pointermove', e => { if (FD && FD.id === e.pointerId) return; if (G.phase === 'pull' && e.pointerType !== 'mouse' && isTouch()) return; if (!touchField(e)) setPointer(e); });
+canvas.addEventListener('pointermove', e => { if (FD && FD.id === e.pointerId) return; if (e.pointerType !== 'mouse' && gestures()) return; if (G.phase === 'pull' && e.pointerType !== 'mouse' && isTouch()) return; if (!touchField(e)) setPointer(e); });
 canvas.addEventListener('pointerdown', e => {
   e.preventDefault();
   if (FD && FD.id === e.pointerId) return;                   // lancer « glissé » en cours (téléphone)
   G.gpActive = false;
   if (G.replay) { stopReplay(); return; }
+  if (e.pointerType !== 'mouse' && gestures()) {             // téléphone en gestes : tout est géré par gestures.js
+    if (G.phase === 'pull' && G.pullUI && G.pullUI.stage === 'power') pullStop();
+    return;
+  }
   if (G.phase === 'pull') {                                  // pull : choisir la cible, puis arrêter la jauge
     if (e.pointerType !== 'mouse' && isTouch()) {            // téléphone : on vise en glissant (voir plus bas), on tape pour arrêter la jauge
       if (G.pullUI && G.pullUI.stage === 'power') pullStop();
@@ -75,6 +79,7 @@ canvas.addEventListener('pointerdown', e => {
 });
 function pointerEnd(e) {
   if (FD && FD.id === e.pointerId) return;
+  if (e.pointerType !== 'mouse' && gestures()) return;
   if (G.phase === 'pull') return;
   if (touchField(e)) {
     const tap = G.tap; G.tap = null;
@@ -102,19 +107,20 @@ canvas.addEventListener('wheel', e => { e.preventDefault(); adjustCurve(e.deltaY
 window.addEventListener('keydown', e => {
   if (e.target && e.target.tagName === 'INPUT' && e.target.type !== 'range') { if (e.key === 'Enter' && e.target.id === 'joinCode') $('joinGo').click(); return; }
   const k = e.key.toLowerCase();
+  if (keyWait) { e.preventDefault(); captureKey(k); return; }   // réglage d'une touche (panneau Commandes)
   if (G.replay) { if (k === 'escape' || k === ' ' || k === 'enter') { e.preventDefault(); stopReplay(); } return; }
-  if (k === 'z' || k === 'w') { cycleThrowKind(); return; }
-  if (k === 'a' || k === 'q' || k === 'arrowleft') adjustCurve(-0.25);
-  else if (k === 'e' || k === 'd' || k === 'arrowright') adjustCurve(0.25);
+  if (keyIs('high', k)) { cycleThrowKind(); return; }
+  if (keyIs('curveL', k)) adjustCurve(-0.25);
+  else if (keyIs('curveR', k)) adjustCurve(0.25);
   else if ((k === ' ' || k === 'enter') && localPuller()) { e.preventDefault(); pullStop(); }
   else if (k === 'escape' && localPuller()) pullBack();
-  else if (k === ' ') { e.preventDefault(); switchDefender(); }
+  else if (keyIs('switch', k)) { e.preventDefault(); switchDefender(); }
   else if (k >= '1' && k <= '5') {                           // touches 1 à 5 : prendre ce joueur (s'il est géré par l'IA)
     const h = meH(), p = TEAMS[G.me][+k - 1];
     if (canSwitchNow(h) && p && !takenByOther(p, h)) doSelect(p);
   }
-  else if (k === 'f' || k === 'shift') userDive();
-  else if (k === 's') userJump();
+  else if (keyIs('dive', k)) userDive();
+  else if (keyIs('jump', k)) userJump();
   else if (k === 'enter' && G.menuShown && $('stratCard').style.display !== 'none' && !$('go').disabled) $('go').click();
 });
 $('curveL').addEventListener('click', () => adjustCurve(-0.25));
@@ -134,6 +140,7 @@ const JOY_DEAD = 0.18, JOY_MAXD = 50;
 const joy = { active: false, id: null, dx: 0, dy: 0, aim: null, mode: null };
 function joyMode() {
   if (G.phase !== 'play') return null;
+  if (gestures()) return null;                               // téléphone en gestes : pas de joystick
   if (canThrow()) return isTouch() ? null : 'throw';           // téléphone : on lance en glissant n'importe où (voir plus bas)
   const h = meH();
   if (h && h.sel && (defending() || !soloStyle(h.team))) return 'move';
@@ -204,7 +211,7 @@ $('fsB').addEventListener('click', () => {
 });
 
 
-// ---------- téléphone : lancer en glissant depuis n'importe où ----------
+// ---------- téléphone, schéma « joystick et boutons » : lancer en glissant depuis n'importe où ----------
 // Le doigt se pose n'importe où (hors boutons) : un joystick apparaît sous lui. La direction du glissé vise,
 // sa longueur règle la distance, relâcher lance. Revenir près du point de départ annule.
 // Un simple tap (sans glisser) garde son rôle : prendre un joueur ou appeler un cut.
@@ -215,7 +222,7 @@ const FD_DEAD = 16;                                          // px : en dessous,
 const fdRadius = () => clamp(window.innerHeight * 0.32, 80, 150);
 const fdOnUI = t => !!(t && t.closest && t.closest('button, input, #controls, #tbtns, #joy, #tutoBox, #overlay, #hud, #emoBar, #curveV, #highB'));
 window.addEventListener('pointerdown', e => {
-  if (!isTouch() || e.pointerType === 'mouse' || FD || !(canThrow() || fdPull()) || fdOnUI(e.target)) return;
+  if (!isTouch() || gestures() || e.pointerType === 'mouse' || FD || !(canThrow() || fdPull()) || fdOnUI(e.target)) return;
   FD = { id: e.pointerId, x0: e.clientX, y0: e.clientY, len: 0, aim: null, t: G.time, pull: fdPull() };
   const el = $('fjoy'); el.style.left = e.clientX + 'px'; el.style.top = e.clientY + 'px';
   el.style.width = el.style.height = fdRadius() * 2 + 'px'; el.style.display = 'block';

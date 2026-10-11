@@ -47,6 +47,7 @@ function startPoint() {
   updateSelected();
   if (G.attract) return;                                      // match de démonstration derrière le menu
   G.menuShown = false; G.teamsOpen = null;
+  if (typeof resetCards === 'function') resetCards();
   document.getElementById('overlay').classList.add('hidden');
   pullFlash();
   if (G.net === 'host') netSend({ t: 'start', r, by: G.pull ? G.pull.by : null });
