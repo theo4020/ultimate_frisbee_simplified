@@ -30,7 +30,7 @@ const TUTO_STEPS = [
     title: 'La courbe',
     ctx: 'throw',
     text: {
-      mouse: 'Un défenseur bloque la ligne droite. Ajoute de la <b>courbe</b> (A / E ou molette) pour passer à côté.',
+      mouse: () => `Un défenseur bloque la ligne droite. Ajoute de la <b>courbe</b> (${tutoCmd('curveL')} / ${tutoCmd('curveR')} ou molette) pour passer à côté.`,
       touch: 'Un défenseur bloque la ligne droite. Pendant que tu vises, glisse un <b>2<sup>e</sup> doigt sur le côté</b> pour courber la passe.',
       joy: 'Un défenseur bloque la ligne droite. Règle la <b>courbe</b> avec le curseur du bord droit, puis lance à côté de lui.',
       pad: 'Un défenseur bloque la ligne droite. Ajoute de la <b>courbe</b> avec LB / RB, puis lance à côté de lui.'
@@ -56,7 +56,7 @@ const TUTO_STEPS = [
     title: 'La passe haute',
     ctx: 'throw',
     text: {
-      mouse: 'Un mur bloque le passage. <b>Z</b> arme la passe haute, puis lance par-dessus.',
+      mouse: () => `Un mur bloque le passage. <b>${tutoCmd('high')}</b> arme la passe haute, puis lance par-dessus.`,
       touch: 'Un mur bloque le passage. <b>Tape ton porteur</b> pour armer la passe haute, puis lance par-dessus.',
       joy: 'Un mur bloque le passage. Touche <b>Passe haute</b> (bord droit), puis lance par-dessus.',
       pad: 'Un mur bloque le passage. <b>Y</b> arme la passe haute, puis lance par-dessus avec A.'
@@ -74,7 +74,7 @@ const TUTO_STEPS = [
     },
     on(ev, p) {
       if (ev === 'catch' && p.team === 0) { if (disc.kind === 'high') tutoSuccess('Passe haute réussie !'); else tutoFail('Passé, mais essaie la passe haute !'); }
-      if (ev === 'turnover') tutoFail(disc.kind === 'high' ? 'Raté, réessaie !' : 'Bloqué ! Choisis la passe haute (Z).');
+      if (ev === 'turnover') tutoFail(disc.kind === 'high' ? 'Raté, réessaie !' : `Bloqué ! Arme la passe haute (${tutoCmd('high')}).`);
     }
   },
   {
@@ -112,7 +112,7 @@ const TUTO_STEPS = [
     title: 'Layout en attaque',
     ctx: 'move',
     text: {
-      mouse: 'Ton coéquipier ne bouge pas. Lance à 2–4 m de lui, puis <b>clic</b> (ou F) pendant le vol : il plonge.',
+      mouse: () => `Ton coéquipier ne bouge pas. Lance à 2–4 m de lui, puis <b>clic</b> (ou ${tutoCmd('dive')}) pendant le vol : il plonge.`,
       touch: 'Ton coéquipier ne bouge pas. Lance à 2–4 m de lui, puis <b>glisse vite</b> n’importe où pendant le vol : il plonge.',
       joy: 'Ton coéquipier ne bouge pas. Lance à 2–4 m de lui, puis touche <b>Layout</b> pendant le vol : il plonge.',
       pad: 'Ton coéquipier ne bouge pas. Lance à 2–4 m de lui, puis <b>B</b> pendant le vol : il plonge.'
@@ -138,7 +138,7 @@ const TUTO_STEPS = [
     title: 'Duel en l’air',
     ctx: 'move',
     text: {
-      mouse: 'Ton receveur est collé. Lance-lui, puis <b>S</b> pendant le vol : il saute et gagne le duel.',
+      mouse: () => `Ton receveur est collé. Lance-lui, puis <b>${tutoCmd('jump')}</b> pendant le vol : il saute et gagne le duel.`,
       touch: 'Ton receveur est collé. Lance-lui, puis <b>tape ton receveur</b> pendant le vol : il saute et gagne le duel.',
       joy: 'Ton receveur est collé. Lance-lui, puis touche <b>Saut</b> pendant le vol : il gagne le duel.',
       pad: 'Ton receveur est collé. Lance-lui, puis <b>A</b> pendant le vol : il saute et gagne le duel.'
@@ -156,14 +156,14 @@ const TUTO_STEPS = [
     },
     on(ev, p) {
       if (ev === 'catch' && p.team === 0) { if (p.jump > 0) tutoSuccess('Duel gagné ! 🙌'); else tutoFail('Attrapé, mais saute pour gagner le duel !'); }
-      if (ev === 'turnover') tutoFail(disc.thrower && disc.intended && disc.intended.jump > 0 ? 'Duel perdu… saute un peu plus tôt !' : 'Contré : fais sauter ton receveur (S) !');
+      if (ev === 'turnover') tutoFail(disc.thrower && disc.intended && disc.intended.jump > 0 ? 'Duel perdu… saute un peu plus tôt !' : `Contré : fais sauter ton receveur (${tutoCmd('jump', 'tape ton receveur')}) !`);
     }
   },
   {
     title: 'Changer de joueur',
     ctx: 'move',
     text: {
-      mouse: 'Ton défenseur (anneau jaune) est loin du disque. <b>Espace</b> prend le plus proche (entouré en gris), ou clique sur un joueur.',
+      mouse: () => `Ton défenseur (anneau jaune) est loin du disque. <b>${tutoCmd('switch')}</b> prend le plus proche (entouré en gris), ou clique sur un joueur.`,
       touch: 'Ton défenseur (anneau jaune) est loin du disque. <b>Tape le défenseur</b> le plus proche pour le prendre.',
       joy: 'Ton défenseur (anneau jaune) est loin du disque. Touche <b>Switch</b> pour prendre le plus proche.',
       pad: 'Ton défenseur (anneau jaune) est loin du disque. <b>X</b> prend le plus proche (entouré en gris).'
@@ -184,7 +184,7 @@ const TUTO_STEPS = [
     title: 'Plonger en défense',
     ctx: 'move',
     text: {
-      mouse: 'Une passe va passer à côté de toi. Juste avant, <b>clique sur sa trajectoire</b> (ou F) : layout block.',
+      mouse: () => `Une passe va passer à côté de toi. Juste avant, <b>clique sur sa trajectoire</b> (ou ${tutoCmd('dive')}) : layout block.`,
       touch: 'Une passe va passer à côté de toi. Juste avant, <b>glisse vite vers sa trajectoire</b> : layout block.',
       joy: 'Une passe va passer à côté de toi. Juste avant, oriente le joystick vers elle et touche <b>Layout</b>.',
       pad: 'Une passe va passer à côté de toi. Juste avant, stick vers elle et <b>B</b> : layout block.'
@@ -217,7 +217,7 @@ const TUTO_STEPS = [
     title: 'Contrer une passe haute',
     ctx: 'move',
     text: {
-      mouse: 'Le porteur a armé une passe haute. <b>Saute (S)</b> juste avant qu’il lance : il faut deviner !',
+      mouse: () => `Le porteur a armé une passe haute. <b>Saute (${tutoCmd('jump')})</b> juste avant qu’il lance : il faut deviner !`,
       touch: 'Le porteur a armé une passe haute. <b>Tape ton joueur</b> pour sauter juste avant qu’il lance : il faut deviner !',
       joy: 'Le porteur a armé une passe haute. Touche <b>Saut</b> juste avant qu’il lance : il faut deviner !',
       pad: 'Le porteur a armé une passe haute. <b>A</b> pour sauter juste avant qu’il lance : il faut deviner !'
@@ -246,7 +246,7 @@ const TUTO_STEPS = [
     },
     on(ev, p) {
       if (ev === 'turnover' && G.off === 0) { if (G.tuto.blocked) tutoSuccess('Contré ! Bien deviné 💪'); else tutoFail('Passe ratée par le lanceur : on recommence.'); }
-      if (ev === 'catch' && p.team === 1) tutoFail(G.tuto.jumped ? 'Mauvais moment… recommence !' : 'Il est passé : saute (S) au bon moment !');
+      if (ev === 'catch' && p.team === 1) tutoFail(G.tuto.jumped ? 'Mauvais moment… recommence !' : `Il est passé : saute (${tutoCmd('jump')}) au bon moment !`);
     }
   },
   {
@@ -327,10 +327,18 @@ function tutoInput(S) {
   const btn = S && (S.ctx === 'throw' ? CTRL.throwUI === 'boutons' : S.ctx === 'move' ? CTRL.move === 'joystick' : false);
   return btn ? 'joy' : 'touch';
 }
+// commande à utiliser, telle que réglée par le joueur (touches choisies, gestes ou boutons, manette)
+function tutoCmd(a, touchAlt) {
+  const inp = tutoInput(G.tuto && TUTO_STEPS[G.tuto.step]);
+  if (inp === 'mouse') return keysOf(a).map(keyName).join(' / ');
+  if (inp === 'pad') return { high: 'Y', jump: 'A', dive: 'B', switch: 'X', curveL: 'LB', curveR: 'RB' }[a];
+  if (inp === 'joy') return { high: 'bouton Passe haute', jump: 'bouton Saut', dive: 'bouton Layout', switch: 'bouton Switch', curveL: 'curseur', curveR: 'curseur' }[a];
+  return touchAlt || { high: 'tape ton porteur', jump: 'tape ton joueur', dive: 'glisse vite', switch: 'tape un coéquipier', curveL: '2e doigt', curveR: '2e doigt' }[a];
+}
 function tutoText(force) {
-  const T = G.tuto, S = TUTO_STEPS[T.step], inp = tutoInput(S);
-  if (!S || (!force && inp === T.inp)) return;
-  T.inp = inp;
+  const T = G.tuto, S = TUTO_STEPS[T.step], inp = tutoInput(S), sig = inp + JSON.stringify(CTRL);
+  if (!S || (!force && sig === T.inp)) return;               // on réaffiche si la façon de jouer ou les réglages changent
+  T.inp = sig;
   $('tutoTitle').textContent = S.title;
   $('tutoStep').textContent = `Étape ${T.step + 1} / ${TUTO_STEPS.length}`;
   const tx = S.text[inp] || S.text.touch; $('tutoText').innerHTML = typeof tx === 'function' ? tx() : tx;

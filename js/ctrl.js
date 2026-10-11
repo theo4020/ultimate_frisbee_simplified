@@ -14,9 +14,8 @@ const DEFAULT_KEYS = { high: ['z', 'w'], curveL: ['a', 'q', 'arrowleft'], curveR
 const CTRL = Object.assign({ sling: true, throwUI: 'gestes', move: 'tap', keys: {} }, (() => {
   try { const o = JSON.parse(localStorage.getItem('uf-ctrl') || 'null'); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; }
 })());
-if (CTRL.mobile === 'joystick') { CTRL.throwUI = 'boutons'; CTRL.move = 'joystick'; CTRL.sling = false; }   // anciens réglages
-if (CTRL.follow === true && CTRL.move === 'tap') CTRL.move = 'follow';
-delete CTRL.mobile; delete CTRL.follow;
+// nouvelles commandes par défaut pour tout le monde (réglages téléphone d'avant remis à zéro une fois ; les touches sont gardées)
+if (CTRL.v !== 2) { Object.assign(CTRL, { sling: true, throwUI: 'gestes', move: 'tap', v: 2 }); delete CTRL.mobile; delete CTRL.follow; saveCtrl(); }
 if (!['gestes', 'boutons'].includes(CTRL.throwUI)) CTRL.throwUI = 'gestes';
 if (!['tap', 'follow', 'joystick'].includes(CTRL.move)) CTRL.move = 'tap';
 function saveCtrl() { try { localStorage.setItem('uf-ctrl', JSON.stringify(CTRL)); } catch (e) { } }

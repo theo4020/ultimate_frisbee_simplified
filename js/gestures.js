@@ -9,80 +9,80 @@
 //   • glisser vite n'importe où : layout dans cette direction ;
 //   • option « le joueur suit le doigt » : doigt maintenu, ton joueur le suit.
 
-const GS = { prim: null, curve: null };
+// Chaque doigt est suivi à part (plusieurs doigts à la fois) : un tap reste un tap même si un autre doigt vise ou courbe.
+//  • le premier doigt qui glisse quand tu as le disque devient le doigt de visée ;
+//  • un autre doigt qui glisse pendant la visée règle la courbe ;
+//  • un doigt qui se lève sans avoir glissé est un tap ; vite et loin, c'est un glissé (layout).
+const GS = { ptr: new Map(), aim: null };
 const GS_DEAD = 16, GS_TAP = 12, GS_SWIPE = 30;               // px
 const gsReady = e => gestures() && e.pointerType !== 'mouse' && !fdOnUI(e.target) && !G.replay && !G.paused && !G.pz
   && $('overlay').classList.contains('hidden') && (G.phase === 'play' || G.phase === 'pull');
+const gsAimCtx = () => canThrow() || fdPull();
 
 window.addEventListener('pointerdown', e => {
   if (!gsReady(e)) return;
-  const P = GS.prim;
-  if (P) {                                                    // 2e doigt pendant la visée : courbe
-    if (P.sling && !GS.curve) GS.curve = { id: e.pointerId, x0: e.clientX, y0: e.clientY, c0: G.curve };
-    return;
-  }
   if (G.phase === 'pull' && !fdPull()) return;                // pendant la jauge, le tap l'arrête (controls.js)
-  const sling = canThrow() || fdPull();
-  GS.prim = { id: e.pointerId, x0: e.clientX, y0: e.clientY, t: G.time, len: 0, sling, pull: fdPull(), aim: null, dir: null, follow: false };
-  if (sling) {
-    const el = $('fjoy'); el.style.left = e.clientX + 'px'; el.style.top = e.clientY + 'px';
-    el.style.width = el.style.height = fdRadius() * 2 + 'px'; el.style.display = 'block'; $('fknob').style.transform = '';
-  }
+  GS.ptr.set(e.pointerId, { id: e.pointerId, x0: e.clientX, y0: e.clientY, t: G.time, len: 0, role: null });
 }, true);
 
 window.addEventListener('pointermove', e => {
-  const C = GS.curve, P = GS.prim;
-  if (C && e.pointerId === C.id) {                            // courbe : déplacement du 2e doigt perpendiculaire à la passe
-    if (!P || !P.dir) return;
-    const lat = (e.clientX - C.x0) * -P.dir[1] + (e.clientY - C.y0) * P.dir[0];
-    setCurve(Math.round((C.c0 + lat / 110) * 20) / 20);
-    return;
+  const F = GS.ptr.get(e.pointerId); if (!F) return;
+  const dx = e.clientX - F.x0, dy = e.clientY - F.y0, len = Math.hypot(dx, dy);
+  F.len = Math.max(F.len, len);
+  if (!F.role && len >= GS_DEAD) {                            // ce doigt commence à glisser : quel rôle ?
+    if (gsAimCtx() && !GS.aim) {
+      F.role = 'aim'; F.pull = fdPull(); GS.aim = F;
+      const el = $('fjoy'); el.style.left = F.x0 + 'px'; el.style.top = F.y0 + 'px';
+      el.style.width = el.style.height = fdRadius() * 2 + 'px'; el.style.display = 'block';
+    } else if (GS.aim) { F.role = 'curve'; F.cx = e.clientX; F.cy = e.clientY; F.c0 = G.curve; }
   }
-  if (!P || e.pointerId !== P.id) return;
-  const dx = e.clientX - P.x0, dy = e.clientY - P.y0, len = Math.hypot(dx, dy);
-  P.len = Math.max(P.len, len);
-  if (P.sling) {
+  if (F.role === 'aim') {
     const R = fdRadius(), k = len > R ? R / len : 1;
     $('fknob').style.transform = `translate(${dx * k}px, ${dy * k}px)`;
-    if (!(P.pull ? fdPull() : canThrow())) return;
-    if (len < GS_DEAD) { P.aim = null; G.aiming = false; G.pointer.active = false; return; }
+    if (!(F.pull ? fdPull() : canThrow())) return;
+    if (len < GS_DEAD) { F.aimAt = null; G.aiming = false; G.pointer.active = false; return; }
     const ax = CTRL.sling ? -dx : dx, ay = CTRL.sling ? -dy : dy;
-    P.dir = [ax / len, ay / len];
+    F.dir = [ax / len, ay / len];
     const m = Math.min(1, (len - GS_DEAD) / (R - GS_DEAD)), h = disc.holder;
-    const d = P.pull ? 25 + m * (PULL.MAX - 25) : 3 + m * JOY_MAXD;
-    P.aim = [h.x + P.dir[0] * d, h.y + P.dir[1] * d];
-    G.pointer.x = P.aim[0]; G.pointer.y = P.aim[1]; G.pointer.active = true; G.aiming = !P.pull;
-    return;
+    const d = F.pull ? 25 + m * (PULL.MAX - 25) : 3 + m * JOY_MAXD;
+    F.aimAt = [h.x + F.dir[0] * d, h.y + F.dir[1] * d];
+    G.pointer.x = F.aimAt[0]; G.pointer.y = F.aimAt[1]; G.pointer.active = true; G.aiming = !F.pull;
+  } else if (F.role === 'curve') {                            // courbe : déplacement perpendiculaire à la passe
+    const A = GS.aim, dir = A && A.dir; if (!dir) return;
+    const lat = (e.clientX - F.cx) * -dir[1] + (e.clientY - F.cy) * dir[0];
+    setCurve(Math.round((F.c0 + lat / 110) * 20) / 20);
+  } else if (!F.role && CTRL.move === 'follow' && G.time - F.t > 0.25 && gsCanMove()) {   // réglage : le joueur suit le doigt
+    F.role = 'follow';
   }
-  if (CTRL.move === 'follow' && G.time - P.t > 0.25 && gsCanMove()) {   // réglage : le joueur suit le doigt
+  if (F.role === 'follow' && gsCanMove()) {
     const w = toWorld(e);
     Object.assign(G.pointer, { x: w.x, y: w.y, active: true, down: true, last: G.time });
-    P.follow = true; sendInput();
+    sendInput();
   }
 }, true);
 
 function gsEnd(e, cancel) {
-  if (GS.curve && e.pointerId === GS.curve.id) { GS.curve = null; return; }
-  const P = GS.prim;
-  if (!P || e.pointerId !== P.id) return;
-  GS.prim = null; GS.curve = null;
-  $('fjoy').style.display = 'none';
-  const dx = e.clientX - P.x0, dy = e.clientY - P.y0, len = Math.hypot(dx, dy), dt = G.time - P.t;
-  if (P.sling) {
-    G.aiming = false;
-    if (!cancel && P.aim && len >= GS_DEAD) {
-      if (P.pull) { if (fdPull()) { G.pointer.active = true; pullPointerDown(P.aim[0], P.aim[1]); } }
-      else if (canThrow()) { G.pointer.active = false; doThrow(P.aim[0], P.aim[1], G.curve); }
-      return;
-    }
-    G.pointer.active = false;
-    if (!cancel && !P.pull && P.len < GS_TAP && dt < 0.4) gsTapWithDisc(toWorld(e));
+  const F = GS.ptr.get(e.pointerId); if (!F) return;
+  GS.ptr.delete(e.pointerId);
+  const dx = e.clientX - F.x0, dy = e.clientY - F.y0, len = Math.hypot(dx, dy), dt = G.time - F.t;
+  if (F.role === 'aim') {
+    GS.aim = null; $('fjoy').style.display = 'none'; G.aiming = false;
+    if (!cancel && F.aimAt && len >= GS_DEAD) {
+      if (F.pull) { if (fdPull()) { G.pointer.active = true; pullPointerDown(F.aimAt[0], F.aimAt[1]); } }
+      else if (canThrow()) { G.pointer.active = false; doThrow(F.aimAt[0], F.aimAt[1], G.curve); }
+    } else G.pointer.active = false;
     return;
   }
-  if (P.follow) { G.pointer.down = false; G.pointer.last = G.time; sendInput(true); return; }
-  if (cancel) return;
-  if (len >= GS_SWIPE && dt < 0.3) { if (CTRL.move !== 'joystick' && canLayout()) { doDive(...stickDive(dx, dy)); G.pointer.last = G.time; } return; }
-  if (P.len < GS_TAP && dt < 0.4) gsTap(toWorld(e));
+  if (F.role === 'curve' || cancel) return;
+  if (F.role === 'follow') { G.pointer.down = false; G.pointer.last = G.time; sendInput(true); return; }
+  if (len >= GS_SWIPE && dt < 0.3) {                          // glissé rapide : layout
+    if (!gsAimCtx() && CTRL.move !== 'joystick' && canLayout()) { doDive(...stickDive(dx, dy)); G.pointer.last = G.time; }
+    return;
+  }
+  if (F.len < GS_TAP && dt < 0.4 && G.phase === 'play') {     // tap
+    const w = toWorld(e);
+    if (canThrow()) gsTapWithDisc(w); else gsTap(w);
+  }
 }
 window.addEventListener('pointerup', e => gsEnd(e, false), true);
 window.addEventListener('pointercancel', e => gsEnd(e, true), true);
