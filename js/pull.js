@@ -40,12 +40,11 @@ function regroupTick(dt) {
   setPullSpots(pullerPlayer(d, by));
   regroupStep(dt);
 }
-// l'équipe qui pulle doit être en place sur sa ligne avant de pouvoir lancer
+// les deux équipes doivent être en place sur leur ligne avant le pull
 function pullReady() {
   if (G.net === 'guest') return !!G.netPullReady;
   if (!G.pull || !disc.holder) return false;
-  const d = G.pull.team;
-  return TEAMS[d].every(p => dist(p.x, p.y, p.tx, p.ty) < (p === disc.holder ? 0.6 : 8));   // le pulleur à sa place, les autres presque arrivés
+  return players.every(p => dist(p.x, p.y, p.tx, p.ty) < (p === disc.holder ? 0.6 : 2.5));   // les deux équipes en place
 }
 // début de match (derrière le premier menu) : les équipes sont déjà alignées sur leurs lignes
 function placeOnPullLines() {
@@ -137,10 +136,10 @@ function doPull(x, y, curve, q) {
 function pullTick(dt, gdt) {
   if (G.phase !== 'pull' || !G.pull) return;
   regroupStep(gdt || dt);                                      // mise en place en marchant
-  if (!pullReady()) return;                                    // on attend que l'équipe qui pulle soit en place
-  G.pull.t += dt;
+  if (!pullReady()) return;                                    // on attend que tout le monde soit en place
+  G.pull.t += gdt || dt;                                       // temps de jeu (le pull automatique suit la vitesse du jeu)
   if (G.pull.by != null && !humanById(G.pull.by)) G.pull.by = null;   // le pulleur choisi est parti : l'IA prend le relais
-  if (G.pull.by == null) { G.pull.aiT -= dt; if (G.pull.aiT <= 0) aiPull(); }
+  if (G.pull.by == null) { G.pull.aiT -= gdt || dt; if (G.pull.aiT <= 0) aiPull(); }
   else if (G.pull.t > PULL.AUTO_T) aiPull();                    // personne ne pulle : pull automatique
 }
 function aiPull() {
@@ -194,16 +193,14 @@ function launchPull(ax, ay, curve, q) {
 
 // réception du pull à la volée
 function pullCaught(p) {
-  const r = G.receiving;
   disc.pull = false;
+  // un pull se droppe comme une passe : l'équipe qui a pullé récupère le disque là où il tombe
+  if (Math.random() < dropChance()) { G.pullPending = false; G.pendingOPlay = null; G.dplay = null; G.stats.drops = (G.stats.drops || 0) + 1; msTurnover(p, 'drop'); turnover(p.x, p.y, 'Pull droppé ! Turnover'); return; }
   fxEvent('catch', p.x, p.y, p.team);
-  const outside = p.x < 0 || p.x > W || p.y < 0 || p.y > H;
-  const landsOut = disc.ex < 0 || disc.ex > W || disc.ey < 0 || disc.ey > H;
-  if (outside && landsOut) { startCarry(p, brickX(r), H / 2, 'Out ! Brick'); return; }   // pull qui sortait : brick
-  // attrapé hors du terrain alors qu'il allait retomber dedans : réception valable, on rentre le disque au plus près
-  let x = clamp(p.x, 0, W), y = clamp(p.y, 0.5, H - 0.5);
-  if (inScoreZone(1 - r, x)) x = goalLine(r);                  // dans son en-but : on le ramène sur la ligne
-  if (outside || x !== p.x) { startCarry(p, x, y, ''); return; }
+  // attrapé dans un en-but ou depuis l'extérieur : il ramène le disque à pied (ligne d'en-but ou bord du terrain)
+  const x = clamp(p.x, 0.5, W - 0.5), y = clamp(p.y, 0.5, H - 0.5), L = lineSpot(x, y);
+  if (L) { startCarry(p, L.x, L.y, ''); return; }
+  if (x !== p.x || y !== p.y) { startCarry(p, x, y, ''); return; }
   holdDisc(p);
 }
 const brickX = r => goalLine(r) + dirOf(r) * PULL.BRICK;
@@ -223,9 +220,7 @@ function pullLanded(ex, ey) {
   const out = ex < 0 || ex > W || ey < 0 || ey > H;
   // le disque est ramassé là où il s'arrête (ou là où il est sorti), puis ramené si besoin
   const x = clamp(ex, 0.5, W - 0.5), y = clamp(ey, 0.5, H - 0.5);
-  if (out) G.carryTo = { x: brickX(r), y: H / 2 };
-  else if (inScoreZone(1 - r, x)) G.carryTo = { x: goalLine(r), y };
-  else G.carryTo = null;
+  G.carryTo = out ? { x: brickX(r), y: H / 2 } : lineSpot(x, y);
   pullToSpot(x, y, null, out ? 'Out ! Brick' : '');
 }
 function pullToSpot(x, y, catcher, msg) {

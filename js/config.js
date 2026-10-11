@@ -8,19 +8,18 @@ const SPD = { jog: 4.6, cut: 7.6, def: 7.4, user: 7.5, sprint: 7.8, dive: 11 };
 const ACC = { atk: 24, def: 21 };
 // Réglages de la défense IA (plus les temps de réaction sont courts et l'anticipation forte, plus elle est dure)
 // Niveaux de l'IA (« IA adverse » pour les équipes sans humain, « Coéquipiers IA » pour les autres, voir humans.js)
-//   react : multiplie les temps de réaction · anticip : anticipation des courses (s) · block / int : chances de contre
+//   react : multiplie les temps de réaction · anticip : anticipation des courses (s) · block : chance de contre (debout)
 //   speed : vitesse des joueurs · err : imprécision des lancers · safe : prudence dans le choix des passes
 const AI_LEVELS = {
-  facile:    { react: 1.6,  anticip: 0.1,  block: 0.42, int: 0.12, speed: 0.93, err: 1.6, safe: -0.05 },
-  normal:    { react: 1,    anticip: 0.3,  block: 0.6,  int: 0.2,  speed: 1,    err: 1,   safe: 0 },
-  difficile: { react: 0.72, anticip: 0.4,  block: 0.68, int: 0.25, speed: 1.04, err: 0.65, safe: 0.08 }
+  facile:    { react: 1.6,  anticip: 0.1,  block: 0.42, speed: 0.93, err: 1.6, safe: -0.05 },
+  normal:    { react: 1,    anticip: 0.3,  block: 0.6,   speed: 1,    err: 1,   safe: 0 },
+  difficile: { react: 0.72, anticip: 0.4,  block: 0.68, speed: 1.04, err: 0.65, safe: 0.08 }
 };
 const DEF_TUNE = {
   reactMan: [0.14, 0.24],   // temps de réaction en individuelle (s)
   reactZone: [0.1, 0.16],   // temps de réaction en zone (s)
   anticip: 0.3,             // anticipation de la course de l'attaquant (s)
-  block: 0.6,               // chance de contrer quand le disque passe à portée (debout)
-  int: 0.2                  // dont chance d'intercepter
+  block: 0.6                // chance de contrer quand le disque passe à portée (debout)
 };
 const DIVE_T = 0.33, DOWN_T = 0.8;
 // saut : préparation (le joueur s'accroupit et ralentit), temps en l'air, gain de hauteur au sommet,
@@ -81,6 +80,8 @@ const DESCS = {
   haut: 'La mark bloque le bas : le handler est obligé de lancer vers le haut du terrain, où tes défenseurs l’attendent.',
   bas: 'La mark bloque le haut : le handler est obligé de lancer vers le bas du terrain, où tes défenseurs l’attendent.',
   middle: 'La mark se place côté ligne : le handler est obligé de jouer vers le centre du terrain.',
+  restart_pose: 'Après une perte, le disque reste au sol : un handler vient le chercher en marchant et arrive quand tout le monde est en place. La défense ne marque qu’une fois qu’il a le disque.',
+  restart_rapide: 'Après une perte, le joueur le plus proche ramasse le disque tout de suite : on surprend la défense avant qu’elle soit en place.',
   straight: 'La mark se place pile devant le handler : elle coupe les lancers vers l’avant (et les hucks), mais laisse les deux côtés ouverts.'
 };
 

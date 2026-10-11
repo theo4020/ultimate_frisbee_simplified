@@ -47,7 +47,7 @@ function update(dt) {
   runCutSequencer(off, ax, ay, dir, open, oform, dt);
   for (const p of atk) {
     if (disc.mode === 'held' && disc.holder === p) { p.tx = p.x; p.ty = p.y; p.sp = 0; p.vx = p.vy = 0; continue; }
-    if (disc.mode === 'ground' && G.pickup === p) { p.tx = disc.x; p.ty = disc.y; p.sp = SPD.cut; continue; }
+    if (disc.mode === 'ground' && G.pickup === p) { p.tx = disc.x; p.ty = disc.y; p.sp = pickupSpeed(p); continue; }
     if (disc.mode === 'carry' && disc.holder === p) { p.tx = G.carryTo.x; p.ty = G.carryTo.y; p.sp = 5.5; continue; }
     if (userControls(p)) { const inp = inputOf(controllerOf(p)); p.tx = inp.x; p.ty = inp.y; p.sp = SPD.user; continue; }   // humain (à plusieurs par équipe)
     if (G.tuto && TUTO_STEPS[G.tuto.step] && TUTO_STEPS[G.tuto.step].still && tutoPin(p)) continue;   // tutoriel : receveur immobile
@@ -77,6 +77,7 @@ function update(dt) {
     d.react = (dform !== 'man' ? rand(...DEF_TUNE.reactZone) : rand(...DEF_TUNE.reactMan)) * aiLvl(def).react;
     defenderAI(d, ax, ay, dir, closed, defFormOf(def), slots);
   }
+  holdOffMark(dfn);
 
   for (const p of players) if (p !== disc.holder || disc.mode !== 'held') steer(p, dt);
   for (let i = 0; i < players.length; i++)
@@ -140,9 +141,9 @@ function update(dt) {
       if (p.team !== disc.team) {
         if (disc.pull) continue;                           // on ne contre pas un pull
         const diving = p.dive > 0;
-        const reach = diving ? 1.9 : 1.05, high = diving ? REACH_DIVE : REACH_STAND + lift;
+        const reach = diving ? 2.0 : 1.05, high = diving ? REACH_DIVE : REACH_STAND + lift;
         if (u > 0.03 && d < reach && disc.z < high && !disc.rolled.has(p)) blockers.push(p);
-      } else if (p.dive > 0 ? (u > 0.3 && d < 2.0 && disc.z < REACH_DIVE + 0.3) : (u > 0.45 && d < 1.3 && disc.z < 2.3 + lift)) {
+      } else if (inField(disc.x, disc.y) && (p.dive > 0 ? (u > 0.3 && d < 2.0 && disc.z < REACH_DIVE + 0.3) : (u > 0.45 && d < 1.3 && disc.z < 2.3 + lift))) {   // pas de réception tant que le disque est dehors
         if (d < cd) { cd = d; catcher = p; }
       }
     }
@@ -166,7 +167,6 @@ function update(dt) {
       const atk = jumpLift(catcher) + Math.random() * 0.8 - near(catcher), dfn = jumpLift(b) + Math.random() * 0.8 - near(b) + (aiLvl(b.team).block - 0.6) * 0.5;
       if (atk >= dfn) { achEvent('duel', catcher.team); flash('Duel gagné !'); fxEvent('duel', disc.x, disc.y, catcher.team); catchDisc(catcher); return; }
       fxEvent('duel', disc.x, disc.y, b.team);
-      if (Math.random() < 0.35) { interception(b); return; }
       G.stats.blocks++; msTurnover(disc.thrower, 'block', b); turnover(disc.x, disc.y, 'Duel perdu ! Block', 'block'); return;
     }
     for (const p of blockers) {
@@ -175,10 +175,8 @@ function update(dt) {
       if (!diving && p.jump > 0 && disc.z > REACH_STAND) {      // saut au bon endroit, au bon moment : contre assuré
         achEvent('skyblock', p.team);
         if (G.tuto) G.tuto.blocked = true;
-        if (r < L.int * 0.5) { interception(p); return; }
         G.stats.blocks++; msTurnover(disc.thrower, 'block', p); turnover(disc.x, disc.y, 'Block en l’air !', 'block'); return;
       }
-      if (r < (diving ? 0.3 : L.int)) { if (diving && G.tuto) G.tuto.lblock = true; interception(p); return; }
       if (r < (diving ? 0.85 : G.tuto && G.tuto.wall ? 1 : L.block)) {
         if (diving) { achEvent('layoutblock', p.team); if (G.tuto) G.tuto.lblock = true; } G.stats.blocks++; msTurnover(disc.thrower, 'block', p); turnover(disc.x, disc.y, diving ? 'Layout block !' : p.jump > 0 ? 'Block en l’air !' : 'Block !', 'block'); return; }
     }
@@ -191,7 +189,7 @@ function update(dt) {
       if (G.practice) { practiceLanded(disc.ex, disc.ey); return; }
       if (disc.pull) {
         const [c, cd] = nearestD(TEAMS[disc.team], disc.ex, disc.ey);
-        if (c && cd < 1.9) catchDisc(c); else pullLanded(disc.ex, disc.ey);
+        if (c && cd < 1.9 && inField(disc.ex, disc.ey)) catchDisc(c); else pullLanded(disc.ex, disc.ey);
         return;
       }
       const out = disc.ex < 0 || disc.ex > W || disc.ey < 0 || disc.ey > H;
@@ -199,13 +197,14 @@ function update(dt) {
       if (!out && c && cd < (c.dive > 0 ? 2.6 : 1.9)) { if (c.dive > 0 || c.down > 0) flash('Layout !'); catchDisc(c); return; }
       if (out) G.stats.out++; else G.stats.ground++;
       msTurnover(disc.thrower, 'throw');
-      turnover(disc.ex, disc.ey, out ? 'Out ! Turnover' : 'Turnover');
+      const [tx, ty] = out ? crossPoint() : [disc.ex, disc.ey];   // sorti : repris là où il a franchi la ligne
+      turnover(tx, ty, out ? 'Out ! Turnover' : 'Turnover');
     }
   } else if (disc.mode === 'ground') {
     const p = G.pickup;
     if (p && dist(p.x, p.y, disc.x, disc.y) < 1.2) {
       p.x = disc.x; p.y = disc.y; p.vx = p.vy = 0;
-      if (groundReady()) { if (G.carryTo) startCarry(p, G.carryTo.x, G.carryTo.y, ''); else holdDisc(p); }
+      if (G.carryTo) startCarry(p, G.carryTo.x, G.carryTo.y, ''); else holdDisc(p);
     }
   } else if (disc.mode === 'carry') {                           // remontée du disque à pied
     const h = disc.holder; disc.x = h.x; disc.y = h.y;
@@ -214,11 +213,39 @@ function update(dt) {
 }
 
 
-// disque au sol : on ne le ramasse qu'une fois les joueurs (à peu près) en place — au moins 1 s, au plus 4 s
-function groundReady() {
-  const t = G.gt - (G.groundAt || 0);
-  if (t < 1) return false;
-  return t >= 4 || players.every(q => q === G.pickup || Math.hypot(q.vx, q.vy) < 1.8 || dist(q.x, q.y, q.tx, q.ty) < 2);
+// dernier point de la trajectoire encore dans le terrain (là où le disque est sorti)
+function crossPoint() {
+  let last = [disc.sx, disc.sy];
+  for (let u = 0; u <= 1.0001; u += 0.01) {
+    const q = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u);
+    if (!inField(q[0], q[1])) break;
+    last = q;
+  }
+  return last;
+}
+// reprise du disque au sol (choisie par l'équipe qui attaque, menu d'avant-point) :
+//  • posée : le ramasseur marche et règle son allure pour arriver quand tout le monde est en place (au moins 1,5 s, au plus ~6 s) ;
+//  • rapide : il fonce et ramasse tout de suite.
+const restartMode = () => (G.pickup ? cfg(G.pickup.team).restart : 'rapide');
+function pickupSpeed(p) {
+  if (restartMode() !== 'pose') return SPD.cut;
+  const t = G.gt - (G.groundAt || 0), left = Math.max(0, dist(p.x, p.y, disc.x, disc.y) - 1);
+  if (t > 6) return SPD.cut;
+  let need = Math.max(0, 1.5 - t);                             // temps qu'il faut encore aux autres pour se placer
+  for (const q of players) if (q !== p) need = Math.max(need, Math.max(0, dist(q.x, q.y, q.tx, q.ty) - 1.5) / (SPD.cut * 0.9));
+  return clamp(left / Math.max(need, 0.05), 2.5, SPD.cut);
+}
+// reprise posée (et disque ramené à pied) : la défense ne marque pas avant que le lanceur ait le disque
+function holdOffMark(dfn) {
+  if (G.tuto || G.practice || !((disc.mode === 'ground' && restartMode() === 'pose') || disc.mode === 'carry')) return;
+  const R = STALL_R + 1.5;
+  for (const d of dfn) {
+    if (userControls(d)) continue;
+    let dx = d.tx - disc.x, dy = d.ty - disc.y, l = Math.hypot(dx, dy);
+    if (l >= R) continue;
+    if (l < 0.1) { dx = d.x - disc.x; dy = d.y - disc.y; l = Math.hypot(dx, dy) || 1; }
+    d.tx = disc.x + dx / l * R; d.ty = disc.y + dy / l * R;
+  }
 }
 
 // ---------- saut ----------

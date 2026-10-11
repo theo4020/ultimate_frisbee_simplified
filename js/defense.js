@@ -1,4 +1,4 @@
-// defense.js — IA défensive : man, zone (cup), interceptions, layout, double team
+// defense.js — IA défensive : man, zone (cup), courses vers le disque, layout, double team
 
 // =====================================================================
 //  Défense : individuelle (avec marquage orienté) ou zone (cup)

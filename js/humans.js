@@ -17,7 +17,7 @@ function aiLvl(t) {
 }
 // style de jeu de l'IA de l'équipe t (personnalité des équipes du tournoi)
 const aiStyle = t => (G.series && !human(t) ? SERIES[G.series.cur].style : DEFAULT_STYLE);
-const DEFAULT_CFG = { off: 'vert', def: 'man', force: 'haut', play: 'none', dplay: 'none', allyLevel: 'normal', tname: '', tcol: '', puller: 'cap' };
+const DEFAULT_CFG = { off: 'vert', def: 'man', force: 'haut', play: 'none', dplay: 'none', allyLevel: 'normal', tname: '', tcol: '', puller: 'cap', restart: 'pose' };
 G.humans = [{ id: 0, team: 0, sel: null }];
 G.myId = 0;
 
@@ -67,7 +67,8 @@ function userControls(p) {
   const h = controllerOf(p);
   if (!h) return false;
   const inp = inputOf(h);
-  return inp.down || G.time - inp.last < 2.5;                   // sans action pendant 2,5 s, l'IA reprend la main
+  if (!G.net) return inp.down || inp.last > -1e8;              // solo : dès ta première action, l'IA ne reprend plus la main
+  return inp.down || G.time - inp.last < 10;                    // en ligne : sans action pendant 10 s, l'IA reprend la main
 }
 const takenByOther = (p, h) => G.humans.some(o => o !== h && o.sel === p);
 

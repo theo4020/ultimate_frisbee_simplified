@@ -32,6 +32,7 @@ function startPoint() {
   G.ai.def = st ? pick(st.def) : Math.random() < 0.55 ? 'man' : pick(['zone', 'zone', 'clam']);
   G.ai.force = pick(st ? st.force : ['haut', 'bas', 'middle', 'haut', 'bas', 'straight']);
   G.ai.play = st ? pick(st.play) : Math.random() < 0.5 ? 'none' : pick(['huck', 'split', 'give', 'flood', 'swing']);
+  G.ai.restart = Math.random() < 0.7 ? 'pose' : 'rapide';
   G.ai.dplay = st ? pick(st.dplay) : Math.random() < 0.5 ? 'none' : pick(['safety', 'double', 'junk']);
   const r = G.receiving, d = 1 - r;
   if (!G.ms) newMatchStats();

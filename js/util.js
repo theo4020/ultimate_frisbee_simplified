@@ -43,6 +43,9 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const dist = (a, b, c, d) => Math.hypot(c - a, d - b);
 const dirOf = t => (t === 0 ? 1 : -1);                    // les Bleus attaquent vers la droite
 const inScoreZone = (t, x) => (t === 0 ? x > W - EZ : x < EZ);
+const inField = (x, y) => x >= 0 && x <= W && y >= 0 && y <= H;
+// disque repris dans un en-but (pas sur une réception) : ramené sur la ligne d'en-but la plus proche
+const lineSpot = (x, y) => (x < EZ ? { x: EZ, y } : x > W - EZ ? { x: W - EZ, y } : null);
 const depthLeft = (ax, dir) => (dir > 0 ? W - 1.5 - ax : ax - 1.5);
 
 function nearestD(list, x, y, exclude) {

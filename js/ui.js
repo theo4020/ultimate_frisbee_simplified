@@ -77,6 +77,7 @@ function refreshOptions() {
   renderPullerRow();
   document.querySelectorAll('.opt').forEach(b => b.classList.toggle('on', G.form[b.dataset.g] === b.dataset.v));
   $('descOff').textContent = DESCS[G.form.off];
+  $('descRestart').textContent = DESCS['restart_' + G.form.restart];
   $('descDef').textContent = DESCS[G.form.def];
   $('descForce').textContent = DESCS[G.form.force];
   $('rowForce').style.display = G.form.def !== 'zone' ? '' : 'none';
@@ -210,7 +211,7 @@ document.querySelectorAll('.swatches').forEach(box => {
 for (const id of ['tname', 'oname']) $(id).addEventListener('input', e => { G.form[id] = e.target.value.slice(0, 16); hudKey = ''; computeTeams(); saveSettings(); });
 
 const myCfg = () => ({ off: G.form.off, def: G.form.def, force: G.form.force, play: G.form.play, dplay: G.form.dplay, allyLevel: G.form.allyLevel,
-  tname: G.form.tname, tcol: G.form.tcol, puller: G.form.puller });
+  tname: G.form.tname, tcol: G.form.tcol, puller: G.form.puller, restart: G.form.restart });
 $('replayB').addEventListener('click', startReplay);
 $('go').addEventListener('click', () => {
   saveSettings();

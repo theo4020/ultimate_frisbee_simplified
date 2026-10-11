@@ -316,13 +316,13 @@ function guestOnData(m) {
       break;
   }
 }
-// battement de cœur : un joueur muet pendant 8 s est considéré comme parti
+// battement de cœur : un joueur muet pendant 30 s est considéré comme parti
 function netHeartbeat(dt) {
   if (!G.net) return;
   pingT += dt;
   if (pingT > 1) { pingT = 0; netSend({ t: 'ping' }); }
-  if (G.net === 'guest' && hostConn && G.time - lastRecv > 8) connectionLost('L’hôte ne répond plus.');
-  if (G.net === 'host') for (const [id, t] of lastSeen) if (G.time - t > 8) dropGuest(id, 'ne répond plus');
+  if (G.net === 'guest' && hostConn && G.time - lastRecv > 30) connectionLost('L’hôte ne répond plus.');
+  if (G.net === 'host') for (const [id, t] of lastSeen) if (G.time - t > 30) dropGuest(id, 'ne répond plus');
 }
 window.addEventListener('beforeunload', () => {
   for (const c of conns.values()) { try { c.close(); } catch (e) { } }
@@ -460,4 +460,4 @@ $('pname').addEventListener('input', e => {
   if (G.net === 'guest') netSend({ t: 'name', name: myName() });
   else if (G.net === 'host' && h) { h.name = myName(); broadcastRoom(); }
   else if (h) h.name = myName();
-});;
+});
