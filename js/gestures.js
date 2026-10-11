@@ -1,4 +1,4 @@
-// gestures.js — Téléphone, schéma « gestes » (par défaut) : aucun bouton sur le terrain.
+// gestures.js — Téléphone : tout le tactile sur le terrain (les boutons éventuels dépendent des réglages, voir ctrl.js).
 //  Avec le disque (ou pour le pull) :
 //   • lancer : poser le doigt n'importe où et tirer en arrière (lance-pierre) — ou vers la cible, selon les réglages ;
 //     la longueur règle la distance, relâcher lance, revenir au point de départ annule ;
@@ -54,7 +54,7 @@ window.addEventListener('pointermove', e => {
     G.pointer.x = P.aim[0]; G.pointer.y = P.aim[1]; G.pointer.active = true; G.aiming = !P.pull;
     return;
   }
-  if (CTRL.follow && G.time - P.t > 0.25 && gsCanMove()) {    // option : le joueur suit le doigt
+  if (CTRL.move === 'follow' && G.time - P.t > 0.25 && gsCanMove()) {   // réglage : le joueur suit le doigt
     const w = toWorld(e);
     Object.assign(G.pointer, { x: w.x, y: w.y, active: true, down: true, last: G.time });
     P.follow = true; sendInput();
@@ -81,7 +81,7 @@ function gsEnd(e, cancel) {
   }
   if (P.follow) { G.pointer.down = false; G.pointer.last = G.time; sendInput(true); return; }
   if (cancel) return;
-  if (len >= GS_SWIPE && dt < 0.3) { if (canLayout()) { doDive(...stickDive(dx, dy)); G.pointer.last = G.time; } return; }
+  if (len >= GS_SWIPE && dt < 0.3) { if (CTRL.move !== 'joystick' && canLayout()) { doDive(...stickDive(dx, dy)); G.pointer.last = G.time; } return; }
   if (P.len < GS_TAP && dt < 0.4) gsTap(toWorld(e));
 }
 window.addEventListener('pointerup', e => gsEnd(e, false), true);
@@ -106,6 +106,7 @@ function gsTap(w) {
     const [q, dq] = nearestD(TEAMS[G.me].filter(p => p !== sel && !takenByOther(p, h)), w.x, w.y);
     if (q && dq < 1.5 && dq < dj) { doSelect(q); return; }
   }
+  if (CTRL.move === 'joystick') { if (attacking() && !gsCanMove()) doCall(w.x, w.y); return; }   // joystick : saut et course par les boutons
   if (jt && dj < 2) { userJump(); return; }
   if (gsCanMove()) {
     Object.assign(G.pointer, { x: w.x, y: w.y, active: true, down: false, last: G.time });

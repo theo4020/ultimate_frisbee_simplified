@@ -259,8 +259,9 @@ body.touch #menuB,body.touch #teamsB{padding:0 8px;font-size:12px;height:22px}
 .popt.on{background:var(--blue);color:#fff}
 
 /* téléphone, schéma « gestes » : aucun bouton sur le terrain */
-body.gestes #joy,body.gestes #tbtns,body.gestes #curveV,body.gestes #highB{display:none!important}
-body.gestes #fknob{opacity:.7}
+body.touch:not(.thrbtn) #curveV,body.touch:not(.thrbtn) #highB{display:none!important}
+body.touch:not(.mvjoy) #joy,body.touch:not(.mvjoy) #tbtns{display:none!important}
+body.touch #fknob{opacity:.7}
 /* menu en jeu, commandes, signalement, pause */
 #gameMenuCard{max-width:380px}
 #gameMenuCard .bigbtn{text-align:center}

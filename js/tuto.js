@@ -28,6 +28,7 @@ const TUTO_STEPS = [
   },
   {
     title: 'La courbe',
+    ctx: 'throw',
     text: {
       mouse: 'Un défenseur bloque la ligne droite. Ajoute de la <b>courbe</b> (A / E ou molette) pour passer à côté.',
       touch: 'Un défenseur bloque la ligne droite. Pendant que tu vises, glisse un <b>2<sup>e</sup> doigt sur le côté</b> pour courber la passe.',
@@ -53,6 +54,7 @@ const TUTO_STEPS = [
   },
   {
     title: 'La passe haute',
+    ctx: 'throw',
     text: {
       mouse: 'Un mur bloque le passage. <b>Z</b> arme la passe haute, puis lance par-dessus.',
       touch: 'Un mur bloque le passage. <b>Tape ton porteur</b> pour armer la passe haute, puis lance par-dessus.',
@@ -108,6 +110,7 @@ const TUTO_STEPS = [
   },
   {
     title: 'Layout en attaque',
+    ctx: 'move',
     text: {
       mouse: 'Ton coéquipier ne bouge pas. Lance à 2–4 m de lui, puis <b>clic</b> (ou F) pendant le vol : il plonge.',
       touch: 'Ton coéquipier ne bouge pas. Lance à 2–4 m de lui, puis <b>glisse vite</b> n’importe où pendant le vol : il plonge.',
@@ -133,6 +136,7 @@ const TUTO_STEPS = [
   },
   {
     title: 'Duel en l’air',
+    ctx: 'move',
     text: {
       mouse: 'Ton receveur est collé. Lance-lui, puis <b>S</b> pendant le vol : il saute et gagne le duel.',
       touch: 'Ton receveur est collé. Lance-lui, puis <b>tape ton receveur</b> pendant le vol : il saute et gagne le duel.',
@@ -157,6 +161,7 @@ const TUTO_STEPS = [
   },
   {
     title: 'Changer de joueur',
+    ctx: 'move',
     text: {
       mouse: 'Ton défenseur (anneau jaune) est loin du disque. <b>Espace</b> prend le plus proche (entouré en gris), ou clique sur un joueur.',
       touch: 'Ton défenseur (anneau jaune) est loin du disque. <b>Tape le défenseur</b> le plus proche pour le prendre.',
@@ -177,6 +182,7 @@ const TUTO_STEPS = [
   },
   {
     title: 'Plonger en défense',
+    ctx: 'move',
     text: {
       mouse: 'Une passe va passer à côté de toi. Juste avant, <b>clique sur sa trajectoire</b> (ou F) : layout block.',
       touch: 'Une passe va passer à côté de toi. Juste avant, <b>glisse vite vers sa trajectoire</b> : layout block.',
@@ -209,6 +215,7 @@ const TUTO_STEPS = [
   },
   {
     title: 'Contrer une passe haute',
+    ctx: 'move',
     text: {
       mouse: 'Le porteur a armé une passe haute. <b>Saute (S)</b> juste avant qu’il lance : il faut deviner !',
       touch: 'Le porteur a armé une passe haute. <b>Tape ton joueur</b> pour sauter juste avant qu’il lance : il faut deviner !',
@@ -313,9 +320,15 @@ function tutoGo(k) {
   TUTO_STEPS[k].setup();
   tutoText(true);
 }
-function tutoInput() { return G.gpActive ? 'pad' : isTouchUI() ? (gestures() ? 'touch' : 'joy') : 'mouse'; }
+// texte adapté à la façon de jouer : manette, souris, ou téléphone (gestes ou boutons selon les réglages de l'étape)
+function tutoInput(S) {
+  if (G.gpActive) return 'pad';
+  if (!isTouchUI()) return 'mouse';
+  const btn = S && (S.ctx === 'throw' ? CTRL.throwUI === 'boutons' : S.ctx === 'move' ? CTRL.move === 'joystick' : false);
+  return btn ? 'joy' : 'touch';
+}
 function tutoText(force) {
-  const T = G.tuto, S = TUTO_STEPS[T.step], inp = tutoInput();
+  const T = G.tuto, S = TUTO_STEPS[T.step], inp = tutoInput(S);
   if (!S || (!force && inp === T.inp)) return;
   T.inp = inp;
   $('tutoTitle').textContent = S.title;
