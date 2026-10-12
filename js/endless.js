@@ -1,15 +1,32 @@
-// endless.js — Mode infini : des matchs en 3 points enchaînés contre des adversaires de plus en plus forts.
+// endless.js — Mode infini : des matchs en 2 points enchaînés contre des adversaires de plus en plus forts.
 // La difficulté monte en continu (un peu à chaque point joué, beaucoup à chaque match) ; la série s'arrête à la
 // première défaite. Score = matchs gagnés, puis écart de points. Classement mondial via /api/scores (worker/index.js),
 // et tes meilleures séries gardées dans le navigateur.
 
-const ENDLESS_PTS = 3;
-// niveaux de référence : la difficulté d passe par facile (0), normal (3), difficile (7), légende (14 et au-delà)
+const ENDLESS_PTS = 2;
+// niveaux de référence (d = numéro du match à partir de 0, plus la montée pendant le match) :
+//   facile au 1er match, normal au 2e, difficile (Titans) au 4e, légende au 8e, surhumain au 12e,
+//   puis ça ne s'arrête jamais : chaque match rend l'adversaire encore un peu plus fort (voir endlessLevel)
 const LEGEND = { react: 0.55, anticip: 0.55, block: 0.78, speed: 1.09, err: 0.45, safe: 0.14 };
-const ENDLESS_STEPS = [[0, AI_LEVELS.facile], [3, AI_LEVELS.normal], [7, AI_LEVELS.difficile], [14, LEGEND]];
+const SUPER = { react: 0.45, anticip: 0.65, block: 0.85, speed: 1.13, err: 0.35, safe: 0.18 };
+const ENDLESS_STEPS = [[0, AI_LEVELS.facile], [1, AI_LEVELS.normal], [3, AI_LEVELS.difficile], [7, LEGEND], [11, SUPER]];
+// au-delà du dernier palier : plus vif, plus précis, plus rapide à chaque match, sans jamais dépasser des limites humaines
+const BEYOND = { react: [0.9, 0.2], anticip: [0.06, 1], block: [0.85, 0.97], speed: [0.025, 1.3], err: [0.88, 0.1], safe: [0.012, 0.3] };
 function endlessLevel(d) {
   const S = ENDLESS_STEPS;
   if (d <= S[0][0]) return S[0][1];
+  const [dl, L] = S[S.length - 1];
+  if (d > dl) {
+    const k = d - dl, B = BEYOND;
+    return {
+      react: Math.max(B.react[1], L.react * B.react[0] ** k),                     // temps de réaction : -10 % par match
+      anticip: Math.min(B.anticip[1], L.anticip + B.anticip[0] * k),
+      block: Math.min(B.block[1], 1 - (1 - L.block) * B.block[0] ** k),           // contres manqués : -15 % par match
+      speed: Math.min(B.speed[1], L.speed + B.speed[0] * k),
+      err: Math.max(B.err[1], L.err * B.err[0] ** k),                             // imprécision : -12 % par match
+      safe: Math.min(B.safe[1], L.safe + B.safe[0] * k)
+    };
+  }
   for (let i = 1; i < S.length; i++) {
     if (d <= S[i][0]) {
       const [d0, a] = S[i - 1], [d1, b] = S[i], k = (d - d0) / (d1 - d0), o = {};
@@ -25,12 +42,12 @@ const endlessD = () => G.series.cur + 0.8 * Math.min(1, (G.score[0] + G.score[1]
 const ENDLESS_NAMES = ['Écureuils', 'Mouettes', 'Hérissons', 'Renards', 'Castors', 'Faucons', 'Loups', 'Pumas', 'Requins', 'Ours',
   'Aigles', 'Panthères', 'Cyclones', 'Volcans', 'Dragons', 'Titans', 'Météores', 'Légendes'];
 const ENDLESS_COLORS = ['orange', 'turquoise', 'violet', 'rose', 'jaune', 'noir', 'rouge', 'blanc'];
-const endlessTier = d => (d < 2 ? 'Débutants' : d < 5 ? 'Bon niveau' : d < 8 ? 'Très forts' : d < 12 ? 'Élite' : 'Légendaires');
+const endlessTier = d => (d < 1 ? 'Débutants' : d < 3 ? 'Bon niveau' : d < 5 ? 'Très forts' : d < 7 ? 'Élite' : d < 11 ? 'Légendaires' : d < 15 ? 'Surhumains' : 'Imbattables ?');
 
 // adversaire du match n (0, 1, 2…) : nom, couleur, style de jeu (repris des équipes du tournoi), niveau calculé en direct
 function endlessOpp(n) {
   const name = ENDLESS_NAMES[n % ENDLESS_NAMES.length] + (n >= ENDLESS_NAMES.length ? ' ' + (Math.floor(n / ENDLESS_NAMES.length) + 1) : '');
-  const style = SERIES[Math.min(SERIES.length - 1, Math.floor(n / 3))].style;
+  const style = SERIES[n < 1 ? 0 : n < 3 ? 1 : 2].style;      // styles des Écureuils, puis des Faucons, puis des Titans dès le 4e match
   return { name, color: ENDLESS_COLORS[n % ENDLESS_COLORS.length], style, level: () => endlessLevel(endlessD()),
     blurb: `Adversaire n° ${n + 1} · ${endlessTier(n)}. Premier à ${ENDLESS_PTS} points ; une défaite et la série s'arrête.` };
 }

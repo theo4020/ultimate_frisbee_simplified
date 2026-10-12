@@ -35,7 +35,7 @@ Les scripts sont chargés dans cet ordre par `index.html` et partagent le même 
 | `js/replay.js` | Ralenti du dernier point, célébration après un point |
 | `js/render.js` | Dessin du terrain, des joueurs et des repères |
 | `js/ui.js` | HUD et menus |
-| `js/endless.js` | Mode infini : matchs en 3 points de plus en plus durs, record et classement mondial |
+| `js/endless.js` | Mode infini : matchs en 2 points de plus en plus durs, record et classement mondial |
 | `js/series.js` | Mini-tournoi (3 adversaires avec chacun leur style, progression mémorisée) |
 | `js/practice.js` | Mode entraînement (cibles, vent, défenseur) |
 | `js/achievements.js` | Profil : statistiques de carrière et succès |

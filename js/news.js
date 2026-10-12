@@ -9,7 +9,7 @@ const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
   { id: 11, date: '2026-10-12', tag: 'Solo', title: 'Mode infini et classement mondial ♾️',
-    body: `Nouveau dans <b>🤖 Solo</b> : le <b>mode infini</b>. Des matchs en 3 points contre des équipes de plus en plus fortes
+    body: `Nouveau dans <b>🤖 Solo</b> : le <b>mode infini</b>. Des matchs en 2 points contre des équipes de plus en plus fortes
       (elles progressent même pendant le match), jusqu'à ta première défaite. À la fin de ta série, entre ton pseudo pour l'inscrire au
       <b>classement mondial</b> (laisse vide pour ne pas l'enregistrer) : un pseudo n'a qu'une ligne, seul son meilleur score compte. Match rapide, mini-tournoi et entraînement sont maintenant rangés dans la section Solo.` },
   { id: 10, date: '2026-10-12', tag: 'En ligne', title: 'Nouveau relais pour jouer en ligne',

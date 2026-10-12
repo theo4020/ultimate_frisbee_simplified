@@ -51,9 +51,9 @@ export default async function (t) {
     t.ok((await p.textContent('#endBoardTitle')).includes('mondial'), 'classement mondial chargé', await p.textContent('#endBoardTitle'));
     await p.click('#endGo');
     t.ok((await p.textContent('#ovTitle')).includes('Match 1'), 'match 1 annoncé', await p.textContent('#ovTitle'));
-    t.ok((await p.textContent('#ovText')).includes('3 points'), 'premier à 3 points');
+    t.ok((await p.textContent('#ovText')).includes('2 points'), 'premier à 2 points');
     const finish = async win => {                               // fin de match forcée : le dernier point est marqué
-      await p.evaluate(w => { G.score = w ? [2, 0] : [0, 2]; G.phase = 'play'; G.lastMenu = null; $('overlay').classList.add('hidden'); G.menuShown = false; scorePoint(w ? G.me : 1 - G.me, 'Test'); }, win);
+      await p.evaluate(w => { G.score = w ? [1, 0] : [0, 1]; G.phase = 'play'; G.lastMenu = null; $('overlay').classList.add('hidden'); G.menuShown = false; scorePoint(w ? G.me : 1 - G.me, 'Test'); }, win);
       await p.waitForFunction(() => G.lastMenu === 'over' && G.menuShown, null, { timeout: 15000 });
     };
     await finish(true);
@@ -65,7 +65,7 @@ export default async function (t) {
     await p.click('#go');
     t.ok(await vis(p, '#endSave'), 'fin de série : on propose d’enregistrer le score');
     t.ok((await p.inputValue('#endSaveName')) === 'Testeur', 'le pseudo est déjà rempli');
-    t.ok(srv.board.get('top') === undefined, 'rien n’est envoyé avant d’avoir choisi');
+    t.ok(srv.board.get('top-2pts') === undefined, 'rien n’est envoyé avant d’avoir choisi');
     await p.fill('#endSaveName', 'Champion'); await p.click('#endSaveB');
     await p.waitForFunction(() => /classement mondial|non enregistré/.test(document.getElementById('endStatus').textContent), null, { timeout: 8000 });
     t.ok((await p.textContent('#endStatus')).includes('Champion est 1er'), 'score enregistré : 1er du classement', await p.textContent('#endStatus'));
@@ -73,10 +73,10 @@ export default async function (t) {
     t.ok(await p.evaluate(() => myName()) === 'Champion', 'le pseudo choisi est gardé pour la suite');
     t.ok((await p.textContent('#endBoard li.me')).includes('Champion'), 'ma ligne est en évidence avec mon pseudo');
     t.ok((await p.textContent('#endBest')).includes('1 match'), 'record personnel affiché');
-    t.ok(srv.board.get('top')[0].wins === 1 && srv.board.get('top')[0].diff === 0, 'le serveur a reçu 1 match, écart 0 (3–0 puis 0–3)', srv.board.get('top'));
+    t.ok(srv.board.get('top-2pts')[0].wins === 1 && srv.board.get('top-2pts')[0].diff === 0, 'le serveur a reçu 1 match, écart 0 (2–0 puis 0–2)', srv.board.get('top-2pts'));
     await p.click('#endGo'); await finish(false); await p.click('#go');           // 2e série, perdue d'entrée : on n'enregistre pas
     await p.fill('#endSaveName', ''); await p.click('#endSaveB');
-    t.ok((await p.textContent('#endStatus')).includes('non enregistré') && srv.board.get('top').length === 1, 'pseudo vide : score non enregistré');
+    t.ok((await p.textContent('#endStatus')).includes('non enregistré') && srv.board.get('top-2pts').length === 1, 'pseudo vide : score non enregistré');
     await p.click('#endBack');
     t.ok(await vis(p, '#lobbySolo'), 'retour à la section Solo');
     t.ok((await p.textContent('#endlessTxt')).includes('record'), 'le record s’affiche sur le bouton');

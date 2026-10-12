@@ -126,7 +126,7 @@ function showLobby(err, view) {
   $('lobbyHome').style.display = view === 'solo' ? 'none' : ''; $('lobbySolo').style.display = view === 'solo' ? '' : 'none';
   $('lobbyRoom').style.display = 'none'; $('lobbyJoin').style.display = 'none';
   const eb = endlessLocal().best;
-  $('endlessTxt').textContent = eb ? `Ton record : ${eb} match${eb > 1 ? 's' : ''} gagné${eb > 1 ? 's' : ''}. Bats-le !` : 'Enchaîne les matchs en 3 points, de plus en plus durs : jusqu’où iras-tu ?';
+  $('endlessTxt').textContent = eb ? `Ton record : ${eb} match${eb > 1 ? 's' : ''} gagné${eb > 1 ? 's' : ''}. Bats-le !` : 'Enchaîne les matchs en 2 points, de plus en plus durs : jusqu’où iras-tu ?';
   $('lobbyErr').textContent = err || '';
   $('overlay').classList.remove('hidden');
 }

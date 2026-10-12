@@ -46,21 +46,22 @@ async function turn(request, env) {
 // Un pseudo n'a qu'une ligne : un nouveau score ne la remplace que s'il est meilleur.
 // Un seul « Durable Object » (Board) garde les 100 meilleures séries dans le stockage de Cloudflare (rien à configurer :
 // il est déclaré dans wrangler.jsonc). Le score vient du navigateur, donc on vérifie qu'il est possible :
-// chaque match gagné rapporte +1 à +3 points d'écart et la défaite finale -1 à -3, d'où wins - 3 ≤ diff ≤ 3 × wins - 1.
-const BOARD_MAX = 100, BOARD_SHOW = 50, BOARD_WAIT = 20 * 1000;       // une série toutes les 20 s au plus par adresse IP
+// matchs en 2 points : chaque victoire rapporte +1 ou +2 d'écart et la défaite finale -1 ou -2, d'où wins - 2 ≤ diff ≤ 2 × wins - 1.
+// (les scores de l'ancienne formule en 3 points étaient rangés sous une autre clé : le classement repart de zéro)
+const BOARD_KEY = 'top-2pts', BOARD_MAX = 100, BOARD_SHOW = 50, BOARD_WAIT = 20 * 1000;       // une série toutes les 20 s au plus par adresse IP
 const cleanName = n => String(n || '').replace(/[<>&"'`\u0000-\u001f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 12);
 const cmpRun = (a, b) => b.wins - a.wins || b.diff - a.diff || a.at - b.at;
 function validRun(b) {
   const wins = b && b.wins, diff = b && b.diff;
   if (!Number.isInteger(wins) || !Number.isInteger(diff) || wins < 0 || wins > 500) return null;
-  if (diff < wins - 3 || diff > 3 * wins - 1) return null;
+  if (diff < wins - 2 || diff > 2 * wins - 1) return null;
   const name = cleanName(b.name);
   return name ? { name, wins, diff } : null;                  // sans pseudo, pas de place au classement
 }
 export class Board {
   constructor(state) { this.state = state; this.last = new Map(); }
   async fetch(request) {
-    let top = (await this.state.storage.get('top')) || [];
+    let top = (await this.state.storage.get(BOARD_KEY)) || [];
     if (request.method !== 'POST') return json({ top: top.slice(0, BOARD_SHOW) });
     const { run, ip } = await request.json(), now = Date.now();
     if (now - (this.last.get(ip) || 0) < BOARD_WAIT) return json({ error: 'trop de scores envoyés, réessaie dans un instant' }, 429);
@@ -75,7 +76,7 @@ export class Board {
     top.push(e); top.sort(cmpRun);
     const rank = top.indexOf(e) + 1;
     top = top.slice(0, BOARD_MAX);
-    await this.state.storage.put('top', top);
+    await this.state.storage.put(BOARD_KEY, top);
     return json({ kept: true, rank, id: rank <= BOARD_MAX ? e.id : null, top: top.slice(0, BOARD_SHOW) });
   }
 }

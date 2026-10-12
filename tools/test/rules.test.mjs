@@ -52,33 +52,35 @@ export default async function (t, { quick }) {
   t.ok(cal === 20, 'Callahan à chaque fois (20 essais)', cal);
 
   t.group('Mode infini');
-  const lv = R(`[0, 1, 2, 3, 5, 7, 10, 14, 20].map(d => endlessLevel(d))`);
+  const lv = R(`[0, 0.5, 1, 2, 3, 5, 7, 9, 11, 20].map(d => endlessLevel(d))`);
   let mono = true;
   for (let i = 1; i < lv.length; i++) if (!(lv[i].react <= lv[i - 1].react && lv[i].block >= lv[i - 1].block && lv[i].err <= lv[i - 1].err)) mono = false;
   t.ok(mono, 'la difficulté ne baisse jamais (réaction, contres, précision)');
-  t.ok(lv[0].react === R('AI_LEVELS.facile.react') && lv[5].react === R('AI_LEVELS.difficile.react'), 'commence en facile, passe par difficile au 8e match');
-  t.ok(lv[8].react < lv[5].react, 'continue de monter après difficile');
+  t.ok(lv[0].react === R('AI_LEVELS.facile.react') && lv[2].react === R('AI_LEVELS.normal.react') && lv[4].react === R('AI_LEVELS.difficile.react'), 'facile au 1er match, normal au 2e, difficile (Titans) au 4e');
+  t.ok(lv[6].react < lv[4].react && lv[8].react < lv[6].react && lv[9].react < lv[8].react && lv[9].block > lv[8].block, 'continue de monter après difficile, et encore après le 12e match');
+  const far = R('endlessLevel(200)');
+  t.ok(far.react >= 0.2 && far.block <= 0.97 && far.speed <= 1.3 && far.err >= 0.1, 'même très loin, les réglages restent dans des limites possibles', far);
   R('showMenu = () => {}; showEndless = () => {};');            // pas d'écran ici
   const e = R(`(() => {
     G.humans = [{ id: 0, team: 0, sel: null }]; G.myId = 0; syncMe();
     G.series = { endless: true, cur: 0, opp: endlessOpp(0), pts: ENDLESS_PTS, wins: 0, diff: 0 };
     newMatch();
     const pts = winPts(), lv0 = aiLvl(1).react;
-    G.score = [2, 2]; const lvMid = aiLvl(1).react;              // la difficulté monte aussi pendant le match
-    G.score = [3, 1]; onMatchOver();
+    G.score = [1, 1]; const lvMid = aiLvl(1).react;              // la difficulté monte aussi pendant le match
+    G.score = [2, 1]; onMatchOver();
     const afterWin = { wins: G.series.wins, diff: G.series.diff, done: !!G.series.done };
     endlessNext();
     const second = { cur: G.series.cur, name: G.series.opp.name, score: G.score.slice() };
-    G.score = [2, 3]; onMatchOver();
+    G.score = [0, 2]; onMatchOver();
     const loc = endlessLocal();
     return { pts, lv0, lvMid, afterWin, second, done: G.series.done, wins: G.series.wins, diff: G.series.diff, best: loc.best, runs: loc.runs.length,
       names: new Set(Array.from({ length: 18 }, (_, i) => endlessOpp(i).name)).size, team: (computeTeams(), tn(1)) };
   })()`);
-  t.ok(e.pts === 3, 'matchs en 3 points', e.pts);
+  t.ok(e.pts === 2, 'matchs en 2 points', e.pts);
   t.ok(e.lvMid < e.lv0, 'l’adversaire devient plus vif au fil des points', [e.lv0, e.lvMid]);
-  t.ok(e.afterWin.wins === 1 && e.afterWin.diff === 2 && !e.afterWin.done, 'victoire 3–1 : 1 match gagné, écart +2, la série continue', e.afterWin);
+  t.ok(e.afterWin.wins === 1 && e.afterWin.diff === 1 && !e.afterWin.done, 'victoire 2–1 : 1 match gagné, écart +1, la série continue', e.afterWin);
   t.ok(e.second.cur === 1 && e.second.score.join() === '0,0' && e.second.name !== R('endlessOpp(0).name'), 'match suivant : nouvel adversaire, score remis à zéro', e.second);
-  t.ok(e.done && e.wins === 1 && e.diff === 1, 'défaite 2–3 : série terminée, écart +1', e);
+  t.ok(e.done && e.wins === 1 && e.diff === -1, 'défaite 0–2 : série terminée, écart -1', e);
   t.ok(e.best === 1 && e.runs === 1, 'record personnel gardé dans le navigateur', e);
   t.ok(e.names === 18, '18 adversaires différents avant de recommencer les noms', e.names);
   t.ok(e.team === R('G.series.opp.name'), 'le nom de l’adversaire s’affiche', e.team);
