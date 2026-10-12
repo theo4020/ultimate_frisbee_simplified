@@ -19,6 +19,7 @@ function holdDisc(p) {
 }
 
 // chance de drop du disque en vol (passe ou pull) : le vent et le temps de vol, plus le type de lancer
+const PULL_DROP = 1 / 3;                                       // un pull se droppe 3 fois moins souvent qu'une passe
 function dropChance() {
   const K = THROWS[disc.kind] || THROWS.normal;
   return Math.min(0.12, G.wind.kmh * 0.0015 * (0.5 + disc.dur * 0.5)) + K.drop + K.dropWind * G.wind.kmh;

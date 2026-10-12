@@ -92,6 +92,7 @@ let boardCache = null;                                         // { top: [...] }
 function endlessFetch() {
   return fetch('api/scores', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(j => (boardCache = j && Array.isArray(j.top) ? j : null)).catch(() => (boardCache = null));
 }
+const BOARD_LOADING = 'Chargement du classement…';
 function endlessSubmit(name, wins, diff) {
   return fetch('api/scores', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, wins, diff }) })
     .then(r => r.json().then(j => (r.ok ? j : { error: j.error || 'erreur ' + r.status })))
@@ -115,9 +116,12 @@ function showEndless(run) {
   $('endSave').style.display = endRun ? '' : 'none';
   $('endGo').classList.toggle('primary', !endRun);
   if (endRun) $('endSaveName').value = myName();
-  $('endStatus').textContent = 'Chargement du classement…';
+  $('endStatus').textContent = BOARD_LOADING;
   renderBoard();
-  endlessFetch().then(() => { if ($('endStatus').textContent === 'Chargement du classement…') $('endStatus').textContent = ''; renderBoard(); });
+  endlessFetch().then(() => {                                  // réponse du serveur : classement mondial, ou message s'il n'y en a pas ici
+    if ($('endStatus').textContent === BOARD_LOADING) $('endStatus').textContent = boardCache ? '' : 'Classement mondial indisponible ici (il marche sur ' + NEW_HOST + ').';
+    renderBoard();
+  });
 }
 let endRun = null;
 const rankTxt = r => (r === 1 ? '1er' : r + 'e');
@@ -143,7 +147,6 @@ function renderBoard() {
     $('endBoardTitle').textContent = 'Tes meilleures séries';
     $('endBoard').innerHTML = runs.length ? runs.map((r, i) => `<li><span class="rk">${i + 1}</span><b>${esc(myName() || 'Toi')}</b><span>${r.wins} 🏆</span><small>${r.diff > 0 ? '+' : ''}${r.diff}</small></li>`).join('')
       : '<li class="empty">Aucune série pour l’instant.</li>';
-    if ($('endStatus').textContent === 'Chargement du classement…') $('endStatus').textContent = 'Classement mondial indisponible ici (il marche sur ' + NEW_HOST + ').';
     return;
   }
   $('endBoardTitle').textContent = '🌍 Classement mondial';

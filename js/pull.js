@@ -194,8 +194,8 @@ function launchPull(ax, ay, curve, q) {
 // réception du pull à la volée
 function pullCaught(p) {
   disc.pull = false;
-  // un pull se droppe comme une passe : l'équipe qui a pullé récupère le disque là où il tombe
-  if (Math.random() < dropChance()) { G.pullPending = false; G.pendingOPlay = null; G.dplay = null; G.stats.drops = (G.stats.drops || 0) + 1; msTurnover(p, 'drop'); turnover(p.x, p.y, 'Pull droppé ! Turnover'); return; }
+  // un pull se droppe (3 fois moins souvent qu'une passe) : l'équipe qui a pullé récupère le disque là où il tombe
+  if (Math.random() < dropChance() * PULL_DROP) { G.pullPending = false; G.pendingOPlay = null; G.dplay = null; G.stats.drops = (G.stats.drops || 0) + 1; msTurnover(p, 'drop'); turnover(p.x, p.y, 'Pull droppé ! Turnover'); return; }
   fxEvent('catch', p.x, p.y, p.team);
   // attrapé dans un en-but ou depuis l'extérieur : il ramène le disque à pied (ligne d'en-but ou bord du terrain)
   const x = clamp(p.x, 0.5, W - 0.5), y = clamp(p.y, 0.5, H - 0.5), L = lineSpot(x, y);
