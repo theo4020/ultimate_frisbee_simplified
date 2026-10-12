@@ -1,0 +1,7 @@
+// Cloudflare Workers : le site entier (fichiers statiques) + worker/index.js pour /api/turn
+{
+  "name": "ultimate-frisbee",
+  "main": "worker/index.js",
+  "compatibility_date": "2026-06-01",
+  "assets": { "directory": ".", "binding": "ASSETS", "run_worker_first": ["/api/*"] }
+}

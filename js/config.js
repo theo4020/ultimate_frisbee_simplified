@@ -34,9 +34,8 @@ const REACH_STAND = 2.0, REACH_DIVE = 1.5;                  // hauteur max du di
 const CANCEL_R = 2.5;                                       // relâcher à moins de 2,5 m du handler annule le lancer
 const PEER_PREFIX = 'ultimate-frisbee-proto-v1-';
 // ---------------------------------------------------------------------
-//  RELAIS (TURN) — les identifiants viennent de js/secrets.js (ignoré par Git).
-//  En ligne, ce fichier est généré au déploiement à partir des « secrets » du dépôt
-//  GitHub (voir README.md et .github/workflows/deploy.yml).
+//  RELAIS (TURN) — en ligne, le relais Cloudflare passe par /api/turn (worker/index.js, voir README).
+//  Secours seulement (en local ou ancien hébergement) : identifiants fixes de js/secrets.js (ignoré par Git).
 // ---------------------------------------------------------------------
 const SECRETS = (typeof window !== 'undefined' && window.ULTIMATE_SECRETS) || {};
 const TURN_USER = SECRETS.TURN_USER || '';

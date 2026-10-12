@@ -13,7 +13,7 @@ Les scripts sont chargés dans cet ordre par `index.html` et partagent le même 
 
 | Fichier | Rôle |
 |---|---|
-| `functions/api/turn.js` | Fonction Cloudflare : identifiants TURN temporaires (la clé secrète reste côté serveur) |
+| `worker/index.js` | Côté serveur (Cloudflare) : sert le site et donne des identifiants TURN temporaires sur `/api/turn` |
 | `js/secrets.js` | Secours en local uniquement. **Ignoré par Git.** |
 | `js/config.js` | Constantes (terrain, vitesses, règles), textes des stratégies et des plays |
 | `js/util.js` | Canvas, conversion mètres → pixels, outils mathématiques |
@@ -46,32 +46,37 @@ Les scripts sont chargés dans cet ordre par `index.html` et partagent le même 
 | `sw.js` | Service worker : garde une copie des fichiers pour jouer hors connexion |
 | `manifest.webmanifest`, `icons/` | Nom, icônes et affichage de l'application installée |
 | `tools/simulate.js` | Matchs IA contre IA sans navigateur : `node tools/simulate.js 20` |
+| `tools/test-worker.mjs` | Test de `worker/index.js` sans Cloudflare : `node tools/test-worker.mjs` |
 
 ## Hébergement et relais TURN
 
-Le jeu en ligne passe par une connexion directe entre les deux navigateurs. En 4G/5G ou sur un réseau strict, il faut un relais TURN : [Metered](https://www.metered.ca/) (gratuit jusqu'à 20 Go par mois).
+Le jeu en ligne passe par une connexion directe entre les deux navigateurs. En 4G/5G ou sur un réseau strict, il faut un relais TURN.
 
-Le site est hébergé sur **Cloudflare Pages**. La petite fonction `functions/api/turn.js` tourne chez Cloudflare (pas dans le navigateur) :
-elle garde la clé secrète Metered et donne au jeu des identifiants **temporaires** (8 h, renouvelés automatiquement).
-Rien de secret n'apparaît dans le site ni dans Git.
+Tout est chez **Cloudflare Workers** : le site (fichiers statiques) et le relais TURN de Cloudflare (1 000 Go par mois gratuits).
+Le petit programme `worker/index.js` tourne chez Cloudflare (pas dans le navigateur) : il garde le jeton TURN et donne au jeu
+des identifiants **temporaires** (4 h) sur `/api/turn`, utilisables seulement depuis le site. Rien de secret n'est dans le site ni dans Git.
+`wrangler.jsonc` décrit le projet, `.assetsignore` liste les fichiers du dépôt à ne pas publier.
 
 **Mise en place (une seule fois)**
-1. Crée un compte sur [dash.cloudflare.com](https://dash.cloudflare.com) → *Workers & Pages → Create → Pages → Connect to Git*, choisis ce dépôt.
-2. Réglages du build : *Framework preset* **None**, *Build command* **vide**, *Build output directory* **/** .
-3. *Settings → Variables and Secrets* (environnement Production) :
-   - `METERED_APP` (texte) : le nom de l'application Metered, ce qui est avant `.metered.live` ;
-   - `METERED_SECRET_KEY` (type **Secret**) : la clé secrète du tableau de bord Metered (*Developers → Secret Key*).
-4. Redéploie (*Deployments → Retry deployment*), ouvre le site `…pages.dev`, puis *En ligne → 📶 Tester la connexion* : « relais OK ».
+1. Sur [dash.cloudflare.com](https://dash.cloudflare.com) : *Realtime → TURN → Create*. Note le **Turn Token ID** et l'**API Token** (affiché une seule fois).
+2. *Workers & Pages → Create → Import a repository*, choisis ce dépôt. *Build command* vide, *Deploy command* `npx wrangler deploy` (proposé par défaut).
+3. Une fois le premier déploiement fait : *Settings → Variables and Secrets* du worker `ultimate-frisbee`, ajoute en type **Secret** :
+   - `TURN_KEY_ID` : le Turn Token ID ;
+   - `TURN_KEY_API_TOKEN` : l'API Token.
+4. Ouvre le site, puis *En ligne → 📶 Tester la connexion* : « relais OK ».
 
 Ensuite chaque push sur `main` met le site à jour automatiquement.
 
-**Ménage après la bascule**
-- Dans Metered, supprime l'ancien identifiant fixe (il était visible dans l'ancien site) ;
-- désactive GitHub Pages (*Settings → Pages*) et supprime le workflow `.github/workflows/deploy.yml` et les secrets `TURN_*` du dépôt.
+**Adresse du site** : mieux vaut un nom de domaine à toi (environ 10 € par an, par exemple chez Cloudflare Registrar), branché dans
+*Settings → Domains & Routes*. L'adresse ne dépend alors plus de l'hébergeur : on pourra en changer sans que les joueurs changent de lien.
 
-**En local** : `functions/` ne tourne pas avec un simple serveur de fichiers ; le jeu retombe alors sur `js/secrets.js`
-(copie de `js/secrets.example.js`, ignoré par Git) ou, sans lui, sur des serveurs publics sans relais.
-Pour tester la fonction : `npx wrangler pages dev .` avec un fichier `.dev.vars` (ignoré par Git) contenant les deux variables.
+**Ménage après la bascule**
+- Dans Metered, supprime l'ancien identifiant fixe (il était visible dans l'ancien site), voire le compte ;
+- désactive GitHub Pages (*Settings → Pages*), supprime `.github/workflows/deploy.yml` et les secrets `TURN_*` du dépôt.
+
+**En local** : `npx wrangler dev` lance le site et `/api/turn`, avec un fichier `.dev.vars` (ignoré par Git) contenant les deux variables.
+Avec un simple serveur de fichiers, le jeu retombe sur `js/secrets.js` (copie de `js/secrets.example.js`, ignoré par Git) ou sur des serveurs sans relais.
+Test du worker sans Cloudflare : `node tools/test-worker.mjs`.
 
 ## Publier une nouvelle version
 
@@ -81,7 +86,7 @@ git commit -m "Description du changement"
 git push
 ```
 
-Le site est mis à jour une à deux minutes après le push. L'onglet *Deployments* du projet Cloudflare Pages montre l'avancement.
+Le site est mis à jour une à deux minutes après le push. L'onglet *Deployments* du worker sur Cloudflare montre l'avancement.
 
 ## Application installable
 

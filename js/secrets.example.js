@@ -11,4 +11,4 @@ window.ULTIMATE_SECRETS = {
   TURN_USER: '',   // username affiché par Metered
   TURN_PASS: ''    // password affiché par Metered
 };
-// Sur Cloudflare Pages, ce fichier ne sert plus : le relais passe par functions/api/turn.js (voir README).
+// Sur Cloudflare, ce fichier ne sert plus : le relais passe par /api/turn (worker/index.js, voir README).

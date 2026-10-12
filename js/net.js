@@ -55,7 +55,7 @@ function backToSolo() {
 }
 
 // Serveurs ICE : le relais TURN vient du serveur du site (/api/turn, Cloudflare : identifiants temporaires, clé secrète
-// jamais dans la page). Ancien hébergement sans ce serveur : identifiants fixes de js/secrets.js, sinon STUN seuls.
+// jamais dans la page, worker/index.js). Ancien hébergement sans ce serveur : identifiants fixes de js/secrets.js, sinon STUN seuls.
 let iceCache = null;
 function iceServers() {
   if (iceCache) return Promise.resolve(iceCache);
