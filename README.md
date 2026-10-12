@@ -36,6 +36,8 @@ Les scripts sont chargés dans cet ordre par `index.html` et partagent le même 
 | `js/render.js` | Dessin du terrain, des joueurs et des repères |
 | `js/ui.js` | HUD et menus |
 | `js/account.js` | Compte joueur : création, connexion, sauvegarde automatique du profil en ligne |
+| `js/systems.js` | Systèmes de jeu perso : format, validation, et leur exécution par l'IA (attaque et défense) |
+| `js/editor.js` | Éditeur « Mes systèmes » : terrain où l'on place les joueurs et dessine les courses |
 | `js/endless.js` | Mode infini : matchs en 2 points de plus en plus durs, record et classement mondial |
 | `js/series.js` | Mini-tournoi (3 adversaires avec chacun leur style, progression mémorisée) |
 | `js/practice.js` | Mode entraînement (cibles, vent, défenseur) |
@@ -89,6 +91,9 @@ Avec un simple serveur de fichiers, le jeu retombe sur `js/secrets.js` (copie de
 | `rules.test.mjs` | Matchs IA contre IA sans blocage, chiffres réalistes, interceptions (1 sur 3), Callahan, mode infini, tournoi |
 | `account.test.mjs` | Comptes côté serveur : création, empreinte du mot de passe, connexion, sauvegarde, essais limités, pseudo réservé au classement |
 | `ui-account.test.mjs` | Comptes dans le navigateur : création sur un appareil, connexion sur un autre, profil retrouvé, déconnexion |
+| `systems.test.mjs` | Systèmes perso : validation, placement autour du disque, matchs IA qui les jouent, exclus du mode infini |
+| `ui-systems.test.mjs` | Éditeur dans le navigateur (ordinateur et téléphone) : placer, dessiner une course, enregistrer, choisir avant un point |
+| `code.test.mjs` | Aucun nom de fonction ou de constante déclaré dans deux fichiers |
 | `worker.test.mjs` | Serveur : relais TURN (sécurité, erreurs), classement (tri, scores impossibles refusés, pseudos nettoyés) |
 | `ui.test.mjs` | Dans Chromium : menus, section Solo, mode infini jusqu'au classement, menu en jeu, signalement, tutoriel, entraînement, lance-pierre sur téléphone |
 | `online.test.mjs` | Deux onglets : salle d'attente, équipes, pull, passes de l'invité, pause pour tous, départ d'un joueur |

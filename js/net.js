@@ -232,7 +232,7 @@ function hostOnData(id, m) {
     case 'pause': setPause(id, !!m.on); break;
     case 'pull': if (G.phase === 'pull' && G.pull && G.pull.by === h.id) launchPull(+m.x, +m.y, m.curve, m.q); break;
     case 'ready':
-      if (captain(h.team) === h) { h.cfg = Object.assign({}, DEFAULT_CFG, m.cfg); (G.readyIds = G.readyIds || new Set()).add(id); }
+      if (captain(h.team) === h) { h.cfg = Object.assign({}, DEFAULT_CFG, m.cfg, { osys: cleanSystem(m.cfg && m.cfg.osys), dsys: cleanSystem(m.cfg && m.cfg.dsys) }); (G.readyIds = G.readyIds || new Set()).add(id); }
       refreshCaptainUI(); tryStartOnline(); break;
   }
 }

@@ -60,9 +60,10 @@ function loadSettings() {
   if (typeof o.windKmh === 'number') G.form.windKmh = clamp(Math.round(o.windKmh), 0, 40);
   for (const k of ['tname', 'oname']) if (typeof o[k] === 'string') G.form[k] = o[k].slice(0, 16);
   for (const k of ['tcol', 'ocol']) if (PALETTE[o[k]]) G.form[k] = o[k];
+  for (const k of ['osys', 'dsys']) if (typeof o[k] === 'string') G.form[k] = o[k];
 }
 function saveSettings() {
   const o = {};
-  for (const k of Object.keys(SAVE_KEYS).concat(['windDir', 'windKmh', 'tname', 'oname', 'tcol', 'ocol'])) o[k] = G.form[k];
+  for (const k of Object.keys(SAVE_KEYS).concat(['windDir', 'windKmh', 'tname', 'oname', 'tcol', 'ocol', 'osys', 'dsys'])) o[k] = G.form[k];
   storeSet('uf-settings', o);
 }

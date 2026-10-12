@@ -38,7 +38,8 @@ const disc = { mode: 'held', holder: null, x: 0, y: 0, z: 0, sx: 0, sy: 0, cx: 0
 
 const formOf = t => cfg(t).off;
 function defFormOf(t) {
-  const base = cfg(t).def;
+  const D = typeof dsysOf === 'function' ? dsysOf(t) : null;   // système perso : sa zone ou son individuelle
+  const base = D ? D.mode : cfg(t).def;
   if (G.dplay && G.dplay.team === t && G.dplay.type === 'junk') return base === 'man' ? 'zone' : 'man';
   return base;
 }

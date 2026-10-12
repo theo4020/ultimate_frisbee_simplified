@@ -16,6 +16,7 @@ function lineY(t, ay, form) {
 }
 
 function assignRoles(t, h) {
+  if (osysOf(t)) { sysAssign(t, h); return; }                 // système perso (systems.js)
   const dir = dirOf(t), open = -closedOf(1 - t);
   const others = TEAMS[t].filter(p => p !== h);
   const ds = dumpSlot(h.x, h.y, dir, open);
@@ -31,6 +32,7 @@ function assignRoles(t, h) {
 }
 
 function cutterSlot(p, t, ax, ay, dir, form) {
+  const S = osysOf(t); if (S) return sysSpot(S, p, ax, ay, dir, -closedOf(1 - t));
   const ord = G.order[t], n = Math.max(1, ord.length);
   let idx = ord.indexOf(p); if (idx < 0) idx = n - 1;
   const avail = depthLeft(ax, dir);
@@ -52,7 +54,7 @@ function hustle(p, base) {
 // Juste après une réception, un cutter propose aussitôt la passe suivante (continuation),
 // de préférence celui qui est déjà lancé vers l'avant côté open.
 function continuationCut(t, h) {
-  if (G.oplay && G.oplay.team === t) return;
+  if ((G.oplay && G.oplay.team === t) || osysOf(t)) return;  // un système perso enchaîne avec sa course 1
   const dir = dirOf(t), open = -closedOf(1 - t);
   const room = depthLeft(h.x, dir);
   if (room < 4) return;
@@ -75,6 +77,7 @@ function clampPt(o) { o.cx = clamp(o.cx, 1.5, W - 1.5); o.cy = clamp(o.cy, 1.5, 
 function runCutSequencer(t, ax, ay, dir, open, form, dt) {
   if (disc.mode !== 'held') return;
   if (G.oplay && G.oplay.team === t) return;                // le play dirige les courses
+  if (osysOf(t)) { sysSequencer(t, ax, ay, dir, open, dt); return; }   // système perso : ses courses, dans son ordre
   G.cutT -= dt;
   const ord = G.order[t];
   if (G.cutT > 0 || ord.some(p => p.state === 'jab' || p.state === 'cut')) return;
@@ -162,7 +165,7 @@ function attackerAI(p, t, ax, ay, dir, open, form, dt) {
     case 'park': p.tx = p.cx; p.ty = p.cy; p.sp = SPD.jog + 1; break;
     case 'jab':
       p.tx = p.wx; p.ty = p.wy; p.sp = SPD.cut * 0.8;
-      if (p.timer <= 0) { p.state = 'cut'; p.timer = 2.4; }
+      if (p.timer <= 0) { p.state = 'cut'; p.timer = p.sysCut ? Math.max(2.4, dist(p.x, p.y, p.cx, p.cy) / SPD.cut + 0.6) : 2.4; }
       break;
     case 'cut':
       p.tx = p.cx; p.ty = p.cy; p.sp = p.tag === '★' ? 8.4 : SPD.cut;      // le coupeur du huck a un départ lancé
@@ -171,8 +174,9 @@ function attackerAI(p, t, ax, ay, dir, open, form, dt) {
     case 'hold':
       p.tx = p.cx; p.ty = p.cy; p.sp = 1.5;
       if (p.timer <= 0) {
-        p.state = 'clear'; p.timer = 4;
-        if (isColumn(form)) {                                // dégage côté fermé puis retourne au bout de la colonne
+        if (p.sysStay) { p.state = 'park'; p.cx = p.x; p.cy = p.y; p.sysStay = false; p.sysCut = false; break; }   // système perso : il enchaîne depuis ici
+        p.state = 'clear'; p.timer = 4; p.sysCut = false;
+        if (isColumn(form) && !osysOf(t)) {                                // dégage côté fermé puis retourne au bout de la colonne
           const ord = G.order[t], i = ord.indexOf(p);
           if (i >= 0) { ord.splice(i, 1); ord.push(p); }
           p.wx = p.x + dir * 2; p.wy = clamp(lineY(t, ay, form) - open * (form === 'side' ? 2 : 5), 2, H - 2); p.wDone = false;

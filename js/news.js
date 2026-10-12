@@ -8,6 +8,11 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
+  { id: 13, date: '2026-10-12', tag: 'Tactique', title: 'Crée tes propres systèmes de jeu 📋',
+    body: `Nouveau bouton <b>📋 Mes systèmes</b> dans le menu. <b>En attaque</b> : place tes 4 joueurs autour du porteur et dessine
+      leurs courses dans l'ordre (aperçu animé pour vérifier). <b>En défense</b> : dessine ta propre zone, ou fais une individuelle
+      où chacun a un rôle (serré, profond, double team). Tes systèmes apparaissent avec une ★ dans le menu d'avant-point,
+      en solo comme en ligne (pas en mode infini), et sont gardés avec ton compte.` },
   { id: 12, date: '2026-10-12', tag: 'Compte', title: 'Les comptes joueurs arrivent 👤',
     body: `Touche <b>👤 Créer un compte</b> à côté de ton pseudo. Ton pseudo t'est réservé (personne d'autre ne peut l'utiliser,
       au classement non plus), et ton profil, tes succès, tes records et tes réglages sont sauvegardés en ligne :

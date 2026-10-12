@@ -73,6 +73,7 @@
       <button class="bigbtn" id="soloMenuB">🤖 Solo<small>Match, mode infini, mini-tournoi, entraînement</small></button>
       <button class="bigbtn" id="hostB">🌐 Créer une partie en ligne<small>Jusqu'à 10 joueurs : contre l'IA ensemble ou en vrai 5 contre 5</small></button>
       <button class="bigbtn" id="joinB">🔗 Rejoindre une partie<small>Avec le code de l'hôte</small></button>
+      <button class="bigbtn" id="sysB">📋 Mes systèmes<small>Crée tes propres attaques et défenses</small></button>
       <button class="bigbtn" id="ctrlB">⚙️ Commandes<small>Gestes ou joystick sur téléphone, touches du clavier</small></button>
       <button class="bigbtn" id="profileB">🏅 Profil<small>Tes statistiques de carrière et tes succès</small></button>
       <button class="bigbtn" id="newsB">📰 Nouveautés <span id="newsBadge" class="badge" style="display:none"></span><small>Ce qui a changé dans le jeu</small></button>
@@ -153,6 +154,25 @@
     <p class="net" id="endStatus"></p>
     <button id="endBack">← Retour</button>
   </div>
+  <div class="card" id="sysCard" style="display:none">
+    <div id="sysList">
+      <h1>📋 Mes systèmes</h1>
+      <p>Invente tes attaques (formation et courses) et tes défenses (zone ou individuelle avec des rôles), puis choisis-les
+        dans le menu d’avant-point, en solo comme en ligne. Ils sont gardés avec ton compte.</p>
+      <ul id="sysItems"></ul>
+      <div class="accBtns"><button id="sysNewOff" class="primary">＋ Nouvelle attaque</button><button id="sysNewDef" class="primary">＋ Nouvelle défense</button><span class="net" id="sysCount"></span></div>
+      <button id="sysBack">← Retour</button>
+    </div>
+    <div id="sysEdit" style="display:none">
+      <h1>✏️ <span id="edTitle"></span></h1>
+      <div class="accRow"><span>Nom</span><input id="edName" class="tname" maxlength="24" autocomplete="off" spellcheck="false"></div>
+      <div class="edModes" id="edModes"></div>
+      <p class="net" id="edHelp"></p>
+      <div class="edWrap"><canvas id="edField"></canvas></div>
+      <div id="edSteps"></div>
+      <div class="accBtns"><button id="edSave" class="primary">Enregistrer</button><button id="edCancel">Annuler</button></div>
+    </div>
+  </div>
   <div class="card" id="accountCard" style="display:none">
     <h1>👤 Compte</h1>
     <div id="accBody"></div>
@@ -231,50 +251,25 @@
       <div class="row"><span>Pull</span><span class="pullOpts" id="pullerOpts"></span></div>
       <div class="desc" id="descPuller"></div>
     </div>
-    <div class="row"><span>Ton attaque</span>
-      <button class="opt" data-g="off" data-v="vert">Vertical stack</button>
-      <button class="opt" data-g="off" data-v="ho">Horizontal stack</button>
-      <button class="opt" data-g="off" data-v="side">Side stack</button>
-    </div>
+    <div class="row"><span>Ton attaque</span><select class="sel" id="selOff"></select></div>
     <div class="desc" id="descOff"></div>
     <div class="row"><span>Reprise du disque</span>
       <button class="opt" data-g="restart" data-v="pose">Posée</button>
       <button class="opt" data-g="restart" data-v="rapide">Rapide</button>
     </div>
     <div class="desc" id="descRestart"></div>
-    <div class="row"><span>Ta défense</span>
-      <button class="opt" data-g="def" data-v="man">Man</button>
-      <button class="opt" data-g="def" data-v="zone">Zone</button>
-      <button class="opt" data-g="def" data-v="clam">Clam</button>
-    </div>
+    <div class="row"><span>Ta défense</span><select class="sel" id="selDef"></select></div>
     <div class="desc" id="descDef"></div>
     <div id="rowForce">
-      <div class="row"><span>Force</span>
-        <button class="opt" data-g="force" data-v="haut">Force haut</button>
-        <button class="opt" data-g="force" data-v="bas">Force bas</button>
-        <button class="opt" data-g="force" data-v="middle">Force middle</button>
-        <button class="opt" data-g="force" data-v="straight">Straight up</button>
-      </div>
+      <div class="row"><span>Force</span><select class="sel" id="selForce"></select></div>
       <div class="desc" id="descForce"></div>
     </div>
     <div id="rowPlay">
-      <div class="row"><span>Play d'attaque</span>
-        <button class="opt" data-g="play" data-v="none">Aucun</button>
-        <button class="opt" data-g="play" data-v="huck">Huck</button>
-        <button class="opt" data-g="play" data-v="split">Double cut</button>
-        <button class="opt" data-g="play" data-v="give">Give and go</button>
-        <button class="opt" data-g="play" data-v="flood">Iso</button>
-        <button class="opt" data-g="play" data-v="swing">Dump-swing</button>
-      </div>
+      <div class="row"><span>Play d'attaque</span><select class="sel" id="selPlay"></select></div>
       <div class="desc" id="descPlay"></div>
     </div>
     <div id="rowDPlay">
-      <div class="row"><span>Play de défense</span>
-        <button class="opt" data-g="dplay" data-v="none">Aucun</button>
-        <button class="opt" data-g="dplay" data-v="safety">Deep safety</button>
-        <button class="opt" data-g="dplay" data-v="double">Poach</button>
-        <button class="opt" data-g="dplay" data-v="junk">Junk</button>
-      </div>
+      <div class="row"><span>Play de défense</span><select class="sel" id="selDPlay"></select></div>
       <div class="desc" id="descDPlay"></div>
     </div>
     <div class="row"><span>Coéquipiers IA</span>
@@ -361,6 +356,7 @@
 <script src="js/wind.js"></script>
 <script src="js/offense.js"></script>
 <script src="js/defense.js"></script>
+<script src="js/systems.js"></script>
 <script src="js/throwing.js"></script>
 <script src="js/stats.js"></script>
 <script src="js/events.js"></script>
@@ -384,6 +380,7 @@
 <script src="js/net.js"></script>
 <script src="js/menu.js"></script>
 <script src="js/account.js"></script>
+<script src="js/editor.js"></script>
 <script src="js/main.js"></script>
 <script src="js/pwa.js"></script>
 </body>

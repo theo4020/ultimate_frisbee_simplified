@@ -14,7 +14,9 @@ function startOPlay() {
   const P = G.oplay; if (!P) return;
   const t = P.team, h = disc.holder, ord = G.order[t], dir = dirOf(t), open = -closedOf(1 - t);
   const byOpen = ord.slice().sort((a, b) => open * (b.y - a.y));    // du côté ouvert vers le côté fermé
-  const dump = TEAMS[t].find(p => p.role === 'dump');
+  // relais : le dump, ou avec un système perso le joueur le plus en arrière
+  const dump = TEAMS[t].find(p => p.role === 'dump') || ord.slice().sort((a, b) => dir * (a.x - b.x))[0];
+  if (!dump && (P.type === 'give' || P.type === 'swing')) { G.oplay = null; return; }
   if (P.type === 'huck') {
     P.a = formOf(t) === 'vert' ? ord[0] : byOpen[0];
     P.a.tag = '★'; P.a.state = 'park'; P.a.cx = P.a.x; P.a.cy = P.a.y;
@@ -120,7 +122,8 @@ function assignRolesKeep(t) {
 
 function startDPlay() {
   const D = G.dplay; if (!D) return;
-  const atkDump = TEAMS[1 - D.team].find(p => p.role === 'dump');
+  const atkT = 1 - D.team, atkDump = TEAMS[atkT].find(p => p.role === 'dump')
+    || (G.order[atkT] || []).slice().sort((a, b) => dirOf(atkT) * (a.x - b.x))[0];
   const dfn = TEAMS[D.team], form = defFormOf(D.team);
   if (D.type === 'safety') D.d = form === 'man' ? dfn.find(d => d.match === atkDump) : dfn.find(d => d.zslot === 4);
   else if (D.type === 'double') D.d = form === 'man' ? dfn.find(d => d.match === atkDump) : dfn.find(d => d.zslot === 3);

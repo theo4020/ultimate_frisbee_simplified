@@ -76,12 +76,14 @@ function updateHud() {
 
 function refreshOptions() {
   renderPullerRow();
+  renderSelects();
   document.querySelectorAll('.opt').forEach(b => b.classList.toggle('on', G.form[b.dataset.g] === b.dataset.v));
-  $('descOff').textContent = DESCS[G.form.off];
+  const os = pickedSys('osys'), ds = pickedSys('dsys');
+  $('descOff').textContent = os ? `Ton système « ${os.name} » : ${os.steps.length} course${os.steps.length > 1 ? 's' : ''} qui s’enchaînent, puis tout le monde revient en place.` : DESCS[G.form.off];
   $('descRestart').textContent = DESCS['restart_' + G.form.restart];
-  $('descDef').textContent = DESCS[G.form.def];
+  $('descDef').textContent = ds ? `Ton système « ${ds.name} » : ` + (ds.mode === 'zone' ? 'zone dessinée, la mark reste sur le porteur.' : 'individuelle, chacun avec son rôle.') : DESCS[G.form.def];
   $('descForce').textContent = DESCS[G.form.force];
-  $('rowForce').style.display = G.form.def !== 'zone' ? '' : 'none';
+  $('rowForce').style.display = (ds ? ds.mode !== 'zone' : G.form.def !== 'zone') ? '' : 'none';
   $('descPlay').textContent = PLAYS[G.form.play];
   $('descDPlay').textContent = DPLAYS[G.form.dplay];
   $('rowPlay').style.display = G.receiving === G.me ? '' : 'none';
@@ -190,7 +192,42 @@ function refreshCaptainUI() {
   $('oppReady').textContent = !isCap ? 'En attente des capitaines…'
     : waiting.length ? 'En attente de : ' + waiting.map(humanLabel).join(', ') : '';
 }
+// systèmes perso proposés dans le menu (pas en mode infini) ; « picked » = celui choisi et encore existant
+const sysAllowed = () => !(G.series && G.series.endless);
+const pickedSys = k => (sysAllowed() && G.form[k] ? sysById(G.form[k]) : null);
+// menus déroulants du menu d'avant-point : classiques, puis « Mes systèmes » (attaque et défense)
+const SEL_LISTS = {
+  off: [['vert', 'Vertical stack'], ['ho', 'Horizontal stack'], ['side', 'Side stack']],
+  def: [['man', 'Man (individuelle)'], ['zone', 'Zone'], ['clam', 'Clam']],
+  force: [['haut', 'Force haut'], ['bas', 'Force bas'], ['middle', 'Force middle'], ['straight', 'Straight up']],
+  play: [['none', 'Aucun'], ['huck', 'Huck'], ['split', 'Double cut'], ['give', 'Give and go'], ['flood', 'Iso'], ['swing', 'Dump-swing']],
+  dplay: [['none', 'Aucun'], ['safety', 'Deep safety'], ['double', 'Poach'], ['junk', 'Junk']]
+};
+const SEL_IDS = { off: 'selOff', def: 'selDef', force: 'selForce', play: 'selPlay', dplay: 'selDPlay' };
+function renderSelects() {
+  for (const g in SEL_IDS) {
+    const el = $(SEL_IDS[g]), sk = g === 'off' ? 'osys' : g === 'def' ? 'dsys' : null;
+    let html = SEL_LISTS[g].map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
+    if (sk && sysAllowed()) {
+      const mine = sysList().filter(s => s.kind === (g === 'off' ? 'off' : 'def'));
+      html = `<optgroup label="Classiques">${html}</optgroup><optgroup label="Mes systèmes">`
+        + mine.map(s => `<option value="sys:${s.id}">★ ${esc(s.name)}</option>`).join('')
+        + `<option value="edit">✏️ ${mine.length ? 'Créer ou modifier…' : 'Créer un système…'}</option></optgroup>`;
+    }
+    if (el.dataset.html !== html) { el.innerHTML = html; el.dataset.html = html; }
+    const ps = sk && pickedSys(sk);
+    el.value = ps ? 'sys:' + ps.id : G.form[g];
+  }
+}
+for (const g in SEL_IDS) $(SEL_IDS[g]).addEventListener('change', e => {
+  const v = e.target.value;
+  if (v === 'edit') { refreshOptions(); openSystems(); return; }   // remet le choix actuel, puis ouvre l'éditeur
+  if (v.startsWith('sys:')) setOpt(g === 'off' ? 'osys' : 'dsys', v.slice(4));
+  else setOpt(g, v);
+});
 function setOpt(g, v) {
+  if (g === 'off') G.form.osys = null;                         // une formation de base remplace le système perso
+  if (g === 'def') G.form.dsys = null;
   G.form[g] = v;
   if (g === 'first' && G.lastMenu === 'first') {              // premier menu : on applique tout de suite (plays proposés, texte)
     G.receiving = firstReceiver(); placeOnPullLines(); updateFirstText();
@@ -217,7 +254,8 @@ document.querySelectorAll('.swatches').forEach(box => {
 for (const id of ['tname', 'oname']) $(id).addEventListener('input', e => { G.form[id] = e.target.value.slice(0, 16); hudKey = ''; computeTeams(); saveSettings(); });
 
 const myCfg = () => ({ off: G.form.off, def: G.form.def, force: G.form.force, play: G.form.play, dplay: G.form.dplay, allyLevel: G.form.allyLevel,
-  tname: G.form.tname, tcol: G.form.tcol, puller: G.form.puller, restart: G.form.restart });
+  tname: G.form.tname, tcol: G.form.tcol, puller: G.form.puller, restart: G.form.restart,
+  osys: pickedSys('osys'), dsys: pickedSys('dsys') });           // en ligne, le système entier part chez l'hôte
 $('replayB').addEventListener('click', startReplay);
 $('go').addEventListener('click', () => {
   saveSettings();

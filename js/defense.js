@@ -13,6 +13,7 @@ function assignMan(defT, h) {
 }
 
 function zoneSlots(defT, ax, ay, dir, closed) {
+  const D = dsysOf(defT); if (D && D.mode === 'zone' && defFormOf(defT) === 'zone') return sysZoneSlots(D, defT, ax, ay, dir, closed);
   if (defFormOf(defT) === 'clam') return clamSlots(defT, ax, ay, dir, closed);
   const open = -closed, atk = TEAMS[1 - defT], s = [];
   s[0] = { x: ax + dir * 1.0, y: ay + closed * 1.3 };                       // marqueur
@@ -119,11 +120,13 @@ function defenderAI(d, ax, ay, dir, closed, form, slots) {
     }
   }
   if (form === 'man') {
-    const a = d.match;
+    const a = d.match; let sp = null;
     if (!a) { d.tx = d.x; d.ty = d.y; return; }
     const marking = ((disc.mode === 'held' || disc.mode === 'carry') && disc.holder === a) || (disc.mode === 'ground' && G.pickup === a);
     if (marking) {                                          // marquage : côté fermé (ou devant en straight up)
       [d.tx, d.ty] = markSpot(d.team, disc.x, disc.y); d.react = 0.08;
+    } else if (dsysOf(d.team) && dsysOf(d.team).mode === 'man' && (sp = sysManSpot(dsysOf(d.team), d, a, ax, ay, dir, open))) {
+      [d.tx, d.ty] = sp;                                    // rôle donné dans le système perso (serré, profond, double team)
     } else {                                                // on anticipe la course et on protège le côté ouvert
       const ant = aiLvl(d.team).anticip, px = a.x + a.vx * ant, py = a.y + a.vy * ant;
       const depth = dir * (a.x - ax);
