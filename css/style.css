@@ -315,3 +315,8 @@ body.touch #tutoBox{font-size:13.5px;line-height:1.3;padding:4px 10px}
 #endBoard .rk{text-align:center;color:var(--muted);font-weight:700}
 #endBoard b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #endBoard small{color:var(--muted);text-align:right}
+#endSave{background:var(--bg);border:1px solid var(--accent);border-radius:10px;padding:10px 12px;margin:8px 0}
+#endSave .row{display:flex;gap:8px;margin:8px 0 2px}
+#endSave input{flex:1;min-width:0}
+#endSave .row button{width:auto;margin:0}
+#endSave p{margin:4px 0 6px;font-size:12.5px}

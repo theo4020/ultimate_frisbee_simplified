@@ -140,8 +140,14 @@
     <h1>♾️ Mode infini</h1>
     <p id="endText"></p>
     <p class="net" id="endBest"></p>
+    <div id="endSave" style="display:none">
+      <b>Enregistrer ton score au classement mondial ?</b>
+      <div class="row"><input id="endSaveName" class="tname" maxlength="12" placeholder="Ton pseudo" autocomplete="off" spellcheck="false">
+        <button id="endSaveB" class="primary">Enregistrer</button></div>
+      <p class="net">Laisse vide pour ne pas l’enregistrer. Un pseudo n’a qu’une ligne : seul son meilleur score est gardé.</p>
+      <button id="endSkipB" class="ghost">Ne pas enregistrer</button>
+    </div>
     <button id="endGo" class="bigbtn primary">Commencer ▶</button>
-    <p class="net" id="endName" style="display:none">Choisis un pseudo dans le menu principal pour apparaître sous ton nom dans le classement.</p>
     <h2 id="endBoardTitle">Classement</h2>
     <ol id="endBoard"></ol>
     <p class="net" id="endStatus"></p>

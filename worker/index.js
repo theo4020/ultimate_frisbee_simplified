@@ -43,17 +43,19 @@ async function turn(request, env) {
 }
 
 // ---------- classement du mode infini ----------
+// Un pseudo n'a qu'une ligne : un nouveau score ne la remplace que s'il est meilleur.
 // Un seul « Durable Object » (Board) garde les 100 meilleures séries dans le stockage de Cloudflare (rien à configurer :
 // il est déclaré dans wrangler.jsonc). Le score vient du navigateur, donc on vérifie qu'il est possible :
 // chaque match gagné rapporte +1 à +3 points d'écart et la défaite finale -1 à -3, d'où wins - 3 ≤ diff ≤ 3 × wins - 1.
 const BOARD_MAX = 100, BOARD_SHOW = 50, BOARD_WAIT = 20 * 1000;       // une série toutes les 20 s au plus par adresse IP
-const cleanName = n => String(n || '').replace(/[<>&"'`\u0000-\u001f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 12) || 'Anonyme';
+const cleanName = n => String(n || '').replace(/[<>&"'`\u0000-\u001f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 12);
 const cmpRun = (a, b) => b.wins - a.wins || b.diff - a.diff || a.at - b.at;
 function validRun(b) {
   const wins = b && b.wins, diff = b && b.diff;
   if (!Number.isInteger(wins) || !Number.isInteger(diff) || wins < 0 || wins > 500) return null;
   if (diff < wins - 3 || diff > 3 * wins - 1) return null;
-  return { name: cleanName(b.name), wins, diff };
+  const name = cleanName(b.name);
+  return name ? { name, wins, diff } : null;                  // sans pseudo, pas de place au classement
 }
 export class Board {
   constructor(state) { this.state = state; this.last = new Map(); }
@@ -65,11 +67,16 @@ export class Board {
     this.last.set(ip, now);
     if (this.last.size > 5000) this.last.clear();
     const e = { id: crypto.randomUUID().slice(0, 8), ...run, at: now };
+    const key = run.name.toLowerCase(), old = top.find(o => o.name.toLowerCase() === key);
+    if (old && cmpRun(old, e) <= 0) {                           // ce pseudo a déjà fait mieux (ou autant) : on garde l'ancien
+      return json({ kept: false, best: { wins: old.wins, diff: old.diff }, rank: top.indexOf(old) + 1, id: old.id, top: top.slice(0, BOARD_SHOW) });
+    }
+    top = top.filter(o => o !== old);
     top.push(e); top.sort(cmpRun);
     const rank = top.indexOf(e) + 1;
     top = top.slice(0, BOARD_MAX);
     await this.state.storage.put('top', top);
-    return json({ rank, id: rank <= BOARD_MAX ? e.id : null, top: top.slice(0, BOARD_SHOW) });
+    return json({ kept: true, rank, id: rank <= BOARD_MAX ? e.id : null, top: top.slice(0, BOARD_SHOW) });
   }
 }
 async function scores(request, env) {
@@ -81,7 +88,7 @@ async function scores(request, env) {
   let body = null;
   try { body = await request.json(); } catch (e) { }
   const run = validRun(body);
-  if (!run) return json({ error: 'score invalide' }, 400);
+  if (!run) return json({ error: body && !cleanName(body.name) ? 'pseudo manquant' : 'score invalide' }, 400);
   const ip = request.headers.get('CF-Connecting-IP') || '?';
   return stub.fetch('https://board/', { method: 'POST', body: JSON.stringify({ run, ip }) });
 }

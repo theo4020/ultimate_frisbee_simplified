@@ -48,8 +48,13 @@ export default async function (t) {
     const p3 = await call('/api/scores', { method: 'POST', body: { name: '<b>Max</b>   le    grand du jeu', wins: 4, diff: 8 }, ip: '3.3.3.3' });
     t.ok(p2.j.rank === 1 && p3.j.rank === 2, 'tri : matchs gagnés, puis écart', [p2.j.rank, p3.j.rank]);
     t.ok(p3.j.top[1].name === 'bMax/b le gr', 'pseudo nettoyé (pas de HTML, 12 caractères)', p3.j.top[1].name);
-    const anon = await call('/api/scores', { method: 'POST', body: { name: '', wins: 0, diff: -3 }, ip: '4.4.4.4' });
-    t.ok(anon.j.top.at(-1).name === 'Anonyme', 'sans pseudo : Anonyme');
+    const anon = await call('/api/scores', { method: 'POST', body: { name: '  ', wins: 0, diff: -3 }, ip: '4.4.4.4' });
+    t.ok(anon.s === 400 && anon.j.error === 'pseudo manquant', 'sans pseudo : pas enregistré', anon.txt);
+    const low = await call('/api/scores', { method: 'POST', body: { name: 'théo', wins: 2, diff: 3 }, ip: '6.6.6.6' });
+    t.ok(low.j.kept === false && low.j.best.wins === 4 && low.j.top.filter(e => e.name.toLowerCase() === 'théo').length === 1, 'même pseudo, score plus faible : l’ancien est gardé', low.txt);
+    const high = await call('/api/scores', { method: 'POST', body: { name: 'Théo', wins: 8, diff: 12 }, ip: '7.7.7.7' });
+    const theo = high.j.top.filter(e => e.name.toLowerCase() === 'théo');
+    t.ok(high.j.kept && high.j.rank === 1 && theo.length === 1 && theo[0].wins === 8, 'même pseudo, meilleur score : il remplace l’ancien (une seule ligne)', theo);
     for (const [b, why] of [[{ wins: 5, diff: 40 }, 'écart impossible'], [{ wins: 3, diff: -9 }, 'écart trop négatif'], [{ wins: 2.5, diff: 3 }, 'nombre non entier'],
       [{ wins: 9999, diff: 9999 }, 'trop de matchs'], [{ name: 'x' }, 'champs manquants'], [null, 'corps vide']])
       t.ok((await call('/api/scores', { method: 'POST', body: b, ip: '9.9.9.' + why.length })).s === 400, 'score refusé : ' + why);
@@ -57,7 +62,7 @@ export default async function (t) {
     for (let k = 0; k < 120; k++) await call('/api/scores', { method: 'POST', body: { name: 'b' + k, wins: 1, diff: 1 }, ip: '10.0.0.' + k });
     const full = await call('/api/scores');
     t.ok(store.get('top').length === 100 && full.j.top.length === 50, '100 scores gardés, 50 affichés', [store.get('top').length, full.j.top.length]);
-    t.ok(full.j.top[0].name === 'Léa', 'les meilleurs restent en tête');
+    t.ok(full.j.top[0].name === 'Théo' && full.j.top[1].name === 'Léa', 'les meilleurs restent en tête');
     t.ok((await call('/api/scores', { e: { ASSETS: env.ASSETS } })).s === 503, 'sans stockage : 503');
   } finally { globalThis.fetch = realFetch; }
 }

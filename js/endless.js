@@ -52,7 +52,7 @@ function endlessOver(won) {
   loc.best = Math.max(loc.best, S.wins);
   loc.runs = loc.runs.concat([{ wins: S.wins, diff: S.diff, at: Date.now() }]).sort(cmpRun).slice(0, 5);
   storeSet('uf-endless', loc);
-  S.sent = endlessSubmit(S.wins, S.diff);                     // envoyé au classement mondial tout de suite
+  S.toSave = true;                                             // le joueur choisit ensuite d'enregistrer (avec un pseudo) ou non
 }
 const endlessOverText = won => won
   ? `${G.series.wins} match${G.series.wins > 1 ? 's' : ''} gagné${G.series.wins > 1 ? 's' : ''} d'affilée ! Prochain adversaire : les ${endlessOpp(G.series.cur + 1).name}, encore un peu plus forts.`
@@ -75,8 +75,8 @@ let boardCache = null;                                         // { top: [...] }
 function endlessFetch() {
   return fetch('api/scores', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(j => (boardCache = j && Array.isArray(j.top) ? j : null)).catch(() => (boardCache = null));
 }
-function endlessSubmit(wins, diff) {
-  return fetch('api/scores', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: myName(), wins, diff }) })
+function endlessSubmit(name, wins, diff) {
+  return fetch('api/scores', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, wins, diff }) })
     .then(r => r.json().then(j => (r.ok ? j : { error: j.error || 'erreur ' + r.status })))
     .then(j => { if (j.top) { boardCache = j; if (j.id) storeSet('uf-endless-ids', storeGet('uf-endless-ids', []).concat([j.id]).slice(-20)); } return j; })
     .catch(() => ({ error: 'classement injoignable' }));
@@ -93,14 +93,29 @@ function showEndless(run) {
     : `Des matchs en ${ENDLESS_PTS} points contre des équipes de plus en plus fortes, jusqu'à ta première défaite. Va le plus loin possible !`;
   $('endBest').textContent = loc.best ? `Ton record : ${loc.best} match${loc.best > 1 ? 's' : ''} gagné${loc.best > 1 ? 's' : ''}.` : '';
   $('endGo').textContent = run ? 'Rejouer ▶' : 'Commencer ▶';
-  $('endName').style.display = myName() ? 'none' : '';
+  // fin de série : on propose d'enregistrer le score sous un pseudo (vide = pas enregistré)
+  endRun = run && run.toSave ? run : null;
+  $('endSave').style.display = endRun ? '' : 'none';
+  $('endGo').classList.toggle('primary', !endRun);
+  if (endRun) $('endSaveName').value = myName();
   $('endStatus').textContent = 'Chargement du classement…';
   renderBoard();
-  const p = run && run.sent ? run.sent : endlessFetch();
-  p.then(j => {
-    if (run && j && j.error) $('endStatus').textContent = '⚠️ Score non envoyé au classement : ' + j.error + '.';
-    else if (run && j && j.rank) $('endStatus').textContent = j.rank <= 100 ? `🌍 Tu es ${j.rank === 1 ? '1er' : j.rank + 'e'} du classement mondial !` : 'Ton score est envoyé (au-delà de la 100e place).';
-    else $('endStatus').textContent = '';
+  endlessFetch().then(() => { if ($('endStatus').textContent === 'Chargement du classement…') $('endStatus').textContent = ''; renderBoard(); });
+}
+let endRun = null;
+const rankTxt = r => (r === 1 ? '1er' : r + 'e');
+function endlessSave(skip) {
+  const run = endRun, name = skip ? '' : cleanName($('endSaveName').value);
+  if (!run) return;
+  run.toSave = false; endRun = null;
+  $('endSave').style.display = 'none'; $('endGo').classList.add('primary');
+  if (!name) { $('endStatus').textContent = 'Score non enregistré.'; return; }
+  storeSet('uf-name', name); $('pname').value = name;          // le pseudo est gardé pour la prochaine fois
+  $('endStatus').textContent = 'Envoi…';
+  endlessSubmit(name, run.wins, run.diff).then(j => {
+    if (j.error) $('endStatus').textContent = '⚠️ Score non enregistré : ' + j.error + '.';
+    else if (j.kept === false) $('endStatus').textContent = `${name} a déjà fait mieux (${j.best.wins} match${j.best.wins > 1 ? 's' : ''} gagné${j.best.wins > 1 ? 's' : ''}) : ce score reste au classement, ${rankTxt(j.rank)}.`;
+    else $('endStatus').textContent = j.rank <= 100 ? `🌍 ${name} est ${rankTxt(j.rank)} du classement mondial !` : 'Score enregistré (au-delà de la 100e place).';
     renderBoard();
   });
 }
@@ -124,5 +139,8 @@ if (typeof document !== 'undefined' && document.getElementById('endGo')) {
   $('soloBack').addEventListener('click', () => showLobby());
   $('endlessB').addEventListener('click', () => { backToSolo(); showEndless(null); });
   $('endGo').addEventListener('click', endlessStart);
+  $('endSaveB').addEventListener('click', () => endlessSave(false));
+  $('endSkipB').addEventListener('click', () => endlessSave(true));
+  $('endSaveName').addEventListener('keydown', e => { if (e.key === 'Enter') endlessSave(false); });
   $('endBack').addEventListener('click', () => { $('endlessCard').style.display = 'none'; G.series = null; showLobby('', 'solo'); });
 }
