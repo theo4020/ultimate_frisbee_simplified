@@ -14,6 +14,7 @@ Les scripts sont chargés dans cet ordre par `index.html` et partagent le même 
 | Fichier | Rôle |
 |---|---|
 | `worker/index.js` | Côté serveur (Cloudflare) : sert le site et donne des identifiants TURN temporaires sur `/api/turn` |
+| `js/news.js` | Page « Nouveautés » (annonces) et bandeau de changement d'adresse ; chargé en premier |
 | `js/secrets.js` | Secours en local uniquement. **Ignoré par Git.** |
 | `js/config.js` | Constantes (terrain, vitesses, règles), textes des stratégies et des plays |
 | `js/util.js` | Canvas, conversion mètres → pixels, outils mathématiques |
@@ -79,6 +80,8 @@ Avec un simple serveur de fichiers, le jeu retombe sur `js/secrets.js` (copie de
 Test du worker sans Cloudflare : `node tools/test-worker.mjs`.
 
 ## Publier une nouvelle version
+
+Ajoute d'abord une annonce en haut de `NEWS` dans `js/news.js` (page « Nouveautés » du menu, les joueurs voient un badge).
 
 ```bash
 git add -A

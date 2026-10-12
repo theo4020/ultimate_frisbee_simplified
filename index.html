@@ -67,6 +67,7 @@
     <h1>Ultimate Frisbee 🥏</h1>
     <div class="row namerow"><span>Ton pseudo</span><input id="pname" class="tname" maxlength="12" placeholder="Joueur" autocomplete="off" spellcheck="false"></div>
     <div id="lobbyHome">
+      <button id="moveAlert" style="display:none">🚚 <b>Le jeu change d'adresse !</b> Touche ici pour garder ton profil et savoir comment faire ›</button>
       <p>Ultimate en 5 contre 5, en quelques minutes.</p>
       <button class="bigbtn" id="tutoB">🎓 Tutoriel<small id="tutoTxt">Apprends toutes les commandes en 5 minutes</small></button>
       <button class="bigbtn" id="soloB">🤖 Solo<small>Un match contre l'ordinateur</small></button>
@@ -76,6 +77,7 @@
       <button class="bigbtn" id="joinB">🔗 Rejoindre une partie<small>Avec le code de l'hôte</small></button>
       <button class="bigbtn" id="ctrlB">⚙️ Commandes<small>Gestes ou joystick sur téléphone, touches du clavier</small></button>
       <button class="bigbtn" id="profileB">🏅 Profil<small>Tes statistiques de carrière et tes succès</small></button>
+      <button class="bigbtn" id="newsB">📰 Nouveautés <span id="newsBadge" class="badge" style="display:none"></span><small>Ce qui a changé dans le jeu</small></button>
       <button class="bigbtn" id="installB" style="display:none">📲 Installer le jeu<small>Sur l'écran d'accueil, en plein écran, jouable hors connexion en solo</small></button>
       <p class="net" id="iosHint" style="display:none">📲 Pour installer le jeu sur iPhone : bouton Partager, puis « Sur l'écran d'accueil ».</p>
     </div>
@@ -127,6 +129,30 @@
     <p class="net" id="repStatus"></p>
     <textarea id="repOut" rows="4" readonly style="display:none"></textarea>
     <button id="repBack">← Retour</button>
+  </div>
+  <div class="card" id="newsCard" style="display:none">
+    <h1>📰 Nouveautés</h1>
+    <div id="newsList"></div>
+    <button id="newsBack" class="primary">← Retour</button>
+  </div>
+  <div class="card" id="moveCard" style="display:none">
+    <h1>🚚 Le jeu change d'adresse</h1>
+    <p>La nouvelle adresse est <b id="moveUrl"></b>. L'ancienne marche encore quelque temps, puis elle s'arrêtera.</p>
+    <p><b>Pourquoi ?</b> Le nouvel hébergement donne plus de marge pour la suite (relais en ligne 50 fois plus généreux, mises à jour plus simples)
+      et protège mieux la sécurité du jeu : les clés du relais en ligne restent sur le serveur au lieu d'être lisibles dans la page.</p>
+    <a id="moveGo" class="bigbtn primary" href="#">Aller sur la nouvelle adresse ▶<small>Ton profil, tes succès, le tournoi et tes réglages te suivent</small></a>
+    <button id="moveCopy">Copier l'adresse</button> <span class="net" id="moveStatus"></span>
+    <div id="moveHome">
+      <h2>Tu joues depuis l'icône sur ton écran d'accueil ?</h2>
+      <ol>
+        <li>Touche « Aller sur la nouvelle adresse » ci-dessus : le jeu s'ouvre dans ton navigateur, avec ton profil.</li>
+        <li>Installe la nouvelle version :<br>
+          <b>Android</b> : bouton « 📲 Installer le jeu » du menu, ou menu ⋮ de Chrome → « Installer l'application » ;<br>
+          <b>iPhone</b> : bouton Partager de Safari → « Sur l'écran d'accueil ».</li>
+        <li>Supprime l'ancienne icône : appui long dessus → « Supprimer » (iPhone) ou « Désinstaller » (Android).</li>
+      </ol>
+    </div>
+    <button id="moveBack">← Retour</button>
   </div>
   <div class="card" id="profileCard" style="display:none">
     <h1>🏅 Profil · <span id="profileName"></span></h1>
@@ -296,6 +322,7 @@
   </div>
 </div>
 
+<script src="js/news.js"></script>
 <script src="js/secrets.js"></script>  <!-- facultatif, ignoré par Git (voir README) -->
 <script src="js/config.js"></script>
 <script src="js/util.js"></script>
