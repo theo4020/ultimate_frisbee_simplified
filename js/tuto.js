@@ -350,6 +350,7 @@ function tutoEvent(ev, a) {
   const T = G.tuto; if (!T || T.done) return;
   const S = TUTO_STEPS[T.step];
   if (S && S.on) S.on(ev, a);
+  if (!T.done && (ev === 'turnover' || ev === 'score')) tutoFail('Raté ! On recommence.');   // toute perte non prévue relance l'étape
 }
 function tutoSuccess(msg, delay) {
   const T = G.tuto; T.done = true;

@@ -84,7 +84,7 @@ canvas.addEventListener('pointercancel', e => { if (touchUI(e)) return; G.pointe
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 canvas.addEventListener('wheel', e => { e.preventDefault(); adjustCurve(e.deltaY > 0 ? 0.1 : -0.1); }, { passive: false });
 window.addEventListener('keydown', e => {
-  if (e.target && e.target.tagName === 'INPUT' && e.target.type !== 'range') { if (e.key === 'Enter' && e.target.id === 'joinCode') $('joinGo').click(); return; }
+  if (e.target && (e.target.tagName === 'TEXTAREA' || (e.target.tagName === 'INPUT' && e.target.type !== 'range'))) { if (e.key === 'Enter' && e.target.id === 'joinCode') $('joinGo').click(); return; }
   const k = e.key.toLowerCase();
   if (keyWait) { e.preventDefault(); captureKey(k); return; }   // réglage d'une touche (panneau Commandes)
   if (G.replay) { if (k === 'escape' || k === ' ' || k === 'enter') { e.preventDefault(); stopReplay(); } return; }

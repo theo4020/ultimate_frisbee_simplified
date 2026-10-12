@@ -90,9 +90,9 @@ $('repCopy').addEventListener('click', () => {
   const txt = JSON.stringify(buildReport());
   const fallback = () => {
     $('repOut').style.display = ''; $('repOut').value = txt; $('repOut').focus(); $('repOut').select();
-    $('repStatus').textContent = 'Copie automatique impossible : sélectionne tout le texte ci-dessous et copie-le.';
+    $('repStatus').textContent = 'Copie automatique impossible : sélectionne tout le texte ci-dessous, copie-le et envoie-le au développeur.';
   };
-  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(() => { $('repStatus').textContent = '✅ Rapport copié (' + Math.round(txt.length / 1024) + ' Ko) : colle-le dans ta conversation.'; }, fallback);
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(() => { $('repStatus').textContent = '✅ Rapport copié (' + Math.round(txt.length / 1024) + ' Ko) : colle-le dans un message au développeur.'; }, fallback);
   else fallback();
 });
 // recharger un rapport (outil de diagnostic, depuis la console) : loadReport(<texte du rapport>)

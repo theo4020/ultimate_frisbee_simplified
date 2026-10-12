@@ -136,12 +136,15 @@ function catchPoint(p) {
   let best = null, bd = 1e9;
   for (let u = Math.min(1, u0 + 0.01); u <= 1.001; u += 0.02) {
     const [x, y] = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u);
+    if (!inField(x, y)) continue;                              // pas de réception tant que le disque est dehors
     const tA = (u - u0) * disc.dur, r = dist(p.x, p.y, x, y);
     if (u > 0.3 && heightAt(u, peak, disc.kind) <= REACH_DIVE + 0.25 && tA <= DIVE_T + 0.35 && r <= SPD.dive * Math.min(tA, DIVE_T) + 1.7) return [x, y, true];
     if (r < bd) { bd = r; best = [x, y, false]; }
   }
-  return best || [disc.ex, disc.ey, false];
+  return best || [...inSpot(disc.ex, disc.ey), false];
 }
+// point du terrain le plus proche (un disque qui sort se rattrape au bord, quand il revient)
+const inSpot = (x, y) => [clamp(x, 0.3, W - 0.3), clamp(y, 0.3, H - 0.3)];
 // receveur IA : il attaque le disque — il court vers le premier point de la trajectoire qu'il peut atteindre avant le disque
 // (au lieu d'attendre au point d'arrivée, où le défenseur a le temps de revenir)
 function runPoint(p) {
@@ -149,10 +152,11 @@ function runPoint(p) {
   for (let u = Math.max(u0 + 0.02, 0.5); u <= 1.001; u += 0.025) {
     if (heightAt(u, peak, disc.kind) > 2.1) continue;
     const [x, y] = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u);
+    if (!inField(x, y)) continue;                              // il ne va pas chercher le disque hors du terrain
     const d = dist(p.x, p.y, x, y), need = d > 0.9 ? (d - 0.9) / sp + 0.12 : 0, tA = (u - u0) * disc.dur;
     if (need <= Math.max(0, tA - 0.06)) return [x, y, true];
   }
-  return [disc.ex, disc.ey, false];
+  return [...inSpot(disc.ex, disc.ey), false];               // sinon il attend au bord du terrain, au plus près du disque
 }
 // « attaque cet espace » : le coéquipier IA le plus proche coupe vers le point demandé
 function callFor(h, x, y) {
