@@ -3,5 +3,6 @@
   "name": "ultimate-frisbee",
   "main": "worker/index.js",
   "compatibility_date": "2026-06-01",
+  "keep_vars": true,   // garde les variables réglées dans le tableau de bord Cloudflare à chaque déploiement
   "assets": { "directory": ".", "binding": "ASSETS", "run_worker_first": ["/api/*"] }
 }

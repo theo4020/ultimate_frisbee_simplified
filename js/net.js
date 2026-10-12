@@ -56,13 +56,18 @@ function backToSolo() {
 
 // Serveurs ICE : le relais TURN vient du serveur du site (/api/turn, Cloudflare : identifiants temporaires, clé secrète
 // jamais dans la page, worker/index.js). Ancien hébergement sans ce serveur : identifiants fixes de js/secrets.js, sinon STUN seuls.
-let iceCache = null;
+// Seuls les identifiants du serveur sont gardés (1 h) ; un échec est retenté au prochain appel, sa raison va dans iceErr.
+let iceCache = null, iceAt = 0, iceErr = '', lastIce = [];
 function iceServers() {
-  if (iceCache) return Promise.resolve(iceCache);
+  if (iceCache && performance.now() - iceAt < 3600e3) return Promise.resolve(iceCache);
   return fetch('api/turn', { cache: 'no-store' })
-    .then(r => (r.ok ? r.json() : null))
-    .then(j => (iceCache = j && Array.isArray(j.iceServers) && j.iceServers.length ? j.iceServers : staticIce()))
-    .catch(() => (iceCache = staticIce()));
+    .then(r => r.json().catch(() => ({})).then(j => {
+      if (r.ok && Array.isArray(j.iceServers) && j.iceServers.length) { iceErr = ''; iceAt = performance.now(); return (iceCache = j.iceServers); }
+      iceErr = r.status === 404 ? 'pas de serveur de relais à cette adresse' : (j.error || 'erreur') + ' (' + r.status + ')';
+      return (iceCache = null, staticIce());
+    }))
+    .catch(e => { iceErr = 'serveur de relais injoignable'; return staticIce(); })
+    .then(ice => (lastIce = ice));
 }
 function staticIce() {                                        // à retirer une fois le site sur Cloudflare
   if (!TURN_USER || !TURN_PASS) return BASE_ICE;
@@ -88,7 +93,7 @@ function watchIce(c, onFail) {
   pc.addEventListener('iceconnectionstatechange', () => { if (pc.iceConnectionState === 'failed') onFail(); });
 }
 const isRelay = s => [].concat(s.urls).some(u => /^turns?:/.test(u)) && s.username !== 'peerjs';
-const hasRelay = () => !!(iceCache && iceCache.some(isRelay));
+const hasRelay = () => lastIce.some(isRelay);
 const iceFailMsg = () => hasRelay()
   ? 'La partie a été trouvée, mais la connexion n’a pas pu s’établir, même par le relais. Réessaie ; si ça se répète, appuie sur « Tester la connexion » sur chaque appareil.'
   : 'La partie a été trouvée, mais vos réseaux bloquent la connexion directe (fréquent en 4G/5G ou sur un wifi d’entreprise), et ce site n’a pas de relais configuré. Essayez sur le même wifi.';
@@ -98,7 +103,7 @@ function testRelay(out) {
   out.textContent = 'Test en cours…';
   iceServers().then(ice => {
     const turn = ice.filter(isRelay);
-    if (!turn.length) { out.textContent = '⚠️ Aucun relais configuré sur ce site : la connexion ne marchera qu’entre réseaux ouverts.'; return; }
+    if (!turn.length) { out.textContent = '⚠️ Pas de relais' + (iceErr ? ' : ' + iceErr : '') + '. La connexion ne marchera qu’entre réseaux ouverts.'; return; }
     let pc, done = false;
     const end = ok => {
       if (done) return; done = true;

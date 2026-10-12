@@ -16,6 +16,7 @@ const ok = (c, m) => { console.log((c ? 'OK  ' : 'FAIL') + ' ' + m); if (!c) pro
 ok((await call('/index.html'))[1] === 'page', 'les pages du site passent aux fichiers statiques');
 ok((await call('/api/turn', { 'Sec-Fetch-Site': 'cross-site' }))[0] === 403, 'autre site refusé');
 ok((await call('/api/turn', { Origin: 'https://evil.com' }))[0] === 403, 'mauvaise origine refusée');
+ok((await call('/api/turn', { 'Sec-Fetch-Site': 'none' }))[0] === 200, 'adresse ouverte à la main (diagnostic) acceptée');
 ok((await call('/api/turn', undefined, { ASSETS: env.ASSETS }))[0] === 503, 'non configuré → 503');
 ok((await call('/api/turn', undefined, env, 'POST'))[0] === 405, 'POST refusé');
 const [s, b] = await call('/api/turn'), ice = JSON.parse(b).iceServers;

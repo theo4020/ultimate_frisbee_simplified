@@ -11,9 +11,9 @@ const json = (body, status = 200) => new Response(JSON.stringify(body), {
 });
 
 async function turn(request, env) {
-  // seulement depuis les pages du jeu (un autre site ne peut pas se servir du relais)
+  // seulement depuis les pages du jeu (un autre site ne peut pas se servir du relais) ; « none » = adresse tapée à la main (diagnostic)
   const site = request.headers.get('Sec-Fetch-Site'), origin = request.headers.get('Origin');
-  if ((site && site !== 'same-origin') || (origin && origin !== new URL(request.url).origin)) return json({ error: 'interdit' }, 403);
+  if ((site && site !== 'same-origin' && site !== 'none') || (origin && origin !== new URL(request.url).origin)) return json({ error: 'interdit' }, 403);
   if (!env.TURN_KEY_ID || !env.TURN_KEY_API_TOKEN) return json({ error: 'relais non configuré' }, 503);
   try {
     const r = await fetch(`https://rtc.live.cloudflare.com/v1/turn/keys/${env.TURN_KEY_ID}/credentials/generate-ice-servers`, {
