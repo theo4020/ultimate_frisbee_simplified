@@ -30,7 +30,8 @@ const soloStyle = t => teamHumans(t).length === 1;
 // nom affiché d'un humain : son pseudo, sinon J1, J2…
 const humanLabel = h => (h && h.name) || 'J' + (h.id + 1);
 const cleanName = n => String(n || '').replace(/[<>&"'`]/g, '').replace(/\s+/g, ' ').trim().slice(0, 12);
-const myName = () => cleanName(storeGet('uf-name', ''));
+// pseudo : celui du compte si on est connecté (account.js), sinon celui tapé dans le menu
+const myName = () => { const a = storeGet('uf-acc', null); return a && a.name ? a.name : cleanName(storeGet('uf-name', '')); };
 // un spectateur (équipe -1) regarde la partie sans jouer ; l'écran le place côté Bleus
 function syncMe() { const m = meH(); G.spectator = !!m && m.team < 0; G.me = m && m.team >= 0 ? m.team : 0; }
 

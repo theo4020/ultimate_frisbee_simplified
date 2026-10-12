@@ -43,7 +43,10 @@ const tlabel = t => (G.teams[t] && G.teams[t].color === 'noir' ? '#cbd5e1' : tco
 function storeGet(k, def) {
   try { const v = localStorage.getItem(k); return v === null ? def : JSON.parse(v); } catch (e) { return def; }
 }
-function storeSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } }
+function storeSet(k, v) {
+  try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { }
+  if (typeof accTouch === 'function') accTouch(k);             // connecté : sauvegarde en ligne (account.js)
+}
 const SAVE_KEYS = {
   off: ['vert', 'ho', 'side'], def: ['man', 'zone', 'clam'], force: ['haut', 'bas', 'middle', 'straight'],
   speed: ['lent', 'normal', 'rapide'], level: ['facile', 'normal', 'difficile'], allyLevel: ['facile', 'normal', 'difficile'],

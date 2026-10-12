@@ -8,6 +8,10 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
+  { id: 12, date: '2026-10-12', tag: 'Compte', title: 'Les comptes joueurs arrivent 👤',
+    body: `Touche <b>👤 Créer un compte</b> à côté de ton pseudo. Ton pseudo t'est réservé (personne d'autre ne peut l'utiliser,
+      au classement non plus), et ton profil, tes succès, tes records et tes réglages sont sauvegardés en ligne :
+      connecte-toi sur un autre appareil pour tout retrouver. Ton mot de passe reste visible dans le panneau Compte.` },
   { id: 11, date: '2026-10-12', tag: 'Solo', title: 'Mode infini et classement mondial ♾️',
     body: `Nouveau dans <b>🤖 Solo</b> : le <b>mode infini</b>. Des matchs en 2 points contre des équipes de plus en plus fortes
       (elles progressent même pendant le match), jusqu'à ta première défaite. À la fin de ta série, entre ton pseudo pour l'inscrire au

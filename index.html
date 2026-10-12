@@ -65,7 +65,7 @@
 <div id="overlay">
   <div class="card" id="lobbyCard">
     <h1>Ultimate Frisbee 🥏</h1>
-    <div class="row namerow"><span>Ton pseudo</span><input id="pname" class="tname" maxlength="12" placeholder="Joueur" autocomplete="off" spellcheck="false"></div>
+    <div class="row namerow"><span>Ton pseudo</span><input id="pname" class="tname" maxlength="12" placeholder="Joueur" autocomplete="off" spellcheck="false"><button id="accB" class="ghost">👤 Créer un compte</button></div>
     <div id="lobbyHome">
       <button id="moveAlert" style="display:none">🚚 <b>Le jeu change d'adresse !</b> Touche ici pour garder ton profil et savoir comment faire ›</button>
       <p>Ultimate en 5 contre 5, en quelques minutes.</p>
@@ -152,6 +152,12 @@
     <ol id="endBoard"></ol>
     <p class="net" id="endStatus"></p>
     <button id="endBack">← Retour</button>
+  </div>
+  <div class="card" id="accountCard" style="display:none">
+    <h1>👤 Compte</h1>
+    <div id="accBody"></div>
+    <p class="net" id="accMsg"></p>
+    <button id="accBack">← Retour</button>
   </div>
   <div class="card" id="newsCard" style="display:none">
     <h1>📰 Nouveautés</h1>
@@ -377,6 +383,7 @@
 <script src="js/gamepad.js"></script>
 <script src="js/net.js"></script>
 <script src="js/menu.js"></script>
+<script src="js/account.js"></script>
 <script src="js/main.js"></script>
 <script src="js/pwa.js"></script>
 </body>

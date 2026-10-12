@@ -1,7 +1,7 @@
 // menu.js — Menu en jeu (☰), pause pour tout le monde en ligne, panneau Commandes, signalement d'un problème.
 
 // ---------- cartes par-dessus le jeu (on revient toujours à l'écran d'avant) ----------
-const CARDS = ['lobbyCard', 'stratCard', 'seriesCard', 'profileCard', 'gameMenuCard', 'ctrlCard', 'reportCard', 'newsCard', 'moveCard', 'endlessCard'];
+const CARDS = ['lobbyCard', 'stratCard', 'seriesCard', 'profileCard', 'gameMenuCard', 'ctrlCard', 'reportCard', 'newsCard', 'moveCard', 'endlessCard', 'accountCard'];
 const cardStack = [];
 function openCard(id) {
   const shown = CARDS.find(c => $(c).style.display !== 'none') || null;

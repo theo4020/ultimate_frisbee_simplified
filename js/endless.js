@@ -94,7 +94,7 @@ function endlessFetch() {
 }
 const BOARD_LOADING = 'Chargement du classement…';
 function endlessSubmit(name, wins, diff) {
-  return fetch('api/scores', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, wins, diff }) })
+  return fetch('api/scores', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, wins, diff, token: (accGet() || {}).token }) })
     .then(r => r.json().then(j => (r.ok ? j : { error: j.error || 'erreur ' + r.status })))
     .then(j => { if (j.top) { boardCache = j; if (j.id) storeSet('uf-endless-ids', storeGet('uf-endless-ids', []).concat([j.id]).slice(-20)); } return j; })
     .catch(() => ({ error: 'classement injoignable' }));
@@ -115,7 +115,7 @@ function showEndless(run) {
   endRun = run && run.toSave ? run : null;
   $('endSave').style.display = endRun ? '' : 'none';
   $('endGo').classList.toggle('primary', !endRun);
-  if (endRun) $('endSaveName').value = myName();
+  if (endRun) { $('endSaveName').value = myName(); $('endSaveName').readOnly = !!accGet(); }
   $('endStatus').textContent = BOARD_LOADING;
   renderBoard();
   endlessFetch().then(() => {                                  // réponse du serveur : classement mondial, ou message s'il n'y en a pas ici
@@ -131,7 +131,7 @@ function endlessSave(skip) {
   run.toSave = false; endRun = null;
   $('endSave').style.display = 'none'; $('endGo').classList.add('primary');
   if (!name) { $('endStatus').textContent = 'Score non enregistré.'; return; }
-  storeSet('uf-name', name); $('pname').value = name;          // le pseudo est gardé pour la prochaine fois
+  if (!accGet()) { storeSet('uf-name', name); $('pname').value = name; }   // le pseudo est gardé pour la prochaine fois
   $('endStatus').textContent = 'Envoi…';
   endlessSubmit(name, run.wins, run.diff).then(j => {
     if (j.error) $('endStatus').textContent = '⚠️ Score non enregistré : ' + j.error + '.';
