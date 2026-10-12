@@ -78,6 +78,7 @@ function endlessNext() {
   const S = G.series;
   if (S.done) { showEndless(S); return; }
   S.cur++; S.opp = endlessOpp(S.cur);
+  G.phase = 'menu';                                            // sinon « Jouer le point » croirait le match encore fini et sauterait au suivant
   newMatch();
   showMenu('first');
 }

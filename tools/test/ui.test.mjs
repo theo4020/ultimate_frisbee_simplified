@@ -60,6 +60,9 @@ export default async function (t) {
     t.ok((await p.textContent('#go')).includes('Match suivant'), 'victoire : bouton « Match suivant »');
     await p.click('#go');
     t.ok((await p.textContent('#ovTitle')).includes('Match 2'), 'match 2 contre un nouvel adversaire', await p.textContent('#ovTitle'));
+    await p.click('#go');                                           // « Jouer le point » lance bien le match 2 (et ne saute pas au 3)
+    await p.waitForFunction(() => G.phase === 'pull' || G.phase === 'play', null, { timeout: 5000 }).catch(() => {});
+    t.ok(await p.evaluate(() => (G.phase === 'pull' || G.phase === 'play') && G.series.cur === 1), 'le match 2 se joue vraiment', await p.evaluate(() => [G.phase, G.series.cur]));
     await finish(false);
     t.ok((await p.textContent('#go')).includes('classement'), 'défaite : bouton « Voir le classement »');
     await p.click('#go');
