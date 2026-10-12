@@ -61,7 +61,7 @@ des identifiants **temporaires** (4 h) sur `/api/turn`, utilisables seulement de
 **Mise en place (une seule fois)**
 1. Sur [dash.cloudflare.com](https://dash.cloudflare.com) : *Realtime → TURN → Create*. Note le **Turn Token ID** et l'**API Token** (affiché une seule fois).
 2. *Workers & Pages → Create → Import a repository*, choisis ce dépôt. *Build command* vide, *Deploy command* `npx wrangler deploy` (proposé par défaut).
-3. Une fois le premier déploiement fait : *Settings → Variables and Secrets* du worker `ultimate-frisbee`, ajoute en type **Secret** :
+3. Une fois le premier déploiement fait : *Settings → Variables and Secrets* du worker `ultimate-frisbee-simplified` (pas *Build → Variables and secrets*, qui ne sert qu'à la construction), ajoute en type **Secret** :
    - `TURN_KEY_ID` : le Turn Token ID ;
    - `TURN_KEY_API_TOKEN` : l'API Token.
 4. Ouvre le site, puis *En ligne → 📶 Tester la connexion* : « relais OK ».

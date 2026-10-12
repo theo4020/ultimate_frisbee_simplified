@@ -17,7 +17,8 @@ ok((await call('/index.html'))[1] === 'page', 'les pages du site passent aux fic
 ok((await call('/api/turn', { 'Sec-Fetch-Site': 'cross-site' }))[0] === 403, 'autre site refusé');
 ok((await call('/api/turn', { Origin: 'https://evil.com' }))[0] === 403, 'mauvaise origine refusée');
 ok((await call('/api/turn', { 'Sec-Fetch-Site': 'none' }))[0] === 200, 'adresse ouverte à la main (diagnostic) acceptée');
-ok((await call('/api/turn', undefined, { ASSETS: env.ASSETS }))[0] === 503, 'non configuré → 503');
+{ const [st, bd] = await call('/api/turn', undefined, { ASSETS: env.ASSETS, TURN_KEY: 'secret-value' });
+  ok(st === 503 && bd.includes('TURN_KEY_ID et TURN_KEY_API_TOKEN') && bd.includes('TURN_KEY') && !bd.includes('secret-value'), 'non configuré → 503, noms seulement'); }
 ok((await call('/api/turn', undefined, env, 'POST'))[0] === 405, 'POST refusé');
 const [s, b] = await call('/api/turn'), ice = JSON.parse(b).iceServers;
 ok(s === 200 && ice.length === 2, 'identifiants renvoyés');

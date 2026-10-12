@@ -1,6 +1,6 @@
 // Cloudflare Workers : le site entier (fichiers statiques) + worker/index.js pour /api/turn
 {
-  "name": "ultimate-frisbee",
+  "name": "ultimate-frisbee-simplified",
   "main": "worker/index.js",
   "compatibility_date": "2026-06-01",
   "keep_vars": true,   // garde les variables réglées dans le tableau de bord Cloudflare à chaque déploiement

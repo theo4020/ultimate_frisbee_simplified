@@ -14,7 +14,11 @@ async function turn(request, env) {
   // seulement depuis les pages du jeu (un autre site ne peut pas se servir du relais) ; « none » = adresse tapée à la main (diagnostic)
   const site = request.headers.get('Sec-Fetch-Site'), origin = request.headers.get('Origin');
   if ((site && site !== 'same-origin' && site !== 'none') || (origin && origin !== new URL(request.url).origin)) return json({ error: 'interdit' }, 403);
-  if (!env.TURN_KEY_ID || !env.TURN_KEY_API_TOKEN) return json({ error: 'relais non configuré' }, 503);
+  const missing = ['TURN_KEY_ID', 'TURN_KEY_API_TOKEN'].filter(k => !env[k]);
+  if (missing.length) {                                        // seulement des NOMS (jamais de valeurs), pour comprendre le réglage
+    const seen = Object.keys(env).filter(k => k !== 'ASSETS');
+    return json({ error: 'relais non configuré : manque ' + missing.join(' et ') + ' — variables vues : ' + (seen.join(', ') || 'aucune') }, 503);
+  }
   try {
     const r = await fetch(`https://rtc.live.cloudflare.com/v1/turn/keys/${env.TURN_KEY_ID}/credentials/generate-ice-servers`, {
       method: 'POST',
