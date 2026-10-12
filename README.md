@@ -13,7 +13,8 @@ Les scripts sont chargés dans cet ordre par `index.html` et partagent le même 
 
 | Fichier | Rôle |
 |---|---|
-| `js/secrets.js` | Identifiants du relais TURN. **Ignoré par Git.** Copie `js/secrets.example.js` pour le créer. |
+| `functions/api/turn.js` | Fonction Cloudflare : identifiants TURN temporaires (la clé secrète reste côté serveur) |
+| `js/secrets.js` | Secours en local uniquement. **Ignoré par Git.** |
 | `js/config.js` | Constantes (terrain, vitesses, règles), textes des stratégies et des plays |
 | `js/util.js` | Canvas, conversion mètres → pixels, outils mathématiques |
 | `js/state.js` | État du jeu : joueurs, disque, configuration de chaque équipe |
@@ -46,22 +47,31 @@ Les scripts sont chargés dans cet ordre par `index.html` et partagent le même 
 | `manifest.webmanifest`, `icons/` | Nom, icônes et affichage de l'application installée |
 | `tools/simulate.js` | Matchs IA contre IA sans navigateur : `node tools/simulate.js 20` |
 
-## Secrets (relais TURN)
+## Hébergement et relais TURN
 
-Le jeu en ligne passe par une connexion directe entre les deux navigateurs. En 4G/5G ou sur un réseau strict, il faut un relais TURN, par exemple [Metered](https://www.metered.ca/tools/openrelay/) (gratuit jusqu'à 20 Go par mois).
+Le jeu en ligne passe par une connexion directe entre les deux navigateurs. En 4G/5G ou sur un réseau strict, il faut un relais TURN : [Metered](https://www.metered.ca/) (gratuit jusqu'à 20 Go par mois).
 
-**En local**
-1. Copie `js/secrets.example.js` en `js/secrets.js`.
-2. Remplis `TURN_USER` et `TURN_PASS`.
+Le site est hébergé sur **Cloudflare Pages**. La petite fonction `functions/api/turn.js` tourne chez Cloudflare (pas dans le navigateur) :
+elle garde la clé secrète Metered et donne au jeu des identifiants **temporaires** (8 h, renouvelés automatiquement).
+Rien de secret n'apparaît dans le site ni dans Git.
 
-Le fichier `js/secrets.js` est dans `.gitignore`, il ne sera jamais commité.
+**Mise en place (une seule fois)**
+1. Crée un compte sur [dash.cloudflare.com](https://dash.cloudflare.com) → *Workers & Pages → Create → Pages → Connect to Git*, choisis ce dépôt.
+2. Réglages du build : *Framework preset* **None**, *Build command* **vide**, *Build output directory* **/** .
+3. *Settings → Variables and Secrets* (environnement Production) :
+   - `METERED_APP` (texte) : le nom de l'application Metered, ce qui est avant `.metered.live` ;
+   - `METERED_SECRET_KEY` (type **Secret**) : la clé secrète du tableau de bord Metered (*Developers → Secret Key*).
+4. Redéploie (*Deployments → Retry deployment*), ouvre le site `…pages.dev`, puis *En ligne → 📶 Tester la connexion* : « relais OK ».
 
-**En ligne (GitHub Pages)**
-1. Dans le dépôt, va dans *Settings → Secrets and variables → Actions → New repository secret* et ajoute `TURN_USER` et `TURN_PASS`.
-2. Dans *Settings → Pages*, choisis **Source : GitHub Actions**.
-3. À chaque push sur `main`, le workflow `.github/workflows/deploy.yml` génère `js/secrets.js` à partir de ces secrets, puis publie le site.
+Ensuite chaque push sur `main` met le site à jour automatiquement.
 
-> ⚠️ Ces identifiants restent visibles par les joueurs dans le code de la page publiée : c'est inévitable pour un jeu qui tourne entièrement dans le navigateur. Les garder hors de Git évite seulement qu'ils traînent dans l'historique public du dépôt. Au pire, quelqu'un pourrait consommer ton quota Metered gratuit.
+**Ménage après la bascule**
+- Dans Metered, supprime l'ancien identifiant fixe (il était visible dans l'ancien site) ;
+- désactive GitHub Pages (*Settings → Pages*) et supprime le workflow `.github/workflows/deploy.yml` et les secrets `TURN_*` du dépôt.
+
+**En local** : `functions/` ne tourne pas avec un simple serveur de fichiers ; le jeu retombe alors sur `js/secrets.js`
+(copie de `js/secrets.example.js`, ignoré par Git) ou, sans lui, sur des serveurs publics sans relais.
+Pour tester la fonction : `npx wrangler pages dev .` avec un fichier `.dev.vars` (ignoré par Git) contenant les deux variables.
 
 ## Publier une nouvelle version
 
@@ -71,7 +81,7 @@ git commit -m "Description du changement"
 git push
 ```
 
-Le site est mis à jour une à deux minutes après le push. L'onglet *Actions* du dépôt montre l'avancement.
+Le site est mis à jour une à deux minutes après le push. L'onglet *Deployments* du projet Cloudflare Pages montre l'avancement.
 
 ## Application installable
 

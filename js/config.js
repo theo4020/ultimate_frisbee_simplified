@@ -41,8 +41,6 @@ const PEER_PREFIX = 'ultimate-frisbee-proto-v1-';
 const SECRETS = (typeof window !== 'undefined' && window.ULTIMATE_SECRETS) || {};
 const TURN_USER = SECRETS.TURN_USER || '';
 const TURN_PASS = SECRETS.TURN_PASS || '';
-const TURN_APP = SECRETS.TURN_APP || '';
-const TURN_KEY = SECRETS.TURN_KEY || '';
 const BASE_ICE = [
   { urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] },
   { urls: 'stun:stun.cloudflare.com:3478' },

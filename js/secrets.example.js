@@ -9,8 +9,6 @@
 //   Dashboard → TURN Server → Credentials → « Create Credential »
 window.ULTIMATE_SECRETS = {
   TURN_USER: '',   // username affiché par Metered
-  TURN_PASS: '',   // password affiché par Metered
-  // Méthode alternative (facultative) : nom d'application + clé API de credential
-  TURN_APP: '',    // ex. 'monjeu' pour monjeu.metered.live
-  TURN_KEY: ''
+  TURN_PASS: ''    // password affiché par Metered
 };
+// Sur Cloudflare Pages, ce fichier ne sert plus : le relais passe par functions/api/turn.js (voir README).

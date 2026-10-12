@@ -54,25 +54,21 @@ function backToSolo() {
   placeForPoint();
 }
 
-// Serveurs ICE : STUN publics + relais TURN (le tien si configuré)
+// Serveurs ICE : le relais TURN vient du serveur du site (/api/turn, Cloudflare : identifiants temporaires, clé secrète
+// jamais dans la page). Ancien hébergement sans ce serveur : identifiants fixes de js/secrets.js, sinon STUN seuls.
 let iceCache = null;
 function iceServers() {
   if (iceCache) return Promise.resolve(iceCache);
-  if (TURN_USER && TURN_PASS) {                                // relais configuré : un STUN + le relais (trop de serveurs ralentit la connexion)
-    const cred = { username: TURN_USER, credential: TURN_PASS };
-    return Promise.resolve(iceCache = [
-      { urls: 'stun:stun.l.google.com:19302' },
-      Object.assign({ urls: 'turn:global.relay.metered.ca:80' }, cred),
-      Object.assign({ urls: 'turn:global.relay.metered.ca:80?transport=tcp' }, cred),
-      Object.assign({ urls: 'turn:global.relay.metered.ca:443' }, cred),
-      Object.assign({ urls: 'turns:global.relay.metered.ca:443?transport=tcp' }, cred)
-    ]);
-  }
-  if (!TURN_APP || !TURN_KEY) return Promise.resolve(iceCache = BASE_ICE);
-  return fetch(`https://${TURN_APP}.metered.live/api/v1/turn/credentials?apiKey=${TURN_KEY}`)
-    .then(r => r.json())
-    .then(list => (iceCache = Array.isArray(list) && list.length ? [{ urls: 'stun:stun.l.google.com:19302' }].concat(list) : BASE_ICE))
-    .catch(() => (iceCache = BASE_ICE));
+  return fetch('api/turn', { cache: 'no-store' })
+    .then(r => (r.ok ? r.json() : null))
+    .then(j => (iceCache = j && Array.isArray(j.iceServers) && j.iceServers.length ? j.iceServers : staticIce()))
+    .catch(() => (iceCache = staticIce()));
+}
+function staticIce() {                                        // à retirer une fois le site sur Cloudflare
+  if (!TURN_USER || !TURN_PASS) return BASE_ICE;
+  const cred = { username: TURN_USER, credential: TURN_PASS };
+  return [{ urls: 'stun:stun.l.google.com:19302' }].concat(['turn:global.relay.metered.ca:80', 'turn:global.relay.metered.ca:80?transport=tcp',
+    'turn:global.relay.metered.ca:443', 'turns:global.relay.metered.ca:443?transport=tcp'].map(urls => Object.assign({ urls }, cred)));
 }
 function makePeer(id) {
   return Promise.all([loadPeerJS(), iceServers()]).then(([, ice]) => {
@@ -91,7 +87,8 @@ function watchIce(c, onFail) {
   if (!pc) return;
   pc.addEventListener('iceconnectionstatechange', () => { if (pc.iceConnectionState === 'failed') onFail(); });
 }
-const hasRelay = () => !!((TURN_USER && TURN_PASS) || (TURN_APP && TURN_KEY));
+const isRelay = s => [].concat(s.urls).some(u => /^turns?:/.test(u)) && s.username !== 'peerjs';
+const hasRelay = () => !!(iceCache && iceCache.some(isRelay));
 const iceFailMsg = () => hasRelay()
   ? 'La partie a été trouvée, mais la connexion n’a pas pu s’établir, même par le relais. Réessaie ; si ça se répète, appuie sur « Tester la connexion » sur chaque appareil.'
   : 'La partie a été trouvée, mais vos réseaux bloquent la connexion directe (fréquent en 4G/5G ou sur un wifi d’entreprise), et ce site n’a pas de relais configuré. Essayez sur le même wifi.';
@@ -100,7 +97,7 @@ const iceFailMsg = () => hasRelay()
 function testRelay(out) {
   out.textContent = 'Test en cours…';
   iceServers().then(ice => {
-    const turn = ice.filter(s => [].concat(s.urls).some(u => /^turns?:/.test(u)) && s.username !== 'peerjs');
+    const turn = ice.filter(isRelay);
     if (!turn.length) { out.textContent = '⚠️ Aucun relais configuré sur ce site : la connexion ne marchera qu’entre réseaux ouverts.'; return; }
     let pc, done = false;
     const end = ok => {
