@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "type": "module",
+  "description": "Tests du jeu : node run.mjs (tout) ou node run.mjs --quick (sans navigateur)",
+  "scripts": { "test": "node run.mjs", "quick": "node run.mjs --quick" },
+  "devDependencies": { "playwright": "1.56.0" }
+}

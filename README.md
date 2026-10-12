@@ -13,7 +13,7 @@ Les scripts sont chargés dans cet ordre par `index.html` et partagent le même 
 
 | Fichier | Rôle |
 |---|---|
-| `worker/index.js` | Côté serveur (Cloudflare) : sert le site et donne des identifiants TURN temporaires sur `/api/turn` |
+| `worker/index.js` | Côté serveur (Cloudflare) : sert le site, identifiants TURN temporaires (`/api/turn`), classement du mode infini (`/api/scores`) |
 | `js/news.js` | Page « Nouveautés » (annonces) et bandeau de changement d'adresse ; chargé en premier |
 | `js/secrets.js` | Secours en local uniquement. **Ignoré par Git.** |
 | `js/config.js` | Constantes (terrain, vitesses, règles), textes des stratégies et des plays |
@@ -35,6 +35,7 @@ Les scripts sont chargés dans cet ordre par `index.html` et partagent le même 
 | `js/replay.js` | Ralenti du dernier point, célébration après un point |
 | `js/render.js` | Dessin du terrain, des joueurs et des repères |
 | `js/ui.js` | HUD et menus |
+| `js/endless.js` | Mode infini : matchs en 3 points de plus en plus durs, record et classement mondial |
 | `js/series.js` | Mini-tournoi (3 adversaires avec chacun leur style, progression mémorisée) |
 | `js/practice.js` | Mode entraînement (cibles, vent, défenseur) |
 | `js/achievements.js` | Profil : statistiques de carrière et succès |
@@ -47,7 +48,7 @@ Les scripts sont chargés dans cet ordre par `index.html` et partagent le même 
 | `sw.js` | Service worker : garde une copie des fichiers pour jouer hors connexion |
 | `manifest.webmanifest`, `icons/` | Nom, icônes et affichage de l'application installée |
 | `tools/simulate.js` | Matchs IA contre IA sans navigateur : `node tools/simulate.js 20` |
-| `tools/test-worker.mjs` | Test de `worker/index.js` sans Cloudflare : `node tools/test-worker.mjs` |
+| `tools/test/` | Suite de tests (voir « Tests ») |
 
 ## Hébergement et relais TURN
 
@@ -77,11 +78,33 @@ Ensuite chaque push sur `main` met le site à jour automatiquement.
 
 **En local** : `npx wrangler dev` lance le site et `/api/turn`, avec un fichier `.dev.vars` (ignoré par Git) contenant les deux variables.
 Avec un simple serveur de fichiers, le jeu retombe sur `js/secrets.js` (copie de `js/secrets.example.js`, ignoré par Git) ou sur des serveurs sans relais.
-Test du worker sans Cloudflare : `node tools/test-worker.mjs`.
+
+## Tests
+
+`tools/test/run.mjs` vérifie le jeu de bout en bout. Les fichiers `*.test.mjs` de `tools/test/` :
+
+| Fichier | Ce qui est vérifié |
+|---|---|
+| `rules.test.mjs` | Matchs IA contre IA sans blocage, chiffres réalistes, interceptions (1 sur 3), Callahan, mode infini, tournoi |
+| `worker.test.mjs` | Serveur : relais TURN (sécurité, erreurs), classement (tri, scores impossibles refusés, pseudos nettoyés) |
+| `ui.test.mjs` | Dans Chromium : menus, section Solo, mode infini jusqu'au classement, menu en jeu, signalement, tutoriel, entraînement, lance-pierre sur téléphone |
+| `online.test.mjs` | Deux onglets : salle d'attente, équipes, pull, passes de l'invité, pause pour tous, départ d'un joueur |
+
+```bash
+node tools/test/run.mjs --quick                 # sans navigateur (quelques secondes)
+cd tools/test && npm install && npx playwright install chromium && cd ../..
+node tools/test/run.mjs                         # tout (environ 1 minute)
+node tools/test/run.mjs ui                      # un seul fichier
+```
+
+**Automatiquement**
+- GitHub lance toute la suite à chaque push (`.github/workflows/tests.yml`, onglet *Actions*).
+- Cloudflare lance la partie rapide avant chaque mise en ligne : dans le worker, *Settings → Build → Build command* : `node tools/test/run.mjs --quick`.
+  Si un test échoue, la nouvelle version n'est pas publiée et l'ancienne reste en ligne.
 
 ## Publier une nouvelle version
 
-Ajoute d'abord une annonce en haut de `NEWS` dans `js/news.js` (page « Nouveautés » du menu, les joueurs voient un badge).
+Lance les tests, puis ajoute une annonce en haut de `NEWS` dans `js/news.js` (page « Nouveautés » du menu, les joueurs voient un badge).
 
 ```bash
 git add -A

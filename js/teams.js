@@ -9,7 +9,7 @@
 // ---------------------------------------------------------------------
 function teamInfoRaw(t) {
   if (G.tuto) return DEFAULT_TEAMS[t];
-  if (G.series && t !== G.me) return { name: SERIES[G.series.cur].name, color: SERIES[G.series.cur].color };
+  if (G.series && t !== G.me) return { name: serOpp().name, color: serOpp().color };
   const c = captain(t);
   if (c) { const cf = cfg(t); return { name: cf.tname || DEFAULT_TEAMS[t].name, color: PALETTE[cf.tcol] ? cf.tcol : DEFAULT_TEAMS[t].color }; }
   if (!G.net && G.attract && t === 0) return { name: G.form.tname || DEFAULT_TEAMS[0].name, color: PALETTE[G.form.tcol] ? G.form.tcol : DEFAULT_TEAMS[0].color };
@@ -24,8 +24,8 @@ function computeTeams() {
   }
   G.teams = [{ name: String(a.name).slice(0, 16), color: a.color }, { name: String(b.name).slice(0, 16), color: b.color }];
 }
-// points pour gagner : réglés par l'hôte (5 en tournoi)
-const winPts = () => (G.series ? WIN : G.net === 'guest' && G.netPts ? G.netPts : +G.form.points || WIN);
+// points pour gagner : réglés par l'hôte (5 en tournoi, 3 en mode infini)
+const winPts = () => (G.series ? G.series.pts || WIN : G.net === 'guest' && G.netPts ? G.netPts : +G.form.points || WIN);
 const tn = t => (G.teams[t] || DEFAULT_TEAMS[t]).name;
 const tcol = t => (PALETTE[(G.teams[t] || DEFAULT_TEAMS[t]).color] || PALETTE.bleu)[0];
 const tdark = t => (PALETTE[(G.teams[t] || DEFAULT_TEAMS[t]).color] || PALETTE.bleu)[1];

@@ -27,7 +27,7 @@ function placeForPoint() {
 
 function startPoint() {
   const pick = o => o[Math.floor(Math.random() * o.length)];
-  const st = G.series && SERIES[G.series.cur].style;          // tournoi : chaque équipe a son style
+  const st = G.series && serOpp().style;                     // tournoi / infini : chaque équipe a son style
   G.ai.off = pick(st ? st.off : ['vert', 'vert', 'ho', 'side']);
   G.ai.def = st ? pick(st.def) : Math.random() < 0.55 ? 'man' : pick(['zone', 'zone', 'clam']);
   G.ai.force = pick(st ? st.force : ['haut', 'bas', 'middle', 'haut', 'bas', 'straight']);

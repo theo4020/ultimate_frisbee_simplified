@@ -114,16 +114,19 @@ function refreshOptions() {
   $('windKmh').value = G.form.windKmh;
   $('windKmhTxt').textContent = G.form.windKmh + ' km/h';
 }
-function showLobby(err) {
+function showLobby(err, view) {
   G.menuShown = true; G.teamsOpen = null; G.series = null;
-  $('lobbyCard').style.display = ''; $('stratCard').style.display = 'none'; $('seriesCard').style.display = 'none'; $('profileCard').style.display = 'none';
+  $('lobbyCard').style.display = ''; for (const id of ['stratCard', 'seriesCard', 'profileCard', 'endlessCard']) $(id).style.display = 'none';
   const tutoDone = storeGet('uf-tuto', false), s = seriesState();
   $('tutoTxt').textContent = tutoDone ? 'Revoir les commandes (5 minutes)' : 'Nouveau ? Commence ici : toutes les commandes en 5 minutes';
   $('tutoB').classList.toggle('primary', !tutoDone);
   $('seriesTxt').textContent = s.round >= SERIES.length ? 'Champion ! 🏆 Rejoue quand tu veux'
     : s.round > 0 || s.tries[0] ? `En cours : tour ${s.round + 1} sur 3 contre les ${SERIES[s.round].name}` : 'Trois matchs contre des équipes de plus en plus fortes';
   if (!G.net && !G.attract) startAttract();                     // un vrai match se joue derrière le menu
-  $('lobbyHome').style.display = ''; $('lobbyRoom').style.display = 'none'; $('lobbyJoin').style.display = 'none';
+  $('lobbyHome').style.display = view === 'solo' ? 'none' : ''; $('lobbySolo').style.display = view === 'solo' ? '' : 'none';
+  $('lobbyRoom').style.display = 'none'; $('lobbyJoin').style.display = 'none';
+  const eb = endlessLocal().best;
+  $('endlessTxt').textContent = eb ? `Ton record : ${eb} match${eb > 1 ? 's' : ''} gagné${eb > 1 ? 's' : ''}. Bats-le !` : 'Enchaîne les matchs en 3 points, de plus en plus durs : jusqu’où iras-tu ?';
   $('lobbyErr').textContent = err || '';
   $('overlay').classList.remove('hidden');
 }
@@ -132,20 +135,22 @@ function showMenu(kind) {
   if (G.net !== 'guest') newWind();
   hudKey = ''; G.lastMenu = kind;
   computeTeams();
-  $('lobbyCard').style.display = 'none'; $('seriesCard').style.display = 'none'; $('profileCard').style.display = 'none'; $('stratCard').style.display = '';
+  for (const id of ['lobbyCard', 'seriesCard', 'profileCard', 'endlessCard']) $(id).style.display = 'none';
+  $('stratCard').style.display = '';
   const ME = G.me, side = `les ${tn(ME)} et tu attaques vers la ${ME === 0 ? 'droite' : 'gauche'}`;
   const S_ = G.series;
   if (kind === 'over') {
     const won = G.score[ME] > G.score[1 - ME];
     $('ovTitle').textContent = G.spectator ? `Victoire des ${tn(G.score[0] > G.score[1] ? 0 : 1)}` : won ? 'Victoire ! 🥏' : 'Défaite…';
-    $('ovText').textContent = S_ ? (won ? (S_.cur === SERIES.length - 1 ? 'Tu remportes le tournoi ! 🏆' : `Tu passes au tour ${S_.cur + 2} !`) : 'Éliminé… tu peux retenter ce match depuis le tournoi.')
+    $('ovText').textContent = S_ && S_.endless ? endlessOverText(won)
+      : S_ ? (won ? (S_.cur === SERIES.length - 1 ? 'Tu remportes le tournoi ! 🏆' : `Tu passes au tour ${S_.cur + 2} !`) : 'Éliminé… tu peux retenter ce match depuis le tournoi.')
       : G.spectator ? 'Fin du match.' : 'Change de stratégie et retente ta chance.';
-    $('go').textContent = S_ ? 'Suite du tournoi ▶' : G.net ? 'Revanche ▶' : 'Rejouer ▶';
+    $('go').textContent = S_ && S_.endless ? (won ? 'Match suivant ▶' : 'Voir le classement ▶') : S_ ? 'Suite du tournoi ▶' : G.net ? 'Revanche ▶' : 'Rejouer ▶';
     if (G.net === 'guest' && G.netSummary) G.lastSummary = G.netSummary;
     renderSummary(G.lastSummary);
   } else if (kind === 'first') {
-    $('ovTitle').textContent = S_ ? `Tournoi · tour ${S_.cur + 1} : contre les ${SERIES[S_.cur].name}` : G.net ? 'Partie en ligne' : 'Ultimate Frisbee';
-    $('ovText').textContent = (S_ ? SERIES[S_.cur].blurb + ' ' : '') + `Premier à ${winPts()} points. Tu joues ${side}.` + (G.spectator ? '' : '');
+    $('ovTitle').textContent = S_ ? (S_.endless ? `♾️ Match ${S_.cur + 1} : contre les ${serOpp().name}` : `Tournoi · tour ${S_.cur + 1} : contre les ${serOpp().name}`) : G.net ? 'Partie en ligne' : 'Ultimate Frisbee';
+    $('ovText').textContent = (S_ ? serOpp().blurb + ' ' : '') + `Premier à ${winPts()} points. Tu joues ${side}.` + (G.spectator ? '' : '');
     if (G.spectator) $('ovText').textContent = 'Tu regardes la partie en spectateur.';
     $('go').textContent = 'Jouer le point ▶';
     renderSummary(null);
@@ -217,7 +222,7 @@ $('replayB').addEventListener('click', startReplay);
 $('go').addEventListener('click', () => {
   saveSettings();
   if (!G.net) {                                             // solo
-    if (G.series && G.phase === 'over') { showSeries(); return; }
+    if (G.series && G.phase === 'over') { if (G.series.endless) endlessNext(); else showSeries(); return; }
     if (G.phase === 'over' || G.phase === 'menu') newMatch();
     startPoint(); return;
   }

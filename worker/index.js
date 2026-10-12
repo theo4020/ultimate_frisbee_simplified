@@ -1,4 +1,5 @@
-// worker/index.js — Cloudflare Worker : sert le site (fichiers statiques) et GET /api/turn → { iceServers: [...] }
+// worker/index.js — Cloudflare Worker : sert le site (fichiers statiques), GET /api/turn → { iceServers: [...] }
+// et /api/scores (classement du mode infini : GET → { top }, POST { name, wins, diff } → { rank, id, top }).
 // /api/turn donne des identifiants TURN (relais Cloudflare) TEMPORAIRES. Le jeton reste ici, côté serveur : il n'apparaît
 // jamais dans le site. Réglages (Workers → ultimate-frisbee → Settings → Variables and Secrets) :
 //   TURN_KEY_ID         identifiant de la clé TURN (Realtime → TURN)
@@ -10,10 +11,15 @@ const json = (body, status = 200) => new Response(JSON.stringify(body), {
   status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }
 });
 
-async function turn(request, env) {
-  // seulement depuis les pages du jeu (un autre site ne peut pas se servir du relais) ; « none » = adresse tapée à la main (diagnostic)
+// la requête vient-elle des pages du jeu ? (« none » = adresse tapée à la main, pour le diagnostic)
+function sameSite(request) {
   const site = request.headers.get('Sec-Fetch-Site'), origin = request.headers.get('Origin');
-  if ((site && site !== 'same-origin' && site !== 'none') || (origin && origin !== new URL(request.url).origin)) return json({ error: 'interdit' }, 403);
+  return !((site && site !== 'same-origin' && site !== 'none') || (origin && origin !== new URL(request.url).origin));
+}
+
+async function turn(request, env) {
+  // seulement depuis les pages du jeu (un autre site ne peut pas se servir du relais)
+  if (!sameSite(request)) return json({ error: 'interdit' }, 403);
   const missing = ['TURN_KEY_ID', 'TURN_KEY_API_TOKEN'].filter(k => !env[k]);
   if (missing.length) {                                        // seulement des NOMS (jamais de valeurs), pour comprendre le réglage
     const seen = Object.keys(env).filter(k => k !== 'ASSETS');
@@ -36,9 +42,55 @@ async function turn(request, env) {
   }
 }
 
+// ---------- classement du mode infini ----------
+// Un seul « Durable Object » (Board) garde les 100 meilleures séries dans le stockage de Cloudflare (rien à configurer :
+// il est déclaré dans wrangler.jsonc). Le score vient du navigateur, donc on vérifie qu'il est possible :
+// chaque match gagné rapporte +1 à +3 points d'écart et la défaite finale -1 à -3, d'où wins - 3 ≤ diff ≤ 3 × wins - 1.
+const BOARD_MAX = 100, BOARD_SHOW = 50, BOARD_WAIT = 20 * 1000;       // une série toutes les 20 s au plus par adresse IP
+const cleanName = n => String(n || '').replace(/[<>&"'`\u0000-\u001f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 12) || 'Anonyme';
+const cmpRun = (a, b) => b.wins - a.wins || b.diff - a.diff || a.at - b.at;
+function validRun(b) {
+  const wins = b && b.wins, diff = b && b.diff;
+  if (!Number.isInteger(wins) || !Number.isInteger(diff) || wins < 0 || wins > 500) return null;
+  if (diff < wins - 3 || diff > 3 * wins - 1) return null;
+  return { name: cleanName(b.name), wins, diff };
+}
+export class Board {
+  constructor(state) { this.state = state; this.last = new Map(); }
+  async fetch(request) {
+    let top = (await this.state.storage.get('top')) || [];
+    if (request.method !== 'POST') return json({ top: top.slice(0, BOARD_SHOW) });
+    const { run, ip } = await request.json(), now = Date.now();
+    if (now - (this.last.get(ip) || 0) < BOARD_WAIT) return json({ error: 'trop de scores envoyés, réessaie dans un instant' }, 429);
+    this.last.set(ip, now);
+    if (this.last.size > 5000) this.last.clear();
+    const e = { id: crypto.randomUUID().slice(0, 8), ...run, at: now };
+    top.push(e); top.sort(cmpRun);
+    const rank = top.indexOf(e) + 1;
+    top = top.slice(0, BOARD_MAX);
+    await this.state.storage.put('top', top);
+    return json({ rank, id: rank <= BOARD_MAX ? e.id : null, top: top.slice(0, BOARD_SHOW) });
+  }
+}
+async function scores(request, env) {
+  if (!env.BOARD) return json({ error: 'classement non configuré' }, 503);
+  const stub = env.BOARD.get(env.BOARD.idFromName('main'));
+  if (request.method === 'GET') return stub.fetch('https://board/');
+  if (request.method !== 'POST') return json({ error: 'GET ou POST' }, 405);
+  if (!sameSite(request)) return json({ error: 'interdit' }, 403);
+  let body = null;
+  try { body = await request.json(); } catch (e) { }
+  const run = validRun(body);
+  if (!run) return json({ error: 'score invalide' }, 400);
+  const ip = request.headers.get('CF-Connecting-IP') || '?';
+  return stub.fetch('https://board/', { method: 'POST', body: JSON.stringify({ run, ip }) });
+}
+
 export default {
   fetch(request, env) {
-    if (new URL(request.url).pathname === '/api/turn') return request.method === 'GET' ? turn(request, env) : json({ error: 'GET seulement' }, 405);
+    const path = new URL(request.url).pathname;
+    if (path === '/api/turn') return request.method === 'GET' ? turn(request, env) : json({ error: 'GET seulement' }, 405);
+    if (path === '/api/scores') return scores(request, env);
     return env.ASSETS.fetch(request);
   }
 };

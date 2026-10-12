@@ -70,9 +70,7 @@
       <button id="moveAlert" style="display:none">🚚 <b>Le jeu change d'adresse !</b> Touche ici pour garder ton profil et savoir comment faire ›</button>
       <p>Ultimate en 5 contre 5, en quelques minutes.</p>
       <button class="bigbtn" id="tutoB">🎓 Tutoriel<small id="tutoTxt">Apprends toutes les commandes en 5 minutes</small></button>
-      <button class="bigbtn" id="soloB">🤖 Solo<small>Un match contre l'ordinateur</small></button>
-      <button class="bigbtn" id="pracB">🎯 Entraînement<small>Lance sur des cibles à ton rythme : courbe, passe haute, vent</small></button>
-      <button class="bigbtn" id="seriesB">🏆 Mini-tournoi<small id="seriesTxt">Trois matchs contre des équipes de plus en plus fortes</small></button>
+      <button class="bigbtn" id="soloMenuB">🤖 Solo<small>Match, mode infini, mini-tournoi, entraînement</small></button>
       <button class="bigbtn" id="hostB">🌐 Créer une partie en ligne<small>Jusqu'à 10 joueurs : contre l'IA ensemble ou en vrai 5 contre 5</small></button>
       <button class="bigbtn" id="joinB">🔗 Rejoindre une partie<small>Avec le code de l'hôte</small></button>
       <button class="bigbtn" id="ctrlB">⚙️ Commandes<small>Gestes ou joystick sur téléphone, touches du clavier</small></button>
@@ -80,6 +78,14 @@
       <button class="bigbtn" id="newsB">📰 Nouveautés <span id="newsBadge" class="badge" style="display:none"></span><small>Ce qui a changé dans le jeu</small></button>
       <button class="bigbtn" id="installB" style="display:none">📲 Installer le jeu<small>Sur l'écran d'accueil, en plein écran, jouable hors connexion en solo</small></button>
       <p class="net" id="iosHint" style="display:none">📲 Pour installer le jeu sur iPhone : bouton Partager, puis « Sur l'écran d'accueil ».</p>
+    </div>
+    <div id="lobbySolo" style="display:none">
+      <h2>🤖 Solo</h2>
+      <button class="bigbtn" id="endlessB">♾️ Mode infini<small id="endlessTxt">Enchaîne les matchs en 3 points, de plus en plus durs : jusqu'où iras-tu ?</small></button>
+      <button class="bigbtn" id="soloB">⚡ Match rapide<small>Un match contre l'ordinateur, réglé comme tu veux</small></button>
+      <button class="bigbtn" id="seriesB">🏆 Mini-tournoi<small id="seriesTxt">Trois matchs contre des équipes de plus en plus fortes</small></button>
+      <button class="bigbtn" id="pracB">🎯 Entraînement<small>Lance sur des cibles à ton rythme : courbe, passe haute, vent</small></button>
+      <button id="soloBack">← Retour</button>
     </div>
     <div id="lobbyRoom" style="display:none">
       <div id="roomCodeBox">
@@ -130,6 +136,17 @@
     <textarea id="repOut" rows="4" readonly style="display:none"></textarea>
     <button id="repBack">← Retour</button>
   </div>
+  <div class="card" id="endlessCard" style="display:none">
+    <h1>♾️ Mode infini</h1>
+    <p id="endText"></p>
+    <p class="net" id="endBest"></p>
+    <button id="endGo" class="bigbtn primary">Commencer ▶</button>
+    <p class="net" id="endName" style="display:none">Choisis un pseudo dans le menu principal pour apparaître sous ton nom dans le classement.</p>
+    <h2 id="endBoardTitle">Classement</h2>
+    <ol id="endBoard"></ol>
+    <p class="net" id="endStatus"></p>
+    <button id="endBack">← Retour</button>
+  </div>
   <div class="card" id="newsCard" style="display:none">
     <h1>📰 Nouveautés</h1>
     <div id="newsList"></div>
@@ -166,7 +183,7 @@
     <p id="seriesText"></p>
     <ol id="seriesList"></ol>
     <button id="seriesGo" class="primary">Jouer ▶</button>
-    <div class="row" style="justify-content:space-between"><button id="seriesBack">← Menu principal</button><button id="seriesReset">Recommencer le tournoi</button></div>
+    <div class="row" style="justify-content:space-between"><button id="seriesBack">← Retour</button><button id="seriesReset">Recommencer le tournoi</button></div>
   </div>
   <div class="card" id="stratCard" style="display:none">
     <h1 id="ovTitle">Ultimate Frisbee</h1>
@@ -344,6 +361,7 @@
 <script src="js/render.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/series.js"></script>
+<script src="js/endless.js"></script>
 <script src="js/practice.js"></script>
 <script src="js/achievements.js"></script>
 <script src="js/tuto.js"></script>

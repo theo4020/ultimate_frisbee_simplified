@@ -11,12 +11,12 @@
 //  • équipe sans humain : « IA adverse », choisi par l'hôte (ou par toi en solo).
 function aiLvl(t) {
   if (G.tuto && G.tuto.level && !human(t)) return AI_LEVELS[G.tuto.level];      // tutoriel : adversaire réglé par l'étape
-  if (G.series && !human(t)) return AI_LEVELS[SERIES[G.series.cur].level];       // tournoi : niveau de l'adversaire du jour
+  if (G.series && !human(t)) return oppLevel();                                   // tournoi / infini : niveau de l'adversaire du jour
   const lv = human(t) ? cfg(t).allyLevel : G.form.level;
   return AI_LEVELS[lv] || AI_LEVELS.normal;
 }
 // style de jeu de l'IA de l'équipe t (personnalité des équipes du tournoi)
-const aiStyle = t => (G.series && !human(t) ? SERIES[G.series.cur].style : DEFAULT_STYLE);
+const aiStyle = t => (G.series && !human(t) ? serOpp().style : DEFAULT_STYLE);
 const DEFAULT_CFG = { off: 'vert', def: 'man', force: 'haut', play: 'none', dplay: 'none', allyLevel: 'normal', tname: '', tcol: '', puller: 'cap', restart: 'pose' };
 G.humans = [{ id: 0, team: 0, sel: null }];
 G.myId = 0;

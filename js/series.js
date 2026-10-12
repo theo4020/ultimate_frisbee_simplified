@@ -7,6 +7,9 @@ function seriesState() {
   return { round: 0, res: [null, null, null], tries: [0, 0, 0] };
 }
 const LVL_NAME = { facile: 'Facile', normal: 'Normal', difficile: 'Difficile' };
+// adversaire du jour (tournoi ou mode infini) et son niveau (nom d'AI_LEVELS, réglages, ou fonction qui les calcule)
+const serOpp = () => G.series.opp || SERIES[G.series.cur];
+function oppLevel() { const l = serOpp().level; return typeof l === 'function' ? l() : typeof l === 'string' ? AI_LEVELS[l] : l; }
 
 function showSeries() {
   G.menuShown = true; G.series = null;
@@ -45,6 +48,7 @@ function onMatchOver() {
   G.lastSummary = matchSummary();
   achMatchOver();
   if (!G.series) return;
+  if (G.series.endless) { endlessOver(G.score[G.me] > G.score[1 - G.me]); return; }
   const s = seriesState(), k = G.series.cur, won = G.score[G.me] > G.score[1 - G.me];
   s.tries[k] = (s.tries[k] || 0) + 1;
   if (won) { s.res[k] = [G.score[G.me], G.score[1 - G.me]]; if (s.round === k) s.round = k + 1; }
@@ -55,5 +59,5 @@ if (typeof document !== 'undefined' && document.getElementById('seriesGo')) {
   $('seriesGo').addEventListener('click', seriesPlay);
   $('seriesB').addEventListener('click', () => { backToSolo(); showSeries(); });
   $('seriesReset').addEventListener('click', () => { storeSet('uf-series', null); showSeries(); });
-  $('seriesBack').addEventListener('click', () => { $('seriesCard').style.display = 'none'; showLobby(); });
+  $('seriesBack').addEventListener('click', () => { $('seriesCard').style.display = 'none'; showLobby('', 'solo'); });
 }

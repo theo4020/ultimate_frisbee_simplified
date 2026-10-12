@@ -72,12 +72,12 @@ function achMatchOver() {
   c.matches++; if (won) c.wins++;
   c.scored += G.score[me]; c.conceded += G.score[op];
   if (G.ms) { const T = G.ms.team[me]; c.passes += T.comp; c.throws += T.thr; c.blocks += T.blk + T.int; }
-  if (won && G.series && G.series.cur === SERIES.length - 1) c.titles++;
+  if (won && G.series && !G.series.endless && G.series.cur === SERIES.length - 1) c.titles++;
   careerSet(c);
   if (won) unlock('win');
   if (won && G.score[op] === 0) unlock('shutout');
   if (won && G.net) unlock('online');
-  if (won && G.series && G.series.cur === SERIES.length - 1) unlock('champion');
+  if (won && G.series && !G.series.endless && G.series.cur === SERIES.length - 1) unlock('champion');
 }
 
 // invité en ligne : il ne fait pas tourner la partie, on compte seulement le résultat du match
