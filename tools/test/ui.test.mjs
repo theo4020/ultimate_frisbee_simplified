@@ -161,6 +161,25 @@ export default async function (t) {
     await q.waitForTimeout(300);
     t.ok((await q.evaluate(() => G.stats.throws)) === before + 1, 'relâcher lance le disque');
     t.ok(await q.evaluate(d => disc.mode === 'air' ? Math.sign(disc.ex - disc.sx) === d : true, pt.dir), 'le disque part dans le sens opposé au glissé');
+
+    t.group('Téléphone : appeler un play pendant la visée');
+    await q.waitForTimeout(400);
+    await q.evaluate(() => { G.off = G.me; G.oplay = null; G.pickup = null; const p = TEAMS[G.me][0]; p.x = W / 2; p.y = H / 2; holdDisc(p); });
+    await q.waitForFunction(() => canThrow() && document.getElementById('play1B').style.display !== 'none', null, { timeout: 5000 });
+    const th0 = await q.evaluate(() => G.stats.throws);
+    const bb = await q.locator('#play1B').boundingBox(), bx = bb.x + bb.width / 2, by = bb.y + bb.height / 2;
+    const two = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts });
+    await two('touchStart', [{ x: pt.x, y: pt.y, id: 1 }]);
+    for (let k = 1; k <= 5; k++) { await two('touchMove', [{ x: pt.x - pt.dir * k * 14, y: pt.y, id: 1 }]); await q.waitForTimeout(16); }
+    const f1 = { x: pt.x - pt.dir * 70, y: pt.y, id: 1 };
+    await two('touchStart', [f1, { x: bx, y: by, id: 2 }]);              // 2e doigt sur ▶ Play 1, le 1er vise toujours
+    await two('touchEnd', [{ x: bx, y: by, id: 2 }]);
+    t.ok(await q.evaluate(() => !!G.oplay && G.oplay.n === 1), 'un 2e doigt sur ▶ appelle le play pendant que le 1er vise');
+    t.ok(await q.evaluate(() => G.aiming), 'la visée continue');
+    for (let k = 6; k <= 8; k++) { await two('touchMove', [{ x: pt.x - pt.dir * k * 14, y: pt.y, id: 1 }]); await q.waitForTimeout(16); }
+    await two('touchEnd', [{ x: pt.x - pt.dir * 112, y: pt.y, id: 1 }]);
+    await q.waitForTimeout(300);
+    t.ok((await q.evaluate(() => G.stats.throws)) === th0 + 1, 'puis le lancer part normalement');
     await m.close();
   } finally {
     await browser.close(); await srv.close();

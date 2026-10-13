@@ -4,6 +4,7 @@
 //  Plays de départ
 // =====================================================================
 function startCut(c, x, y, deep) {
+  c.sprintPark = false;
   const dir = dirOf(c.team), open = -closedOf(1 - c.team);
   c.cx = x; c.cy = y; clampPt(c);
   c.wx = c.x + dir * (deep ? -2 : 2); c.wy = c.y + (deep ? open : -open) * 1.2;
@@ -25,7 +26,7 @@ function callPlay(t, n) {
   const ty = playOf(t, n);
   G.oplay = { type: ty, team: t, t: 0, phase: 0, dur: 6, targets: [], a: null, b: null, n, sys: ty === 'sys' ? playSys(t, n) : null };
   startOPlay();
-  if (G.oplay) flash('Play : ' + (ty === 'sys' ? G.oplay.sys.name : PLAY_NAMES[ty]) + ' !');
+  if (G.oplay) flash('Play : ' + (ty === 'sys' ? G.oplay.sys.name : PLAY_NAMES[ty]) + ' !', false, t, 'Play appelé !');
   return !!G.oplay;
 }
 // joueur le mieux placé pour un rôle : celui qui arrive le plus vite au point (x, y)
@@ -73,11 +74,20 @@ function startOPlay() {
     for (let k = 0; k < 4; k++) { const q = closestTo(pool, spots[k][0], spots[k][1]); P.map[k] = q; if (q) { pool.splice(pool.indexOf(q), 1); q.tag = String(k + 1); } }
     P.i = 0; P.timer = S.steps.length ? Math.min(0.4, S.steps[0].wait) : 0; P.dur = 1e9; P.ax = h.x; P.ay = h.y;
     if (!S.steps.length) { endOPlay(); return; }
+    if (S.setup) {                                           // option : chacun file d'abord à sa place (1,5 s au plus), puis les courses
+      P.setupT = 1.5;
+      P.map.forEach((q, k) => { if (q) { q.role = 'cutter'; q.state = 'park'; q.cx = spots[k][0]; q.cy = spots[k][1]; q.sprintPark = true; } });
+    }
   }
 }
 // système perso appelé comme play : ses courses dans l'ordre, relatives au disque au moment de l'appel
 function sysPlayTick(P, dt, dir, open) {
   const S = P.sys;
+  if (P.setupT > 0) {                                        // mise en place : on part dès que tout le monde y est, ou au bout de 1,5 s
+    P.setupT -= dt;
+    if (P.setupT > 0 && P.map.some(q => q && dist(q.x, q.y, q.cx, q.cy) > 1.5)) return;
+    P.setupT = 0;
+  }
   P.timer -= dt;
   if (P.timer > 0) return;
   if (P.i >= S.steps.length) {

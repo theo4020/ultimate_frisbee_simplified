@@ -100,6 +100,7 @@ function vibrate(p) { try { if (navigator.vibrate && document.body.classList.con
 
 // ---------- événements ----------
 function fxPlay(name, x, y, team) {
+  if (name === 'call' && hiddenFromMe(team)) return;          // en ligne : un appel de cut reste secret pour l'adversaire
   if (!G.attract) try {
     if (SOUNDS[name]) SOUNDS[name](team);
     if (name === 'score') SOUNDS.cheer();

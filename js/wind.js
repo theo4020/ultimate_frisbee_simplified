@@ -92,5 +92,8 @@ function anchor() {
   if (disc.mode === 'carry' && G.carryTo) return [G.carryTo.x, G.carryTo.y];   // le jeu reprendra à cet endroit
   return [disc.x, disc.y];
 }
-function flash(m, localOnly) { if (G.attract) return; G.msg = m; G.msgT = 1.8; if (!localOnly) G.msgId++; }
+// team / alt : message réservé à une équipe ; en ligne, ses adversaires voient « alt » à la place (ex. « Play appelé ! »)
+function flash(m, localOnly, team, alt) { if (G.attract) return; G.msg = m; G.msgTeam = team === undefined ? null : team; G.msgAlt = alt || ''; G.msgT = 1.8; if (!localOnly) G.msgId++; }
+// en ligne, ce qui appartient à l'équipe t est caché à ses adversaires (pas aux spectateurs)
+const hiddenFromMe = t => !!G.net && !G.spectator && t !== null && t !== undefined && t !== G.me;
 

@@ -294,7 +294,7 @@ function draw() {
   // Repères des plays
   ctx.font = `800 ${Math.max(11, S * 1.6)}px system-ui`; ctx.textAlign = 'center';
   for (const p of players) {
-    if (!p.tag) continue;
+    if (!p.tag || hiddenFromMe(p.team)) continue;           // en ligne : on ne voit pas qui joue le play adverse
     const label = p.tag === '2d' ? '2' : p.tag;
     ctx.fillStyle = 'rgba(15,23,42,.75)'; circle(X(p.x), Y(p.y) - r - 9, Math.max(8, S * 1.1)); ctx.fill();
     ctx.fillStyle = '#facc15'; ctx.fillText(label, X(p.x), Y(p.y) - r - 9 + Math.max(4, S * 0.55));
@@ -353,8 +353,9 @@ function draw() {
     ctx.save(); ctx.translate(cw / 2, ch / 2); ctx.scale(sc, sc);
     ctx.globalAlpha = Math.min(1, G.msgT);
     ctx.font = `800 ${Math.max(18, S * 3.4)}px system-ui`; ctx.textAlign = 'center';
-    ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillText(G.msg, 2, 2);
-    ctx.fillStyle = '#fff'; ctx.fillText(G.msg, 0, 0);
+    const txt = hiddenFromMe(G.msgTeam) ? G.msgAlt : G.msg;
+    ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillText(txt, 2, 2);
+    ctx.fillStyle = '#fff'; ctx.fillText(txt, 0, 0);
     ctx.restore();
   }
 }

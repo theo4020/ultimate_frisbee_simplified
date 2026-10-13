@@ -57,7 +57,10 @@ function edRender() {
     : s.mode === 'zone' ? 'Glisse les défenseurs 1–4 pour dessiner ta zone. M marque le porteur (côté forcé).'
     : 'Choisis le rôle de chaque défenseur (le numéro est celui affiché sur le terrain).';
   edCanvas().style.display = !off && s.mode === 'man' ? 'none' : '';
-  $('edSteps').innerHTML = off ? stepsHtml(s) : s.mode === 'man' ? rolesHtml(s) : '';
+  $('edSteps').innerHTML = (off ? `<label class="edSetup"><input type="checkbox" id="edSetupCb"${s.setup ? ' checked' : ''}> Se mettre en place avant de partir
+      <small>(quand tu l’appelles comme play : chacun file d’abord à sa place, 1,5 s au plus, puis les courses commencent)</small></label>` + stepsHtml(s) : '')
+    + (!off && s.mode === 'man' ? rolesHtml(s) : '');
+  if ($('edSetupCb')) $('edSetupCb').onchange = e => { s.setup = e.target.checked; };
   bindSteps(s);
   drawEditor();
 }

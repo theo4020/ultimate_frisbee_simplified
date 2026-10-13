@@ -84,6 +84,18 @@ export default async function (t, { quick }) {
     startCut = _st;
     return { n: starts.length, second: starts[1] && starts[1].st, ended: G.oplay !== P };
   })()`);
+  const su = R(`(() => {                                          // option « se mettre en place » : chacun file d'abord à sa place
+    G.humans = []; G.score = [0, 0]; G.receiving = 0; newWind(); startPoint();
+    for (let f = 0; f < 6000 && !(G.phase === 'play' && disc.mode === 'held' && G.stall > 1); f++) __tick();
+    const t = G.off, c = cfg(t); c.play1 = 'sys'; c.p1sys = Object.assign(${SYS}, { setup: true }); G.oplay = null;
+    callPlay(t, 1); const P = G.oplay, parked = P.map.filter(Boolean).every(q => q.state === 'park' && q.sprintPark);
+    let firstAt = -1, f = 0;
+    const _st = startCut; startCut = function (p, x, y, d) { if (firstAt < 0) firstAt = f; return _st(p, x, y, d); };
+    for (; f < 400 && firstAt < 0; f++) { disc.holder.think = 99; G.stall = 0; __tick(); }
+    startCut = _st;
+    return { parked, wait: firstAt / 60 * 0.78 };
+  })()`);
+  t.ok(su.parked && su.wait > 0.1 && su.wait < 1.8, '« se mettre en place » : chacun file à sa place, puis les courses partent (1,5 s au plus)', su);
   t.ok(ch.n === 2 && ch.second === 'park' && ch.ended, 'deux courses de suite pour un joueur : la 2e part de la fin de la 1re, puis le play se termine', ch);
 
   t.group('Où les systèmes comptent');

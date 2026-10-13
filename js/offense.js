@@ -191,7 +191,7 @@ function attackerAI(p, t, ax, ay, dir, open, form, dt) {
   const slot = cutterSlot(p, t, ax, ay, dir, form);
   switch (p.state) {
     case 'stack': [p.tx, p.ty] = leaveSpace(p, t, slot.x, slot.y); p.sp = hustle(p, SPD.jog); break;
-    case 'park': p.tx = p.cx; p.ty = p.cy; p.sp = SPD.jog + 1; break;
+    case 'park': p.tx = p.cx; p.ty = p.cy; p.sp = p.sprintPark ? SPD.cut : SPD.jog + 1; break;
     case 'jab':
       p.tx = p.wx; p.ty = p.wy; p.sp = SPD.cut * 0.8;
       if (p.timer <= 0) { p.state = 'cut'; p.timer = Math.max(2.4, dist(p.x, p.y, p.cx, p.cy) / SPD.cut + 0.6); }

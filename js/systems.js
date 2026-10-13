@@ -29,7 +29,7 @@ function cleanSystem(o) {
     const steps = (Array.isArray(o.steps) ? o.steps : []).slice(0, SYS_STEPS)
       .filter(st => st && Number.isInteger(st.p) && st.p >= 0 && st.p < 4)
       .map(st => ({ p: st.p, to: sysPt(st.to), wait: sysNum(st.wait, 0, 3) }));
-    return { id, kind: 'off', name, pos, steps };
+    return { id, kind: 'off', name, pos, steps, setup: !!o.setup };
   }
   const mode = o.mode === 'man' ? 'man' : 'zone';
   return { id, kind: 'def', name, mode, zone: Array.from({ length: 4 }, (_, i) => sysPt(o.zone && o.zone[i])),

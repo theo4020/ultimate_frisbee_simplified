@@ -77,8 +77,21 @@ export default async function (t) {
     const th = await host.evaluate(() => G.stats.throws);
     const aim = await guest.evaluate(() => { const r = canvas.getBoundingClientRect(), h = disc.holder; return { x: r.left + X(h.x + 10 * dirOf(1)), y: r.top + Y(h.y) }; });
     await guest.mouse.move(aim.x, aim.y); await guest.mouse.down(); await guest.mouse.up();
-    await host.waitForTimeout(500);
+    await host.waitForFunction(n => G.stats.throws > n, th, { timeout: 2500 }).catch(() => {});
     t.ok((await host.evaluate(() => G.stats.throws)) === th + 1, 'la passe de l’invité est jouée chez l’hôte');
+
+    t.group('Ce que l’adversaire ne voit pas');
+    await host.evaluate(() => { G.oplay = null; const p = TEAMS[0].reduce((a, b) => (Math.abs(b.x - W / 2) < Math.abs(a.x - W / 2) ? b : a)); G.off = 0; p.x = W / 2; p.y = H / 2; holdDisc(p); p.think = 99; G.form.play1 = 'split'; });
+    await host.evaluate(() => callPlay(0, 1));
+    await guest.bringToFront();
+    await guest.waitForFunction(() => G.msgT > 0 && G.msgTeam === 0, null, { timeout: 3000 }).catch(() => {});
+    const seen = await guest.evaluate(() => ({ hidden: hiddenFromMe(G.msgTeam), alt: G.msgAlt, real: G.msg, tagged: players.filter(p => p.tag && p.team === 0).length, tagsShown: players.filter(p => p.tag && p.team === 0 && !hiddenFromMe(p.team)).length }));
+    t.ok(seen.hidden && seen.alt === 'Play appelé !', 'l’adversaire voit qu’un play est appelé, sans savoir lequel', seen);
+    t.ok(seen.tagged > 0 && seen.tagsShown === 0, 'les joueurs concernés par le play adverse ne sont pas signalés', seen);
+    t.ok(await host.evaluate(() => !hiddenFromMe(G.msgTeam) && G.msg.includes('Double cut')), 'l’équipe qui attaque voit le nom du play');
+    const rings = await guest.evaluate(() => { const n = FX.parts.length; fxPlay('call', 50, 18, 0); return FX.parts.length - n; });
+    t.ok(rings === 0, 'un appel de cut adverse ne s’affiche pas');
+    t.ok(await guest.evaluate(() => { const n = FX.parts.length; fxPlay('call', 50, 18, 1); return FX.parts.length > n; }), 'un appel de cut de son équipe s’affiche');
 
     t.group('Pause pour tout le monde');
     await guest.click('#menuB'); await guest.click('#gmPause');

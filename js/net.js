@@ -260,7 +260,7 @@ function snapshot() {
     t: 's', m: sendMeta ? meta : undefined,
     p: players.map(p => [r1(p.x), r1(p.y), r1(p.vx), r1(p.vy), p.dive > 0 ? 1 : 0, p.down > 0 ? 1 : 0, p.tag, p.state, p.role, r1(p.cx), r1(p.cy), idx(p.match), p.jprep > 0 ? -1 : r1(jumpLift(p))]),
     d: [disc.mode, idx(disc.holder), r1(disc.x), r1(disc.y), r1(disc.sx), r1(disc.sy), r1(disc.cx), r1(disc.cy), r1(disc.ex), r1(disc.ey), r2(disc.t), r2(disc.dur), idx(disc.intended), disc.kind],
-    g: { score: G.score, off: G.off, phase: G.phase, stall: r1(G.stall), mk: idx(G.marker), msg: G.msg, mid: G.msgId,
+    g: { score: G.score, off: G.off, phase: G.phase, stall: r1(G.stall), mk: idx(G.marker), msg: G.msg, mid: G.msgId, mt: G.msgTeam, ma: G.msgAlt,
       dbl: idx(G.dbl), gt: r1(G.gt), carry: G.carryTo,
       pull: G.phase === 'pull' && G.pull ? G.pull.team : -1, pullBy: G.pull ? G.pull.by : null, pready: G.phase === 'pull' && pullReady(), tell: highTell(), pz: G.pz || null }
   };
@@ -411,7 +411,7 @@ function applySnapshot(m) {
   if (g.phase !== G.phase) { G.phase = g.phase; if (g.phase !== 'play') G.aiming = false; }
   if (m.fx) for (const e of m.fx) fxPlay(e[0], e[1], e[2], e[3]);   // effets après l'état (direction des lancers)
   if (lastMid === -1) lastMid = g.mid;
-  else if (g.mid !== lastMid) { lastMid = g.mid; if (g.msg) flash(g.msg, true); }
+  else if (g.mid !== lastMid) { lastMid = g.mid; if (g.msg) flash(g.msg, true, g.mt === undefined ? null : g.mt, g.ma); }
 }
 // l'invité ne simule rien : il lisse les positions reçues
 function guestFrame(dt) {

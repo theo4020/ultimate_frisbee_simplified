@@ -400,5 +400,5 @@ function renderPullerRow() {
     : 'Ce joueur fera le pull quand ton équipe défend (il prend le disque à la place du pulleur).';
 }
 
-$('play1B').addEventListener('click', () => doPlay(1));
-$('play2B').addEventListener('click', () => doPlay(2));
+// pointerdown (et pas click) : un 2e doigt peut appeler un play pendant que le 1er vise, sans interrompre la visée
+for (const n of [1, 2]) $('play' + n + 'B').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); doPlay(n); });
