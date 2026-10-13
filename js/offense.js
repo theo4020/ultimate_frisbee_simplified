@@ -3,8 +3,33 @@
 // =====================================================================
 //  Rôles offensifs : porteur, « dump » (relais) et coupeurs ordonnés
 // =====================================================================
+// relais : derrière le disque, côté fermé, à 6 m environ ; près d'une ligne, il recule au lieu de se coller au porteur
+const DUMP_D = 6, HOLDER_ROOM = 4.5;
 function dumpSlot(ax, ay, dir, open) {
-  return { x: clamp(ax - dir * 4, 1, W - 1), y: clamp(ay - open * 5, 2, H - 2) };
+  const y = clamp(ay - open * 5, 2, H - 2), lat = Math.abs(y - ay);
+  const back = Math.sqrt(Math.max(0, DUMP_D * DUMP_D - lat * lat));
+  return { x: clamp(ax - dir * Math.max(3.3, back), 1, W - 1), y };
+}
+// personne ne vient se coller au porteur (sauf en pleine course) : la cible est repoussée à HOLDER_ROOM du disque
+function roomAroundHolder(p) {
+  const h = disc.holder;
+  if (!h || disc.mode !== 'held' || h === p || h.team !== p.team) return;
+  if (dist(p.x, p.y, h.x, h.y) < 3.2) p.sp = Math.max(p.sp, SPD.cut * 0.85);   // collé au porteur : il s'écarte vite
+  const d = dist(p.tx, p.ty, h.x, h.y);
+  if (d >= HOLDER_ROOM) {                                    // le trajet passe tout près du porteur : il le contourne
+    const vx = p.tx - p.x, vy = p.ty - p.y, l2 = vx * vx + vy * vy;
+    if (l2 < 1) return;
+    const u = clamp(((h.x - p.x) * vx + (h.y - p.y) * vy) / l2, 0, 1), cx = p.x + vx * u, cy = p.y + vy * u, dc = dist(cx, cy, h.x, h.y);
+    if (u <= 0 || u >= 1 || dc >= HOLDER_ROOM - 0.5) return;
+    let ox = cx - h.x, oy = cy - h.y; if (dc < 0.01) { ox = -vy; oy = vx; }
+    const lo = Math.hypot(ox, oy) || 1;
+    p.tx = clamp(h.x + ox / lo * HOLDER_ROOM, 1, W - 1); p.ty = clamp(h.y + oy / lo * HOLDER_ROOM, 1.5, H - 1.5);
+    return;
+  }
+  let ux = p.tx - h.x, uy = p.ty - h.y;
+  if (d < 0.01) { ux = p.x - h.x || -dirOf(p.team); uy = p.y - h.y; }
+  const l = Math.hypot(ux, uy) || 1;
+  p.tx = clamp(h.x + ux / l * HOLDER_ROOM, 1, W - 1); p.ty = clamp(h.y + uy / l * HOLDER_ROOM, 1.5, H - 1.5);
 }
 function stackY(ay) { return clamp(H / 2 + (ay - H / 2) * 0.3, 9, H - 9); }
 // ligne du stack : au centre (vertical) ou le long de la ligne côté break (side stack)
@@ -170,7 +195,7 @@ function attackerAI(p, t, ax, ay, dir, open, form, dt) {
   }
   if (p.role === 'holder') {                                // ancien porteur : il suit le jeu derrière
     const s = dumpSlot(ax, ay, dir, open);
-    p.tx = s.x - dir * 2; p.ty = clamp(s.y + open * 7, 2, H - 2); p.sp = hustle(p, SPD.jog); return;
+    p.tx = s.x - dir * 2; p.ty = clamp(s.y + open * 7, 2, H - 2); p.sp = hustle(p, SPD.jog); roomAroundHolder(p); return;
   }
   if (p.role === 'dump') {
     const s = dumpSlot(ax, ay, dir, open);
@@ -178,14 +203,15 @@ function attackerAI(p, t, ax, ay, dir, open, form, dt) {
       p.tx = s.x; p.ty = s.y; p.sp = SPD.jog + 1;
       if (disc.mode === 'held' && G.stall > 4.5 && p.timer <= 0) {   // compte élevé : le relais vient chercher le disque
         p.state = 'reset'; p.timer = 1.8;
-        if (Math.random() < 0.5) { p.cx = ax - dir * 2; p.cy = ay + open * 5; }
-        else { p.cx = ax + dir * 4; p.cy = ay - open * 5; }
+        if (Math.random() < 0.5) { p.cx = ax - dir * 3; p.cy = ay + open * 5.5; }      // reset côté open, un peu derrière
+        else { p.cx = ax + dir * 4.5; p.cy = ay - open * 5; }                            // ou devant, côté fermé
         clampPt(p);
       }
     } else {
       p.tx = p.cx; p.ty = p.cy; p.sp = SPD.cut;
       if (p.timer <= 0) { p.state = 'set'; p.timer = 2.5; }
     }
+    roomAroundHolder(p);
     return;
   }
   const slot = cutterSlot(p, t, ax, ay, dir, form);
@@ -219,6 +245,6 @@ function attackerAI(p, t, ax, ay, dir, open, form, dt) {
       if (p.timer <= 0) p.state = 'stack';
       break;
   }
+  if (p.state !== 'cut' && p.state !== 'jab') roomAroundHolder(p);
   p.tx = clamp(p.tx, 1, W - 1); p.ty = clamp(p.ty, 1.5, H - 1.5);
 }
-

@@ -5,13 +5,13 @@
 
 const ENDLESS_PTS = 2;
 // niveaux de référence (d = numéro du match à partir de 0, plus la montée pendant le match) :
-//   facile au 1er match, normal au 2e, difficile (Titans) au 4e, légende au 8e, surhumain au 12e,
+//   facile au 1er match, normal au 2e, difficile (Titans) au 5e, légende au 10e, surhumain au 15e,
 //   puis ça ne s'arrête jamais : chaque match rend l'adversaire encore un peu plus fort (voir endlessLevel)
-const LEGEND = { react: 0.55, anticip: 0.55, block: 0.78, speed: 1.09, err: 0.45, safe: 0.14 };
-const SUPER = { react: 0.45, anticip: 0.65, block: 0.85, speed: 1.13, err: 0.35, safe: 0.18 };
-const ENDLESS_STEPS = [[0, AI_LEVELS.facile], [1, AI_LEVELS.normal], [3, AI_LEVELS.difficile], [7, LEGEND], [11, SUPER]];
+const LEGEND = { react: 0.55, anticip: 0.55, block: 0.78, speed: 1.09, err: 0.45, safe: 0.14, hands: 0.004, greed: 0.03 };
+const SUPER = { react: 0.45, anticip: 0.65, block: 0.85, speed: 1.13, err: 0.35, safe: 0.18, hands: 0.002, greed: 0 };
+const ENDLESS_STEPS = [[0, AI_LEVELS.facile], [1, AI_LEVELS.normal], [4, AI_LEVELS.difficile], [9, LEGEND], [14, SUPER]];
 // au-delà du dernier palier : plus vif, plus précis, plus rapide à chaque match, sans jamais dépasser des limites humaines
-const BEYOND = { react: [0.9, 0.2], anticip: [0.06, 1], block: [0.85, 0.97], speed: [0.025, 1.3], err: [0.88, 0.1], safe: [0.012, 0.3] };
+const BEYOND = { react: [0.92, 0.2], anticip: [0.05, 1], block: [0.88, 0.97], speed: [0.02, 1.3], err: [0.9, 0.1], safe: [0.01, 0.3], hands: [0.88, 0.0005] };
 function endlessLevel(d) {
   const S = ENDLESS_STEPS;
   if (d <= S[0][0]) return S[0][1];
@@ -19,12 +19,14 @@ function endlessLevel(d) {
   if (d > dl) {
     const k = d - dl, B = BEYOND;
     return {
-      react: Math.max(B.react[1], L.react * B.react[0] ** k),                     // temps de réaction : -10 % par match
+      react: Math.max(B.react[1], L.react * B.react[0] ** k),                     // temps de réaction : -8 % par match
       anticip: Math.min(B.anticip[1], L.anticip + B.anticip[0] * k),
-      block: Math.min(B.block[1], 1 - (1 - L.block) * B.block[0] ** k),           // contres manqués : -15 % par match
+      block: Math.min(B.block[1], 1 - (1 - L.block) * B.block[0] ** k),           // contres manqués : -12 % par match
       speed: Math.min(B.speed[1], L.speed + B.speed[0] * k),
-      err: Math.max(B.err[1], L.err * B.err[0] ** k),                             // imprécision : -12 % par match
-      safe: Math.min(B.safe[1], L.safe + B.safe[0] * k)
+      err: Math.max(B.err[1], L.err * B.err[0] ** k),                             // imprécision : -10 % par match
+      safe: Math.min(B.safe[1], L.safe + B.safe[0] * k),
+      hands: Math.max(B.hands[1], L.hands * B.hands[0] ** k),                     // drops : -12 % par match
+      greed: 0
     };
   }
   for (let i = 1; i < S.length; i++) {
@@ -36,8 +38,8 @@ function endlessLevel(d) {
   }
   return S[S.length - 1][1];
 }
-// difficulté du moment : le numéro du match, plus jusqu'à 0,8 au fil des points du match
-const endlessD = () => G.series.cur + 0.8 * Math.min(1, (G.score[0] + G.score[1]) / (2 * ENDLESS_PTS - 1));
+// difficulté du moment : le numéro du match, plus jusqu'à 0,6 au fil des points du match
+const endlessD = () => G.series.cur + 0.6 * Math.min(1, (G.score[0] + G.score[1]) / (2 * ENDLESS_PTS - 1));
 
 const ENDLESS_NAMES = ['Écureuils', 'Mouettes', 'Hérissons', 'Renards', 'Castors', 'Faucons', 'Loups', 'Pumas', 'Requins', 'Ours',
   'Aigles', 'Panthères', 'Cyclones', 'Volcans', 'Dragons', 'Titans', 'Météores', 'Légendes'];
@@ -47,7 +49,7 @@ const endlessTier = d => (d < 1 ? 'Débutants' : d < 3 ? 'Bon niveau' : d < 5 ? 
 // adversaire du match n (0, 1, 2…) : nom, couleur, style de jeu (repris des équipes du tournoi), niveau calculé en direct
 function endlessOpp(n) {
   const name = ENDLESS_NAMES[n % ENDLESS_NAMES.length] + (n >= ENDLESS_NAMES.length ? ' ' + (Math.floor(n / ENDLESS_NAMES.length) + 1) : '');
-  const style = SERIES[n < 1 ? 0 : n < 3 ? 1 : 2].style;      // styles des Écureuils, puis des Faucons, puis des Titans dès le 4e match
+  const style = SERIES[n < 1 ? 0 : n < 4 ? 1 : 2].style;      // styles des Écureuils, puis des Faucons, puis des Titans dès le 5e match
   return { name, color: ENDLESS_COLORS[n % ENDLESS_COLORS.length], style, level: () => endlessLevel(endlessD()),
     blurb: `Adversaire n° ${n + 1} · ${endlessTier(n)}. Premier à ${ENDLESS_PTS} points ; une défaite et la série s'arrête.` };
 }

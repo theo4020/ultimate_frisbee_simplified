@@ -19,7 +19,7 @@ function zoneSlots(defT, ax, ay, dir, closed) {
   s[0] = { x: ax + dir * 1.0, y: ay + closed * 1.3 };                       // marqueur
   let deepA = null, dd = -1e9;
   for (const a of atk) { const dep = dir * (a.x - ax); if (dep > dd) { dd = dep; deepA = a; } }
-  const deepDepth = Math.max(20, dd + 3);
+  const deepDepth = Math.max(16, dd + 3);                                   // 3 m derrière l'attaquant le plus profond
   s[1] = { x: ax + dir * deepDepth, y: H / 2 * 0.4 + (deepA ? deepA.y : H / 2) * 0.6 };   // arrière
   s[2] = { x: ax + dir * 4, y: ay + open * 4.5 };                          // cup côté ouvert
   s[3] = { x: ax + dir * 4, y: ay - open * 3.5 };                          // cup côté fermé
@@ -41,7 +41,7 @@ function zoneSlots(defT, ax, ay, dir, closed) {
     if (dep > 6 && dep < 21) { const sc = Math.abs(a.y - H / 2) + Math.abs(dep - 12) * 0.5; if (sc < best) { best = sc; midA = a; } }
   }
   s[4] = midA ? { x: midA.x - dir * 1, y: midA.y * 0.7 + ay * 0.3 } : { x: ax + dir * 12, y: H / 2 * 0.5 + ay * 0.5 };
-  return keepOutOfCircle(s, ax, ay);
+  return keepOutOfCircle(s, ax, ay, defT);
 }
 // Clam : la mark, deux « pinces » devant le disque (under cuts côté open et au centre), deux deep qui se partagent la largeur
 function clamSlots(defT, ax, ay, dir, closed) {
@@ -59,9 +59,21 @@ function clamSlots(defT, ax, ay, dir, closed) {
     return best; };
   s[1] = { x: ax + dir * dd, y: deepY(-1) };
   s[4] = { x: ax + dir * dd, y: deepY(1) };
-  return keepOutOfCircle(s, ax, ay);
+  return keepOutOfCircle(s, ax, ay, defT);
 }
-function keepOutOfCircle(s, ax, ay) {
+// limite du fond pour une zone : inutile d'aller au-delà du début de l'en-but (+5 m), sauf pour suivre un attaquant
+// placé plus loin (à 2 m derrière lui) — sinon, disque près de l'en-but, l'arrière se collait au fond du terrain pour rien
+function zoneBackLine(defT) {
+  const t = 1 - defT, dir = dirOf(t);
+  let lim = (dir > 0 ? W - EZ : EZ) + dir * 5;
+  for (const a of TEAMS[t]) if (a !== disc.holder && dir * (a.x + dir * 2 - lim) > 0) lim = a.x + dir * 2;
+  return lim;
+}
+function keepOutOfCircle(s, ax, ay, defT) {
+  if (defT !== undefined) {
+    const lim = zoneBackLine(defT), dir = dirOf(1 - defT);
+    for (const o of s) if (o && dir * (o.x - lim) > 0) o.x = lim;
+  }
   for (let k = 1; k < 5; k++) {                                              // seul le marqueur entre dans le cercle de stall
     const o = s[k], dd = dist(o.x, o.y, ax, ay), lim = STALL_R + 0.9;
     if (dd < lim) { const f = lim / Math.max(dd, 0.01); o.x = ax + (o.x - ax) * f; o.y = ay + (o.y - ay) * f; }
@@ -86,8 +98,9 @@ function setupDefense(defT, h) {
 // =====================================================================
 //  Lecture collective (3 fois par seconde) : changements, aide, passe probable
 // =====================================================================
-// readK = qualité de lecture selon le niveau (facile 0 : chacun pour soi … légende 1 : défense très collective)
-const readK = t => clamp((aiLvl(t).anticip - 0.1) / 0.45, 0, 1);
+// readK = qualité de la lecture collective : la même idée à tous les niveaux (changements, aide, ligne de passe),
+// juste un peu plus fiable chez les meilleurs (facile 0,47, normal 0,55 … légende 0,8)
+const readK = t => clamp(0.25 + aiLvl(t).anticip, 0, 1);
 function defenseBrain(defT, dt) {
   G.dbT = (G.dbT || 0) - dt;
   if (G.dbT > 0) return;
@@ -180,11 +193,9 @@ function defenderAI(d, ax, ay, dir, closed, form, slots) {
       d.tx = ox + (H_.x - ox) * H_.w; d.ty = oy + (H_.y - oy) * H_.w; d.react = Math.min(d.react, 0.1);
     } else if (dsysOf(d.team) && dsysOf(d.team).mode === 'man' && (sp = sysManSpot(dsysOf(d.team), d, a, ax, ay, dir, open))) {
       [d.tx, d.ty] = sp;                                    // rôle donné dans le système perso (serré, profond, double team)
-    } else {                                                // on anticipe la course et on protège le côté ouvert
+    } else {                                                // on anticipe la course et on se place entre lui et l'espace qu'il veut
       const ant = aiLvl(d.team).anticip, px = a.x + a.vx * ant, py = a.y + a.vy * ant;
-      const depth = dir * (a.x - ax);
-      d.tx = px + dir * (depth > 17 ? 1.8 : 0.4);
-      d.ty = py + open * 1.0;
+      [d.tx, d.ty] = manSpot(px, py, ax, ay, dir, open);
       const R = G.dB && G.dB.team === d.team && G.dB.read;
       if (R && R.a === a && disc.holder) {                  // c'est lui que le porteur regarde : il se glisse dans la ligne de passe
         const k = readK(d.team), lx = disc.holder.x - d.tx, ly = disc.holder.y - d.ty, l = Math.hypot(lx, ly) || 1;
@@ -201,6 +212,16 @@ function defenderAI(d, ax, ay, dir, closed, form, slots) {
   }
   avoidDoubleTeam(d, form);
   d.tx = clamp(d.tx, 0.5, W - 0.5); d.ty = clamp(d.ty, 0.5, H - 0.5);
+}
+
+// Placement en individuelle : toujours entre son joueur et le disque (sur la ligne de passe), à 1 à 2 m de lui,
+// en anticipant sa course, un peu côté open ; s'il est très loin devant, un peu plus en retrait pour ne pas se faire passer dans le dos.
+function manSpot(px, py, ax, ay, dir, open) {
+  let ux = ax - px, uy = ay - py; const l = Math.hypot(ux, uy) || 1; ux /= l; uy /= l;   // vers le disque
+  const depth = dir * (px - ax), deep = clamp((depth - 18) / 10, 0, 0.6);                // huck possible : il garde aussi le deep
+  ux = ux * (1 - deep) + dir * deep; uy = uy * (1 - deep) + open * 0.25;
+  const m = Math.hypot(ux, uy) || 1, c = clamp(l * 0.12, 1.1, 2);
+  return [px + ux / m * c, py + uy / m * c];
 }
 
 // règle : un seul défenseur (la mark) dans le cercle du handler, sauf s'il garde un autre attaquant

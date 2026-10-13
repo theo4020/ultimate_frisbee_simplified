@@ -42,7 +42,7 @@ body.touch #controls button{padding:13px 22px;font-size:17px;font-weight:600}
 #tbtns button{width:var(--tb,72px);height:var(--tb,72px);border-radius:50%;padding:0;font-size:14px;font-weight:700;
   background:rgba(51,65,85,.85);border:2px solid rgba(255,255,255,.35);touch-action:none}
 #tbtns #tDive{background:rgba(180,83,9,.9)}
-body.touch.joyon #joy{display:block}
+body.touch.joyheld #joy{display:block}
 body.touch.canlayout #tbtns,body.touch.canswitch #tbtns{display:flex}
 body:not(.canlayout) #tDive,body:not(.canswitch) #tSwitch,body:not(.canjump) #tJump{display:none}
 #tbtns #tJump{background:rgba(14,116,144,.9)}
@@ -169,9 +169,9 @@ body.touch #throwSel .tk{padding:7px 9px;font-size:13px}
 body.touch #controls button{padding:7px 10px;font-size:13px}
 body.touch #fsB{position:fixed;top:0;right:max(4px,env(safe-area-inset-right));height:26px;padding:0 10px!important;font-size:15px!important;
   background:transparent;z-index:7}
-/* joystick en bas à gauche de l'écran, boutons d'action en bas à droite */
-body.touch #joy{position:fixed;left:max(14px,env(safe-area-inset-left));bottom:max(14px,env(safe-area-inset-bottom));z-index:5;
-  background:rgba(15,23,42,.3)}
+/* joystick flottant : il apparaît là où le doigt s'est posé ; boutons d'action en bas à droite */
+body.touch #joy{position:fixed;transform:translate(-50%,-50%);z-index:5;pointer-events:none;background:rgba(15,23,42,.25)}
+body.touch #knob{width:46px;height:46px;margin:-23px 0 0 -23px}
 body.touch #tbtns{position:fixed;right:max(14px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom));z-index:5;
   flex-direction:column-reverse;gap:10px}
 body.touch #tbtns button{opacity:.92}

@@ -8,12 +8,14 @@ const SPD = { jog: 4.6, cut: 7.6, def: 7.4, user: 7.5, sprint: 7.8, dive: 11 };
 const ACC = { atk: 24, def: 21 };
 // Réglages de la défense IA (plus les temps de réaction sont courts et l'anticipation forte, plus elle est dure)
 // Niveaux de l'IA (« IA adverse » pour les équipes sans humain, « Coéquipiers IA » pour les autres, voir humans.js)
+// Tous les niveaux jouent avec la même intelligence (placements, coupes, défense collective) ; ce qui change :
 //   react : multiplie les temps de réaction · anticip : anticipation des courses (s) · block : chance de contre (debout)
-//   speed : vitesse des joueurs · err : imprécision des lancers · safe : prudence dans le choix des passes
+//   speed : vitesse des joueurs · err : imprécision des lancers · hands : chance de drop en plus à la réception
+//   safe : prudence dans le choix des passes · greed : goût du risque (0 = joue sûr, 1 = débutant qui force les passes)
 const AI_LEVELS = {
-  facile:    { react: 1.6,  anticip: 0.1,  block: 0.42, speed: 0.93, err: 1.6, safe: -0.05 },
-  normal:    { react: 1,    anticip: 0.3,  block: 0.6,   speed: 1,    err: 1,   safe: 0 },
-  difficile: { react: 0.72, anticip: 0.4,  block: 0.68, speed: 1.04, err: 0.65, safe: 0.08 }
+  facile:    { react: 1.3,  anticip: 0.22, block: 0.5,  speed: 0.9,  err: 1.45, safe: -0.05, hands: 0.04,  greed: 0.5 },
+  normal:    { react: 1,    anticip: 0.3,  block: 0.6,  speed: 1,    err: 1,    safe: 0,     hands: 0.015, greed: 0.1 },
+  difficile: { react: 0.72, anticip: 0.4,  block: 0.68, speed: 1.04, err: 0.65, safe: 0.08,  hands: 0.008, greed: 0.03 }
 };
 const DEF_TUNE = {
   reactMan: [0.14, 0.24],   // temps de réaction en individuelle (s)

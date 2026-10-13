@@ -8,6 +8,25 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
+  { id: 18, date: '2026-10-14', tag: 'Jeu', title: 'Défense plus maligne, débutants plus réalistes, souris 🖱️',
+    body: `<b>Défense individuelle</b> : chaque défenseur se place entre son joueur et le disque, sur la ligne de passe.
+      Mettre tout le monde sur les côtés puis couper au centre ne marche plus à tous les coups.<br>
+      <b>Zone</b> : quand le disque approche de l'en-but et que personne n'est au fond, l'arrière se place vers le début de
+      l'en-but au lieu de se coller au fond du terrain.<br>
+      <b>Mode infini</b> : la difficulté monte un peu moins vite (Titans au 5e match au lieu du 4e).<br>
+      <b>Niveaux</b> : toutes les IA réfléchissent de la même façon (placements, coupes, défense collective). Un débutant est
+      plus lent, droppe plus souvent et surtout <b>force des passes risquées</b> au lieu de jouer sûr.<br>
+      <b>Passes normales</b> : lâchées à hauteur de hanche, elles montent vite puis planent. La mark et les défenseurs proches
+      du lanceur ont moins de temps pour les contrer.<br>
+      <b>Relais</b> : il garde ses distances avec le porteur et ne vient plus se coller à lui.<br>
+      <b>Sur PC</b> : clique sur un coéquipier pour en prendre le contrôle ; <b>clic droit</b> pour sauter (en défense, ou pour
+      ton receveur pendant le vol). Avec le disque, le clic droit appelle toujours un cut.` },
+  { id: 17, date: '2026-10-13', tag: 'Commandes', title: 'Joystick flottant et layout au bon moment 🎮',
+    body: `<b>Joystick sur téléphone</b> (réglage ⚙️ Commandes → Joystick et boutons) : plus de joystick fixe en bas à gauche.
+      Pose le doigt <b>n'importe où</b> sur le terrain et glisse : ton joueur court dans cette direction, plus ou moins vite
+      selon la distance. Le joystick apparaît sous ton doigt et disparaît quand tu le lèves.<br>
+      <b>Layout pour tes receveurs</b> (en attaque, seul dans ton équipe) : le receveur ne plonge plus vers le disque là où il est,
+      mais vers l'endroit où il <b>sera</b>. Si tu appuies trop tôt, il attend le bon moment pour plonger.` },
   { id: 16, date: '2026-10-13', tag: 'Tactique', title: 'La galerie des systèmes 🌍',
     body: `Dans <b>📋 Mes systèmes</b>, un nouvel onglet <b>🌍 Galerie</b> : les systèmes publiés par tous les joueurs. Regarde-les
       en aperçu animé, ajoute ceux qui te plaisent à tes systèmes en un clic, et donne un ❤ à tes préférés.

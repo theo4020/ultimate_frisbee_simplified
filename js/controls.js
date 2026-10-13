@@ -34,10 +34,10 @@ function toWorld(e) { const r = canvas.getBoundingClientRect(); return { x: (e.c
 function setPointer(e) { const w = toWorld(e); G.pointer.x = w.x; G.pointer.y = w.y; G.pointer.active = true; G.pointer.last = G.time; sendInput(); }
 const attacking = () => G.phase === 'play' && G.off === G.me;
 // taper / cliquer sur un de ses joueurs pour le prendre (s'il est géré par l'IA)
-function trySelectAt(w) {
+function trySelectAt(w, r = 2.2) {
   const h = meH(); if (!canSwitchNow(h)) return false;
   const [p, d] = nearestD(TEAMS[G.me].filter(q => !takenByOther(q, h)), w.x, w.y);
-  if (p && d < 2.2 && p !== h.sel) { doSelect(p); return true; }
+  if (p && d < r && p !== h.sel) { doSelect(p); return true; }
   return false;
 }
 
@@ -54,15 +54,17 @@ canvas.addEventListener('pointerdown', e => {
     return;
   }
   if (G.phase === 'pull') { setPointer(e); const w = toWorld(e); pullPointerDown(w.x, w.y); return; }   // pull : la cible, puis la jauge
-  if (e.button === 2) {                                      // clic droit en attaque : appeler un cut vers cet espace
+  if (e.button === 2) {                                      // clic droit : en attaque avec le disque, appel de cut ; sinon saut (défense, ou receveur pendant le vol)
     const w = toWorld(e);
-    if (attacking()) doCall(w.x, w.y);
+    if (attacking() && disc.mode === 'held') doCall(w.x, w.y);
+    else if (canJump()) userJump();
     return;
   }
   Object.assign(G.pointer, { down: true, downT: G.time, type: e.pointerType });
   setPointer(e);
   G.pointer.downX = G.pointer.x; G.pointer.downY = G.pointer.y;
   if (canThrow()) G.aiming = true;
+  else if (trySelectAt(G.pointer, 1.6)) { /* clic sur un coéquipier géré par l'IA : tu le prends */ }
   else if (canLayout() && e.pointerType === 'mouse') userDive();
   canvas.setPointerCapture(e.pointerId);
   sendInput(true);
@@ -113,41 +115,45 @@ $('jumpB').addEventListener('click', userJump);
 $('muteB').addEventListener('click', toggleMute);
 if (FX.muted) $('muteB').textContent = '🔇';
 
-// ---------- joystick virtuel (téléphone, réglage « Sans le disque : joystick et boutons ») ----------
-// il déplace ton joueur (défense, ou attaque à plusieurs) ; les lancers restent des gestes (gestures.js)
-const JOY_DEAD = 0.18, JOY_MAXD = 50;
-const joy = { active: false, id: null, dx: 0, dy: 0, mode: null };
+// ---------- joystick flottant (téléphone, réglage « Sans le disque : joystick et boutons ») ----------
+// pose le doigt n'importe où sur le terrain et glisse : ton joueur court dans la direction « point de départ → doigt »,
+// d'autant plus vite que le doigt est loin (défense, ou attaque à plusieurs) ; les lancers restent des gestes (gestures.js)
+const JOY_MAXD = 50;
+const joy = { active: false, id: null, dx: 0, dy: 0, mode: null, x0: 0, y0: 0 };
 function joyMode() {
   if (G.phase !== 'play' || !isTouch() || CTRL.move !== 'joystick' || canThrow()) return null;
   const h = meH();
   if (h && h.sel && (defending() || !soloStyle(h.team))) return 'move';
   return null;
 }
-function joyUpdate(e) {
-  const r = $('joy').getBoundingClientRect(), R0 = r.width / 2;
-  let dx = (e.clientX - r.left - R0) / R0, dy = (e.clientY - r.top - R0) / R0;
+const joyRadius = () => clamp(window.innerHeight * 0.17, 48, 85);   // px : doigt à cette distance du départ = pleine vitesse
+// appelé par gestures.js quand un doigt commence à glisser alors que ton joueur peut courir
+function joyStart(id, x0, y0) {
+  Object.assign(joy, { active: true, id, x0, y0, dx: 0, dy: 0, mode: joyMode() });
+  const el = $('joy'), R = joyRadius();
+  el.style.left = x0 + 'px'; el.style.top = y0 + 'px'; el.style.width = el.style.height = R * 2 + 'px';
+  document.body.classList.add('joyheld');
+}
+function joyMove(x, y) {
+  const R = joyRadius();
+  let dx = (x - joy.x0) / R, dy = (y - joy.y0) / R;
   const m = Math.hypot(dx, dy); if (m > 1) { dx /= m; dy /= m; }
   joy.dx = dx; joy.dy = dy;
-  $('knob').style.transform = `translate(${dx * R0 * 0.62}px, ${dy * R0 * 0.62}px)`;
+  $('knob').style.transform = `translate(${dx * R}px, ${dy * R}px)`;
 }
-$('joy').addEventListener('pointerdown', e => {
-  e.preventDefault(); joy.active = true; joy.id = e.pointerId; joy.mode = joyMode();
-  $('joy').setPointerCapture(e.pointerId); joyUpdate(e);
-});
-$('joy').addEventListener('pointermove', e => { if (joy.active && e.pointerId === joy.id) joyUpdate(e); });
-function joyEnd(e) {
-  if (e.pointerId !== joy.id) return;
+function joyEnd() {
+  if (!joy.active) return;
   const sel = (meH() || {}).sel;
   if (sel) { G.pointer.x = sel.x; G.pointer.y = sel.y; }        // il s'arrête là où il est
   G.pointer.down = false; G.pointer.last = G.time; sendInput(true);
-  joy.active = false; joy.dx = joy.dy = 0; joy.mode = null; $('knob').style.transform = '';
+  joy.active = false; joy.id = null; joy.dx = joy.dy = 0; joy.mode = null; $('knob').style.transform = '';
+  document.body.classList.remove('joyheld');
 }
-$('joy').addEventListener('pointerup', joyEnd);
-$('joy').addEventListener('pointercancel', joyEnd);
 // à chaque image
 function joyFrame() {
   const mode = joyMode();
   document.body.classList.toggle('joyon', !!mode);
+  if (joy.active && G.phase !== 'play') joyEnd();             // fin du point : le doigt ne commande plus rien
   document.body.classList.toggle('canlayout', canLayout());
   document.body.classList.toggle('canswitch', canSwitchNow(meH()));
   document.body.classList.toggle('canjump', canJump());
@@ -155,7 +161,7 @@ function joyFrame() {
   joy.mode = mode;
   const m = Math.hypot(joy.dx, joy.dy);
   if (mode === 'move') {                                      // déplacement : la vitesse suit l'inclinaison
-    const sel = meH().sel, k = m < 0.12 ? 0 : 3.2;
+    const sel = meH().sel, k = m < 0.15 ? 0 : 3.2;
     G.pointer.x = sel.x + joy.dx * k; G.pointer.y = sel.y + joy.dy * k;
     G.pointer.down = true; G.pointer.active = true; G.pointer.last = G.time;
     sendInput();
@@ -180,7 +186,7 @@ $('fsB').addEventListener('click', () => {
 // ---------- téléphone : outils communs aux gestes (gestures.js) ----------
 const fdPull = () => G.phase === 'pull' && localPuller() && G.pullUI && G.pullUI.stage === 'aim' && !!disc.holder;
 const fdRadius = () => clamp(window.innerHeight * 0.32, 80, 150);
-const fdOnUI = t => !!(t && t.closest && t.closest('button, input, textarea, #controls, #tbtns, #joy, #tutoBox, #pracBox, #overlay, #hud, #emoBar, #curveV, #highB, #pauseBanner'));
+const fdOnUI = t => !!(t && t.closest && t.closest('button, input, textarea, #controls, #tbtns, #tutoBox, #pracBox, #overlay, #hud, #emoBar, #curveV, #highB, #pauseBanner'));
 
 // ---------- téléphone, réglage « Courbe et passe haute : boutons » : curseur de courbe et bouton sur le bord droit ----------
 // haut = courbe ↶ (comme A), bas = courbe ↷ (comme E)

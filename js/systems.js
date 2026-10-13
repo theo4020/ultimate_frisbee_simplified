@@ -110,7 +110,7 @@ function sysZoneSlots(D, defT, ax, ay, dir, closed) {
     s[k] = a && d < 7 ? { x: x + (a.x - x) * 0.3, y: y + (a.y - y) * 0.3 } : { x, y };
   };
   put(1, byDepth[0]); put(4, byDepth[1]); put(2, byDepth[2]); put(3, byDepth[3]);
-  return keepOutOfCircle(s, ax, ay);
+  return keepOutOfCircle(s, ax, ay, defT);
 }
 // individuelle : où se place un défenseur selon son rôle (null = comportement normal)
 function sysManSpot(D, d, a, ax, ay, dir, open) {

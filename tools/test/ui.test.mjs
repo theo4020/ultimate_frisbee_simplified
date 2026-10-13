@@ -99,6 +99,15 @@ export default async function (t) {
     t.ok(await p.evaluate(() => G.oplay && G.oplay.type === 'huck'), 'touche R : le Play 1 est appelé');
     await p.waitForTimeout(200);
     t.ok(!(await vis(p, '#play1B')), 'pendant le play, les boutons disparaissent');
+
+    t.group('PC : clic sur un coéquipier, clic droit pour sauter');
+    await p.evaluate(() => { G.oplay = null; G.off = 1 - G.me; G.pickup = null; const o = TEAMS[1 - G.me][0]; o.x = W / 2; o.y = H / 2; holdDisc(o); o.think = 99; updateSelected(); });
+    const pick = await p.evaluate(() => { const s = meH().sel, q = TEAMS[G.me].filter(x => x !== s).sort((a, b) => dist(b.x, b.y, s.x, s.y) - dist(a.x, a.y, s.x, s.y))[0], r = canvas.getBoundingClientRect();
+      return { i: TEAMS[G.me].indexOf(q), x: r.left + X(q.x), y: r.top + Y(q.y) }; });
+    await p.mouse.click(pick.x, pick.y);
+    t.ok(await p.evaluate(i => meH().sel === TEAMS[G.me][i], pick.i), 'clic sur un coéquipier géré par l’IA : tu le prends');
+    await p.mouse.click(pick.x + 40, pick.y, { button: 'right' });
+    t.ok(await p.evaluate(() => { const s = meH().sel; return s.jprep > 0 || s.jump > 0; }), 'clic droit en défense : ton joueur saute');
     await p.click('#menuB');
     t.ok(await vis(p, '#gameMenuCard') && await p.evaluate(() => G.paused), 'menu ☰ : le jeu se met en pause');
     await p.click('#gmCtrl');
@@ -193,6 +202,24 @@ export default async function (t) {
     await two('touchEnd', [{ x: pt.x - pt.dir * 112, y: pt.y, id: 1 }]);
     await q.waitForTimeout(300);
     t.ok((await q.evaluate(() => G.stats.throws)) === th0 + 1, 'puis le lancer part normalement');
+
+    t.group('Téléphone : joystick flottant (doigt posé n’importe où)');
+    await q.evaluate(() => { CTRL.move = 'joystick'; applyCtrlClass(); G.off = 1 - G.me; G.pickup = null; const o = TEAMS[1 - G.me][0]; o.x = W / 2; o.y = H / 2; holdDisc(o); updateSelected();
+      const s = meH().sel; s.x = W / 2 - 10; s.y = H / 2; });
+    await q.waitForFunction(() => document.body.classList.contains('joyon'), null, { timeout: 5000 });
+    t.ok(!(await vis(q, '#joy')), 'aucun joystick affiché tant que le doigt n’est pas posé');
+    const jp = await q.evaluate(() => { const r = canvas.getBoundingClientRect(); return { x: r.left + r.width * 0.6, y: r.top + r.height * 0.3 }; });
+    await touch('touchStart', jp.x, jp.y);
+    for (let k = 1; k <= 5; k++) { await touch('touchMove', jp.x + k * 16, jp.y); await q.waitForTimeout(16); }   // glisser vers la droite
+    const jb = await q.locator('#joy').boundingBox();
+    t.ok(jb && Math.abs(jb.x + jb.width / 2 - jp.x) < 3 && Math.abs(jb.y + jb.height / 2 - jp.y) < 3, 'le joystick apparaît là où le doigt s’est posé', jb);
+    const s0 = await q.evaluate(() => { const s = meH().sel; return { x: s.x, y: s.y }; });
+    await q.waitForTimeout(600);
+    const s1 = await q.evaluate(() => { const s = meH().sel; return { x: s.x, y: s.y }; });
+    t.ok(s1.x - s0.x > 1.5 && Math.abs(s1.y - s0.y) < 1, 'ton joueur court dans la direction départ → doigt', [s0, s1]);
+    await touch('touchEnd', jp.x + 80, jp.y);
+    await q.waitForTimeout(50);
+    t.ok(!(await vis(q, '#joy')), 'relâcher fait disparaître le joystick');
     await m.close();
   } finally {
     await browser.close(); await srv.close();

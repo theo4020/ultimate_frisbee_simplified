@@ -69,13 +69,14 @@ function update(dt) {
     if (disc.mode === 'ground' && G.pickup === p) { p.tx = disc.x; p.ty = disc.y; p.sp = pickupSpeed(p); continue; }
     if (disc.mode === 'carry' && disc.holder === p) { p.tx = G.carryTo.x; p.ty = G.carryTo.y; p.sp = 5.5; continue; }
     if (userControls(p)) { const inp = inputOf(controllerOf(p)); p.tx = inp.x; p.ty = inp.y; p.sp = SPD.user; continue; }   // humain (à plusieurs par équipe)
+    if (p.diveArmed) armedDive(p);                         // layout demandé par le joueur : il plonge au bon moment
     if (G.tuto && TUTO_STEPS[G.tuto.step] && TUTO_STEPS[G.tuto.step].still && tutoPin(p)) continue;   // tutoriel : receveur immobile
     if (disc.mode === 'air' && disc.intended === p) {
       const [rx, ry, ok] = runPoint(p);                    // il attaque le disque sur sa trajectoire (passe haute comprise, comme un humain)
       p.tx = rx; p.ty = ry; p.sp = SPD.cut;
       if (!ok && !disc.pull && !p.diveTried && !controllerOf(p) && (1 - disc.t / disc.dur) * disc.dur < DIVE_T + 0.15) {
-        const [cx, cy, can] = catchPoint(p);               // il n'arrivera pas à temps en courant : layout
-        if (can && dist(p.x, p.y, cx, cy) > 1.2) { p.diveTried = true; if (Math.random() < 0.6) diveTo(p, cx, cy); }
+        const b = bestDive(p);                             // il n'arrivera pas à temps en courant : layout
+        if (b.miss < 0) { p.diveTried = true; if (Math.random() < 0.6) diveTo(p, b.x, b.y); }
       }
       continue;
     }

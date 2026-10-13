@@ -148,7 +148,7 @@ const TUTO_STEPS = [
     text: {
       mouse: () => `Ton coéquipier ne bouge pas. Lance à 2–4 m de lui, puis <b>clic</b> (ou ${tutoCmd('dive')}) pendant le vol : il plonge.`,
       touch: 'Ton coéquipier ne bouge pas. Lance à 2–4 m de lui, puis <b>glisse vite</b> n’importe où pendant le vol : il plonge.',
-      joy: 'Ton coéquipier ne bouge pas. Lance à 2–4 m de lui, puis touche <b>Layout</b> pendant le vol : il plonge.',
+      joy: 'Ton coéquipier ne bouge pas. Lance à 2–4 m de lui, puis touche <b>Layout</b> pendant le vol : il plonge au bon moment.',
       pad: 'Ton coéquipier ne bouge pas. Lance à 2–4 m de lui, puis <b>B</b> pendant le vol : il plonge.'
     },
     still: true,                                               // le receveur reste immobile : c'est toi qui le fais plonger
@@ -172,7 +172,7 @@ const TUTO_STEPS = [
     title: 'Duel en l’air',
     ctx: 'move',
     text: {
-      mouse: () => `Ton receveur est collé. Lance-lui, puis <b>${tutoCmd('jump')}</b> pendant le vol : il saute et gagne le duel.`,
+      mouse: () => `Ton receveur est collé. Lance-lui, puis <b>${tutoCmd('jump')}</b> (ou clic droit) pendant le vol : il saute et gagne le duel.`,
       touch: 'Ton receveur est collé. Lance-lui, puis <b>tape ton receveur</b> pendant le vol : il saute et gagne le duel.',
       joy: 'Ton receveur est collé. Lance-lui, puis touche <b>Saut</b> pendant le vol : il gagne le duel.',
       pad: 'Ton receveur est collé. Lance-lui, puis <b>A</b> pendant le vol : il saute et gagne le duel.'
@@ -251,7 +251,7 @@ const TUTO_STEPS = [
     title: 'Contrer une passe haute',
     ctx: 'move',
     text: {
-      mouse: () => `Le porteur a armé une passe haute. <b>Saute (${tutoCmd('jump')})</b> juste avant qu’il lance : il faut deviner !`,
+      mouse: () => `Le porteur a armé une passe haute. <b>Saute (${tutoCmd('jump')} ou clic droit)</b> juste avant qu’il lance : il faut deviner !`,
       touch: 'Le porteur a armé une passe haute. <b>Tape ton joueur</b> pour sauter juste avant qu’il lance : il faut deviner !',
       joy: 'Le porteur a armé une passe haute. Touche <b>Saut</b> juste avant qu’il lance : il faut deviner !',
       pad: 'Le porteur a armé une passe haute. <b>A</b> pour sauter juste avant qu’il lance : il faut deviner !'

@@ -37,7 +37,7 @@ function renderCtrl() {
   const b = (g, v, label) => `<button class="copt${CTRL[g] === v ? ' on' : ''}" data-g="${g}" data-v="${v}">${label}</button>`;
   const MOVE = { tap: 'Taper un endroit pour y aller, ton joueur pour sauter, un coéquipier pour le prendre ; glisser vite n’importe où pour plonger.',
     follow: 'Garde le doigt posé : ton joueur le suit. Taper ton joueur le fait sauter, un coéquipier pour le prendre ; glisser vite pour plonger.',
-    joystick: 'Joystick en bas à gauche pour courir, boutons Layout / Saut / Switch en bas à droite. Taper un coéquipier le prend aussi.' };
+    joystick: 'Pose le doigt n’importe où et glisse pour courir dans cette direction (comme un joystick), boutons Layout / Saut / Switch en bas à droite. Taper un coéquipier le prend aussi.' };
   $('ctrlBody').innerHTML = `
     <h2>Téléphone : avec le disque</h2>
     <div class="row"><span>Lancer</span>${b('sling', true, 'Lance-pierre (tirer en arrière)')}${b('sling', false, 'Glisser vers la cible')}</div>
@@ -49,7 +49,7 @@ function renderCtrl() {
     <div class="desc">${MOVE[CTRL.move]}</div>
     <h2>Clavier</h2>
     ${KEY_ACTIONS.map(([a, l]) => `<div class="row"><span>${l}</span><button class="kbtn${keyWait === a ? ' on' : ''}" data-a="${a}">${keyWait === a ? 'Appuie sur une touche…' : keysOf(a).map(keyName).join(' / ')}</button></div>`).join('')}
-    <div class="desc">La souris vise et lance (clic maintenu), clic droit appelle un cut ; 1 à 5 prennent un joueur.</div>
+    <div class="desc">La souris vise et lance (clic maintenu). Clic sur un coéquipier : tu le prends. Clic droit : avec le disque, appel d’un cut ; sinon saut (en défense, ou pour ton receveur pendant le vol) ; 1 à 5 prennent aussi un joueur.</div>
     <button id="keysReset" class="ghost">Touches par défaut</button>
     <h2>Manette</h2>
     <div class="desc">Stick gauche : curseur de visée (avec le disque) ou déplacement · A / RT : lancer (sans le disque : saut) · B : layout · X : appel de cut au curseur ou changer de joueur · Y : passe haute · LB / RB : courbe · croix ← / → : Play 1 / Play 2 · Start : valider.</div>`;

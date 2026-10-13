@@ -107,7 +107,8 @@ function selectFor(h, p) {
   return true;
 }
 // layout : en défense, ou à plusieurs dans l'équipe, ton joueur plonge vers (x, y) quand tu veux (sauf s'il a le disque) ;
-// seul en attaque, c'est le receveur du disque en vol qui plonge. Le receveur visé plonge vers le point où sera le disque.
+// seul en attaque, c'est le receveur du disque en vol qui plonge, vers l'endroit où le disque SERA (pas là où il est) :
+// si le plongeon peut l'attraper maintenant, il part tout de suite ; sinon le layout est « armé » et il plonge au bon moment (armedDive)
 function diveFor(h, x, y) {
   if (!h || h.team < 0 || G.phase !== 'play') return;
   const air = disc.mode === 'air' && disc.team === h.team && !disc.pull;
@@ -115,9 +116,39 @@ function diveFor(h, x, y) {
   if (G.off === h.team && soloStyle(h.team)) { if (!air) return; p = disc.intended || nearest(TEAMS[h.team], disc.ex, disc.ey, disc.thrower); }
   else p = h.sel;
   if (!p || (disc.holder === p && (disc.mode === 'held' || disc.mode === 'carry')) || (air && p === disc.thrower)) return;
-  if (air && G.off === h.team && p === disc.intended) [x, y] = catchPoint(p);
+  if (air && G.off === h.team && soloStyle(h.team)) { p.diveArmed = true; armedDive(p); return; }
   diveTo(p, x, y);
   if (h.sel === p) inputOf(h).last = G.time;
+}
+// layout armé : il plonge dès qu'un plongeon attrape le disque ; au plus tard quand le disque arrive (meilleur essai possible)
+function armedDive(p) {
+  if (disc.mode !== 'air' || disc.pull || disc.team !== p.team || disc.thrower === p) { p.diveArmed = false; return; }
+  if (p.dive > 0 || p.down > 0 || p.jump > 0 || p.jprep > 0) return;
+  const b = bestDive(p);
+  if (b.miss < 0 || disc.dur - disc.t <= DIVE_T) { p.diveArmed = false; p.diveTried = true; diveTo(p, b.x, b.y); }
+}
+// plongeon simulé vers (x, y) en partant maintenant : plus petit écart au disque attrapable pendant le plongeon
+// (négatif = il l'attrape ; mêmes règles que sim.js : 2 m en plongeon, disque assez bas, dans le terrain)
+function diveMiss(p, x, y) {
+  let dx = x - p.x, dy = y - p.y; const l = Math.hypot(dx, dy) || 1; dx /= l; dy /= l;
+  const peak = discPeak(), step = 0.78 / 60; let miss = 99;
+  for (let t = step; t <= DIVE_T + 1e-6; t += step) {
+    const u = (disc.t + t) / disc.dur, px = p.x + dx * SPD.dive * t, py = p.y + dy * SPD.dive * t;
+    if (u >= 1) { if (inField(disc.ex, disc.ey)) miss = Math.min(miss, dist(px, py, disc.ex, disc.ey) - 2.6); break; }   // il touche le sol en plongeant
+    if (u <= 0.3 || heightAt(u, peak, disc.kind) >= REACH_DIVE + 0.3) continue;
+    const [bx, by] = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u);
+    if (inField(bx, by)) miss = Math.min(miss, dist(px, py, bx, by) - 2.0);
+  }
+  return miss;
+}
+// meilleure direction de plongeon : vers chaque point de la trajectoire restante et tout autour de lui ; la plus sûre
+function bestDive(p) {
+  const u0 = disc.t / disc.dur, cand = [];
+  for (let u = Math.min(1, u0 + 0.02); u <= 1.001; u += 0.02) cand.push(bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, Math.min(1, u)));
+  for (let a = 0; a < 16; a++) cand.push([p.x + Math.cos(a * Math.PI / 8) * 3, p.y + Math.sin(a * Math.PI / 8) * 3]);
+  let best = { x: disc.ex, y: disc.ey, miss: 99 };
+  for (const [x, y] of cand) { const m = diveMiss(p, x, y); if (m < best.miss) best = { x, y, miss: m }; }
+  return best;
 }
 // saut : en défense ou à plusieurs, ton joueur ; seul en attaque, le receveur du disque en vol
 function jumpTarget(h) {
@@ -129,20 +160,6 @@ function jumpFor(h) {
   const p = jumpTarget(h);
   if (G.tuto && p) G.tuto.jumped = true;
   if (p && jumpTo(p) && h.sel === p) inputOf(h).last = G.time;
-}
-// meilleur point pour plonger : là où sera le disque quand le plongeon y arrive (premier point attrapable de la trajectoire
-// restante qu'il atteint à temps) ; sinon le point de la trajectoire le plus proche de lui
-function catchPoint(p) {
-  const u0 = disc.t / disc.dur, peak = discPeak();
-  let best = null, bd = 1e9;
-  for (let u = Math.min(1, u0 + 0.01); u <= 1.001; u += 0.02) {
-    const [x, y] = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u);
-    if (!inField(x, y)) continue;                              // pas de réception tant que le disque est dehors
-    const tA = (u - u0) * disc.dur, r = dist(p.x, p.y, x, y);
-    if (u > 0.3 && heightAt(u, peak, disc.kind) <= REACH_DIVE + 0.25 && tA <= DIVE_T + 0.35 && r <= SPD.dive * Math.min(tA, DIVE_T) + 1.7) return [x, y, true];
-    if (r < bd) { bd = r; best = [x, y, false]; }
-  }
-  return best || [...inSpot(disc.ex, disc.ey), false];
 }
 // point du terrain le plus proche (un disque qui sort se rattrape au bord, quand il revient)
 const inSpot = (x, y) => [clamp(x, 0.3, W - 0.3), clamp(y, 0.3, H - 0.3)];

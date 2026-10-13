@@ -34,7 +34,7 @@ function throwDisc(h, tx, ty, curve, errScale, kind) {
   msThrow(h, d, kind);
   if (G.dplay && G.dplay.team !== h.team) G.dplay.throws++;
   disc.intended = nearest(TEAMS[h.team], ex, ey, h);
-  players.forEach(p => { p.diveTried = false; p.jumpTried = false; if (p.team !== h.team) p.react = 0; });
+  players.forEach(p => { p.diveTried = false; p.diveArmed = false; p.jumpTried = false; if (p.team !== h.team) p.react = 0; });
   G.stall = 0; G.stats.throws++;
   fxEvent('throw', h.x, h.y, h.team);
   preCatch();
@@ -78,7 +78,7 @@ function laneSlack(h, aimX, aimY, tx, ty, curve, opp, kind) {
 function aiThrow(h, release) {
   const t = h.team, dir = dirOf(t), opp = TEAMS[1 - t];
   const press = Math.max(G.stall, G.holdT * 0.8);           // même sans marqueur, l'IA finit par lancer
-  const ST = aiStyle(t);
+  const ST = aiStyle(t), L = aiLvl(t), greed = L.greed || 0;   // greed : un débutant force les passes et juge mal le danger
   if (!release && !G.aiPlayTried && !G.oplay) {              // une fois par possession, l'IA appelle parfois un de ses deux plays
     G.aiPlayTried = true;
     if (Math.random() < 0.5 && callPlay(t, Math.random() < 0.6 ? 1 : 2)) { h.think = 0.35; return; }
@@ -119,17 +119,17 @@ function aiThrow(h, release) {
         const slack = laneSlack(h, aimX, aimY, cx0, cy0, curve, opp, kind);
         const kindCost = kind === 'high' ? (release ? 0 : (0.1 + G.wind.kmh * 0.04 + throwErr(d, 0, kind) * 0.2) / ST.high + (ST.high < 1 ? 1.5 : 0)) : 0;
         // les passes qui font avancer le jeu valent plus, les longues encore plus (huck)
-        const v = clamp(slack, -1, 0.6) * 4 + gain * 0.3 + (long ? 2.2 * ST.huck : 0) + (inScoreZone(t, cx0) ? 8 : 0)
+        const v = clamp(slack, -1, 0.6) * 4 * (1 - 0.45 * greed) + gain * 0.3 * (1 + 0.6 * greed) + (long ? 2.2 * ST.huck * (1 + greed) : 0) + (Math.random() - 0.5) * 4 * greed + (inScoreZone(t, cx0) ? 8 : 0)
           + (G.stall > 5 && p.role === 'dump' ? 2.5 : 0) + (p.free ? 4 : 0) + playBonus - Math.abs(curve) * 0.6 - d * (0.02 + G.wind.kmh * 0.003) - kindCost;
         // un huck peut être un peu disputé : le disque passe au-dessus de la défense au milieu
-        const minSlack = (playBonus && P.type === 'huck' ? -0.15 : long ? -0.08 - (ST.huck - 1) * 0.25 : p.free ? -0.08 : 0.05) + aiLvl(t).safe + (kind === 'high' ? (release ? -0.15 : 0) : 0);
+        const minSlack = (playBonus && P.type === 'huck' ? -0.15 : long ? -0.08 - (ST.huck - 1) * 0.25 : p.free ? -0.08 : 0.05) + L.safe - 0.45 * greed + (kind === 'high' ? (release ? -0.15 : 0) : 0);
         if (slack < minSlack && press < 8.3) continue;
         if (v > bv) { bv = v; best = { tx: aimX, ty: aimY, curve, kind }; }
       }
     }
   }
   if (release) {                                            // passe haute armée : on la lance, ou on renonce
-    if (best && best.kind === 'high') throwDisc(h, best.tx, best.ty, best.curve, 0.85 * aiLvl(t).err, 'high');
+    if (best && best.kind === 'high') throwDisc(h, best.tx, best.ty, best.curve, 0.85 * L.err, 'high');
     else h.think = 0.2;
     return;
   }
@@ -137,12 +137,12 @@ function aiThrow(h, release) {
     const p = nearest(TEAMS[t], h.x + dir * 8, h.y, h);
     if (p) { const [ax2, ay2] = aimFor(h, clamp(p.x, 1, W - 1), clamp(p.y, 1, H - 1)); best = { tx: ax2, ty: ay2, curve: 0 }; bv = 9; }
   }
-  if (!best || (bv < 3.2 - press * 0.35 && press < 6)) { h.think = 0.25; return; }
+  if (!best || (bv < 3.2 - 1.2 * greed - press * 0.35 && press < 6)) { h.think = 0.25; return; }   // un débutant lance plus vite
   if (best.kind === 'high') { h.windup = { t: rand(...HIGH_WINDUP) }; return; }   // il arme sa passe haute (visible), lancera plus tard
   // bluff : il arme une passe haute sans vraiment la vouloir, pour faire sauter la mark (puis lance ce qui est ouvert)
   if (G.marker && dist(G.marker.x, G.marker.y, h.x, h.y) < 3 && !h.bluffed && Math.random() < ST.bluff * 0.3) {
     h.bluffed = true; h.windup = { t: rand(0.5, 1.1), bluff: true }; return;
   }
-  throwDisc(h, best.tx, best.ty, best.curve, 0.85 * aiLvl(t).err, best.kind);
+  throwDisc(h, best.tx, best.ty, best.curve, 0.85 * L.err, best.kind);
 }
 

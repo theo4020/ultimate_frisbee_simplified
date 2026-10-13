@@ -7,7 +7,8 @@
 //  Sans le disque :
 //   • taper un endroit : ton joueur y va · taper un coéquipier : tu le prends · taper ton joueur : il saute ;
 //   • glisser vite n'importe où : layout dans cette direction ;
-//   • option « le joueur suit le doigt » : doigt maintenu, ton joueur le suit.
+//   • option « le joueur suit le doigt » : doigt maintenu, ton joueur le suit ;
+//   • option « joystick et boutons » : poser le doigt n'importe où et glisser, ton joueur court dans cette direction (controls.js).
 
 // Chaque doigt est suivi à part (plusieurs doigts à la fois) : un tap reste un tap même si un autre doigt vise ou courbe.
 //  • le premier doigt qui glisse quand tu as le disque devient le doigt de visée ;
@@ -35,7 +36,9 @@ window.addEventListener('pointermove', e => {
       const el = $('fjoy'); el.style.left = F.x0 + 'px'; el.style.top = F.y0 + 'px';
       el.style.width = el.style.height = fdRadius() * 2 + 'px'; el.style.display = 'block';
     } else if (GS.aim) { F.role = 'curve'; F.cx = e.clientX; F.cy = e.clientY; F.c0 = G.curve; }
+    else if (CTRL.move === 'joystick' && joyMode() && !joy.active) { F.role = 'stick'; joyStart(F.id, F.x0, F.y0); }   // joystick flottant
   }
+  if (F.role === 'stick') { joyMove(e.clientX, e.clientY); return; }
   if (F.role === 'aim') {
     const R = fdRadius(), k = len > R ? R / len : 1;
     $('fknob').style.transform = `translate(${dx * k}px, ${dy * k}px)`;
@@ -73,6 +76,7 @@ function gsEnd(e, cancel) {
     } else G.pointer.active = false;
     return;
   }
+  if (F.role === 'stick') { joyEnd(); return; }
   if (F.role === 'curve' || cancel) return;
   if (F.role === 'follow') { G.pointer.down = false; G.pointer.last = G.time; sendInput(true); return; }
   if (len >= GS_SWIPE && dt < 0.3) {                          // glissé rapide : layout

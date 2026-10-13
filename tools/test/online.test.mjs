@@ -74,10 +74,18 @@ export default async function (t) {
     await guest.bringToFront(); await guest.keyboard.press('t');      // l'invité appelle son Play 2 : l'hôte le lance
     await host.waitForFunction(() => G.oplay && G.oplay.team === 1, null, { timeout: 3000 }).catch(() => {});
     t.ok(await host.evaluate(() => !!G.oplay && G.oplay.team === 1 && G.oplay.n === 2), 'l’invité appelle un play : il se joue chez l’hôte');
+    // chez l'invité, le porteur glisse vers sa nouvelle place (positions lissées) : on vise une fois qu'il y est
+    await guest.waitForFunction(() => canThrow() && disc.holder && Math.abs(disc.holder.x - W / 2) < 0.3 && Math.abs(disc.holder.y - H / 2) < 0.3, null, { timeout: 5000 }).catch(() => {});
     const th = await host.evaluate(() => G.stats.throws);
-    const aim = await guest.evaluate(() => { const r = canvas.getBoundingClientRect(), h = disc.holder; return { x: r.left + X(h.x + 10 * dirOf(1)), y: r.top + Y(h.y) }; });
+    const aim = await guest.evaluate(() => {               // un point du terrain à ~10 m devant, qui n'est pas sous un bouton (▶ plays, etc.)
+      const r = canvas.getBoundingClientRect(), h = disc.holder;
+      for (const [fx, fy] of [[10, 0], [10, 4], [10, -4], [8, 6], [8, -6], [12, 0]]) {
+        const x = r.left + X(h.x + fx * dirOf(1)), y = r.top + Y(clamp(h.y + fy, 2, H - 2));
+        if (document.elementFromPoint(x, y) === canvas) return { x, y };
+      }
+      return { x: r.left + X(h.x + 10 * dirOf(1)), y: r.top + Y(h.y) }; });
     await guest.mouse.move(aim.x, aim.y); await guest.mouse.down(); await guest.mouse.up();
-    await host.waitForFunction(n => G.stats.throws > n, th, { timeout: 2500 }).catch(() => {});
+    await host.waitForFunction(n => G.stats.throws > n, th, { timeout: 5000 }).catch(() => {});
     t.ok((await host.evaluate(() => G.stats.throws)) === th + 1, 'la passe de l’invité est jouée chez l’hôte');
 
     t.group('Ce que l’adversaire ne voit pas');

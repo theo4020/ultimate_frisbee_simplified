@@ -27,7 +27,8 @@ function dropChance() {
 function catchDisc(p) {
   if (disc.pull) { pullCaught(p); return; }
   // le vent fait bouger le disque : plus de drops ; une passe haute retombe en flottant, plus dure à attraper
-  if (Math.random() < dropChance()) { G.stats.drops = (G.stats.drops || 0) + 1; msTurnover(p, 'drop'); turnover(p.x, p.y, 'Drop ! Turnover'); return; }
+  const hands = G.tuto || G.practice || controllerOf(p) ? 0 : aiLvl(p.team).hands || 0;   // mains du niveau (joueurs IA)
+  if (Math.random() < dropChance() + hands) { G.stats.drops = (G.stats.drops || 0) + 1; msTurnover(p, 'drop'); turnover(p.x, p.y, 'Drop ! Turnover'); return; }
   G.stats.comps++;
   const scored = inScoreZone(p.team, disc.x);                   // le point se joue là où le disque est attrapé
   msCatch(p, scored);
