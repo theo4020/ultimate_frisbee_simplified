@@ -81,6 +81,8 @@ function gpPlay(sx, sy, m, press) {
     G.pointer.x = GP.aim[0]; G.pointer.y = GP.aim[1]; G.pointer.active = true; G.aiming = true;
     if (press(0) || press(7)) { doThrow(GP.aim[0], GP.aim[1], G.curve); GP.aim = null; GP.holder = null; G.aiming = false; G.pointer.active = false; }
     else if (press(2)) doCall(GP.aim[0], GP.aim[1]);
+    if (press(14)) doPlay(1);                                  // croix ← / → : appeler Play 1 / Play 2
+    if (press(15)) doPlay(2);
     if (press(1)) gpNoLayout();
     return;
   }

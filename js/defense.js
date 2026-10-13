@@ -83,6 +83,55 @@ function setupDefense(defT, h) {
   if (defFormOf(defT) === 'man') assignMan(defT, h); else assignZone(defT, h.x, h.y);
 }
 
+// =====================================================================
+//  Lecture collective (3 fois par seconde) : changements, aide, passe probable
+// =====================================================================
+// readK = qualité de lecture selon le niveau (facile 0 : chacun pour soi … légende 1 : défense très collective)
+const readK = t => clamp((aiLvl(t).anticip - 0.1) / 0.45, 0, 1);
+function defenseBrain(defT, dt) {
+  G.dbT = (G.dbT || 0) - dt;
+  if (G.dbT > 0) return;
+  G.dbT = 0.33;
+  const B = G.dB = { team: defT, help: null, read: null };
+  const h = disc.holder, k = readK(defT);
+  if (disc.mode !== 'held' || !h || h.team === defT || k <= 0) return;
+  const dfn = TEAMS[defT].filter(d => !userControls(d)), atk = TEAMS[1 - defT].filter(a => a !== h), man = defFormOf(defT) === 'man';
+  const dir = dirOf(1 - defT);
+  // 1) changement : deux défenseurs qui se croisent échangent leurs attaquants si c'est nettement plus court
+  if (man && Math.random() < k) {
+    for (const d1 of dfn) for (const d2 of dfn) {
+      if (d1 === d2 || !d1.match || !d2.match || d1.match === h || d2.match === h || dist(d1.x, d1.y, d2.x, d2.y) > 6) continue;
+      const now = dist(d1.x, d1.y, d1.match.x, d1.match.y) + dist(d2.x, d2.y, d2.match.x, d2.match.y);
+      const sw = dist(d1.x, d1.y, d2.match.x, d2.match.y) + dist(d2.x, d2.y, d1.match.x, d1.match.y);
+      if (sw < now - 5) { const a = d1.match; d1.match = d2.match; d2.match = a; }
+    }
+  }
+  // 2) passe probable : l'attaquant le plus dangereux (ligne de passe ouverte, terrain gagné, défenseur loin)
+  let best = null, bv = -1e9;
+  for (const a of atk) {
+    const tx = a.state === 'cut' || a.state === 'jab' ? a.cx : a.x, ty = a.state === 'cut' || a.state === 'jab' ? a.cy : a.y;
+    const lane = clamp(laneSlack(h, tx, ty, tx, ty, 0, TEAMS[defT]), -1, 0.6), gain = dir * (tx - h.x);
+    const g = man ? TEAMS[defT].find(d => d.match === a) : nearest(TEAMS[defT], a.x, a.y);
+    const sep = g ? dist(g.x, g.y, a.x, a.y) : 9;
+    const v = lane * 4 + gain * 0.12 + sep * 0.5;
+    if (v > bv) { bv = v; best = { a, x: tx, y: ty, sep, lane }; }
+  }
+  if (!best) return;
+  B.read = best;
+  // 3) aide : si cet attaquant est vraiment libre, le défenseur le mieux placé (et dont le joueur est moins dangereux) ferme la ligne
+  if (best.sep > 4 && best.lane > 0) {
+    const px = h.x + (best.x - h.x) * 0.65, py = h.y + (best.y - h.y) * 0.65;
+    let hb = null, hv = 1e9;
+    for (const d of dfn) {
+      if (d === G.marker || (man && (d.match === best.a || d.match === h))) continue;
+      const own = man && d.match ? dir * (d.match.x - h.x) : 0;          // son propre joueur : derrière le disque = peu dangereux
+      const v = dist(d.x, d.y, px, py) + clamp(own, -10, 25) * 0.3;
+      if (v < hv) { hv = v; hb = d; }
+    }
+    if (hb && hv < 14) B.help = { d: hb, x: px, y: py, w: 0.45 + 0.5 * k };
+  }
+}
+
 // Où un défenseur peut-il couper la trajectoire avant le disque ?
 function bestIntercept(d) {
   const u0 = disc.t / disc.dur, peak = discPeak();
@@ -125,6 +174,10 @@ function defenderAI(d, ax, ay, dir, closed, form, slots) {
     const marking = ((disc.mode === 'held' || disc.mode === 'carry') && disc.holder === a) || (disc.mode === 'ground' && G.pickup === a);
     if (marking) {                                          // marquage : côté fermé (ou devant en straight up)
       [d.tx, d.ty] = markSpot(d.team, disc.x, disc.y); d.react = 0.08;
+    } else if (G.dB && G.dB.team === d.team && G.dB.help && G.dB.help.d === d) {   // aide : il ferme la ligne vers l'attaquant libre
+      const H_ = G.dB.help, ant = aiLvl(d.team).anticip;
+      const ox = a.x + a.vx * ant + dir * 0.4, oy = a.y + a.vy * ant + open;
+      d.tx = ox + (H_.x - ox) * H_.w; d.ty = oy + (H_.y - oy) * H_.w; d.react = Math.min(d.react, 0.1);
     } else if (dsysOf(d.team) && dsysOf(d.team).mode === 'man' && (sp = sysManSpot(dsysOf(d.team), d, a, ax, ay, dir, open))) {
       [d.tx, d.ty] = sp;                                    // rôle donné dans le système perso (serré, profond, double team)
     } else {                                                // on anticipe la course et on protège le côté ouvert
@@ -132,10 +185,19 @@ function defenderAI(d, ax, ay, dir, closed, form, slots) {
       const depth = dir * (a.x - ax);
       d.tx = px + dir * (depth > 17 ? 1.8 : 0.4);
       d.ty = py + open * 1.0;
+      const R = G.dB && G.dB.team === d.team && G.dB.read;
+      if (R && R.a === a && disc.holder) {                  // c'est lui que le porteur regarde : il se glisse dans la ligne de passe
+        const k = readK(d.team), lx = disc.holder.x - d.tx, ly = disc.holder.y - d.ty, l = Math.hypot(lx, ly) || 1;
+        d.tx += lx / l * 1.4 * k; d.ty += ly / l * 1.4 * k; d.react = Math.min(d.react, 0.12);
+      }
     }
   } else {
     const s = slots[d.zslot]; d.tx = s.x; d.ty = s.y;
     if (d.zslot === 0) d.react = 0.08;
+    const R = G.dB && G.dB.team === d.team && G.dB.read;   // zone : le plus proche de la passe probable se décale vers elle
+    if (R && d.zslot !== 0 && nearest(TEAMS[d.team].filter(q => q.zslot !== 0), R.x, R.y) === d) {
+      const k = readK(d.team) * 0.35; d.tx += (R.x - d.tx) * k; d.ty += (R.y - d.ty) * k;
+    }
   }
   avoidDoubleTeam(d, form);
   d.tx = clamp(d.tx, 0.5, W - 0.5); d.ty = clamp(d.ty, 0.5, H - 0.5);

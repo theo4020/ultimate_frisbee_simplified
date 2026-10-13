@@ -360,3 +360,7 @@ body.touch #tutoBox{font-size:13.5px;line-height:1.3;padding:4px 10px}
 .sel{flex:1;min-width:0;max-width:340px;font:inherit;font-size:15px;padding:8px 10px;border-radius:8px;border:1px solid var(--panel2);background:var(--bg);color:var(--text);cursor:pointer}
 .sel:focus{outline:2px solid var(--accent);outline-offset:1px}
 .locked .sel{pointer-events:none}
+/* boutons d'appel des plays, en haut du terrain quand tu as le disque */
+#playBtns{position:absolute;top:8px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:5;pointer-events:none}
+#playBtns button{pointer-events:auto;background:rgba(15,23,42,.78);border:1px solid var(--accent);color:var(--text);font-weight:700;font-size:14px;padding:6px 12px;border-radius:18px;white-space:nowrap}
+body.touch #playBtns button{font-size:13px;padding:7px 12px}

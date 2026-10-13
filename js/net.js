@@ -223,6 +223,7 @@ function hostOnData(id, m) {
     case 'emo': hostEmote(id, m.e | 0); break;
     case 'name': h.name = cleanName(m.name); broadcastRoom(); break;
     case 'in': Object.assign(inputOf(h), { x: +m.x || 0, y: +m.y || 0, down: !!m.down, high: !!m.high, last: G.time }); break;
+    case 'callplay': if (G.phase === 'play' && throwerHuman() === h) callPlay(h.team, m.n === 2 ? 2 : 1); break;
     case 'throw': if (G.phase === 'play' && throwerHuman() === h) throwDisc(disc.holder, +m.x, +m.y, clamp(+m.curve || 0, -1, 1), 1, THROWS[m.kind] ? m.kind : 'normal'); break;
     case 'dive': diveFor(h, +m.x, +m.y); break;
     case 'jump': jumpFor(h); break;
@@ -232,7 +233,8 @@ function hostOnData(id, m) {
     case 'pause': setPause(id, !!m.on); break;
     case 'pull': if (G.phase === 'pull' && G.pull && G.pull.by === h.id) launchPull(+m.x, +m.y, m.curve, m.q); break;
     case 'ready':
-      if (captain(h.team) === h) { h.cfg = Object.assign({}, DEFAULT_CFG, m.cfg, { osys: cleanSystem(m.cfg && m.cfg.osys), dsys: cleanSystem(m.cfg && m.cfg.dsys) }); (G.readyIds = G.readyIds || new Set()).add(id); }
+      if (captain(h.team) === h) { h.cfg = Object.assign({}, DEFAULT_CFG, m.cfg, { osys: cleanSystem(m.cfg && m.cfg.osys), dsys: cleanSystem(m.cfg && m.cfg.dsys),
+        p1sys: cleanSystem(m.cfg && m.cfg.p1sys), p2sys: cleanSystem(m.cfg && m.cfg.p2sys) }); (G.readyIds = G.readyIds || new Set()).add(id); }
       refreshCaptainUI(); tryStartOnline(); break;
   }
 }

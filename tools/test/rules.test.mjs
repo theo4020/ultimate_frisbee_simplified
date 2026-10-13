@@ -14,7 +14,7 @@ export default async function (t, { quick }) {
     }
     const s = G.stats;
     return { pts, stuck, sec: frames / 60 / pts, comp: s.comps / s.throws, to: (s.blocks + s.ints + s.stalls + s.ground + s.out + (s.drops || 0)) / pts,
-      blocks: s.blocks, ints: s.ints, phase: G.phase };
+      blocks: s.blocks, ints: s.ints, phase: G.phase, pre: (s.preCatch || 0) / s.throws };
   })()`);
   t.ok(r.stuck === 0, 'aucun point bloqué', r);
   t.ok(r.phase === 'over', 'les matchs vont au bout', r.phase);
@@ -22,6 +22,20 @@ export default async function (t, { quick }) {
   t.ok(r.to > 0.5 && r.to < 3, 'turnovers par point réalistes (0,5–3)', +r.to.toFixed(2));
   t.ok(r.sec > 8 && r.sec < 150, 'durée d’un point raisonnable', +r.sec.toFixed(0));
   t.ok(r.blocks + r.ints > 0, 'la défense arrête des passes', r);
+  t.ok(r.pre > 0.3 && r.pre < 0.98, 'sur une passe sûre, tout le monde se replace avant la réception', +r.pre.toFixed(2));
+
+  t.group('Replacement pendant la passe');
+  const pc = R(`(() => {                                       // une passe courte et libre : rôles et défense attribués dès le lancer
+    G.score = [0, 0]; G.receiving = 0; newWind(); startPoint();
+    for (let f = 0; f < 6000 && !(G.phase === 'play' && disc.mode === 'held' && G.stall > 1); f++) __tick();
+    const h = disc.holder, t = h.team, q = TEAMS[t].filter(p => p !== h).sort((a, b) => dist(a.x, a.y, h.x, h.y) - dist(b.x, b.y, h.x, h.y))[0];
+    for (const d of TEAMS[1 - t]) { d.x = W - 2 + (t ? -W + 4 : 0); d.y = 2; }  // défenseurs loin : personne ne peut couper
+    G.stats.preCatch = 0;
+    throwDisc(h, q.x, q.y, 0, 0, 'normal');
+    const r = disc.intended;
+    return { pre: G.stats.preCatch, inOrder: G.order[t].includes(r), throwerIsCutter: G.order[t].includes(h) || h.role === 'dump', marked: TEAMS[1 - t].some(d => d.match === r) || defFormOf(1 - t) !== 'man' };
+  })()`);
+  t.ok(pc.pre === 1 && !pc.inOrder && pc.throwerIsCutter && pc.marked, 'au lancer : le receveur devient porteur, le lanceur reprend un rôle (coupeur ou relais), un défenseur le prend', pc);
 
   t.group('Interceptions');
   const ir = R(`(() => {                                       // 600 arrêts au milieu du terrain, sans jouer la suite

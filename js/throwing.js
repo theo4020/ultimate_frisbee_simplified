@@ -37,7 +37,22 @@ function throwDisc(h, tx, ty, curve, errScale, kind) {
   players.forEach(p => { p.diveTried = false; p.jumpTried = false; if (p.team !== h.team) p.react = 0; });
   G.stall = 0; G.stats.throws++;
   fxEvent('throw', h.x, h.y, h.team);
+  preCatch();
   return true;
+}
+// Passe lancée qui va être attrapée (le receveur arrive à temps et aucun défenseur ne peut la couper) :
+// attaquants et défenseurs se placent tout de suite comme si le receveur avait déjà le disque au point de réception
+// (rôles d'attaque, défenseur attribué à chacun), au lieu d'attendre la réception pour se réorganiser.
+function preCatch() {
+  const p = disc.intended;
+  if (!p || disc.pull || G.tuto || G.practice) return;
+  const [x, y, ok] = runPoint(p);
+  if (!ok || inScoreZone(p.team, x) || TEAMS[1 - p.team].some(d => bestIntercept(d))) return;
+  const ox = p.x, oy = p.y;
+  p.x = x; p.y = y;                                          // le temps du calcul, le receveur est « déjà » au point de réception
+  assignRoles(p.team, p); setupDefense(1 - p.team, p);
+  p.x = ox; p.y = oy;
+  G.stats.preCatch = (G.stats.preCatch || 0) + 1;
 }
 
 // Marge de sécurité d'une trajectoire (positive = aucun défenseur ne peut l'atteindre à temps)
@@ -64,6 +79,10 @@ function aiThrow(h, release) {
   const t = h.team, dir = dirOf(t), opp = TEAMS[1 - t];
   const press = Math.max(G.stall, G.holdT * 0.8);           // même sans marqueur, l'IA finit par lancer
   const ST = aiStyle(t);
+  if (!release && !G.aiPlayTried && !G.oplay) {              // une fois par possession, l'IA appelle parfois un de ses deux plays
+    G.aiPlayTried = true;
+    if (Math.random() < 0.5 && callPlay(t, Math.random() < 0.6 ? 1 : 2)) { h.think = 0.35; return; }
+  }
   let best = null, bv = -1e9;
   for (const p of TEAMS[t]) {
     if (p === h) continue;
@@ -73,7 +92,8 @@ function aiThrow(h, release) {
       tx = p.x + p.vx * ft * 0.9; ty = p.y + p.vy * ft * 0.9;
     }
     const P = G.oplay, playBonus = P && P.team === t && P.targets.includes(p) ? 3 : 0;
-    if (P && P.team === t && P.t < 3.5 && press < 5 && !playBonus) continue;   // l'IA joue son play jusqu'au bout
+    // play en cours : tant que ses coupeurs sont en route, l'IA attend leur appel (mais pas trop longtemps)
+    if (P && P.team === t && P.t < 2.5 && press < 5 && !playBonus && P.targets.some(q => q.state === 'jab' || q.state === 'cut' || q.state === 'park')) continue;
     // cibles : là où sera le receveur, et pour un joueur qui file vers l'avant, l'espace devant lui (passe longue)
     const cands = [[tx, ty]];
     const fwd = dir * p.vx;

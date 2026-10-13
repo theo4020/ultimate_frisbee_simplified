@@ -51,57 +51,86 @@ function hustle(p, base) {
   return dist(p.x, p.y, p.tx, p.ty) > 7 ? Math.max(base, SPD.cut * 0.92) : base;
 }
 
-// Juste après une réception, un cutter propose aussitôt la passe suivante (continuation),
-// de préférence celui qui est déjà lancé vers l'avant côté open.
-function continuationCut(t, h) {
-  if ((G.oplay && G.oplay.team === t) || osysOf(t)) return;  // un système perso enchaîne avec sa course 1
-  const dir = dirOf(t), open = -closedOf(1 - t);
-  const room = depthLeft(h.x, dir);
-  if (room < 4) return;
-  const tx = h.x + dir * Math.min(rand(8, 13), room - 1), ty = clamp(h.y + open * rand(3, 8), 2, H - 2);
-  let best = null, bv = 1e9;
-  for (const c of G.order[t]) {
-    const ahead = dir * (c.x - h.x);                          // déjà devant le disque = bien placé
-    const v = dist(c.x, c.y, tx, ty) - Math.max(0, Math.min(ahead, 12)) * 0.5 + Math.max(0, -dir * (c.vx || 0)) * 0.6;
-    if (v < bv) { bv = v; best = c; }
+// =====================================================================
+//  Coupes : on lit l'espace au lieu de suivre un script
+// =====================================================================
+// Pour chaque coupeur prêt et chaque point d'une grille devant le disque, on estime :
+//  • la course : le coupeur arrive-t-il avant le défenseur le plus proche de ce point ? (réaction comprise)
+//  • la ligne de passe : le porteur peut-il lancer jusque-là sans qu'un défenseur coupe la trajectoire ?
+//  • le terrain gagné (plus encore pour une équipe qui aime le jeu long), l'en-but
+//  • l'espace des autres : on ne coupe pas dans la zone d'une coupe déjà en cours
+// La meilleure coupe part si elle est assez bonne ; sinon on attend que l'espace s'ouvre (l'exigence baisse avec le temps et le stall).
+const CUT_F = [4, 7, 10, 13, 16, 20, 24, 28, 32];
+function bestCut(t, h, ax, ay, dir, open, cands, need) {
+  const opp = TEAMS[1 - t], L = aiLvl(1 - t), huckK = aiStyle(t).huck;
+  const busy = TEAMS[t].filter(p => p !== h && (p.state === 'jab' || p.state === 'cut' || p.state === 'park')).map(p => [p.cx, p.cy]);
+  let best = null;
+  for (const f of CUT_F) {
+    const x = ax + dir * f;
+    if (x < 1.5 || x > W - 1.5) continue;
+    for (let y = 2.5; y <= H - 2.5; y += 3.2) {
+      if (busy.some(([cx, cy]) => dist(cx, cy, x, y) < 7)) continue;            // l'espace d'une autre coupe
+      const lane = clamp(laneSlack(h, x, y, x, y, 0, opp), -1, 0.6);
+      if (lane < -0.4) continue;
+      let td = 1e9;
+      for (const d of opp) { if (d === G.marker) continue; td = Math.min(td, Math.max(0, dist(d.x, d.y, x, y) - 1.2) / SPD.def + 0.22 * L.react); }
+      const gain = f * 0.14 - (f > 18 ? (1.7 - huckK) * 2 : 0) + (inScoreZone(t, x) ? 4 : 0) - (open * (y - ay) < -4 ? 0.8 : 0);   // deep : risqué (sauf équipes de hucks) ; côté break : passe plus dure
+      for (const c of cands) {
+        const dc = dist(c.x, c.y, x, y);
+        if (dc < 3.5 || dc > 27) continue;
+        const race = td - (dc / SPD.cut + 0.35);                // > 0 : le coupeur arrive le premier
+        const v = clamp(race, -1.5, 1.5) * 3 + lane * 3 + gain - dc * 0.04;
+        if (v > need && (!best || v > best.v)) best = { c, x, y, v, deep: f > 18 };
+      }
+    }
   }
-  if (!best) return;
-  best.cx = tx; best.cy = ty; clampPt(best);
-  best.wx = best.x; best.wy = best.y;
-  best.role = 'cutter'; best.state = 'cut'; best.timer = 2.2;      // pas de feinte : il est déjà en mouvement
-  G.cutT = rand(0.8, 1.3);
+  return best;
+}
+const cutReady = (p, t) => p.role === 'cutter' && !userControls(p) && (p.state === 'stack' || (p.state === 'clear' && p.wDone)) && G.gt - (p.cutEnd || -9) > 0.6;
+function launchCut(b) {
+  startCut(b.c, b.x, b.y, b.deep);
+  G.cutIdle = 0;
+}
+// Juste après une réception : le coupeur le mieux placé propose aussitôt la passe suivante (continuation)
+function continuationCut(t, h) {
+  if (G.oplay && G.oplay.team === t) return;
+  const dir = dirOf(t), open = -closedOf(1 - t);
+  const cands = G.order[t].filter(p => !userControls(p) && p.state !== 'jab' && p.state !== 'cut');
+  const b = bestCut(t, h, h.x, h.y, dir, open, cands, 1.5);
+  if (b) { launchCut(b); b.c.state = 'cut'; b.c.timer = Math.max(2.4, dist(b.c.x, b.c.y, b.x, b.y) / SPD.cut + 0.6); }   // déjà lancé : pas de feinte
+  G.cutT = 0.4;
 }
 function clampPt(o) { o.cx = clamp(o.cx, 1.5, W - 1.5); o.cy = clamp(o.cy, 1.5, H - 1.5); }
 
-// Un seul coupeur à la fois : c'est ce qui rend la structure lisible
+// Le « chef d'orchestre » des coupes : 4 fois par seconde, une coupe part si l'espace le mérite
 function runCutSequencer(t, ax, ay, dir, open, form, dt) {
-  if (disc.mode !== 'held') return;
+  if (disc.mode !== 'held' || !disc.holder) return;
   if (G.oplay && G.oplay.team === t) return;                // le play dirige les courses
-  if (osysOf(t)) { sysSequencer(t, ax, ay, dir, open, dt); return; }   // système perso : ses courses, dans son ordre
+  G.cutIdle = (G.cutIdle || 0) + dt;
   G.cutT -= dt;
+  if (G.cutT > 0) return;
+  G.cutT = 0.25;
   const ord = G.order[t];
-  if (G.cutT > 0 || ord.some(p => p.state === 'jab' || p.state === 'cut')) return;
-  const ready = ord.filter(p => p.state === 'stack' && dist(p.x, p.y, p.tx, p.ty) < 4);
+  const running = ord.filter(p => p.state === 'jab' || p.state === 'cut').length;
+  if (running >= (G.stall > 5 ? 2 : 1)) return;             // une coupe à la fois ; deux quand le compte presse
+  const ready = ord.filter(p => cutReady(p, t));
   if (!ready.length) return;
-  const room = depthLeft(ax, dir);
-  const deep = room > 20 && Math.random() < clamp(0.45 + (aiStyle(t).huck - 1) * 0.18, 0.3, 0.65);   // deep cuts (plus encore chez les Faucons)
-  let c, sy = lineY(t, ay, form);
-  if (isColumn(form)) {
-    c = deep ? ready[0] : ready[ready.length - 1];          // l'avant part en profondeur, l'arrière coupe vers le disque
-    const side = form === 'side' ? 1.6 : 1;                   // side stack : les cuts traversent tout l'open side
-    if (deep) { c.cx = ax + dir * rand(22, 30); c.cy = sy + open * rand(2, 7) * side; }
-    else { c.cx = ax + dir * rand(5, 9); c.cy = sy + open * rand(8, 12) * side; }
-  } else {
-    const byOpen = ready.slice().sort((a, b) => open * (b.y - a.y));
-    c = deep ? byOpen[Math.floor(Math.random() * byOpen.length)] : byOpen[0];
-    if (deep) { c.cx = ax + dir * rand(24, 32); c.cy = c.y; }
-    else { c.cx = ax + dir * rand(4, 7); c.cy = c.y * 0.5 + ay * 0.5 + open * 2; }
+  const need = 4.2 - G.cutIdle * 1.2 - G.stall * 0.25;      // plus on attend, moins on est exigeant
+  const b = bestCut(t, disc.holder, ax, ay, dir, open, ready, need);
+  if (b) launchCut(b);
+}
+// un joueur au repos laisse libre la zone d'une coupe en cours et la ligne de passe qui y mène
+function leaveSpace(p, t, x, y) {
+  const h = disc.holder; if (!h || disc.mode !== 'held') return [x, y];
+  for (const c of TEAMS[t]) {
+    if (c === p || c === h || !(c.state === 'jab' || c.state === 'cut' || c.state === 'park')) continue;
+    // distance au segment porteur → arrivée de la coupe
+    const vx = c.cx - h.x, vy = c.cy - h.y, l2 = vx * vx + vy * vy || 1;
+    const u = clamp(((x - h.x) * vx + (y - h.y) * vy) / l2, 0, 1), px = h.x + vx * u, py = h.y + vy * u;
+    const d = dist(x, y, px, py), lim = u > 0.85 ? 6 : 4;
+    if (d < lim) { const k = (lim - d) / Math.max(d, 0.3); x += (x - px) * k; y += (y - py) * k; }
   }
-  clampPt(c);
-  // feinte : un pas dans la direction opposée avant de couper
-  c.wx = c.x + dir * (deep ? -2 : 2); c.wy = c.y + (deep ? open : -open) * 1.2;
-  c.state = 'jab'; c.timer = 0.35;
-  G.cutT = rand(0.9, 1.5);                                   // cuts plus rapprochés : le stall count va vite
+  return [clamp(x, 1, W - 1), clamp(y, 1.5, H - 1.5)];
 }
 
 // Un attaquant laissé seul (son défenseur est parti ailleurs) file dans l'espace libre,
@@ -161,15 +190,15 @@ function attackerAI(p, t, ax, ay, dir, open, form, dt) {
   }
   const slot = cutterSlot(p, t, ax, ay, dir, form);
   switch (p.state) {
-    case 'stack': p.tx = slot.x; p.ty = slot.y; p.sp = hustle(p, SPD.jog); break;
+    case 'stack': [p.tx, p.ty] = leaveSpace(p, t, slot.x, slot.y); p.sp = hustle(p, SPD.jog); break;
     case 'park': p.tx = p.cx; p.ty = p.cy; p.sp = SPD.jog + 1; break;
     case 'jab':
       p.tx = p.wx; p.ty = p.wy; p.sp = SPD.cut * 0.8;
-      if (p.timer <= 0) { p.state = 'cut'; p.timer = p.sysCut ? Math.max(2.4, dist(p.x, p.y, p.cx, p.cy) / SPD.cut + 0.6) : 2.4; }
+      if (p.timer <= 0) { p.state = 'cut'; p.timer = Math.max(2.4, dist(p.x, p.y, p.cx, p.cy) / SPD.cut + 0.6); }
       break;
     case 'cut':
       p.tx = p.cx; p.ty = p.cy; p.sp = p.tag === '★' ? 8.4 : SPD.cut;      // le coupeur du huck a un départ lancé
-      if (p.timer <= 0 || dist(p.x, p.y, p.cx, p.cy) < 0.8) { p.state = 'hold'; p.timer = 0.7; G.cutT = Math.min(G.cutT, rand(0.2, 0.7)); }
+      if (p.timer <= 0 || dist(p.x, p.y, p.cx, p.cy) < 0.8) { p.state = 'hold'; p.timer = 0.7; p.cutEnd = G.gt; }
       break;
     case 'hold':
       p.tx = p.cx; p.ty = p.cy; p.sp = 1.5;
@@ -186,7 +215,7 @@ function attackerAI(p, t, ax, ay, dir, open, form, dt) {
     case 'clear':
       p.sp = hustle(p, SPD.jog + 1.5);
       if (!p.wDone) { p.tx = p.wx; p.ty = p.wy; if (dist(p.x, p.y, p.wx, p.wy) < 1.5) p.wDone = true; }
-      else { p.tx = slot.x; p.ty = slot.y; if (dist(p.x, p.y, slot.x, slot.y) < 1.5) p.state = 'stack'; }
+      else { [p.tx, p.ty] = leaveSpace(p, t, slot.x, slot.y); if (dist(p.x, p.y, slot.x, slot.y) < 1.5) p.state = 'stack'; }
       if (p.timer <= 0) p.state = 'stack';
       break;
   }

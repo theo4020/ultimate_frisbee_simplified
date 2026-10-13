@@ -88,6 +88,8 @@ window.addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
   if (keyWait) { e.preventDefault(); captureKey(k); return; }   // réglage d'une touche (panneau Commandes)
   if (G.replay) { if (k === 'escape' || k === ' ' || k === 'enter') { e.preventDefault(); stopReplay(); } return; }
+  if (keyIs('play1', k)) { doPlay(1); return; }
+  if (keyIs('play2', k)) { doPlay(2); return; }
   if (keyIs('high', k)) { cycleThrowKind(); return; }
   if (keyIs('curveL', k)) adjustCurve(-0.25);
   else if (keyIs('curveR', k)) adjustCurve(0.25);

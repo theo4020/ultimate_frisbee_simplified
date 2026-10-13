@@ -52,8 +52,8 @@ function edRender() {
   $('edModes').querySelectorAll('[data-m]').forEach(b => b.onclick = () => { if (off) ED.mode = b.dataset.m; else s.mode = b.dataset.m; edRender(); });
   if ($('edPlay')) $('edPlay').onclick = startAnim;
   $('edHelp').textContent = off
-    ? (ED.mode === 'place' ? 'Glisse ①–④ pour placer ta formation autour du porteur (H). Les flèches se déplacent aussi par leur pointe.'
-      : 'Glisse depuis un joueur jusqu’à l’endroit où il doit couper : la course s’ajoute à la fin de la liste.')
+    ? (ED.mode === 'place' ? 'Glisse ①–④ pour placer ta formation autour du porteur (H). Choisie comme Formation, chacun part de sa place et coupe librement. Les flèches se déplacent par leur pointe.'
+      : 'Glisse depuis un joueur (ou le bout de sa flèche) jusqu’à sa destination. Ces courses se jouent quand tu choisis ce système comme Play 1 ou Play 2 et que tu l’appelles.')
     : s.mode === 'zone' ? 'Glisse les défenseurs 1–4 pour dessiner ta zone. M marque le porteur (côté forcé).'
     : 'Choisis le rôle de chaque défenseur (le numéro est celui affiché sur le terrain).';
   edCanvas().style.display = !off && s.mode === 'man' ? 'none' : '';

@@ -8,9 +8,9 @@
 
 const KEY_ACTIONS = [
   ['high', 'Armer / désarmer la passe haute'], ['curveL', 'Courbe ↶'], ['curveR', 'Courbe ↷'],
-  ['jump', 'Sauter'], ['dive', 'Layout'], ['switch', 'Changer de joueur']
+  ['jump', 'Sauter'], ['dive', 'Layout'], ['switch', 'Changer de joueur'], ['play1', 'Appeler le play 1'], ['play2', 'Appeler le play 2']
 ];
-const DEFAULT_KEYS = { high: ['z', 'w'], curveL: ['a', 'q', 'arrowleft'], curveR: ['e', 'd', 'arrowright'], jump: ['s'], dive: ['f', 'shift'], switch: [' '] };
+const DEFAULT_KEYS = { high: ['z', 'w'], curveL: ['a', 'q', 'arrowleft'], curveR: ['e', 'd', 'arrowright'], jump: ['s'], dive: ['f', 'shift'], switch: [' '], play1: ['r'], play2: ['t'] };
 const CTRL = Object.assign({ sling: true, throwUI: 'gestes', move: 'tap', keys: {} }, (() => {
   try { const o = JSON.parse(localStorage.getItem('uf-ctrl') || 'null'); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; }
 })());
@@ -52,7 +52,7 @@ function renderCtrl() {
     <div class="desc">La souris vise et lance (clic maintenu), clic droit appelle un cut ; 1 à 5 prennent un joueur.</div>
     <button id="keysReset" class="ghost">Touches par défaut</button>
     <h2>Manette</h2>
-    <div class="desc">Stick gauche : curseur de visée (avec le disque) ou déplacement · A / RT : lancer (sans le disque : saut) · B : layout · X : appel de cut au curseur ou changer de joueur · Y : passe haute · LB / RB : courbe · Start : valider.</div>`;
+    <div class="desc">Stick gauche : curseur de visée (avec le disque) ou déplacement · A / RT : lancer (sans le disque : saut) · B : layout · X : appel de cut au curseur ou changer de joueur · Y : passe haute · LB / RB : courbe · croix ← / → : Play 1 / Play 2 · Start : valider.</div>`;
   $('ctrlBody').querySelectorAll('.copt').forEach(el => el.addEventListener('click', () => {
     const v = el.dataset.v === 'true' ? true : el.dataset.v === 'false' ? false : el.dataset.v;
     CTRL[el.dataset.g] = v; saveCtrl(); applyCtrlClass(); hudKey = ''; renderCtrl();

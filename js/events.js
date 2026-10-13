@@ -68,6 +68,7 @@ function defStop(p, msg) {
 
 function turnover(x, y, msg, kind) {
   if (G.practice) { practiceMiss(kind === 'block' ? 'Contré par le défenseur !' : msg); return; }
+  G.aiPlayTried = false;                                       // nouvelle possession : l'IA pourra appeler un play
   fxEvent(kind || 'turn', x, y, 1 - G.off);
   if (G.oplay) endOPlay();
   if (G.dplay) endDPlay();

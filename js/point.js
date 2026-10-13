@@ -31,7 +31,8 @@ function startPoint() {
   G.ai.off = pick(st ? st.off : ['vert', 'vert', 'ho', 'side']);
   G.ai.def = st ? pick(st.def) : Math.random() < 0.55 ? 'man' : pick(['zone', 'zone', 'clam']);
   G.ai.force = pick(st ? st.force : ['haut', 'bas', 'middle', 'haut', 'bas', 'straight']);
-  G.ai.play = st ? pick(st.play) : Math.random() < 0.5 ? 'none' : pick(['huck', 'split', 'give', 'flood', 'swing']);
+  const plays = st ? st.play.filter(x => x !== 'none') : ['huck', 'split', 'give', 'flood', 'swing'];
+  G.ai.play1 = pick(plays.length ? plays : ['give']); G.ai.play2 = pick(plays.filter(x => x !== G.ai.play1).concat(['give']).slice(0, 4));
   G.ai.restart = Math.random() < 0.7 ? 'pose' : 'rapide';
   G.ai.dplay = st ? pick(st.dplay) : Math.random() < 0.5 ? 'none' : pick(['safety', 'double', 'junk']);
   const r = G.receiving, d = 1 - r;
@@ -39,9 +40,9 @@ function startPoint() {
   G.firstRoll = null;                                          // prochain match : nouveau tirage au sort
   G.ms.ptT = 0;
   replayReset(); G.celebrate = null; G.scorer = null; FX.celebrate = null; G.throwKind = 'normal';
-  const oType = cfg(r).play, dType = cfg(d).dplay;
+  const dType = cfg(d).dplay;
   G.dplay = dType === 'none' ? null : { type: dType, team: d, t: 0, throws: 0, d: null };
-  G.pendingOPlay = oType;                                     // le play d'attaque démarre à la première possession
+  G.oplay = null; G.aiPlayTried = false;                      // les plays d'attaque s'appellent en jeu (plays.js)
   startPull();                                                // chaque point commence par un pull (voir pull.js)
   G.readyIds = new Set();
   updateSelected();
@@ -74,7 +75,7 @@ function attractTick(dt) {                                    // entre deux poin
 }
 function startFlash(r) {                                      // message de début de point, vu de chaque côté
   const mine = cfg(G.me);
-  if (r === G.me) flash(mine.play !== 'none' ? 'Play : ' + PLAY_NAMES[mine.play] + ' !' : 'À toi de lancer !', true);
+  if (r === G.me) flash('À toi de lancer !', true);
   else flash(mine.dplay !== 'none' ? 'Play : ' + PLAY_NAMES[mine.dplay] + ' !' : 'Défends !', true);
 }
 

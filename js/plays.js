@@ -10,36 +10,88 @@ function startCut(c, x, y, deep) {
   c.role = 'cutter'; c.state = 'jab'; c.timer = 0.3;
 }
 
+// ---------- plays d'attaque : appelés en jeu par le porteur (touches, boutons, ou l'IA), joués depuis là où sont les joueurs ----------
+// Chaque équipe choisit Play 1 et Play 2 avant le point (cfg.play1 / cfg.play2 ; 'sys' = système perso, voir systems.js).
+const playOf = (t, n) => { const c = cfg(t); return c ? c['play' + n] || 'none' : 'none'; };
+function playSys(t, n) { const s = sysOf(t, 'p' + n + 'sys'); return s && s.kind === 'off' ? s : null; }
+// peut-on appeler un play maintenant ? (l'équipe a le disque en main et aucun play n'est en cours)
+function canCallPlay(t, n) {
+  const ty = playOf(t, n);
+  return G.phase === 'play' && disc.mode === 'held' && disc.holder && disc.holder.team === t && !G.oplay && !G.tuto && !G.practice
+    && ty !== 'none' && (ty !== 'sys' || !!playSys(t, n));
+}
+function callPlay(t, n) {
+  if (!canCallPlay(t, n)) return false;
+  const ty = playOf(t, n);
+  G.oplay = { type: ty, team: t, t: 0, phase: 0, dur: 6, targets: [], a: null, b: null, n, sys: ty === 'sys' ? playSys(t, n) : null };
+  startOPlay();
+  if (G.oplay) flash('Play : ' + (ty === 'sys' ? G.oplay.sys.name : PLAY_NAMES[ty]) + ' !');
+  return !!G.oplay;
+}
+// joueur le mieux placé pour un rôle : celui qui arrive le plus vite au point (x, y)
+const closestTo = (list, x, y) => list.slice().sort((a, b) => dist(a.x, a.y, x, y) - dist(b.x, b.y, x, y))[0] || null;
+
 function startOPlay() {
   const P = G.oplay; if (!P) return;
-  const t = P.team, h = disc.holder, ord = G.order[t], dir = dirOf(t), open = -closedOf(1 - t);
-  const byOpen = ord.slice().sort((a, b) => open * (b.y - a.y));    // du côté ouvert vers le côté fermé
-  // relais : le dump, ou avec un système perso le joueur le plus en arrière
-  const dump = TEAMS[t].find(p => p.role === 'dump') || ord.slice().sort((a, b) => dir * (a.x - b.x))[0];
-  if (!dump && (P.type === 'give' || P.type === 'swing')) { G.oplay = null; return; }
-  if (P.type === 'huck') {
-    P.a = formOf(t) === 'vert' ? ord[0] : byOpen[0];
-    P.a.tag = '★'; P.a.state = 'park'; P.a.cx = P.a.x; P.a.cy = P.a.y;
-  } else if (P.type === 'split') {
-    P.a = byOpen[0]; P.b = byOpen[byOpen.length - 1];
-    for (const c of [P.a, P.b]) { c.tag = '1'; c.state = 'park'; c.cx = c.x; c.cy = c.y; }
-  } else if (P.type === 'give') {
-    P.b = dump; P.giver = h; P.dur = 7;
-    dump.tag = '1'; dump.state = 'park'; dump.role = 'cutter';
-    dump.cx = clamp(h.x - dir * 1.5, 1, W - 1); dump.cy = clamp(h.y + open * 6.5, 2, H - 2);
-    P.targets = [dump];
-  } else if (P.type === 'swing') {                           // le dump se place derrière, côté break
-    P.b = dump; P.giver = h; P.dur = 8;
-    dump.tag = '1'; dump.state = 'park'; dump.role = 'cutter';
-    dump.cx = clamp(h.x - dir * 3, 1, W - 1); dump.cy = clamp(h.y - open * 6.5, 2, H - 2);
-    P.targets = [dump];
-  } else if (P.type === 'flood') {
-    P.a = byOpen[0]; P.a.tag = '1'; P.dur = 7;
-    P.a.state = 'park'; P.a.cx = h.x + dir * 13; P.a.cy = H / 2 + open * 3; clampPt(P.a);
-    TEAMS[t].filter(p => p !== h && p !== P.a).forEach((p, i) => {
+  const t = P.team, h = disc.holder, dir = dirOf(t), open = -closedOf(1 - t);
+  if (!h) { G.oplay = null; return; }
+  const free = TEAMS[t].filter(p => p !== h && !userControls(p));
+  const behind = free.slice().sort((a, b) => dir * (a.x - b.x));          // du plus en arrière au plus en avant
+  const room = depthLeft(h.x, dir);
+  if (P.type === 'huck') {                                   // le plus en avant (et le plus libre) part tout de suite en profondeur
+    const opp = TEAMS[1 - t], score = p => dir * (p.x - h.x) + nearestD(opp, p.x, p.y)[1] * 1.5;
+    const c = free.filter(p => p.role !== 'dump').sort((a, b) => score(b) - score(a))[0] || free[0];
+    if (!c) { G.oplay = null; return; }
+    P.a = c; c.tag = '★';
+    startCut(c, h.x + dir * Math.min(rand(28, 34), room - 1), clamp(c.y + open * 4, 4, H - 4), true);
+    P.targets = [c]; P.phase = 1; P.dur = 5;
+  } else if (P.type === 'split') {                           // deux coupes en même temps : côté open et côté break
+    const xo = h.x + dir * rand(6, 9), yo = clamp(h.y + open * rand(8, 11), 2, H - 2), yb = clamp(h.y - open * rand(8, 11), 2, H - 2);
+    P.a = closestTo(free, xo, yo); P.b = closestTo(free.filter(p => p !== P.a), xo, yb);
+    if (!P.a || !P.b) { G.oplay = null; return; }
+    startCut(P.a, xo, yo, false); startCut(P.b, xo, yb, false);
+    for (const c of [P.a, P.b]) c.tag = '1';
+    P.targets = [P.a, P.b]; P.phase = 1; P.dur = 4;
+  } else if (P.type === 'give' || P.type === 'swing') {      // le joueur le plus en arrière vient donner un relais court
+    const b = behind[0]; if (!b) { G.oplay = null; return; }
+    P.b = b; P.giver = h; P.dur = 7; b.tag = '1';
+    b.role = 'cutter'; b.state = 'park';                      // il file tout de suite à côté du porteur et y reste pour la passe
+    b.cx = clamp(h.x - dir * (P.type === 'give' ? 1.5 : 3), 1, W - 1); b.cy = clamp(h.y + (P.type === 'give' ? open : -open) * 6.5, 2, H - 2);
+    P.targets = [b];
+  } else if (P.type === 'flood') {                           // iso : tout le monde dégage côté break, un seul attaque l'open side
+    const xi = h.x + dir * rand(5, 8), yi = clamp(h.y + open * rand(8, 11), 2, H - 2);
+    P.a = closestTo(free, xi, yi); if (!P.a) { G.oplay = null; return; }
+    P.a.tag = '1'; P.dur = 6;
+    free.filter(p => p !== P.a).forEach((p, i) => {
       p.state = 'park'; p.role = 'cutter'; p.cx = h.x + dir * (6 + i * 7); p.cy = H / 2 - open * (11 + (i % 2) * 3); clampPt(p);
     });
+    P.t0 = 0.5;                                              // le temps que l'espace s'ouvre, puis l'iso coupe
+    P.targets = [P.a];
+  } else if (P.type === 'sys') {                             // système perso : chaque rôle ①–④ au joueur le plus proche de sa place
+    const S = P.sys, spots = sysWorld(S.pos, h.x, h.y, dir, open), pool = free.slice();
+    P.map = [];
+    for (let k = 0; k < 4; k++) { const q = closestTo(pool, spots[k][0], spots[k][1]); P.map[k] = q; if (q) { pool.splice(pool.indexOf(q), 1); q.tag = String(k + 1); } }
+    P.i = 0; P.timer = S.steps.length ? Math.min(0.4, S.steps[0].wait) : 0; P.dur = 1e9; P.ax = h.x; P.ay = h.y;
+    if (!S.steps.length) { endOPlay(); return; }
   }
+}
+// système perso appelé comme play : ses courses dans l'ordre, relatives au disque au moment de l'appel
+function sysPlayTick(P, dt, dir, open) {
+  const S = P.sys;
+  P.timer -= dt;
+  if (P.timer > 0) return;
+  if (P.i >= S.steps.length) {
+    if (P.map.every(q => !q || !SYS_BUSY.includes(q.state))) endOPlay();
+    return;
+  }
+  const st = S.steps[P.i], q = P.map[st.p];
+  if (q && SYS_BUSY.includes(q.state) && q.sysCut && !userControls(q)) return;   // il finit sa course précédente, puis enchaîne de là
+  P.i++; P.timer = P.i < S.steps.length ? S.steps[P.i].wait : 0.5;
+  if (!q || q === disc.holder || userControls(q)) return;
+  const [[x, y]] = sysWorld([st.to], P.ax, P.ay, dir, open);
+  startCut(q, x, y, st.to[0] > 18);
+  q.sysCut = true; q.sysStay = S.steps.slice(P.i).some(s => s.p === st.p);
+  P.targets = [q];
 }
 
 function updatePlays(dt, ax, ay, dir, open) {
@@ -47,21 +99,13 @@ function updatePlays(dt, ax, ay, dir, open) {
   if (P) {
     P.t += dt;
     if (P.team !== G.off || P.t > P.dur) endOPlay();
-    else if (disc.mode === 'held') {
-      if (P.type === 'huck' && P.phase === 0 && P.t > 0.6) {
-        startCut(P.a, ax + dir * rand(30, 36), clamp(P.a.y + open * 4, 4, H - 4), true);
+    else if (P.type === 'sys') { if (disc.mode === 'held' || disc.mode === 'air') sysPlayTick(P, dt, dir, open); }
+    else if (disc.mode === 'held' && P.type === 'flood') {
+      if (P.phase === 0 && P.t > P.t0) {
+        startCut(P.a, ax + dir * rand(5, 8), ay + open * rand(8, 11), false);
         P.targets = [P.a]; P.phase = 1;
-      } else if (P.type === 'split' && P.phase === 0 && P.t > 0.5) {
-        startCut(P.a, ax + dir * rand(6, 9), ay + open * rand(8, 11), false);
-        startCut(P.b, ax + dir * rand(6, 9), ay - open * rand(8, 11), false);
-        P.targets = [P.a, P.b]; P.phase = 1;
-      } else if (P.type === 'flood') {
-        if (P.phase === 0 && P.t > 1.4) {
-          startCut(P.a, ax + dir * rand(5, 8), ay + open * rand(8, 11), false);
-          P.targets = [P.a]; P.phase = 1;
-        } else if (P.phase === 1 && P.a.state === 'hold') {
-          startCut(P.a, ax + dir * rand(24, 30), clamp(ay + open * 8, 3, H - 3), true); P.phase = 2;
-        }
+      } else if (P.phase === 1 && P.a.state === 'hold') {
+        startCut(P.a, ax + dir * rand(24, 30), clamp(ay + open * 8, 3, H - 3), true); P.phase = 2;
       }
     }
   }

@@ -71,6 +71,9 @@ export default async function (t) {
     // on donne le disque aux Rouges ; seul humain de son équipe, l'invité lance pour toute l'équipe
     await host.evaluate(() => { const p = TEAMS[1].reduce((a, b) => (Math.abs(b.x - W / 2) < Math.abs(a.x - W / 2) ? b : a)); G.off = 1; p.x = W / 2; p.y = H / 2; holdDisc(p); p.think = 99; });   // au milieu : la passe test ne marque pas
     await guest.waitForFunction(() => canThrow(), null, { timeout: 5000 });
+    await guest.bringToFront(); await guest.keyboard.press('t');      // l'invité appelle son Play 2 : l'hôte le lance
+    await host.waitForFunction(() => G.oplay && G.oplay.team === 1, null, { timeout: 3000 }).catch(() => {});
+    t.ok(await host.evaluate(() => !!G.oplay && G.oplay.team === 1 && G.oplay.n === 2), 'l’invité appelle un play : il se joue chez l’hôte');
     const th = await host.evaluate(() => G.stats.throws);
     const aim = await guest.evaluate(() => { const r = canvas.getBoundingClientRect(), h = disc.holder; return { x: r.left + X(h.x + 10 * dirOf(1)), y: r.top + Y(h.y) }; });
     await guest.mouse.move(aim.x, aim.y); await guest.mouse.down(); await guest.mouse.up();

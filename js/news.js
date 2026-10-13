@@ -8,11 +8,24 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
+  { id: 15, date: '2026-10-13', tag: 'Jeu', title: 'Nouvelle IA, formation et plays à la demande 🧠',
+    body: `<b>Les joueurs lisent le jeu</b> : les coupeurs attaquent l'espace que la défense laisse libre (au lieu de courses
+      au hasard) et s'écartent pour laisser la place aux autres. <b>La défense s'entraide</b> : changements de joueur quand deux
+      défenseurs se croisent, aide sur un attaquant libre, et le défenseur de la passe probable se glisse dans la ligne.
+      Plus le niveau est élevé, plus la défense est collective.<br>
+      <b>Formation + 2 plays</b> : avant le point, choisis ta formation et deux plays ; avec le disque, appelle-les quand tu veux
+      (boutons ▶ sur le terrain, touches R / T, croix de la manette). Les joueurs partent tout de suite depuis là où ils sont.
+      Tes systèmes perso servent de formation, ou de play quand tu les appelles.<br>
+      Et aussi : <b>stall à 1 compte par seconde</b> comme en vrai, et l'IA lit les passes hautes comme toi.` },
+  { id: 14, date: '2026-10-12', tag: 'Jeu', title: 'Joueurs plus réactifs pendant les passes',
+    body: `Quand une passe va clairement être attrapée, attaquants et défenseurs se replacent dès le lancer autour du point de
+      réception, au lieu d'attendre que le receveur ait le disque. Le jeu enchaîne plus vite après chaque passe.
+      Et tes systèmes perso sont maintenant utilisables en mode infini.` },
   { id: 13, date: '2026-10-12', tag: 'Tactique', title: 'Crée tes propres systèmes de jeu 📋',
     body: `Nouveau bouton <b>📋 Mes systèmes</b> dans le menu. <b>En attaque</b> : place tes 4 joueurs autour du porteur et dessine
       leurs courses dans l'ordre (aperçu animé pour vérifier). <b>En défense</b> : dessine ta propre zone, ou fais une individuelle
       où chacun a un rôle (serré, profond, double team). Tes systèmes apparaissent avec une ★ dans le menu d'avant-point,
-      en solo comme en ligne (pas en mode infini), et sont gardés avec ton compte.` },
+      en solo, en ligne et en mode infini, et sont gardés avec ton compte.` },
   { id: 12, date: '2026-10-12', tag: 'Compte', title: 'Les comptes joueurs arrivent 👤',
     body: `Touche <b>👤 Créer un compte</b> à côté de ton pseudo. Ton pseudo t'est réservé (personne d'autre ne peut l'utiliser,
       au classement non plus), et ton profil, tes succès, tes records et tes réglages sont sauvegardés en ligne :

@@ -29,7 +29,7 @@ const HIGH_WINDUP = [0.3, 1.2];                            // l'IA arme sa passe
 const SPEEDS = { lent: 0.6, normal: 0.78, rapide: 1 };
 const DRIFT = 0.5;                                          // dérive du disque : vent (m/s) × temps de vol × DRIFT
 const STALL_R = 4.5;                                        // rayon du stall count (agrandi par rapport aux 3 m réels)
-const STALL_RATE = 1.5;                                     // vitesse du stall count : 1,5 compte par seconde de jeu (10 comptes ≈ 6,7 s)
+const STALL_RATE = 1 / 0.78;                                // stall count : 1 compte par seconde réelle à vitesse normale (le jeu tourne à 0,78)
 const REACH_STAND = 2.0, REACH_DIVE = 1.5;                  // hauteur max du disque contrable debout / en plongeon
 const CANCEL_R = 2.5;                                       // relâcher à moins de 2,5 m du handler annule le lancer
 const PEER_PREFIX = 'ultimate-frisbee-proto-v1-';
@@ -49,12 +49,12 @@ const PEERJS_URLS = ['https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.5/peerjs
   'https://cdn.jsdelivr.net/npm/peerjs@1.5.5/dist/peerjs.min.js'];
 
 const PLAYS = {
-  none: 'Pas de play : la structure normale démarre tout de suite.',
-  huck: 'Le cutter ★ fait une feinte puis part en deep dès le début. Lance long, devant lui. Risqué, mais ça peut marquer en une passe.',
-  split: 'Deux cutters (1) partent en même temps, un open side et un break side. Prends celui qui est libre : côté break, il faut de la courbe.',
-  give: 'Passe courte au dump (1) placé à côté de toi : dès que le disque part, tu fais un cut vers l’avant (2) pour recevoir le retour.',
-  flood: 'Tout le monde clear côté break et laisse l’open side à un seul cutter (1), qui fait un under cut puis repart en deep.',
-  swing: 'Le dump (1) se place derrière toi côté break. Passe-lui le disque : dès qu’il l’a, un cutter (2) attaque l’espace de l’autre côté pour recevoir le swing. Idéal pour changer de côté face à une mark agressive.'
+  none: 'Pas de play.',
+  huck: 'Le coupeur le plus en avant et le plus libre (★) part tout de suite en profondeur. Lance long, devant lui.',
+  split: 'Deux coupeurs (1) partent en même temps vers le disque, un côté open et un côté break. Prends celui qui est libre (côté break, il faut de la courbe).',
+  give: 'Le joueur le plus en arrière vient à côté de toi (1) : passe-lui le disque et file aussitôt vers l’avant (2) pour recevoir le retour.',
+  flood: 'Iso : tout le monde dégage côté break, un seul coupeur (1) attaque l’open side, d’abord vers toi puis en profondeur.',
+  swing: 'Le joueur le plus en arrière se place derrière toi côté break (1). Dès qu’il a le disque, un coupeur (2) attaque l’autre côté.'
 };
 const DPLAYS = {
   none: 'Pas de play : ta défense de base dès le début.',
@@ -68,8 +68,8 @@ const PLAY_NAMES = { none: 'aucun', huck: 'Huck', split: 'Double cut', give: 'Gi
 const NAMES = { vert: 'Vertical stack', ho: 'Horizontal stack', side: 'Side stack', man: 'Man', zone: 'Zone', clam: 'Clam',
   haut: 'force haut', bas: 'force bas', middle: 'force middle', straight: 'straight up' };
 const DESCS = {
-  vert: 'Les cutters s’alignent au centre. Un seul cut à la fois (under ou deep), puis le cutter clear et retourne au bout du stack.',
-  ho: 'Trois cutters en largeur, chacun dans son couloir. Les cuts alternent entre under et deep.',
+  vert: 'Les coupeurs s’alignent au centre et attaquent l’espace libre (vers toi ou en profondeur), un à la fois, puis retournent au bout du stack.',
+  ho: 'Trois coupeurs en largeur, chacun dans son couloir. Ils attaquent l’espace que la défense laisse libre.',
   man: 'Chaque défenseur suit son attaquant et se place côté open pour couper les passes. La mark impose la force choisie.',
   side: 'Les cutters s’alignent le long de la ligne côté break : tout l’open side reste libre pour les cuts. Très lisible, mais la défense sait de quel côté ça arrive.',
   zone: 'Un cup de 3 joueurs autour du disque, un middle au centre et un deep en profondeur. En zone, la mark force toujours middle.',

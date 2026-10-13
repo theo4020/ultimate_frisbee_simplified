@@ -50,7 +50,7 @@ function storeSet(k, v) {
 const SAVE_KEYS = {
   off: ['vert', 'ho', 'side'], def: ['man', 'zone', 'clam'], force: ['haut', 'bas', 'middle', 'straight'],
   speed: ['lent', 'normal', 'rapide'], level: ['facile', 'normal', 'difficile'], allyLevel: ['facile', 'normal', 'difficile'],
-  windMode: ['random', 'fixed'], points: ['3', '5', '7'], cb: ['0', '1'], first: ['0', '1', 'r'], restart: ['pose', 'rapide']
+  windMode: ['random', 'fixed'], play1: ['none', 'huck', 'split', 'give', 'flood', 'swing', 'sys'], play2: ['none', 'huck', 'split', 'give', 'flood', 'swing', 'sys'], points: ['3', '5', '7'], cb: ['0', '1'], first: ['0', '1', 'r'], restart: ['pose', 'rapide']
 };
 function loadSettings() {
   const o = storeGet('uf-settings', null);
@@ -60,10 +60,10 @@ function loadSettings() {
   if (typeof o.windKmh === 'number') G.form.windKmh = clamp(Math.round(o.windKmh), 0, 40);
   for (const k of ['tname', 'oname']) if (typeof o[k] === 'string') G.form[k] = o[k].slice(0, 16);
   for (const k of ['tcol', 'ocol']) if (PALETTE[o[k]]) G.form[k] = o[k];
-  for (const k of ['osys', 'dsys']) if (typeof o[k] === 'string') G.form[k] = o[k];
+  for (const k of ['osys', 'dsys', 'p1sys', 'p2sys']) if (typeof o[k] === 'string') G.form[k] = o[k];
 }
 function saveSettings() {
   const o = {};
-  for (const k of Object.keys(SAVE_KEYS).concat(['windDir', 'windKmh', 'tname', 'oname', 'tcol', 'ocol', 'osys', 'dsys'])) o[k] = G.form[k];
+  for (const k of Object.keys(SAVE_KEYS).concat(['windDir', 'windKmh', 'tname', 'oname', 'tcol', 'ocol', 'osys', 'dsys', 'p1sys', 'p2sys'])) o[k] = G.form[k];
   storeSet('uf-settings', o);
 }

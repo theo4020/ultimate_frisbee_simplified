@@ -5,9 +5,9 @@
 // Le système suit donc le disque partout sur le terrain et se retourne tout seul selon le côté forcé.
 //
 // Attaque : { kind:'off', name, pos:[[f,s]×4] (joueurs ① à ④), steps:[{ p:0..3, to:[f,s], wait:s }] }
-//   Les 4 joueurs sans le disque prennent les places ① à ④ (le plus proche de chaque place). Les courses partent
-//   dans l'ordre, chacune « wait » secondes après la précédente ; puis tout le monde revient en place et ça recommence.
-//   À chaque nouvelle réception, la séquence repart de la course 1 autour du nouveau porteur.
+//   Choisie comme FORMATION : les 4 joueurs sans le disque prennent les places ① à ④ et coupent librement depuis là
+//   (offense.js lit l'espace). Choisie comme PLAY 1 / PLAY 2 : quand on l'appelle, chaque rôle ①–④ va au joueur le plus
+//   proche de sa place et les courses partent dans l'ordre, chacune « wait » secondes après la précédente (plays.js).
 // Défense : { kind:'def', name, mode:'zone', zone:[[f,s]×4] } — la mark reste sur le porteur, 4 défenseurs aux places dessinées
 //           { kind:'def', name, mode:'man', roles:[×5] } — individuelle, un rôle par défenseur (numéros 1 à 5) :
 //             'normal' · 'serre' (colle à son joueur) · 'profond' (reste entre son joueur et l'en-but) · 'double' (double team dès 5 de stall)
@@ -51,9 +51,9 @@ function sysList() {
 function sysSave(list) { SYS.list = list.map(cleanSystem).filter(Boolean).slice(0, SYS_MAX); storeSet('uf-systems', SYS.list); }
 const sysById = id => sysList().find(s => s.id === id) || null;
 
-// système joué par l'équipe t (kind = 'osys' attaque, 'dsys' défense) ; aucun en mode infini, tutoriel et entraînement
+// système joué par l'équipe t (kind = 'osys' attaque, 'dsys' défense) ; aucun dans le tutoriel et l'entraînement
 function sysOf(t, kind) {
-  if ((G.series && G.series.endless) || G.tuto || G.practice || G.attract) return null;
+  if (G.tuto || G.practice || G.attract) return null;
   const c = cfg(t), v = c && c[kind];
   if (!v) return null;
   if (typeof v === 'object') return v;                          // en ligne : système envoyé par le capitaine
@@ -83,8 +83,7 @@ function sysAssign(t, h) {                                     // remplace assig
   }
   G.order[t] = order;
   h.role = 'holder'; h.sysIdx = -1;
-  G.sysQ = { t, i: 0, timer: S.steps.length ? Math.max(0.3, S.steps[0].wait) : 0 };
-  G.cutT = 9;
+  G.cutT = 0.4;
 }
 function sysSpot(S, p, ax, ay, dir, open) {
   const k = p.sysIdx >= 0 && p.sysIdx < 4 ? p.sysIdx : 3;
@@ -92,26 +91,6 @@ function sysSpot(S, p, ax, ay, dir, open) {
   return { x, y };
 }
 const SYS_BUSY = ['jab', 'cut', 'hold'];
-function sysSequencer(t, ax, ay, dir, open, dt) {
-  const S = osysOf(t), Q = G.sysQ;
-  if (!Q || Q.t !== t || !S.steps.length) return;
-  Q.timer -= dt;
-  if (Q.timer > 0) return;
-  if (Q.i >= S.steps.length) {                                  // séquence finie : quand tout le monde est revenu, on recommence
-    for (const p of G.order[t]) if (p.state === 'park' && p.sysStay !== undefined) { p.state = 'clear'; p.wDone = true; p.timer = 4; p.sysStay = undefined; }
-    if (G.order[t].some(p => SYS_BUSY.includes(p.state) || (p.state === 'clear' && dist(p.x, p.y, p.tx, p.ty) > 3))) return;
-    Q.i = 0; Q.timer = 0.6; return;
-  }
-  const st = S.steps[Q.i], p = G.order[t].find(q => q.sysIdx === st.p);
-  if (p && SYS_BUSY.includes(p.state) && p.sysCut && !userControls(p)) return;     // il finit d'abord sa course précédente, puis enchaîne de là
-  Q.i++; Q.timer = Q.i < S.steps.length ? S.steps[Q.i].wait : 1;
-  if (!p || p === disc.holder || userControls(p)) return;
-  const [[x, y]] = sysWorld([st.to], ax, ay, dir, open);
-  startCut(p, x, y, st.to[0] > 18);
-  p.sysCut = true;
-  p.sysStay = S.steps.slice(Q.i).some(s => s.p === st.p);       // encore une course après : il l'attendra au bout de celle-ci
-}
-
 // ---------- défense ----------
 function sysZoneSlots(D, defT, ax, ay, dir, closed) {
   const open = -closed, [mx, my] = markSpot(defT, ax, ay), atk = TEAMS[1 - defT].filter(a => a !== disc.holder);

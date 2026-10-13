@@ -17,7 +17,7 @@ function aiLvl(t) {
 }
 // style de jeu de l'IA de l'équipe t (personnalité des équipes du tournoi)
 const aiStyle = t => (G.series && !human(t) ? serOpp().style : DEFAULT_STYLE);
-const DEFAULT_CFG = { off: 'vert', def: 'man', force: 'haut', play: 'none', dplay: 'none', allyLevel: 'normal', tname: '', tcol: '', puller: 'cap', restart: 'pose' };
+const DEFAULT_CFG = { off: 'vert', def: 'man', force: 'haut', play: 'none', play1: 'huck', play2: 'give', dplay: 'none', allyLevel: 'normal', tname: '', tcol: '', puller: 'cap', restart: 'pose' };
 G.humans = [{ id: 0, team: 0, sel: null }];
 G.myId = 0;
 

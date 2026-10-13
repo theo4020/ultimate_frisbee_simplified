@@ -25,36 +25,71 @@ export default async function (t, { quick }) {
 
   t.group('Matchs avec des systèmes perso');
   const games = quick ? 2 : 5;
-  for (const mode of ['off', 'zone', 'man']) {
+  const SYS = `cleanSystem(Object.assign(SYS_NEW.off(), { steps: [{ p: 0, to: [6, 10], wait: 0.3 }, { p: 0, to: [18, 12], wait: 0.5 }, { p: 2, to: [30, 6], wait: 0.5 }, { p: 1, to: [9, -8], wait: 0.6 }] }))`;
+  for (const mode of ['formation', 'play', 'zone', 'man']) {
     const r = R(`(() => {
       const c0 = Object.assign({}, G.ai), c1 = Object.assign({}, G.ai), keep = cfg;
       cfg = t => t === 0 ? c0 : c1;
-      if ('${mode}' === 'off') c0.osys = cleanSystem(Object.assign(SYS_NEW.off(), { steps: [{ p: 0, to: [6, 10], wait: 0.6 }, { p: 0, to: [18, 12], wait: 1 }, { p: 2, to: [32, 6], wait: 1 }, { p: 1, to: [9, -8], wait: 1.2 }] }));
+      if ('${mode}' === 'formation') { c0.osys = ${SYS}; c0.play1 = c0.play2 = 'none'; }
+      if ('${mode}' === 'play') { c0.play1 = c0.play2 = 'sys'; c0.p1sys = c0.p2sys = ${SYS}; }
       if ('${mode}' === 'zone') c0.dsys = cleanSystem(SYS_NEW.def());
       if ('${mode}' === 'man') c0.dsys = cleanSystem(Object.assign(SYS_NEW.def(), { mode: 'man', roles: ['serre', 'profond', 'double', 'normal', 'normal'] }));
-      let stuck = 0, pts = 0, sysCuts = 0, onSpot = 0, checks = 0;
-      let chained = 0, chainChecks = 0;
-      const _st = startCut; startCut = function (c, x, y, d) { const before = [c.x, c.y, c.state]; const r = _st(c, x, y, d);
-        if (c.team === 0 && osysOf(0) && G.sysQ) { sysCuts++; if (G.sysQ.i === 2 && c.sysIdx === 0) { chainChecks++; if (before[2] === 'park') chained++; } } return r; };
+      let stuck = 0, pts = 0, cuts = 0, onSpot = 0, checks = 0, plays = 0, chained = 0, chainChecks = 0;
+      const _st = startCut; startCut = function (c, x, y, d) {
+        const P = G.oplay, before = c.state, r = _st(c, x, y, d);
+        if (c.team === 0) cuts++;
+        if (P && P.type === 'sys' && P.team === 0 && P.i === 2 && P.map[0] === c) { chainChecks++; if (before === 'park') chained++; }
+        return r; };
+      const _cp = callPlay; callPlay = function (t, n) { const r = _cp(t, n); if (r && t === 0 && G.oplay.type === 'sys') plays++; return r; };
       for (let k = 0; k < ${games}; k++) { G.score = [0, 0]; G.receiving = k % 2;
         for (;;) { newWind(); startPoint(); let f = 0;
           while ((G.phase === 'play' || G.phase === 'pull') && f < 36000) { __tick(); f++;
-            if (f % 30 === 0 && osysOf(0) && G.off === 0 && disc.mode === 'held' && G.stall > 1 && !G.pullPending) {   // les joueurs au repos rejoignent leur place
+            if (f % 8 === 0 && osysOf(0) && G.off === 0 && disc.mode === 'held' && G.stall > 1 && !G.pullPending && !G.oplay
+                && !TEAMS[0].some(q => ['jab', 'cut', 'park'].includes(q.state))) {           // personne ne coupe : chacun vise sa place
               for (const p of TEAMS[0]) if (p.state === 'stack' && p.role === 'cutter' && p.sysIdx >= 0 && p !== disc.holder) { checks++; if (dist(p.tx, p.ty, ...sysWorld(osysOf(0).pos, disc.x, disc.y, dirOf(0), -closedOf(1))[p.sysIdx]) < 0.5) onSpot++; }
             } }
           if (f >= 36000) { stuck++; break; } pts++; if (G.phase === 'over') break; } }
-      startCut = _st; cfg = keep;
-      return { stuck, pts, sysCuts, spot: checks ? onSpot / checks : 1, chain: chainChecks ? chained / chainChecks : 1, chainChecks };
+      startCut = _st; callPlay = _cp; cfg = keep;
+      return { stuck, pts, cuts, spot: checks ? onSpot / checks : 1, checks, plays, chain: chainChecks ? chained / chainChecks : 1, chainChecks };
     })()`);
     t.ok(r.stuck === 0 && r.pts > 0, `${mode} : aucun point bloqué`, r);
-    if (mode === 'off') { t.ok(r.sysCuts > 20, 'les courses du système sont jouées', r.sysCuts); t.ok(r.spot > 0.95, 'les joueurs au repos visent leur place du système', r.spot);
-      t.ok(r.chainChecks > 3 && r.chain > 0.8, 'deux courses de suite pour un joueur : la 2e part de la fin de la 1re (il ne revient pas en place entre les deux)', r); }
+    if (mode === 'formation') { t.ok(r.cuts > 30, 'formation perso : les joueurs coupent librement depuis leurs places', r.cuts); t.ok(r.spot > 0.9 && r.checks > 5, 'au repos, chacun vise sa place de la formation', r); }
+    if (mode === 'play') {
+      t.ok(r.plays > 3, 'play perso : l’IA l’appelle et il se joue', r.plays);
+
+    }
   }
 
-  t.group('Où les systèmes ne comptent pas');
+  t.group('Plays appelés en jeu');
+  const pl = R(`(() => {
+    const out = {};
+    for (const ty of ['huck', 'split', 'give', 'flood', 'swing']) {
+      G.humans = []; G.score = [0, 0]; G.receiving = 0; newWind(); startPoint();
+      for (let f = 0; f < 6000 && !(G.phase === 'play' && disc.mode === 'held' && G.stall > 1); f++) __tick();
+      G.oplay = null; const t = G.off; const c = cfg(t); c.play1 = ty;
+      const ok = callPlay(t, 1), P = G.oplay;
+      for (let f = 0; f < 18; f++) __tick();                      // 0,3 s plus tard : le play est déjà en route
+      const moving = P && TEAMS[t].some(q => q !== disc.holder && ['jab', 'cut', 'park'].includes(q.state));
+      out[ty] = { ok, moving, again: callPlay(t, 1) };
+    }
+    return out; })()`);
+  for (const [ty, o] of Object.entries(pl)) t.ok(o.ok && o.moving && !o.again, `${ty} : appelé, ses joueurs partent tout de suite depuis là où ils sont (pas deux plays à la fois)`, o);
+  const ch = R(`(() => {                                          // play perso, porteur qui garde le disque : les courses s'enchaînent
+    G.humans = []; G.score = [0, 0]; G.receiving = 0; newWind(); startPoint();
+    for (let f = 0; f < 6000 && !(G.phase === 'play' && disc.mode === 'held' && G.stall > 1); f++) __tick();
+    const t = G.off, c = cfg(t); c.play1 = 'sys'; c.p1sys = ${SYS}; G.oplay = null;
+    callPlay(t, 1); const P = G.oplay, q = P.map[0], starts = [];
+    const _st = startCut; startCut = function (p, x, y, d) { if (p === q) starts.push({ x: p.x, y: p.y, st: p.state }); return _st(p, x, y, d); };
+    for (let f = 0; f < 2400 && G.oplay === P; f++) { disc.holder.think = 99; G.stall = 0; __tick(); }
+    startCut = _st;
+    return { n: starts.length, second: starts[1] && starts[1].st, ended: G.oplay !== P };
+  })()`);
+  t.ok(ch.n === 2 && ch.second === 'park' && ch.ended, 'deux courses de suite pour un joueur : la 2e part de la fin de la 1re, puis le play se termine', ch);
+
+  t.group('Où les systèmes comptent');
   const ex = R(`(() => { const s = cleanSystem(SYS_NEW.off()); G.humans = [{ id: 0, team: 0, sel: null }]; G.myId = 0; syncMe();
     sysSave([s]); G.form.osys = s.id; const solo = !!osysOf(0);
     G.series = { endless: true, cur: 0, opp: endlessOpp(0), pts: 2, wins: 0, diff: 0 }; const inf = !!osysOf(0);
     G.series = { cur: 1 }; const tour = !!osysOf(0); G.series = null; G.humans = []; G.myId = -1; G.form.osys = null; return { solo, inf, tour }; })()`);
-  t.ok(ex.solo && ex.tour && !ex.inf, 'utilisés en match et en tournoi, pas en mode infini', ex);
+  t.ok(ex.solo && ex.tour && ex.inf, 'utilisés en match, en tournoi et en mode infini', ex);
 }

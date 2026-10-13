@@ -71,10 +71,7 @@ function update(dt) {
     if (userControls(p)) { const inp = inputOf(controllerOf(p)); p.tx = inp.x; p.ty = inp.y; p.sp = SPD.user; continue; }   // humain (à plusieurs par équipe)
     if (G.tuto && TUTO_STEPS[G.tuto.step] && TUTO_STEPS[G.tuto.step].still && tutoPin(p)) continue;   // tutoriel : receveur immobile
     if (disc.mode === 'air' && disc.intended === p) {
-      // une passe haute se lit mal : le receveur court d'abord vers l'endroit visé, et ne corrige qu'à la fin du vol
-      const late = disc.kind === 'high' && disc.t / disc.dur < 0.75 && disc.rx !== undefined;
-      if (late) { p.tx = disc.rx; p.ty = disc.ry; p.sp = SPD.cut; continue; }
-      const [rx, ry, ok] = runPoint(p);                    // sinon il attaque le disque sur sa trajectoire
+      const [rx, ry, ok] = runPoint(p);                    // il attaque le disque sur sa trajectoire (passe haute comprise, comme un humain)
       p.tx = rx; p.ty = ry; p.sp = SPD.cut;
       if (!ok && !disc.pull && !p.diveTried && !controllerOf(p) && (1 - disc.t / disc.dur) * disc.dur < DIVE_T + 0.15) {
         const [cx, cy, can] = catchPoint(p);               // il n'arrivera pas à temps en courant : layout
@@ -87,6 +84,7 @@ function update(dt) {
     p.avoid = true;
     attackerAI(p, off, ax, ay, dir, open, oform, dt);
   }
+  defenseBrain(def, dt);
   const slots = zoneSlots(def, ax, ay, dir, closed);
   for (const d of dfn) {
     d.avoid = false;

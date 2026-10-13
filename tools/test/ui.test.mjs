@@ -52,6 +52,7 @@ export default async function (t) {
     await p.click('#endGo');
     t.ok((await p.textContent('#ovTitle')).includes('Match 1'), 'match 1 annoncé', await p.textContent('#ovTitle'));
     t.ok((await p.textContent('#ovText')).includes('2 points'), 'premier à 2 points');
+    t.ok(await p.evaluate(() => [...document.querySelectorAll('#selOff option')].some(o => o.value === 'edit')), 'mes systèmes sont proposés en mode infini');
     const finish = async win => {                               // fin de match forcée : le dernier point est marqué
       await p.evaluate(w => { G.score = w ? [1, 0] : [0, 1]; G.phase = 'play'; G.lastMenu = null; $('overlay').classList.add('hidden'); G.menuShown = false; scorePoint(w ? G.me : 1 - G.me, 'Test'); }, win);
       await p.waitForFunction(() => G.lastMenu === 'over' && G.menuShown, null, { timeout: 15000 });
@@ -85,8 +86,19 @@ export default async function (t) {
     t.ok((await p.textContent('#endlessTxt')).includes('record'), 'le record s’affiche sur le bouton');
 
     t.group('Match rapide et menu en jeu');
-    await p.click('#soloB'); await p.click('#go');
+    await p.click('#soloB');
+    await p.evaluate(() => { G.form.first = String(G.me); });  // on reçoit : l'IA pulle
+    await p.click('#go');
     await p.waitForFunction(() => G.phase === 'pull' || G.phase === 'play');
+    await p.waitForFunction(() => G.phase === 'play', null, { timeout: 30000 });
+    await p.evaluate(() => { G.off = G.me; G.oplay = null; holdDisc(TEAMS[G.me][0]); TEAMS[G.me][0].x = W / 2; disc.x = W / 2; });
+    await p.waitForFunction(() => canThrow() && document.getElementById('play1B').style.display !== 'none', null, { timeout: 5000 }).catch(() => {});
+    t.ok(await vis(p, '#play1B') && await vis(p, '#play2B'), 'avec le disque : boutons ▶ Play 1 / Play 2');
+    t.ok((await p.textContent('#play1B')).includes('Huck') && (await p.textContent('#play1B')).includes('(R)'), 'le bouton nomme le play et sa touche', await p.textContent('#play1B'));
+    await p.keyboard.press('r');
+    t.ok(await p.evaluate(() => G.oplay && G.oplay.type === 'huck'), 'touche R : le Play 1 est appelé');
+    await p.waitForTimeout(200);
+    t.ok(!(await vis(p, '#play1B')), 'pendant le play, les boutons disparaissent');
     await p.click('#menuB');
     t.ok(await vis(p, '#gameMenuCard') && await p.evaluate(() => G.paused), 'menu ☰ : le jeu se met en pause');
     await p.click('#gmCtrl');

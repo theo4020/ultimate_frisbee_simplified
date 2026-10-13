@@ -79,14 +79,17 @@ function refreshOptions() {
   renderSelects();
   document.querySelectorAll('.opt').forEach(b => b.classList.toggle('on', G.form[b.dataset.g] === b.dataset.v));
   const os = pickedSys('osys'), ds = pickedSys('dsys');
-  $('descOff').textContent = os ? `Ton système « ${os.name} » : ${os.steps.length} course${os.steps.length > 1 ? 's' : ''} qui s’enchaînent, puis tout le monde revient en place.` : DESCS[G.form.off];
+  $('descOff').textContent = os ? `Ta formation « ${os.name} » : chacun prend sa place et attaque l’espace libre depuis là.` : DESCS[G.form.off];
   $('descRestart').textContent = DESCS['restart_' + G.form.restart];
   $('descDef').textContent = ds ? `Ton système « ${ds.name} » : ` + (ds.mode === 'zone' ? 'zone dessinée, la mark reste sur le porteur.' : 'individuelle, chacun avec son rôle.') : DESCS[G.form.def];
   $('descForce').textContent = DESCS[G.form.force];
   $('rowForce').style.display = (ds ? ds.mode !== 'zone' : G.form.def !== 'zone') ? '' : 'none';
-  $('descPlay').textContent = PLAYS[G.form.play];
+  const pd = n => { const ty = G.form['play' + n], ps = ty === 'sys' && pickedSys('p' + n + 'sys');
+    return ty === 'none' ? '' : ps ? `★ ${ps.name} : tes courses, jouées depuis où sont les joueurs.` : PLAYS[ty]; };
+  $('descPlay').innerHTML = [1, 2].map(n => pd(n) && `<b>Play ${n}</b> : ${esc(pd(n))}`).filter(Boolean).join('<br>')
+    + `<br><i>Avec le disque, appelle-les quand tu veux : ${keysOf('play1').map(keyName)[0] || '?'} / ${keysOf('play2').map(keyName)[0] || '?'}, boutons ▶ sur le terrain, ou ← / → à la manette.</i>`;
   $('descDPlay').textContent = DPLAYS[G.form.dplay];
-  $('rowPlay').style.display = G.receiving === G.me ? '' : 'none';
+  $('rowPlay').style.display = G.spectator ? 'none' : '';
   $('rowDPlay').style.display = G.receiving !== G.me ? '' : 'none';
   $('ovWind').textContent = 'Vent pour ce point : ' + windLabel() + '.' + (G.net === 'guest' ? ' (réglé par l’hôte)' : '');
   const hostSide = G.net !== 'guest';                        // le vent et la vitesse sont réglés par l'hôte
@@ -192,38 +195,43 @@ function refreshCaptainUI() {
   $('oppReady').textContent = !isCap ? 'En attente des capitaines…'
     : waiting.length ? 'En attente de : ' + waiting.map(humanLabel).join(', ') : '';
 }
-// systèmes perso proposés dans le menu (pas en mode infini) ; « picked » = celui choisi et encore existant
-const sysAllowed = () => !(G.series && G.series.endless);
+// systèmes perso proposés dans le menu ; « picked » = celui choisi et encore existant
+const sysAllowed = () => true;                                // partout où l'on choisit sa stratégie (mode infini compris)
 const pickedSys = k => (sysAllowed() && G.form[k] ? sysById(G.form[k]) : null);
 // menus déroulants du menu d'avant-point : classiques, puis « Mes systèmes » (attaque et défense)
 const SEL_LISTS = {
   off: [['vert', 'Vertical stack'], ['ho', 'Horizontal stack'], ['side', 'Side stack']],
   def: [['man', 'Man (individuelle)'], ['zone', 'Zone'], ['clam', 'Clam']],
   force: [['haut', 'Force haut'], ['bas', 'Force bas'], ['middle', 'Force middle'], ['straight', 'Straight up']],
-  play: [['none', 'Aucun'], ['huck', 'Huck'], ['split', 'Double cut'], ['give', 'Give and go'], ['flood', 'Iso'], ['swing', 'Dump-swing']],
+  play1: [['none', 'Aucun'], ['huck', 'Huck'], ['split', 'Double cut'], ['give', 'Give and go'], ['flood', 'Iso'], ['swing', 'Dump-swing']],
   dplay: [['none', 'Aucun'], ['safety', 'Deep safety'], ['double', 'Poach'], ['junk', 'Junk']]
 };
-const SEL_IDS = { off: 'selOff', def: 'selDef', force: 'selForce', play: 'selPlay', dplay: 'selDPlay' };
+SEL_LISTS.play2 = SEL_LISTS.play1;
+const SEL_IDS = { off: 'selOff', def: 'selDef', force: 'selForce', play1: 'selPlay1', play2: 'selPlay2', dplay: 'selDPlay' };
+// clé du système perso associé à chaque menu ('osys' formation, 'dsys' défense, 'p1sys'/'p2sys' plays) et genre de système
+const SEL_SYS = { off: ['osys', 'off'], def: ['dsys', 'def'], play1: ['p1sys', 'off'], play2: ['p2sys', 'off'] };
 function renderSelects() {
   for (const g in SEL_IDS) {
-    const el = $(SEL_IDS[g]), sk = g === 'off' ? 'osys' : g === 'def' ? 'dsys' : null;
+    const el = $(SEL_IDS[g]), [sk, kind] = SEL_SYS[g] || [null, null];
     let html = SEL_LISTS[g].map(([v, l]) => `<option value="${v}">${l}</option>`).join('');
     if (sk && sysAllowed()) {
-      const mine = sysList().filter(s => s.kind === (g === 'off' ? 'off' : 'def'));
+      const mine = sysList().filter(s => s.kind === kind);
       html = `<optgroup label="Classiques">${html}</optgroup><optgroup label="Mes systèmes">`
         + mine.map(s => `<option value="sys:${s.id}">★ ${esc(s.name)}</option>`).join('')
         + `<option value="edit">✏️ ${mine.length ? 'Créer ou modifier…' : 'Créer un système…'}</option></optgroup>`;
     }
     if (el.dataset.html !== html) { el.innerHTML = html; el.dataset.html = html; }
-    const ps = sk && pickedSys(sk);
-    el.value = ps ? 'sys:' + ps.id : G.form[g];
+    const ps = sk && (g.startsWith('play') ? G.form[g] === 'sys' : true) && pickedSys(sk);
+    el.value = ps ? 'sys:' + ps.id : G.form[g] === 'sys' ? 'none' : G.form[g];
   }
 }
 for (const g in SEL_IDS) $(SEL_IDS[g]).addEventListener('change', e => {
   const v = e.target.value;
   if (v === 'edit') { refreshOptions(); openSystems(); return; }   // remet le choix actuel, puis ouvre l'éditeur
-  if (v.startsWith('sys:')) setOpt(g === 'off' ? 'osys' : 'dsys', v.slice(4));
-  else setOpt(g, v);
+  if (v.startsWith('sys:')) {
+    if (g.startsWith('play')) { G.form[SEL_SYS[g][0]] = v.slice(4); setOpt(g, 'sys'); }
+    else setOpt(SEL_SYS[g][0], v.slice(4));
+  } else setOpt(g, v);
 });
 function setOpt(g, v) {
   if (g === 'off') G.form.osys = null;                         // une formation de base remplace le système perso
@@ -255,7 +263,8 @@ for (const id of ['tname', 'oname']) $(id).addEventListener('input', e => { G.fo
 
 const myCfg = () => ({ off: G.form.off, def: G.form.def, force: G.form.force, play: G.form.play, dplay: G.form.dplay, allyLevel: G.form.allyLevel,
   tname: G.form.tname, tcol: G.form.tcol, puller: G.form.puller, restart: G.form.restart,
-  osys: pickedSys('osys'), dsys: pickedSys('dsys') });           // en ligne, le système entier part chez l'hôte
+  osys: pickedSys('osys'), dsys: pickedSys('dsys'), play1: G.form.play1, play2: G.form.play2,
+  p1sys: G.form.play1 === 'sys' ? pickedSys('p1sys') : null, p2sys: G.form.play2 === 'sys' ? pickedSys('p2sys') : null });   // en ligne, les systèmes entiers partent chez l'hôte
 $('replayB').addEventListener('click', startReplay);
 $('go').addEventListener('click', () => {
   saveSettings();
@@ -330,6 +339,21 @@ function doSwitch() {
   const h = meH(), n = switchTarget(h);
   if (n) selectFor(h, n);
 }
+// appeler Play 1 ou Play 2 (le porteur humain) ; l'invité demande à l'hôte
+function doPlay(n) {
+  if (!canThrow()) return;
+  if (G.net === 'guest') { netSend({ t: 'callplay', n }); return; }
+  callPlay(G.me, n);
+}
+// boutons ▶ sur le terrain : visibles quand tu as le disque et qu'un play peut être appelé
+function playBtnsFrame() {
+  const show = canThrow() && !G.replay && $('overlay').classList.contains('hidden');
+  for (const n of [1, 2]) {
+    const b = $('play' + n + 'B'), ok = show && canCallPlay(G.me, n);
+    b.style.display = ok ? '' : 'none';
+    if (ok) { const ty = playOf(G.me, n), s = ty === 'sys' && playSys(G.me, n), txt = `▶ ${s ? s.name : PLAY_NAMES[ty]}` + (isTouch() ? '' : ` (${keyName(keysOf('play' + n)[0] || '?')})`); if (b.textContent !== txt) b.textContent = txt; }
+  }
+}
 function doCall(x, y) {
   if (G.net === 'guest') { netSend({ t: 'call', x, y }); return; }
   callFor(meH(), x, y);
@@ -375,3 +399,6 @@ function renderPullerRow() {
   $('descPuller').textContent = cur === 'rot' ? 'Les joueurs de ton équipe pullent à tour de rôle.' : cur === 'ai' ? 'Le pull est fait automatiquement par l’IA.'
     : 'Ce joueur fera le pull quand ton équipe défend (il prend le disque à la place du pulleur).';
 }
+
+$('play1B').addEventListener('click', () => doPlay(1));
+$('play2B').addEventListener('click', () => doPlay(2));

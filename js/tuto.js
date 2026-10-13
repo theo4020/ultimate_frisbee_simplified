@@ -375,7 +375,7 @@ function tutoFinish() {
   const T = G.tuto; T.done = true; T.step = TUTO_STEPS.length;
   $('tutoTitle').textContent = 'Bravo ! 🎉';
   $('tutoStep').textContent = '';
-  $('tutoText').innerHTML = 'Tu connais toutes les commandes : lancer, courber, passe haute, appeler un cut, layout, duel en l’air, changer de joueur, layout block, contre en saut et pull. Les menus d’avant-point te laissent aussi choisir ta stratégie et des combinaisons (plays). À toi de jouer !';
+  $('tutoText').innerHTML = 'Tu connais toutes les commandes : lancer, courber, passe haute, appeler un cut, layout, duel en l’air, changer de joueur, layout block, contre en saut et pull. Dans le menu d’avant-point, tu choisis ta formation, ta défense et deux plays, que tu appelles en jeu quand tu as le disque (boutons ▶). À toi de jouer !';
   $('tutoSkip').textContent = 'Jouer un match ▶';
   $('tutoQuit').textContent = 'Menu';
   resize();

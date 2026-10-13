@@ -22,14 +22,14 @@ Les scripts sont chargés dans cet ordre par `index.html` et partagent le même 
 | `js/humans.js` | Qui contrôle quoi (humains, IA, spectateurs), niveaux de l'IA |
 | `js/teams.js` | Noms et couleurs des équipes, réglages mémorisés dans le navigateur |
 | `js/wind.js` | Vent, rafales, dérive du disque, force (break side) |
-| `js/offense.js` | IA offensive : handler, dump, stack, cuts |
-| `js/defense.js` | IA défensive : man, zone, interceptions, layout, double team |
+| `js/offense.js` | IA offensive : rôles, places de la formation, coupes vers l'espace libre (course contre le défenseur, ligne de passe, terrain gagné), laisser l'espace aux autres |
+| `js/defense.js` | IA défensive : man, zone, clam, lecture collective (changements, aide, passe probable selon le niveau), interceptions, layout |
 | `js/throwing.js` | Lancers (normal, passe haute) : trajectoire, erreur, choix de passe de l'IA |
 | `js/stats.js` | Statistiques du match et résumé de fin de partie (MVP) |
 | `js/events.js` | Réception, interception, turnover, point, sélection du défenseur |
 | `js/sim.js` | Boucle de simulation : déplacements, stall count, vol du disque |
 | `js/point.js` | Lancement d'un point |
-| `js/plays.js` | Plays de départ (attaque et défense) |
+| `js/plays.js` | Plays d'attaque appelés en jeu (Play 1 / Play 2, depuis la position des joueurs), plays de défense |
 | `js/fx.js` | Sons synthétisés, particules, secousses, vibrations |
 | `js/pull.js` | Le pull : visée, courbe, jauge de puissance, réception et brick |
 | `js/replay.js` | Ralenti du dernier point, célébration après un point |
@@ -91,7 +91,7 @@ Avec un simple serveur de fichiers, le jeu retombe sur `js/secrets.js` (copie de
 | `rules.test.mjs` | Matchs IA contre IA sans blocage, chiffres réalistes, interceptions (1 sur 3), Callahan, mode infini, tournoi |
 | `account.test.mjs` | Comptes côté serveur : création, empreinte du mot de passe, connexion, sauvegarde, essais limités, pseudo réservé au classement |
 | `ui-account.test.mjs` | Comptes dans le navigateur : création sur un appareil, connexion sur un autre, profil retrouvé, déconnexion |
-| `systems.test.mjs` | Systèmes perso : validation, placement autour du disque, matchs IA qui les jouent, exclus du mode infini |
+| `systems.test.mjs` | Systèmes perso : validation, placement autour du disque, matchs IA qui les jouent, utilisés aussi en mode infini |
 | `ui-systems.test.mjs` | Éditeur dans le navigateur (ordinateur et téléphone) : placer, dessiner une course, enregistrer, choisir avant un point |
 | `code.test.mjs` | Aucun nom de fonction ou de constante déclaré dans deux fichiers |
 | `worker.test.mjs` | Serveur : relais TURN (sécurité, erreurs), classement (tri, scores impossibles refusés, pseudos nettoyés) |

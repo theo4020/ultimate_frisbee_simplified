@@ -17,7 +17,7 @@ export default async function (t) {
       t.ok(await p.isVisible('#sysItems .empty'), 'liste vide au départ');
       await p.click('#sysNewOff');
       await p.locator('#edField').scrollIntoViewIfNeeded();
-      const box = await p.locator('#edField').boundingBox();
+      const box = { ...(await p.locator('#edField').boundingBox()) };
       const px = (f, s) => [box.x + (f + 10) / 48 * box.width, box.y + (18.5 - s) / 37 * box.height];
       const drag = async (a, b) => { await p.mouse.move(...px(...a)); await p.mouse.down(); await p.mouse.move(...px(...b), { steps: 6 }); await p.mouse.up(); };
       await drag([8, 2], [11, 7]);
@@ -25,6 +25,7 @@ export default async function (t) {
       t.ok(Math.abs(pos0[0] - 11) < 1 && Math.abs(pos0[1] - 7) < 1, 'glisser un joueur change sa place', pos0);
       const n0 = await p.evaluate(() => ED.sys.steps.length);
       await p.click('#edModes [data-m="cut"]');
+      Object.assign(box, await p.locator('#edField').boundingBox());   // le texte d'aide change : le terrain peut bouger
       await drag([14, 1], [30, -9]);
       const st = await p.evaluate(() => ED.sys.steps.at(-1));
       t.ok((await p.evaluate(() => ED.sys.steps.length)) === n0 + 1 && st.p === 1 && Math.abs(st.to[0] - 30) < 1, 'mode Courses : glisser depuis un joueur ajoute sa course', st);
@@ -51,6 +52,9 @@ export default async function (t) {
       await pick('#selOff'); await pick('#selDef');
       t.ok(await p.evaluate(() => osysOf(0) && osysOf(0).name === 'Mon huck' && dsysOf(0) && dsysOf(0).roles[0] === 'double'), 'les deux systèmes sont actifs');
       t.ok(await p.isVisible('#selForce'), 'individuelle : le choix du force reste proposé');
+      const p1 = await p.$$eval('#selPlay1 option', o => o.map(x => x.value).find(v => v.startsWith('sys:')));
+      await p.selectOption('#selPlay1', p1);
+      t.ok(await p.evaluate(() => G.form.play1 === 'sys' && playSys(0, 1) && playSys(0, 1).name === 'Mon huck'), 'un système perso peut servir de Play 1');
       await p.selectOption('#selOff', 'ho');
       t.ok(await p.evaluate(() => !osysOf(0) && G.form.off === 'ho'), 'une formation de base remplace le système');
       await pick('#selOff');

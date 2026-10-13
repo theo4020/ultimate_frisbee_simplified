@@ -15,10 +15,10 @@ for (let t = 0; t < 2; t++)
 
 const G = {
   score: [0, 0], off: 0, phase: 'menu', stall: 0, receiving: 0, time: 0,
-  form: { off: 'vert', def: 'man', force: 'haut', play: 'none', dplay: 'none', speed: 'normal', level: 'normal', allyLevel: 'normal',
+  form: { off: 'vert', def: 'man', force: 'haut', play: 'none', play1: 'huck', play2: 'give', dplay: 'none', speed: 'normal', level: 'normal', allyLevel: 'normal',
     windMode: 'random', windDir: 0, windKmh: 20,
     tname: '', tcol: '', oname: '', ocol: '', points: '5', cb: '0', puller: 'cap', first: 'r', restart: 'pose' },   // first : équipe qui commence en attaque ('0', '1' ou 'r' = au hasard)   // puller : 'cap' (capitaine), 'rot' (chacun son tour), 'ai' ou l'id d'un joueur   // points pour gagner, couleurs adaptées au daltonisme              // noms et couleurs (vide = par défaut)
-  ai: { off: 'vert', def: 'man', force: 'bas', play: 'none', dplay: 'none', restart: 'pose' },
+  ai: { off: 'vert', def: 'man', force: 'bas', play: 'none', play1: 'huck', play2: 'give', dplay: 'none', restart: 'pose' },
   oplay: null, dplay: null, wind: { x: 0, y: 0, kmh: 0 }, gt: 0,
   order: [[], []], cutT: 0,
   curve: 0, aiming: false,

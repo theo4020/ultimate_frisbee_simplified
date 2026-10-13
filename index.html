@@ -45,6 +45,7 @@
     <div id="fjoy"><div id="fknob"></div></div>
     <div id="curveV" title="Courbe"><span class="cvl">↶</span><div class="cvtrack"><div class="cvmid"></div><div id="curveVThumb"></div></div><span class="cvl">↷</span></div>
     <button id="highB">Passe<br>haute</button>
+    <div id="playBtns"><button id="play1B"></button><button id="play2B"></button></div>
   </div>
   <div id="controls">
     <button id="curveL">↶ Courbe (A)</button>
@@ -157,7 +158,7 @@
   <div class="card" id="sysCard" style="display:none">
     <div id="sysList">
       <h1>📋 Mes systèmes</h1>
-      <p>Invente tes attaques (formation et courses) et tes défenses (zone ou individuelle avec des rôles), puis choisis-les
+      <p>Invente tes attaques (une formation, et des courses à appeler comme play) et tes défenses (zone ou individuelle avec des rôles), puis choisis-les
         dans le menu d’avant-point, en solo comme en ligne. Ils sont gardés avec ton compte.</p>
       <ul id="sysItems"></ul>
       <div class="accBtns"><button id="sysNewOff" class="primary">＋ Nouvelle attaque</button><button id="sysNewDef" class="primary">＋ Nouvelle défense</button><span class="net" id="sysCount"></span></div>
@@ -251,7 +252,7 @@
       <div class="row"><span>Pull</span><span class="pullOpts" id="pullerOpts"></span></div>
       <div class="desc" id="descPuller"></div>
     </div>
-    <div class="row"><span>Ton attaque</span><select class="sel" id="selOff"></select></div>
+    <div class="row"><span>Formation</span><select class="sel" id="selOff"></select></div>
     <div class="desc" id="descOff"></div>
     <div class="row"><span>Reprise du disque</span>
       <button class="opt" data-g="restart" data-v="pose">Posée</button>
@@ -265,7 +266,8 @@
       <div class="desc" id="descForce"></div>
     </div>
     <div id="rowPlay">
-      <div class="row"><span>Play d'attaque</span><select class="sel" id="selPlay"></select></div>
+      <div class="row"><span>Play 1</span><select class="sel" id="selPlay1"></select></div>
+      <div class="row"><span>Play 2</span><select class="sel" id="selPlay2"></select></div>
       <div class="desc" id="descPlay"></div>
     </div>
     <div id="rowDPlay">
