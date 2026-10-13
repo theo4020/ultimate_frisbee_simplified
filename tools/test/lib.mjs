@@ -34,8 +34,12 @@ export function loadGame() {
     apply: () => mk(), set: () => true
   });
   const store = new Map();
+  // hasard reproductible : mêmes tirages à chaque lancement (sinon un test statistique pourrait échouer au hasard et bloquer la mise en ligne)
+  let seed = +(process.env.TEST_SEED || 20261013) >>> 0;
+  const M = Object.create(Math);
+  M.random = () => { seed = (seed + 0x6D2B79F5) >>> 0; let x = seed; x = Math.imul(x ^ (x >>> 15), x | 1); x ^= x + Math.imul(x ^ (x >>> 7), x | 61); return ((x ^ (x >>> 14)) >>> 0) / 4294967296; };
   const sandbox = {
-    console: { log() { }, warn() { }, error: console.error }, Math, JSON, Date, Set, Map, Array, Object, Number, String, Promise,
+    console: { log() { }, warn() { }, error: console.error }, Math: M, JSON, Date, Set, Map, Array, Object, Number, String, Promise,
     setTimeout: () => 0, clearTimeout() { }, setInterval: () => 0, clearInterval() { },
     document: { getElementById: () => mk(), querySelectorAll: () => [], body: mk(), documentElement: mk(), head: mk(), addEventListener() { } },
     window: { addEventListener() { }, devicePixelRatio: 1, innerHeight: 800, innerWidth: 1200 },

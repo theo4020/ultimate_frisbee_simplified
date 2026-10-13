@@ -30,7 +30,9 @@ export default async function (t, { quick }) {
     for (let f = 0; f < 6000 && !(G.phase === 'play' && disc.mode === 'held' && G.stall > 1); f++) __tick();
     if (!(disc.mode === 'held' && disc.holder)) { G.off = 0; G.phase = 'play'; holdDisc(TEAMS[0][0]); }   // rare : on force la situation
     const h = disc.holder, t = h.team, q = TEAMS[t].filter(p => p !== h).sort((a, b) => dist(a.x, a.y, h.x, h.y) - dist(b.x, b.y, h.x, h.y))[0];
-    for (const d of TEAMS[1 - t]) { d.x = W - 2 + (t ? -W + 4 : 0); d.y = 2; }  // défenseurs loin : personne ne peut couper
+    h.x = W / 2 - 3; h.y = H / 2; q.x = W / 2 + 3; q.y = H / 2;     // milieu du terrain, loin des en-buts : la situation ne dépend pas de la partie jouée
+    for (const p of TEAMS[t]) p.vx = p.vy = 0;
+    for (const d of TEAMS[1 - t]) { d.x = W - 2 + (t ? -W + 4 : 0); d.y = 2; d.vx = d.vy = 0; }  // défenseurs loin : personne ne peut couper
     G.stats.preCatch = 0;
     throwDisc(h, q.x, q.y, 0, 0, 'normal');
     const r = disc.intended;

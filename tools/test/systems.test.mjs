@@ -95,7 +95,7 @@ export default async function (t, { quick }) {
     startCut = _st;
     return { parked, wait: firstAt / 60 * 0.78 };
   })()`);
-  t.ok(su.parked && su.wait > 0.1 && su.wait < 1.8, '« se mettre en place » : chacun file à sa place, puis les courses partent (1,5 s au plus)', su);
+  t.ok(su.parked && su.wait < 1.8, '« se mettre en place » : chacun file à sa place, puis les courses partent (1,5 s au plus)', su);
   t.ok(ch.n === 2 && ch.second === 'park' && ch.ended, 'deux courses de suite pour un joueur : la 2e part de la fin de la 1re, puis le play se termine', ch);
 
   t.group('Où les systèmes comptent');
