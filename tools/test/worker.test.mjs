@@ -1,5 +1,6 @@
 // Serveur (worker/index.js), sans Cloudflare : relais TURN et classement du mode infini (tout est simulé).
 import worker, { Board } from '../../worker/index.js';
+import { fakeState, makeDO } from './lib.mjs';
 
 export default async function (t) {
   const realFetch = globalThis.fetch;
@@ -10,8 +11,7 @@ export default async function (t) {
     return Response.json({ iceServers: [{ urls: 'stun:stun.cloudflare.com:3478' },
       { urls: ['turn:turn.cloudflare.com:3478?transport=udp', 'turn:turn.cloudflare.com:53?transport=udp', 'turns:turn.cloudflare.com:443?transport=tcp'], username: 'u', credential: 'p' }] }, { status: 201 });
   };
-  const store = new Map();
-  const board = new Board({ storage: { get: async k => store.get(k), put: async (k, v) => { store.set(k, structuredClone(v)); } } });
+  const bs = fakeState(), board = await makeDO(Board, bs), nScores = () => bs.db.prepare('SELECT COUNT(*) AS n FROM scores').get().n;
   const env = { TURN_KEY_ID: 'kid', TURN_KEY_API_TOKEN: 'tok', ASSETS: { fetch: async () => new Response('page') },
     BOARD: { idFromName: () => 'main', get: () => ({ fetch: (u, o) => board.fetch(new Request(u, o)) }) } };
   const SAME = { 'Sec-Fetch-Site': 'same-origin' };
@@ -61,8 +61,13 @@ export default async function (t) {
     t.ok((await call('/api/scores', { method: 'POST', body: { wins: 1, diff: 1 }, h: { 'Sec-Fetch-Site': 'cross-site' }, ip: '5.5.5.5' })).s === 403, 'un autre site ne peut pas envoyer de score');
     for (let k = 0; k < 120; k++) await call('/api/scores', { method: 'POST', body: { name: 'b' + k, wins: 1, diff: 1 }, ip: '10.0.0.' + k });
     const full = await call('/api/scores');
-    t.ok(store.get('top-2pts').length === 100 && full.j.top.length === 50, '100 scores gardés, 50 affichés', [store.get('top-2pts').length, full.j.top.length]);
+    t.ok(nScores() === 100 && full.j.top.length === 50, '100 scores gardés, 50 affichés', [nScores(), full.j.top.length]);
     t.ok(full.j.top[0].name === 'Théo' && full.j.top[1].name === 'Léa', 'les meilleurs restent en tête');
     t.ok((await call('/api/scores', { e: { ASSETS: env.ASSETS } })).s === 503, 'sans stockage : 503');
   } finally { globalThis.fetch = realFetch; }
+
+  t.group('Classement : recopie de l’ancien stockage');
+  const st = fakeState(new Map([['top-2pts', [{ id: 'aa', name: 'Ancien', wins: 7, diff: 9, at: 1 }, { id: 'bb', name: 'Autre', wins: 2, diff: 1, at: 2 }]]]));
+  const B2 = await makeDO(Board, st), top = (await (await B2.fetch(new Request('https://board/'))).json()).top;
+  t.ok(top.length === 2 && top[0].name === 'Ancien' && top[0].wins === 7, 'les scores de l’ancien stockage sont dans la table', top);
 }

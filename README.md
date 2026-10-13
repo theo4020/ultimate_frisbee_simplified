@@ -76,6 +76,10 @@ Ensuite chaque push sur `main` met le site à jour automatiquement.
 **Adresse du site** : mieux vaut un nom de domaine à toi (environ 10 € par an, par exemple chez Cloudflare Registrar), branché dans
 *Settings → Domains & Routes*. L'adresse ne dépend alors plus de l'hébergeur : on pourra en changer sans que les joueurs changent de lien.
 
+**Voir et modifier les données** : *Workers & Pages → Durable Objects* → `Accounts`, `Board` ou `Gallery` → **Data Studio**,
+identifiant `main`. Tables : `accounts` (comptes : pseudo, empreinte du mot de passe, profil en JSON), `scores` (classement),
+`items` et `likes` (galerie), `meta` (interne). Les données d'avant ont été recopiées automatiquement au premier lancement.
+
 **Modérer la galerie** : dans *Settings → Variables and Secrets* du worker, ajoute une variable `GALLERY_ADMINS` (texte)
 avec ton pseudo de compte (plusieurs pseudos séparés par des virgules). Ces comptes voient ✕ sur toutes les publications.
 

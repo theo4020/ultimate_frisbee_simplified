@@ -1,10 +1,9 @@
 // Galerie côté serveur (worker/index.js), sans Cloudflare : publier, lister, aimer, retirer, données invalides refusées.
 import worker, { Accounts, Gallery } from '../../worker/index.js';
-import { fakeState, fakeNs } from './lib.mjs';
+import { fakeState, fakeNs, makeDO } from './lib.mjs';
 
 export default async function (t) {
-  const gs = new Map();
-  const env = { ASSETS: { fetch: async () => new Response('') }, ACCOUNTS: fakeNs(new Accounts(fakeState(new Map()))), GALLERY: fakeNs(new Gallery(fakeState(gs))), GALLERY_ADMINS: 'Modo' };
+  const env = { ASSETS: { fetch: async () => new Response('') }, ACCOUNTS: fakeNs(await makeDO(Accounts, fakeState())), GALLERY: fakeNs(await makeDO(Gallery, fakeState())), GALLERY_ADMINS: 'Modo' };
   let ip = 0;
   const post = async (path, body, h = { 'Sec-Fetch-Site': 'same-origin' }) => {
     const r = await worker.fetch(new Request('https://jeu.example' + path, { method: 'POST', headers: { ...h, 'CF-Connecting-IP': '10.2.0.' + (ip++) }, body: JSON.stringify(body) }), env);
@@ -51,4 +50,13 @@ export default async function (t) {
   t.ok((await G_('unpublish', { id: p1.j.id }, theo)).s === 200 && (await G_('list', {})).j.items.length === 0, 'l’auteur retire la sienne');
   for (let k = 0; k < 21; k++) await G_('publish', { sys: { ...sys, id: 'sys' + String(k).padStart(3, '0') } }, lea);
   t.ok((await G_('list', { q: 'léa' })).j.items.length === 20, '20 publications au plus par compte');
+
+  t.group('Recopie de l’ancien stockage');
+  const old = new Map([['idx', [{ id: 'old12345', src: 'abc', by: 'Vieux', kind: 'off', name: 'Ancien huck', info: '1 course', likes: 1, at: 1 }]],
+    ['i:old12345', { kind: 'off', name: 'Ancien huck', pos: [[1, 1], [2, 2], [3, 3], [4, 4]], steps: [] }], ['likes:fan', ['old12345']]]);
+  const st = fakeState(old), G2 = await makeDO(Gallery, st);
+  const call = async b => (await G2.fetch(new Request('https://gal/', { method: 'POST', body: JSON.stringify(b) }))).json();
+  const L = await call({ op: 'list', user: 'Fan' });
+  t.ok(L.items.length === 1 && L.items[0].by === 'Vieux' && L.items[0].liked && L.items[0].likes === 1, 'publications et ❤ de l’ancien stockage retrouvés', L);
+  t.ok((await call({ op: 'get', id: 'old12345' })).item.sys.pos.length === 4, 'le système complet aussi');
 }

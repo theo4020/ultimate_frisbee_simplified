@@ -6,6 +6,8 @@ import http from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 
+// SQLite de Node (22.13+) : sert à imiter le stockage de Cloudflare ; absent sur un Node plus ancien
+export const SQLITE = (() => { try { process.removeAllListeners('warning'); return createRequire(import.meta.url)('node:sqlite').DatabaseSync; } catch (e) { return null; } })();
 export const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 // ---------- vérifications ----------
@@ -62,8 +64,24 @@ export function playwright() {
   throw new Error('Playwright absent : cd tools/test && npm install && npx playwright install chromium');
 }
 
-// ---------- faux stockage Cloudflare (Durable Objects) ----------
-export const fakeState = store => ({ storage: { get: async k => structuredClone(store.get(k)), put: async (k, v) => { store.set(k, structuredClone(v)); }, delete: async k => store.delete(k) } });
+// ---------- faux stockage Cloudflare (Durable Objects) : clé → valeur + vraie base SQLite (node:sqlite) ----------
+// store : Map de l'ancien stockage « clé → valeur » (pour tester la recopie) ; renvoie aussi .db pour lire les tables
+export function fakeState(store = new Map()) {
+  if (!SQLITE) throw new Error('node:sqlite indisponible : il faut Node 22.13 ou plus');
+  const db = new SQLITE(':memory:');
+  const norm = v => (v === undefined ? null : typeof v === 'boolean' ? Number(v) : v);
+  return {
+    db, store,
+    blockConcurrencyWhile: async fn => fn(),
+    storage: {
+      get: async k => structuredClone(store.get(k)), put: async (k, v) => { store.set(k, structuredClone(v)); }, delete: async k => store.delete(k),
+      list: async ({ prefix = '' } = {}) => new Map([...store].filter(([k]) => k.startsWith(prefix)).map(([k, v]) => [k, structuredClone(v)])),
+      sql: { exec: (q, ...b) => { const rows = db.prepare(q).all(...b.map(norm)); return { toArray: () => rows, one: () => rows[0] }; } }
+    }
+  };
+}
+// les constructeurs lancent leur préparation (tables, recopie) : on attend qu'elle soit finie
+export async function makeDO(Cls, state) { const o = new Cls(state); await new Promise(r => setTimeout(r, 0)); return o; }
 export const fakeNs = obj => ({ idFromName: () => 'main', get: () => ({ fetch: (u, o) => obj.fetch(new Request(u, o)) }) });
 
 // ---------- serveur local : les fichiers du site + le vrai worker (/api/turn, /api/scores) ----------
@@ -71,7 +89,8 @@ const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/cs
 export async function startServer({ turnEnv = false } = {}) {
   const { default: worker, Board, Accounts, Gallery } = await import(path.join(ROOT, 'worker', 'index.js'));
   const store = new Map();
-  const board = new Board(fakeState(store)), accStore = new Map(), accounts = new Accounts(fakeState(accStore)), galStore = new Map(), gallery = new Gallery(fakeState(galStore));
+  const bs = fakeState(), as = fakeState(), gs = fakeState();
+  const board = await makeDO(Board, bs), accounts = await makeDO(Accounts, as), gallery = await makeDO(Gallery, gs);
   const ASSETS = {
     async fetch(req) {
       let p = decodeURIComponent(new URL(req.url).pathname);
@@ -92,5 +111,6 @@ export async function startServer({ turnEnv = false } = {}) {
   });
   await new Promise(r => server.listen(0, '127.0.0.1', r));
   const url = `http://127.0.0.1:${server.address().port}/`;
-  return { url, board: store, accounts: accStore, gallery: galStore, close: () => new Promise(r => server.close(r)) };
+  const q = st => (sqlText, ...b) => st.db.prepare(sqlText).all(...b);   // lire les tables pendant un test
+  return { url, board: q(bs), accounts: q(as), gallery: q(gs), close: () => new Promise(r => server.close(r)) };
 }

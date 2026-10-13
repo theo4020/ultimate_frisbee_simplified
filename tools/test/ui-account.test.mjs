@@ -35,13 +35,13 @@ export default async function (t) {
     await a.click('#accEye');
     t.ok((await a.textContent('#accBody')).includes('mon-mdp-42'), 'le mot de passe peut être affiché');
     await a.waitForFunction(() => /Sauvegardé/.test(document.getElementById('accBody').textContent), null, { timeout: 8000 });
-    const rec = srv.accounts.get('u:joueur1');
+    const row = srv.accounts('SELECT * FROM accounts WHERE k = ?', 'joueur1')[0], rec = row && { ...row, data: JSON.parse(row.data) };
     t.ok(rec && JSON.parse(rec.data['uf-endless']).best === 3 && !JSON.stringify(rec).includes('mon-mdp-42'), 'profil envoyé au serveur, sans le mot de passe');
     await a.click('#accBack');
     await a.evaluate(() => storeSet('uf-tuto', true));
     await a.waitForFunction(() => /Sauvegardé/.test(document.getElementById('accBody').textContent) || true);
     await a.waitForTimeout(3500);
-    t.ok(srv.accounts.get('u:joueur1').data['uf-tuto'] === 'true', 'un changement est sauvegardé tout seul');
+    t.ok(JSON.parse(srv.accounts('SELECT data FROM accounts WHERE k = ?', 'joueur1')[0].data)['uf-tuto'] === 'true', 'un changement est sauvegardé tout seul');
 
     t.group('Se connecter sur un autre appareil (téléphone)');
     const b = await device('mobile', true);
@@ -63,7 +63,7 @@ export default async function (t) {
     t.ok(await b.evaluate(() => document.getElementById('endSaveName').readOnly && document.getElementById('endSaveName').value === 'Joueur1'), 'pseudo du compte imposé');
     await b.click('#endSaveB');
     await b.waitForFunction(() => /classement mondial|non enregistré/.test(document.getElementById('endStatus').textContent), null, { timeout: 8000 });
-    t.ok(srv.board.get('top-2pts')[0].name === 'Joueur1', 'score enregistré sous le compte', srv.board.get('top-2pts'));
+    t.ok(srv.board('SELECT name FROM scores')[0].name === 'Joueur1', 'score enregistré sous le compte', srv.board('SELECT * FROM scores'));
     const c = await device('autre');
     await endRun(c);
     await c.fill('#endSaveName', 'JOUEUR1'); await c.click('#endSaveB');

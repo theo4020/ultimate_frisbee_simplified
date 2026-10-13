@@ -1,10 +1,10 @@
 // Comptes côté serveur (worker/index.js), sans Cloudflare : création, connexion, sauvegarde, pseudo réservé au classement.
 import worker, { Board, Accounts } from '../../worker/index.js';
-import { fakeState, fakeNs } from './lib.mjs';
+import { fakeState, fakeNs, makeDO } from './lib.mjs';
 
 export default async function (t) {
-  const accStore = new Map(), boardStore = new Map();
-  const env = { ASSETS: { fetch: async () => new Response('page') }, ACCOUNTS: fakeNs(new Accounts(fakeState(accStore))), BOARD: fakeNs(new Board(fakeState(boardStore))) };
+  const as = fakeState(), acc = k => as.db.prepare('SELECT * FROM accounts WHERE k = ?').get(k);
+  const env = { ASSETS: { fetch: async () => new Response('page') }, ACCOUNTS: fakeNs(await makeDO(Accounts, as)), BOARD: fakeNs(await makeDO(Board, fakeState())) };
   let ipN = 0;
   const call = async (path, body, { ip, h = { 'Sec-Fetch-Site': 'same-origin' }, e = env } = {}) => {
     const r = await worker.fetch(new Request('https://jeu.example' + path, { method: 'POST', headers: { ...h, 'CF-Connecting-IP': ip || '10.1.0.' + (ipN++) }, body: JSON.stringify(body) }), e);
@@ -15,7 +15,7 @@ export default async function (t) {
   t.group('Création');
   const r1 = await A('register', { name: 'Théo', password: 'huck-1234', data: { 'uf-ach': '{"tuto":1}' } });
   t.ok(r1.s === 200 && r1.j.token && r1.j.name === 'Théo', 'compte créé, jeton reçu', r1.j);
-  const rec = accStore.get('u:théo');
+  const rec = acc('théo');
   t.ok(rec && !JSON.stringify(rec).includes('huck-1234') && rec.hash && rec.salt, 'le mot de passe n’est jamais stocké, seulement son empreinte');
   t.ok((await A('register', { name: 'THÉO', password: 'autre-0000' })).s === 409, 'pseudo déjà pris (majuscules comprises)');
   t.ok((await A('register', { name: 'ab', password: 'xxxx' })).s === 400, 'pseudo trop court refusé');
@@ -47,6 +47,14 @@ export default async function (t) {
   t.group('Déconnexion et suppression');
   await A('logout', { name: 'Théo', token: lg.j.token });
   t.ok((await A('load', { name: 'Théo', token: lg.j.token })).s === 401, 'après déconnexion, le jeton ne marche plus');
-  t.ok((await A('delete', { name: 'Théo', token: r1.j.token })).s === 200 && !accStore.has('u:théo'), 'compte supprimé');
+  t.ok((await A('delete', { name: 'Théo', token: r1.j.token })).s === 200 && !acc('théo'), 'compte supprimé');
   t.ok((await A('register', { name: 'Théo', password: 'nouveau1' })).s === 200, 'le pseudo redevient libre');
+
+  t.group('Recopie de l’ancien stockage (une seule fois)');
+  const old = new Map([['u:ancien', { name: 'Ancien', salt: 's', hash: 'h', tokens: ['tok1'], data: { 'uf-ach': '{"a":1}' }, created: 5, updated: 6 }]]);
+  const st = fakeState(old), A2 = await makeDO(Accounts, st);
+  const c1 = await (await A2.fetch(new Request('https://acc/', { method: 'POST', body: JSON.stringify({ op: 'load', name: 'Ancien', token: 'tok1' }) }))).json();
+  t.ok(c1.name === 'Ancien' && c1.data['uf-ach'] === '{"a":1}', 'un compte de l’ancien stockage est retrouvé dans la table', c1);
+  st.db.prepare("DELETE FROM accounts").run(); await makeDO(Accounts, st);
+  t.ok(st.db.prepare('SELECT COUNT(*) AS n FROM accounts').get().n === 0, 'la recopie ne se refait pas (sinon un compte supprimé reviendrait)');
 }

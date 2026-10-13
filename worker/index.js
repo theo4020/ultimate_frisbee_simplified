@@ -44,6 +44,21 @@ async function turn(request, env) {
   }
 }
 
+// ---------- stockage : de vraies tables SQL (lisibles et modifiables dans Cloudflare → Durable Objects → Data Studio) ----------
+// sql(state) : all(requête, ...valeurs) → lignes · one(...) → première ligne ou null · run(...) pour écrire.
+function sql(state) {
+  const S = state.storage.sql;
+  const all = (q, ...b) => S.exec(q, ...b).toArray();
+  return { all, one: (q, ...b) => all(q, ...b)[0] || null, run: (q, ...b) => { S.exec(q, ...b); } };
+}
+// une seule fois : recopie les données de l'ancien stockage « clé → valeur » dans les tables (elles restent aussi à l'ancien endroit)
+async function migrateOnce(state, db, copy) {
+  db.run('CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT)');
+  if (db.one("SELECT v FROM meta WHERE k = 'kv_migrated'")) return;
+  await copy();
+  db.run("INSERT INTO meta (k, v) VALUES ('kv_migrated', ?)", String(Date.now()));
+}
+
 // ---------- classement du mode infini ----------
 // Un pseudo n'a qu'une ligne : un nouveau score ne la remplace que s'il est meilleur.
 // Un seul « Durable Object » (Board) garde les 100 meilleures séries dans le stockage de Cloudflare (rien à configurer :
@@ -61,25 +76,35 @@ function validRun(b) {
   return name ? { name, wins, diff } : null;                  // sans pseudo, pas de place au classement
 }
 export class Board {
-  constructor(state) { this.state = state; this.last = new Map(); }
+  constructor(state) {
+    this.state = state; this.last = new Map(); this.db = sql(state);
+    state.blockConcurrencyWhile(async () => {
+      // classement : une ligne par pseudo (k = pseudo en minuscules)
+      this.db.run('CREATE TABLE IF NOT EXISTS scores (id TEXT PRIMARY KEY, k TEXT UNIQUE, name TEXT, wins INTEGER, diff INTEGER, at INTEGER)');
+      await migrateOnce(state, this.db, async () => {
+        for (const e of (await state.storage.get(BOARD_KEY)) || [])
+          this.db.run('INSERT OR IGNORE INTO scores (id, k, name, wins, diff, at) VALUES (?, ?, ?, ?, ?, ?)', e.id, e.name.toLowerCase(), e.name, e.wins, e.diff, e.at);
+      });
+    });
+  }
+  top(n) { return this.db.all('SELECT id, name, wins, diff, at FROM scores ORDER BY wins DESC, diff DESC, at ASC LIMIT ?', n); }
+  rankOf(e) { return this.db.one('SELECT COUNT(*) AS n FROM scores WHERE wins > ? OR (wins = ? AND (diff > ? OR (diff = ? AND at < ?)))', e.wins, e.wins, e.diff, e.diff, e.at).n + 1; }
   async fetch(request) {
-    let top = (await this.state.storage.get(BOARD_KEY)) || [];
-    if (request.method !== 'POST') return json({ top: top.slice(0, BOARD_SHOW) });
+    if (request.method !== 'POST') return json({ top: this.top(BOARD_SHOW) });
     const { run, ip } = await request.json(), now = Date.now();
     if (now - (this.last.get(ip) || 0) < BOARD_WAIT) return json({ error: 'trop de scores envoyés, réessaie dans un instant' }, 429);
     this.last.set(ip, now);
     if (this.last.size > 5000) this.last.clear();
-    const e = { id: crypto.randomUUID().slice(0, 8), ...run, at: now };
-    const key = run.name.toLowerCase(), old = top.find(o => o.name.toLowerCase() === key);
+    const e = { id: crypto.randomUUID().slice(0, 8), ...run, at: now }, k = run.name.toLowerCase();
+    const old = this.db.one('SELECT id, name, wins, diff, at FROM scores WHERE k = ?', k);
     if (old && cmpRun(old, e) <= 0) {                           // ce pseudo a déjà fait mieux (ou autant) : on garde l'ancien
-      return json({ kept: false, best: { wins: old.wins, diff: old.diff }, rank: top.indexOf(old) + 1, id: old.id, top: top.slice(0, BOARD_SHOW) });
+      return json({ kept: false, best: { wins: old.wins, diff: old.diff }, rank: this.rankOf(old), id: old.id, top: this.top(BOARD_SHOW) });
     }
-    top = top.filter(o => o !== old);
-    top.push(e); top.sort(cmpRun);
-    const rank = top.indexOf(e) + 1;
-    top = top.slice(0, BOARD_MAX);
-    await this.state.storage.put(BOARD_KEY, top);
-    return json({ kept: true, rank, id: rank <= BOARD_MAX ? e.id : null, top: top.slice(0, BOARD_SHOW) });
+    this.db.run('DELETE FROM scores WHERE k = ?', k);
+    this.db.run('INSERT INTO scores (id, k, name, wins, diff, at) VALUES (?, ?, ?, ?, ?, ?)', e.id, k, e.name, e.wins, e.diff, e.at);
+    const rank = this.rankOf(e);
+    this.db.run('DELETE FROM scores WHERE id NOT IN (SELECT id FROM scores ORDER BY wins DESC, diff DESC, at ASC LIMIT ?)', BOARD_MAX);
+    return json({ kept: true, rank, id: rank <= BOARD_MAX ? e.id : null, top: this.top(BOARD_SHOW) });
   }
 }
 // ---------- comptes ----------
@@ -94,17 +119,34 @@ async function pwHash(password, salt) {
 }
 const randHex = n => hex(crypto.getRandomValues(new Uint8Array(n)));
 export class Accounts {
-  constructor(state) { this.state = state; this.tries = new Map(); }
+  constructor(state) {
+    this.state = state; this.tries = new Map(); this.db = sql(state);
+    state.blockConcurrencyWhile(async () => {
+      // comptes : k = pseudo en minuscules ; tokens et data en JSON (data = profil sauvegardé du joueur)
+      this.db.run('CREATE TABLE IF NOT EXISTS accounts (k TEXT PRIMARY KEY, name TEXT, salt TEXT, hash TEXT, tokens TEXT, data TEXT, created INTEGER, updated INTEGER)');
+      await migrateOnce(state, this.db, async () => {
+        for (const [key, a] of await state.storage.list({ prefix: 'u:' })) this.put(key.slice(2), a);
+      });
+    });
+  }
+  get(k) {
+    const r = this.db.one('SELECT * FROM accounts WHERE k = ?', k);
+    return r ? { name: r.name, salt: r.salt, hash: r.hash, tokens: JSON.parse(r.tokens || '[]'), data: r.data ? JSON.parse(r.data) : null, created: r.created, updated: r.updated } : null;
+  }
+  put(k, a) {
+    this.db.run('INSERT OR REPLACE INTO accounts (k, name, salt, hash, tokens, data, created, updated) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      k, a.name, a.salt, a.hash, JSON.stringify(a.tokens || []), a.data ? JSON.stringify(a.data) : null, a.created || 0, a.updated || 0);
+  }
   async fetch(request) {
     const { op, name, password, token, data, ip } = await request.json();
-    const key = 'u:' + String(name || '').toLowerCase(), now = Date.now();
-    const acc = await this.state.storage.get(key);
+    const k = String(name || '').toLowerCase(), now = Date.now();
+    const acc = this.get(k);
     const authed = () => acc && token && acc.tokens.includes(token);
     if (op === 'check') return json({ registered: !!acc, ok: !!authed(), name: acc ? acc.name : null });
     if (op === 'register') {
       if (acc) return json({ error: 'ce pseudo est déjà pris' }, 409);
       const salt = randHex(16), t = randHex(16);
-      await this.state.storage.put(key, { name, salt, hash: await pwHash(password, salt), tokens: [t], data: data || null, created: now, updated: now });
+      this.put(k, { name, salt, hash: await pwHash(password, salt), tokens: [t], data: data || null, created: now, updated: now });
       return json({ name, token: t, data: data || null });
     }
     if (op === 'login') {
@@ -116,14 +158,14 @@ export class Accounts {
       }
       const t = randHex(16);
       acc.tokens = acc.tokens.concat([t]).slice(-5);
-      await this.state.storage.put(key, acc);
+      this.put(k, acc);
       return json({ name: acc.name, token: t, data: acc.data, updated: acc.updated });
     }
     if (!authed()) return json({ error: 'session expirée, reconnecte-toi' }, 401);
-    if (op === 'save') { acc.data = data; acc.updated = now; await this.state.storage.put(key, acc); return json({ updated: now }); }
+    if (op === 'save') { acc.data = data; acc.updated = now; this.put(k, acc); return json({ updated: now }); }
     if (op === 'load') return json({ name: acc.name, data: acc.data, updated: acc.updated });
-    if (op === 'logout') { acc.tokens = acc.tokens.filter(x => x !== token); await this.state.storage.put(key, acc); return json({ ok: true }); }
-    if (op === 'delete') { await this.state.storage.delete(key); return json({ ok: true }); }
+    if (op === 'logout') { acc.tokens = acc.tokens.filter(x => x !== token); this.put(k, acc); return json({ ok: true }); }
+    if (op === 'delete') { this.db.run('DELETE FROM accounts WHERE k = ?', k); return json({ ok: true }); }
     return json({ error: 'action inconnue' }, 400);
   }
 }
@@ -175,53 +217,70 @@ function validSys(o) {                                           // même règle
 }
 const sysInfo = s => (s.kind === 'off' ? s.steps.length + ' course' + (s.steps.length > 1 ? 's' : '') : s.mode === 'zone' ? 'zone' : 'individuelle');
 export class Gallery {
-  constructor(state) { this.state = state; }
+  constructor(state) {
+    this.state = state; this.db = sql(state);
+    state.blockConcurrencyWhile(async () => {
+      // galerie : une ligne par publication (sys = le système complet, en JSON) ; likes : une ligne par ❤ (compte, publication)
+      this.db.run('CREATE TABLE IF NOT EXISTS items (id TEXT PRIMARY KEY, src TEXT, author TEXT, bykey TEXT, kind TEXT, name TEXT, info TEXT, likes INTEGER, at INTEGER, up INTEGER, sys TEXT)');
+      this.db.run('CREATE TABLE IF NOT EXISTS likes (user TEXT, item TEXT, PRIMARY KEY (user, item))');
+      await migrateOnce(state, this.db, async () => {
+        for (const e of (await state.storage.get('idx')) || []) {
+          const sys = await state.storage.get('i:' + e.id);
+          this.db.run('INSERT OR IGNORE INTO items (id, src, author, bykey, kind, name, info, likes, at, up, sys) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            e.id, e.src || null, e.by, e.by.toLowerCase(), e.kind, e.name, e.info || '', e.likes || 0, e.at || 0, e.up || e.at || 0, JSON.stringify(sys || {}));
+        }
+        for (const [key, ids] of await state.storage.list({ prefix: 'likes:' }))
+          for (const id of ids || []) this.db.run('INSERT OR IGNORE INTO likes (user, item) VALUES (?, ?)', key.slice(6), id);
+      });
+    });
+  }
   async fetch(request) {
-    const b = await request.json(), S = this.state.storage;
-    let idx = (await S.get('idx')) || [];
-    const lc = s => String(s || '').toLowerCase();
+    const b = await request.json(), db = this.db, lc = s => String(s || '').toLowerCase();
+    const COLS = 'id, src, author AS "by", kind, name, info, likes, at, up';
     if (b.op === 'list') {
-      let L = idx;
-      if (b.kind === 'off' || b.kind === 'def') L = L.filter(e => e.kind === b.kind);
-      if (b.q) { const q = lc(b.q).slice(0, 30); L = L.filter(e => lc(e.name).includes(q) || lc(e.by).includes(q)); }
-      if (b.mine && b.user) L = L.filter(e => lc(e.by) === lc(b.user));
-      L = L.slice().sort(b.sort === 'new' ? (x, y) => y.at - x.at : (x, y) => y.likes - x.likes || y.at - x.at).slice(0, GAL_LIST);
-      const liked = b.user ? new Set((await S.get('likes:' + lc(b.user))) || []) : new Set();
-      return json({ items: L.map(e => ({ ...e, liked: liked.has(e.id) })), total: idx.length });
+      const where = [], args = [];
+      if (b.kind === 'off' || b.kind === 'def') { where.push('kind = ?'); args.push(b.kind); }
+      if (b.mine && b.user) { where.push('bykey = ?'); args.push(lc(b.user)); }
+      let L = db.all(`SELECT ${COLS} FROM items ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY ${b.sort === 'new' ? 'at DESC' : 'likes DESC, at DESC'}`, ...args);
+      if (b.q) { const q = lc(b.q).slice(0, 30); L = L.filter(e => lc(e.name).includes(q) || lc(e.by).includes(q)); }   // en JS : minuscules avec accents
+      L = L.slice(0, GAL_LIST);
+      const liked = new Set(b.user ? db.all('SELECT item FROM likes WHERE user = ?', lc(b.user)).map(r => r.item) : []);
+      return json({ items: L.map(e => ({ ...e, liked: liked.has(e.id) })), total: db.one('SELECT COUNT(*) AS n FROM items').n });
     }
     if (b.op === 'get') {
-      const it = await S.get('i:' + b.id), e = idx.find(x => x.id === b.id);
-      return it && e ? json({ item: { ...e, sys: it } }) : json({ error: 'publication introuvable' }, 404);
+      const r = db.one(`SELECT ${COLS}, sys FROM items WHERE id = ?`, b.id);
+      if (!r) return json({ error: 'publication introuvable' }, 404);
+      const { sys, ...e } = r;
+      return json({ item: { ...e, sys: JSON.parse(sys) } });
     }
     if (b.op === 'publish') {
-      const sys = b.sys, user = b.user;
-      let e = idx.find(x => lc(x.by) === lc(user) && x.src && x.src === sys.id);   // même système republié : on met à jour
-      if (!e) {
-        if (idx.filter(x => lc(x.by) === lc(user)).length >= GAL_PER_USER) return json({ error: GAL_PER_USER + ' publications au plus par compte' }, 429);
-        if (idx.length >= GAL_MAX) return json({ error: 'galerie pleine' }, 507);
-        e = { id: crypto.randomUUID().slice(0, 8), src: sys.id, by: user, likes: 0, at: Date.now() };
-        idx.push(e);
+      const sys = b.sys, user = b.user, now = Date.now(), { id: _, ...body } = sys;
+      const e = db.one('SELECT id FROM items WHERE bykey = ? AND src = ?', lc(user), sys.id);   // même système republié : on met à jour
+      if (e) {
+        db.run('UPDATE items SET kind = ?, name = ?, info = ?, up = ?, sys = ? WHERE id = ?', sys.kind, sys.name, sysInfo(sys), now, JSON.stringify(body), e.id);
+        return json({ id: e.id });
       }
-      Object.assign(e, { kind: sys.kind, name: sys.name, info: sysInfo(sys), up: Date.now() });
-      await S.put('i:' + e.id, { ...sys, id: undefined });
-      await S.put('idx', idx);
-      return json({ id: e.id });
+      if (db.one('SELECT COUNT(*) AS n FROM items WHERE bykey = ?', lc(user)).n >= GAL_PER_USER) return json({ error: GAL_PER_USER + ' publications au plus par compte' }, 429);
+      if (db.one('SELECT COUNT(*) AS n FROM items').n >= GAL_MAX) return json({ error: 'galerie pleine' }, 507);
+      const id = crypto.randomUUID().slice(0, 8);
+      db.run('INSERT INTO items (id, src, author, bykey, kind, name, info, likes, at, up, sys) VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)',
+        id, sys.id, user, lc(user), sys.kind, sys.name, sysInfo(sys), now, now, JSON.stringify(body));
+      return json({ id });
     }
     if (b.op === 'unpublish') {
-      const e = idx.find(x => x.id === b.id);
+      const e = db.one('SELECT bykey FROM items WHERE id = ?', b.id);
       if (!e) return json({ error: 'publication introuvable' }, 404);
-      if (lc(e.by) !== lc(b.user) && !b.admin) return json({ error: 'seul son auteur peut la retirer' }, 403);
-      idx = idx.filter(x => x !== e);
-      await S.delete('i:' + e.id); await S.put('idx', idx);
+      if (e.bykey !== lc(b.user) && !b.admin) return json({ error: 'seul son auteur peut la retirer' }, 403);
+      db.run('DELETE FROM items WHERE id = ?', b.id); db.run('DELETE FROM likes WHERE item = ?', b.id);
       return json({ ok: true });
     }
     if (b.op === 'like') {
-      const e = idx.find(x => x.id === b.id);
-      if (!e) return json({ error: 'publication introuvable' }, 404);
-      const key = 'likes:' + lc(b.user), mine = new Set((await S.get(key)) || []);
-      if (mine.has(e.id)) { mine.delete(e.id); e.likes = Math.max(0, e.likes - 1); } else { mine.add(e.id); e.likes++; }
-      await S.put(key, [...mine]); await S.put('idx', idx);
-      return json({ likes: e.likes, liked: mine.has(e.id) });
+      if (!db.one('SELECT id FROM items WHERE id = ?', b.id)) return json({ error: 'publication introuvable' }, 404);
+      const u = lc(b.user), had = db.one('SELECT 1 AS x FROM likes WHERE user = ? AND item = ?', u, b.id);
+      if (had) db.run('DELETE FROM likes WHERE user = ? AND item = ?', u, b.id); else db.run('INSERT INTO likes (user, item) VALUES (?, ?)', u, b.id);
+      const n = db.one('SELECT COUNT(*) AS n FROM likes WHERE item = ?', b.id).n;
+      db.run('UPDATE items SET likes = ? WHERE id = ?', n, b.id);
+      return json({ likes: n, liked: !had });
     }
     return json({ error: 'action inconnue' }, 400);
   }

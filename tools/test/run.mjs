@@ -2,7 +2,7 @@
 //   node tools/test/run.mjs           tout (règles, serveur, interface, en ligne) — il faut Playwright (voir README)
 //   node tools/test/run.mjs --quick   sans navigateur (règles + serveur) : c'est ce que lance Cloudflare avant chaque mise en ligne
 //   node tools/test/run.mjs ui        seulement les fichiers dont le nom contient « ui »
-import { tester } from './lib.mjs';
+import { tester, SQLITE } from './lib.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,10 +10,11 @@ import { fileURLToPath } from 'node:url';
 const dir = path.dirname(fileURLToPath(import.meta.url));
 const quick = process.argv.includes('--quick');
 const only = process.argv.slice(2).filter(a => !a.startsWith('--'));
-const BROWSER = ['ui', 'online'];
+const BROWSER = ['ui', 'online'], NEEDS_SQL = ['account', 'gallery', 'worker'];
 const files = fs.readdirSync(dir).filter(f => f.endsWith('.test.mjs')).sort()
   .filter(f => !quick || !BROWSER.some(b => f.startsWith(b)))
-  .filter(f => !only.length || only.some(o => f.includes(o)));
+  .filter(f => !only.length || only.some(o => f.includes(o)))
+  .filter(f => { if (SQLITE || !NEEDS_SQL.some(n => f.startsWith(n))) return true; console.log(`⚠️ ${f} sauté : il faut Node 22.13+ (node:sqlite)`); return false; });
 
 let failed = 0, passed = 0;
 const t0 = Date.now();
