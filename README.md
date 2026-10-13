@@ -138,3 +138,4 @@ Le site est une application web installable : sur Android (Chrome) un bouton « 
 sur iPhone il faut passer par Partager → « Sur l'écran d'accueil ». Une fois installé, le jeu s'ouvre en plein écran et en paysage.
 Le service worker charge toujours la dernière version quand il y a du réseau, et sert la copie gardée sinon.
 **Si tu ajoutes un fichier JS**, ajoute-le aussi à la liste `FILES` de `sw.js` pour qu'il soit disponible hors connexion.
+ 
