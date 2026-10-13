@@ -69,9 +69,9 @@ export const fakeNs = obj => ({ idFromName: () => 'main', get: () => ({ fetch: (
 // ---------- serveur local : les fichiers du site + le vrai worker (/api/turn, /api/scores) ----------
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.webmanifest': 'application/manifest+json', '.json': 'application/json' };
 export async function startServer({ turnEnv = false } = {}) {
-  const { default: worker, Board, Accounts } = await import(path.join(ROOT, 'worker', 'index.js'));
+  const { default: worker, Board, Accounts, Gallery } = await import(path.join(ROOT, 'worker', 'index.js'));
   const store = new Map();
-  const board = new Board(fakeState(store)), accStore = new Map(), accounts = new Accounts(fakeState(accStore));
+  const board = new Board(fakeState(store)), accStore = new Map(), accounts = new Accounts(fakeState(accStore)), galStore = new Map(), gallery = new Gallery(fakeState(galStore));
   const ASSETS = {
     async fetch(req) {
       let p = decodeURIComponent(new URL(req.url).pathname);
@@ -81,7 +81,7 @@ export async function startServer({ turnEnv = false } = {}) {
       return new Response(fs.readFileSync(f), { headers: { 'Content-Type': TYPES[path.extname(f)] || 'application/octet-stream' } });
     }
   };
-  const env = { ASSETS, BOARD: fakeNs(board), ACCOUNTS: fakeNs(accounts) };
+  const env = { ASSETS, BOARD: fakeNs(board), ACCOUNTS: fakeNs(accounts), GALLERY: fakeNs(gallery), GALLERY_ADMINS: 'Admin' };
   if (turnEnv) Object.assign(env, { TURN_KEY_ID: 'test', TURN_KEY_API_TOKEN: 'test' });
   const server = http.createServer(async (rq, rs) => {
     const chunks = []; for await (const c of rq) chunks.push(c);
@@ -92,5 +92,5 @@ export async function startServer({ turnEnv = false } = {}) {
   });
   await new Promise(r => server.listen(0, '127.0.0.1', r));
   const url = `http://127.0.0.1:${server.address().port}/`;
-  return { url, board: store, accounts: accStore, close: () => new Promise(r => server.close(r)) };
+  return { url, board: store, accounts: accStore, gallery: galStore, close: () => new Promise(r => server.close(r)) };
 }

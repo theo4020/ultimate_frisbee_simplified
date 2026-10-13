@@ -156,6 +156,17 @@
     <button id="endBack">← Retour</button>
   </div>
   <div class="card" id="sysCard" style="display:none">
+    <div class="accTabs sysTabs" id="sysTabs"><button data-t="mine">📋 Mes systèmes</button><button data-t="gal">🌍 Galerie</button></div>
+    <div id="galView" style="display:none">
+      <p>Les systèmes publiés par les joueurs. Regarde-les (aperçu animé), ajoute ceux qui te plaisent à tes systèmes, et donne un ❤ à tes préférés.
+        Pour publier les tiens : bouton 🌍 dans « Mes systèmes » (compte nécessaire).</p>
+      <div class="galBar"><select class="sel" id="galKind"><option value="">Tout</option><option value="off">Attaques</option><option value="def">Défenses</option></select>
+        <select class="sel" id="galSort"><option value="top">Les plus aimés</option><option value="new">Les plus récents</option></select>
+        <input id="galQ" class="tname" placeholder="Chercher un nom ou un auteur" maxlength="30" autocomplete="off" spellcheck="false"></div>
+      <ul id="galItems"></ul>
+      <p class="net" id="galStatus"></p>
+      <button id="galBack">← Retour</button>
+    </div>
     <div id="sysList">
       <h1>📋 Mes systèmes</h1>
       <p>Invente tes attaques (une formation, et des courses à appeler comme play) et tes défenses (zone ou individuelle avec des rôles), puis choisis-les
@@ -166,12 +177,13 @@
     </div>
     <div id="sysEdit" style="display:none">
       <h1>✏️ <span id="edTitle"></span></h1>
+      <p class="net" id="edBy"></p>
       <div class="accRow"><span>Nom</span><input id="edName" class="tname" maxlength="24" autocomplete="off" spellcheck="false"></div>
       <div class="edModes" id="edModes"></div>
       <p class="net" id="edHelp"></p>
       <div class="edWrap"><canvas id="edField"></canvas></div>
       <div id="edSteps"></div>
-      <div class="accBtns"><button id="edSave" class="primary">Enregistrer</button><button id="edCancel">Annuler</button></div>
+      <div class="accBtns"><button id="edSave" class="primary">Enregistrer</button><button id="edAdd" class="primary" style="display:none">＋ Ajouter à mes systèmes</button><button id="edCancel">Annuler</button></div>
     </div>
   </div>
   <div class="card" id="accountCard" style="display:none">
@@ -383,6 +395,7 @@
 <script src="js/menu.js"></script>
 <script src="js/account.js"></script>
 <script src="js/editor.js"></script>
+<script src="js/gallery.js"></script>
 <script src="js/main.js"></script>
 <script src="js/pwa.js"></script>
 </body>

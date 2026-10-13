@@ -4,7 +4,7 @@
 //  • Attaque : glisser ①–④ pour placer la formation ; mode « Courses » : glisser depuis un joueur jusqu'à sa destination.
 //  • Défense : zone (glisser 1–4, la mark M reste sur le porteur) ou individuelle (un rôle par défenseur).
 
-const ED = { sys: null, mode: 'place', drag: null, anim: null, sel: -1 };
+const ED = { sys: null, mode: 'place', drag: null, anim: null, sel: -1, ro: null };   // ro : aperçu d'une publication de la galerie
 const EF = [-10, 38], ES = [-18.5, 18.5];                      // fenêtre du terrain affichée (mètres)
 function edCanvas() { return $('edField'); }
 function edScale() { const c = edCanvas(); return { w: c.width, h: c.height, kx: c.width / (EF[1] - EF[0]), ky: c.height / (ES[1] - ES[0]) }; }
@@ -13,11 +13,13 @@ const edFromPx = (x, y) => { const k = edScale(); return [EF[0] + x / k.kx, ES[1
 
 // ---------- liste ----------
 function showSystems() {
-  ED.sys = null; stopAnim();
-  $('sysList').style.display = ''; $('sysEdit').style.display = 'none';
+  ED.sys = null; ED.ro = null; stopAnim();
+  $('sysList').style.display = ''; $('sysEdit').style.display = 'none'; $('galView').style.display = 'none';
+  sysTabs('mine');
   const L = sysList();
   const row = s => `<li><span class="kind ${s.kind}">${s.kind === 'off' ? 'Attaque' : 'Défense'}</span><b>${esc(s.name)}</b>
-    <small>${s.kind === 'off' ? s.steps.length + ' course' + (s.steps.length > 1 ? 's' : '') : s.mode === 'zone' ? 'zone' : 'individuelle'}</small>
+    <small>${s.kind === 'off' ? s.steps.length + ' course' + (s.steps.length > 1 ? 's' : '') : s.mode === 'zone' ? 'zone' : 'individuelle'}${s.by ? ' · par ' + esc(s.by) : ''}</small>
+    <button data-a="pub" data-id="${s.id}" class="${s.pub ? 'on' : ''}" title="${s.pub ? 'Publié dans la galerie : touche pour mettre à jour' : 'Publier dans la galerie'}">${s.pub ? '🌍 ✓' : '🌍'}</button>
     <button data-a="edit" data-id="${s.id}">Modifier</button><button data-a="del" data-id="${s.id}" class="ghost">✕</button></li>`;
   $('sysItems').innerHTML = L.length ? L.map(row).join('') : '<li class="empty">Aucun système pour l’instant : crée ta première attaque ou ta première défense.</li>';
   $('sysNewOff').disabled = $('sysNewDef').disabled = L.length >= SYS_MAX;
@@ -25,16 +27,24 @@ function showSystems() {
   $('sysItems').querySelectorAll('button').forEach(b => b.onclick = () => {
     const s = sysById(b.dataset.id); if (!s) return;
     if (b.dataset.a === 'edit') editSystem(JSON.parse(JSON.stringify(s)));
+    else if (b.dataset.a === 'pub') galPublish(s);
     else askConfirm(`Supprimer « ${s.name} » ?`, 'Supprimer', () => { sysSave(sysList().filter(x => x.id !== s.id)); unpickDeleted(); showSystems(); });
   });
 }
-function unpickDeleted() { for (const k of ['osys', 'dsys']) if (G.form[k] && !sysById(G.form[k])) G.form[k] = null; saveSettings(); }
+function unpickDeleted() {
+  for (const k of ['osys', 'dsys']) if (G.form[k] && !sysById(G.form[k])) G.form[k] = null;
+  for (const n of [1, 2]) if (G.form['play' + n] === 'sys' && !sysById(G.form['p' + n + 'sys'])) G.form['play' + n] = 'none';
+  saveSettings();
+}
 
 // ---------- édition ----------
-function editSystem(s) {
-  ED.sys = s; ED.mode = 'place'; ED.sel = -1;
-  $('sysList').style.display = 'none'; $('sysEdit').style.display = '';
-  $('edName').value = s.name;
+function editSystem(s, ro) {
+  ED.sys = s; ED.mode = 'place'; ED.sel = -1; ED.ro = ro || null;
+  $('sysList').style.display = 'none'; $('galView').style.display = 'none'; $('sysEdit').style.display = '';
+  $('edName').value = s.name; $('edName').readOnly = !!ro;
+  $('edSave').style.display = ro ? 'none' : ''; $('edAdd').style.display = ro ? '' : 'none';
+  $('edCancel').textContent = ro ? '← Retour à la galerie' : 'Annuler';
+  $('edBy').textContent = ro ? `Publié par ${ro.by} · ❤ ${ro.likes}` : '';
   edResize(); edRender();
 }
 function edResize() {
@@ -45,23 +55,26 @@ function edResize() {
 function edRender() {
   const s = ED.sys; if (!s) return;
   const off = s.kind === 'off';
-  $('edTitle').textContent = off ? 'Attaque' : 'Défense';
+  $('edTitle').textContent = (off ? 'Attaque' : 'Défense') + (ED.ro ? ' (aperçu)' : '');
   $('edModes').innerHTML = off
     ? `<button data-m="place" class="${ED.mode === 'place' ? 'on' : ''}">✋ Placer</button><button data-m="cut" class="${ED.mode === 'cut' ? 'on' : ''}">➜ Courses</button><button id="edPlay">▶ Aperçu</button>`
     : `<button data-m="zone" class="${s.mode === 'zone' ? 'on' : ''}">Zone</button><button data-m="man" class="${s.mode === 'man' ? 'on' : ''}">Individuelle</button>`;
-  $('edModes').querySelectorAll('[data-m]').forEach(b => b.onclick = () => { if (off) ED.mode = b.dataset.m; else s.mode = b.dataset.m; edRender(); });
+  $('edModes').querySelectorAll('[data-m]').forEach(b => b.onclick = () => { if (ED.ro) return; if (off) ED.mode = b.dataset.m; else s.mode = b.dataset.m; edRender(); });
+  $('edModes').classList.toggle('ro', !!ED.ro);
   if ($('edPlay')) $('edPlay').onclick = startAnim;
   $('edHelp').textContent = off
     ? (ED.mode === 'place' ? 'Glisse ①–④ pour placer ta formation autour du porteur (H). Choisie comme Formation, chacun part de sa place et coupe librement. Les flèches se déplacent par leur pointe.'
       : 'Glisse depuis un joueur (ou le bout de sa flèche) jusqu’à sa destination. Ces courses se jouent quand tu choisis ce système comme Play 1 ou Play 2 et que tu l’appelles.')
     : s.mode === 'zone' ? 'Glisse les défenseurs 1–4 pour dessiner ta zone. M marque le porteur (côté forcé).'
     : 'Choisis le rôle de chaque défenseur (le numéro est celui affiché sur le terrain).';
+  if (ED.ro) $('edHelp').textContent = off ? 'Aperçu en lecture seule : ▶ Aperçu montre ses courses. Ajoute-le à tes systèmes pour le modifier.' : 'Aperçu en lecture seule. Ajoute-le à tes systèmes pour le modifier.';
   edCanvas().style.display = !off && s.mode === 'man' ? 'none' : '';
   $('edSteps').innerHTML = (off ? `<label class="edSetup"><input type="checkbox" id="edSetupCb"${s.setup ? ' checked' : ''}> Se mettre en place avant de partir
       <small>(quand tu l’appelles comme play : chacun file d’abord à sa place, 1,5 s au plus, puis les courses commencent)</small></label>` + stepsHtml(s) : '')
     + (!off && s.mode === 'man' ? rolesHtml(s) : '');
   if ($('edSetupCb')) $('edSetupCb').onchange = e => { s.setup = e.target.checked; };
   bindSteps(s);
+  if (ED.ro) $('edSteps').querySelectorAll('select, input, .sb').forEach(el => { if (el.classList.contains('sb')) el.style.display = 'none'; else el.disabled = true; });
   drawEditor();
 }
 const NUM = ['①', '②', '③', '④'];
@@ -151,7 +164,7 @@ function edHit([x, y]) {
   return null;
 }
 function edDown(e) {
-  if (!ED.sys || ED.anim) return;
+  if (!ED.sys || ED.anim || ED.ro) return;
   const pt = edPoint(e), h = edHit(pt);
   if (!h) return;
   e.preventDefault(); edCanvas().setPointerCapture(e.pointerId);
@@ -228,7 +241,8 @@ if (typeof document !== 'undefined' && document.getElementById('sysCard')) {
   $('sysNewOff').addEventListener('click', () => editSystem(Object.assign(SYS_NEW.off(), { id: sysId() })));
   $('sysNewDef').addEventListener('click', () => editSystem(Object.assign(SYS_NEW.def(), { id: sysId() })));
   $('edSave').addEventListener('click', edSaveCurrent);
-  $('edCancel').addEventListener('click', showSystems);
+  $('edCancel').addEventListener('click', () => { if (ED.ro) showGallery(); else showSystems(); });
+  $('edAdd').addEventListener('click', () => galAdd(ED.ro));
   const c = edCanvas();
   c.addEventListener('pointerdown', edDown); c.addEventListener('pointermove', edMove);
   c.addEventListener('pointerup', edUp); c.addEventListener('pointercancel', () => { ED.drag = null; drawEditor(); });

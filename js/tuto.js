@@ -109,6 +109,40 @@ const TUTO_STEPS = [
     }
   },
   {
+    title: 'Appeler un play',
+    plays: true,                                               // les plays sont permis à cette étape
+    text: {
+      mouse: () => `Tu as choisi un <b>Play 1 : Huck</b>. Appelle-le : touche <b>${tutoCmd('play1')}</b> ou bouton <b>▶ Huck</b> en haut du terrain. Le coupeur ★ part en profondeur : lance long, devant lui.`,
+      touch: 'Tu as choisi un <b>Play 1 : Huck</b>. Touche le bouton <b>▶ Huck</b> en haut du terrain : le coupeur ★ part en profondeur. Lance long, devant lui.',
+      pad: 'Tu as choisi un <b>Play 1 : Huck</b>. Appuie sur la croix <b>←</b> : le coupeur ★ part en profondeur. Lance long, devant lui.'
+    },
+    setup() {
+      tutoReset(); G.tuto.wall = true;
+      G.form.play1 = 'huck';
+      tutoPut(0, [[30, 18.5]].concat(TUTO_STACK));
+      tutoPut(1, TUTO_STACK.map(([x, y]) => [x + 0.6, y + 1]).concat([[95, 33]]), true);
+      tutoGive(TEAMS[0][0]);
+    },
+    pin(p) {
+      if (p.team === 0) {
+        if (p === TEAMS[0][0] || (G.oplay && G.oplay.targets.includes(p))) return null;   // le coupeur du play part
+        return TUTO_STACK[p.i - 1];
+      }
+      return null;
+    },
+    pinD(d) {                                                  // les défenseurs collent leur attaquant ; celui du huck réagit en retard
+      if (d.i >= 4) return [95, 33];
+      const a = TEAMS[0].filter(q => q !== TEAMS[0][0])[d.i];
+      if (!a) return TUTO_STACK[d.i];
+      if (G.oplay && G.oplay.targets.includes(a)) return G.oplay.t < 1.2 ? [a.x - 3, a.y + 1] : null;
+      return [a.x + 0.6, a.y + 1];
+    },
+    on(ev, p) {
+      if (ev === 'catch' && p.team === 0) { if (G.tuto.played) tutoSuccess('Bien joué : un play bien appelé, et c’est une passe facile !'); else tutoFail('Passé, mais appelle d’abord ton play !'); }
+      if (ev === 'turnover') tutoFail(G.tuto.played ? 'Raté ! Lance un peu plus devant le coupeur ★.' : `Bloqué ! Appelle d’abord ton play (${tutoCmd('play1')} ou ▶).`);
+    }
+  },
+  {
     title: 'Layout en attaque',
     ctx: 'move',
     text: {
@@ -276,7 +310,7 @@ function tutoReset() {
     match: null, diveTried: false, called: 0, freeAcc: 0, free: false }));
   Object.assign(G, { oplay: null, dplay: null, pendingOPlay: null, pullPending: false, carryTo: null, stall: 0, marker: null, dbl: null,
     pickup: null, throwKind: 'normal', score: [0, 0], celebrate: null, scorer: null, phase: 'play', pull: null });
-  Object.assign(G.tuto, { wall: false, level: null, count: 0, called: false, jumped: false, blocked: false, lblock: false, thrown: false, holdT: 0 });
+  Object.assign(G.tuto, { wall: false, level: null, count: 0, called: false, played: false, jumped: false, blocked: false, lblock: false, thrown: false, holdT: 0 });
   G.wind = { x: 0, y: 0, kmh: 0 };                             // pas de vent pendant le tutoriel
   setCurve(0);
   disc.pull = false; disc.kind = 'normal';
@@ -308,7 +342,7 @@ function tutoPin(p) {
 function tutoStart() {
   backToSolo();
   G.series = null; G.ms = null;
-  G.tuto = { step: 0, t: 0, wait: 0, after: null, saved: { def: G.form.def, force: G.form.force, play: G.form.play, dplay: G.form.dplay }, inp: '' };
+  G.tuto = { step: 0, t: 0, wait: 0, after: null, saved: { def: G.form.def, force: G.form.force, play: G.form.play, play1: G.form.play1, dplay: G.form.dplay }, inp: '' };
   $('lobbyCard').style.display = 'none';
   $('tutoBox').style.display = '';
   tutoGo(0);
@@ -331,6 +365,7 @@ function tutoInput(S) {
 function tutoCmd(a, touchAlt) {
   const inp = tutoInput(G.tuto && TUTO_STEPS[G.tuto.step]);
   if (inp === 'mouse') return keysOf(a).map(keyName).join(' / ');
+  if (a === 'play1') return inp === 'pad' ? 'croix ←' : 'bouton ▶';
   if (inp === 'pad') return { high: 'Y', jump: 'A', dive: 'B', switch: 'X', curveL: 'LB', curveR: 'RB' }[a];
   if (inp === 'joy') return { high: 'bouton Passe haute', jump: 'bouton Saut', dive: 'bouton Layout', switch: 'bouton Switch', curveL: 'curseur', curveR: 'curseur' }[a];
   return touchAlt || { high: 'tape ton porteur', jump: 'tape ton joueur', dive: 'glisse vite', switch: 'tape un coéquipier', curveL: '2e doigt', curveR: '2e doigt' }[a];

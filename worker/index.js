@@ -1,4 +1,5 @@
 // worker/index.js — Cloudflare Worker : sert le site (fichiers statiques), GET /api/turn → { iceServers: [...] }
+// /api/gallery (galerie de systèmes : list, get, publish, unpublish, like — voir plus bas)
 // /api/scores (classement du mode infini : GET → { top }, POST { name, wins, diff, token? } → { rank, id, top })
 // et /api/account/* (comptes joueurs : register, login, save, logout, delete — voir plus bas).
 // /api/turn donne des identifiants TURN (relais Cloudflare) TEMPORAIRES. Le jeton reste ici, côté serveur : il n'apparaît
@@ -148,6 +149,101 @@ async function account(request, env, op) {
   return accStub(env).fetch('https://acc/', { method: 'POST', body: JSON.stringify(body) });
 }
 
+// ---------- galerie de systèmes ----------
+// Chacun publie ses systèmes (compte obligatoire) ; tout le monde les parcourt, les essaie et les ajoute ; un ❤ par compte.
+// Les pseudos listés dans la variable GALLERY_ADMINS (séparés par des virgules) peuvent retirer n'importe quelle publication.
+const GAL_MAX = 2000, GAL_PER_USER = 20, GAL_LIST = 60;
+const num = (v, a, b) => (typeof v === 'number' && isFinite(v) ? Math.round(Math.min(b, Math.max(a, v)) * 10) / 10 : null);
+const pt = p => (Array.isArray(p) && num(p[0], -12, 40) !== null && num(p[1], -18, 18) !== null ? [num(p[0], -12, 40), num(p[1], -18, 18)] : null);
+const ROLES = ['normal', 'serre', 'profond', 'double'];
+function validSys(o) {                                           // même règles que cleanSystem (js/systems.js), côté serveur
+  if (!o || typeof o !== 'object' || (o.kind !== 'off' && o.kind !== 'def')) return null;
+  const name = String(o.name || '').replace(/[<>&"'`\u0000-\u001f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 24);
+  if (!name) return null;
+  const id = typeof o.id === 'string' && /^[a-z0-9]{3,12}$/.test(o.id) ? o.id : null;
+  if (o.kind === 'off') {
+    const pos = Array.isArray(o.pos) ? o.pos.slice(0, 4).map(pt) : [];
+    if (pos.length !== 4 || pos.includes(null)) return null;
+    const steps = (Array.isArray(o.steps) ? o.steps : []).slice(0, 12).map(s => s && Number.isInteger(s.p) && s.p >= 0 && s.p < 4 && pt(s.to)
+      ? { p: s.p, to: pt(s.to), wait: num(s.wait, 0, 3) ?? 0.6 } : null).filter(Boolean);
+    return { id, kind: 'off', name, pos, steps, setup: !!o.setup };
+  }
+  const zone = Array.isArray(o.zone) ? o.zone.slice(0, 4).map(pt) : [];
+  if (zone.length !== 4 || zone.includes(null)) return null;
+  const roles = Array.from({ length: 5 }, (_, i) => (Array.isArray(o.roles) && ROLES.includes(o.roles[i]) ? o.roles[i] : 'normal'));
+  return { id, kind: 'def', name, mode: o.mode === 'man' ? 'man' : 'zone', zone, roles };
+}
+const sysInfo = s => (s.kind === 'off' ? s.steps.length + ' course' + (s.steps.length > 1 ? 's' : '') : s.mode === 'zone' ? 'zone' : 'individuelle');
+export class Gallery {
+  constructor(state) { this.state = state; }
+  async fetch(request) {
+    const b = await request.json(), S = this.state.storage;
+    let idx = (await S.get('idx')) || [];
+    const lc = s => String(s || '').toLowerCase();
+    if (b.op === 'list') {
+      let L = idx;
+      if (b.kind === 'off' || b.kind === 'def') L = L.filter(e => e.kind === b.kind);
+      if (b.q) { const q = lc(b.q).slice(0, 30); L = L.filter(e => lc(e.name).includes(q) || lc(e.by).includes(q)); }
+      if (b.mine && b.user) L = L.filter(e => lc(e.by) === lc(b.user));
+      L = L.slice().sort(b.sort === 'new' ? (x, y) => y.at - x.at : (x, y) => y.likes - x.likes || y.at - x.at).slice(0, GAL_LIST);
+      const liked = b.user ? new Set((await S.get('likes:' + lc(b.user))) || []) : new Set();
+      return json({ items: L.map(e => ({ ...e, liked: liked.has(e.id) })), total: idx.length });
+    }
+    if (b.op === 'get') {
+      const it = await S.get('i:' + b.id), e = idx.find(x => x.id === b.id);
+      return it && e ? json({ item: { ...e, sys: it } }) : json({ error: 'publication introuvable' }, 404);
+    }
+    if (b.op === 'publish') {
+      const sys = b.sys, user = b.user;
+      let e = idx.find(x => lc(x.by) === lc(user) && x.src && x.src === sys.id);   // même système republié : on met à jour
+      if (!e) {
+        if (idx.filter(x => lc(x.by) === lc(user)).length >= GAL_PER_USER) return json({ error: GAL_PER_USER + ' publications au plus par compte' }, 429);
+        if (idx.length >= GAL_MAX) return json({ error: 'galerie pleine' }, 507);
+        e = { id: crypto.randomUUID().slice(0, 8), src: sys.id, by: user, likes: 0, at: Date.now() };
+        idx.push(e);
+      }
+      Object.assign(e, { kind: sys.kind, name: sys.name, info: sysInfo(sys), up: Date.now() });
+      await S.put('i:' + e.id, { ...sys, id: undefined });
+      await S.put('idx', idx);
+      return json({ id: e.id });
+    }
+    if (b.op === 'unpublish') {
+      const e = idx.find(x => x.id === b.id);
+      if (!e) return json({ error: 'publication introuvable' }, 404);
+      if (lc(e.by) !== lc(b.user) && !b.admin) return json({ error: 'seul son auteur peut la retirer' }, 403);
+      idx = idx.filter(x => x !== e);
+      await S.delete('i:' + e.id); await S.put('idx', idx);
+      return json({ ok: true });
+    }
+    if (b.op === 'like') {
+      const e = idx.find(x => x.id === b.id);
+      if (!e) return json({ error: 'publication introuvable' }, 404);
+      const key = 'likes:' + lc(b.user), mine = new Set((await S.get(key)) || []);
+      if (mine.has(e.id)) { mine.delete(e.id); e.likes = Math.max(0, e.likes - 1); } else { mine.add(e.id); e.likes++; }
+      await S.put(key, [...mine]); await S.put('idx', idx);
+      return json({ likes: e.likes, liked: mine.has(e.id) });
+    }
+    return json({ error: 'action inconnue' }, 400);
+  }
+}
+async function gallery(request, env) {
+  if (!env.GALLERY) return json({ error: 'galerie indisponible' }, 503);
+  if (request.method !== 'POST') return json({ error: 'POST seulement' }, 405);
+  if (!sameSite(request)) return json({ error: 'interdit' }, 403);
+  let b = null;
+  try { b = await request.json(); } catch (e) { }
+  if (!b || typeof b !== 'object' || !['list', 'get', 'publish', 'unpublish', 'like'].includes(b.op)) return json({ error: 'requête invalide' }, 400);
+  const out = { op: b.op, id: typeof b.id === 'string' ? b.id.slice(0, 12) : '', kind: b.kind, sort: b.sort, q: typeof b.q === 'string' ? b.q : '', mine: !!b.mine };
+  // qui est-ce ? (obligatoire pour publier, retirer, aimer ; facultatif pour lister : on renvoie alors ses ❤)
+  if (b.name && b.token && env.ACCOUNTS) {
+    const c = await (await accStub(env).fetch('https://acc/', { method: 'POST', body: JSON.stringify({ op: 'check', name: cleanName(b.name), token: String(b.token) }) })).json();
+    if (c.ok) { out.user = c.name; out.admin = String(env.GALLERY_ADMINS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean).includes(c.name.toLowerCase()); }
+  }
+  if (['publish', 'unpublish', 'like'].includes(b.op) && !out.user) return json({ error: 'connecte-toi à ton compte pour ça' }, 401);
+  if (b.op === 'publish') { out.sys = validSys(b.sys); if (!out.sys || !out.sys.id) return json({ error: 'système invalide' }, 400); }
+  return env.GALLERY.get(env.GALLERY.idFromName('main')).fetch('https://gal/', { method: 'POST', body: JSON.stringify(out) });
+}
+
 async function scores(request, env) {
   if (!env.BOARD) return json({ error: 'classement non configuré' }, 503);
   const stub = env.BOARD.get(env.BOARD.idFromName('main'));
@@ -172,6 +268,7 @@ export default {
     const path = new URL(request.url).pathname;
     if (path === '/api/turn') return request.method === 'GET' ? turn(request, env) : json({ error: 'GET seulement' }, 405);
     if (path === '/api/scores') return scores(request, env);
+    if (path === '/api/gallery') return gallery(request, env);
     const m = /^\/api\/account\/(register|login|save|load|logout|delete)$/.exec(path);
     if (m) return account(request, env, m[1]);
     return env.ASSETS.fetch(request);

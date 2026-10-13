@@ -5,8 +5,8 @@
   "compatibility_date": "2026-06-01",
   "keep_vars": true,   // garde les variables réglées dans le tableau de bord Cloudflare à chaque déploiement
   // classement du mode infini (stockage intégré de Cloudflare, rien à créer à la main)
-  // + comptes joueurs (même principe)
-  "durable_objects": { "bindings": [{ "name": "BOARD", "class_name": "Board" }, { "name": "ACCOUNTS", "class_name": "Accounts" }] },
-  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Board"] }, { "tag": "v2", "new_sqlite_classes": ["Accounts"] }],
+  // + comptes joueurs et galerie de systèmes (même principe)
+  "durable_objects": { "bindings": [{ "name": "BOARD", "class_name": "Board" }, { "name": "ACCOUNTS", "class_name": "Accounts" }, { "name": "GALLERY", "class_name": "Gallery" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Board"] }, { "tag": "v2", "new_sqlite_classes": ["Accounts"] }, { "tag": "v3", "new_sqlite_classes": ["Gallery"] }],
   "assets": { "directory": ".", "binding": "ASSETS", "run_worker_first": ["/api/*"] }
 }

@@ -13,7 +13,7 @@ Les scripts sont chargés dans cet ordre par `index.html` et partagent le même 
 
 | Fichier | Rôle |
 |---|---|
-| `worker/index.js` | Côté serveur (Cloudflare) : sert le site, identifiants TURN temporaires (`/api/turn`), classement du mode infini (`/api/scores`), comptes (`/api/account/*`) |
+| `worker/index.js` | Côté serveur (Cloudflare) : sert le site, identifiants TURN temporaires (`/api/turn`), classement du mode infini (`/api/scores`), comptes (`/api/account/*`), galerie (`/api/gallery`) |
 | `js/news.js` | Page « Nouveautés » (annonces) et bandeau de changement d'adresse ; chargé en premier |
 | `js/secrets.js` | Secours en local uniquement. **Ignoré par Git.** |
 | `js/config.js` | Constantes (terrain, vitesses, règles), textes des stratégies et des plays |
@@ -38,6 +38,7 @@ Les scripts sont chargés dans cet ordre par `index.html` et partagent le même 
 | `js/account.js` | Compte joueur : création, connexion, sauvegarde automatique du profil en ligne |
 | `js/systems.js` | Systèmes de jeu perso : format, validation, et leur exécution par l'IA (attaque et défense) |
 | `js/editor.js` | Éditeur « Mes systèmes » : terrain où l'on place les joueurs et dessine les courses |
+| `js/gallery.js` | Galerie des systèmes publiés : parcourir, aperçu, ajouter, ❤, publier / retirer |
 | `js/endless.js` | Mode infini : matchs en 2 points de plus en plus durs, record et classement mondial |
 | `js/series.js` | Mini-tournoi (3 adversaires avec chacun leur style, progression mémorisée) |
 | `js/practice.js` | Mode entraînement (cibles, vent, défenseur) |
@@ -75,6 +76,9 @@ Ensuite chaque push sur `main` met le site à jour automatiquement.
 **Adresse du site** : mieux vaut un nom de domaine à toi (environ 10 € par an, par exemple chez Cloudflare Registrar), branché dans
 *Settings → Domains & Routes*. L'adresse ne dépend alors plus de l'hébergeur : on pourra en changer sans que les joueurs changent de lien.
 
+**Modérer la galerie** : dans *Settings → Variables and Secrets* du worker, ajoute une variable `GALLERY_ADMINS` (texte)
+avec ton pseudo de compte (plusieurs pseudos séparés par des virgules). Ces comptes voient ✕ sur toutes les publications.
+
 **Ménage après la bascule**
 - Dans Metered, supprime l'ancien identifiant fixe (il était visible dans l'ancien site), voire le compte ;
 - désactive GitHub Pages (*Settings → Pages*), supprime `.github/workflows/deploy.yml` et les secrets `TURN_*` du dépôt.
@@ -94,6 +98,8 @@ Avec un simple serveur de fichiers, le jeu retombe sur `js/secrets.js` (copie de
 | `systems.test.mjs` | Systèmes perso : validation, placement autour du disque, matchs IA qui les jouent, utilisés aussi en mode infini |
 | `ui-systems.test.mjs` | Éditeur dans le navigateur (ordinateur et téléphone) : placer, dessiner une course, enregistrer, choisir avant un point |
 | `code.test.mjs` | Aucun nom de fonction ou de constante déclaré dans deux fichiers |
+| `gallery.test.mjs` | Galerie côté serveur : publier (compte obligatoire), mettre à jour, lister, filtrer, ❤ (un par compte), retirer, modérateurs |
+| `ui-gallery.test.mjs` | Galerie dans le navigateur : publier sur un appareil, voir / aimer / ajouter sur un autre, retirer |
 | `worker.test.mjs` | Serveur : relais TURN (sécurité, erreurs), classement (tri, scores impossibles refusés, pseudos nettoyés) |
 | `ui.test.mjs` | Dans Chromium : menus, section Solo, mode infini jusqu'au classement, menu en jeu, signalement, tutoriel, entraînement, lance-pierre sur téléphone |
 | `online.test.mjs` | Deux onglets : salle d'attente, équipes, pull, passes de l'invité, pause pour tous, départ d'un joueur |

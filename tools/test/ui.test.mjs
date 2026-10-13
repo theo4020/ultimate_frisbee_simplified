@@ -121,7 +121,20 @@ export default async function (t) {
     await p.click('#tutoB');
     await p.waitForFunction(() => G.tuto);
     t.ok(await vis(p, '#tutoBox'), 'consignes du tutoriel affichées');
-    for (let k = 0; k < 15 && await p.evaluate(() => !!G.tuto); k++) { await p.click('#tutoSkip'); await p.waitForTimeout(150); }
+    const k = await p.evaluate(() => TUTO_STEPS.findIndex(s => s.plays));
+    t.ok(k > 0, 'une étape « Appeler un play »');
+    for (let i = 0; i < k; i++) { await p.click('#tutoSkip'); await p.waitForTimeout(150); }
+    t.ok((await p.textContent('#tutoBox')).includes('Play 1'), 'consigne : appeler son Play 1', await p.textContent('#tutoBox'));
+    await p.waitForFunction(() => document.getElementById('play1B').style.display !== 'none', null, { timeout: 5000 });
+    await p.keyboard.press('r');
+    t.ok(await p.evaluate(() => !!G.oplay && G.oplay.type === 'huck'), 'le play s’appelle dans le tutoriel');
+    await p.waitForTimeout(700);
+    const aim = await p.evaluate(() => { const c = G.oplay.a, r = canvas.getBoundingClientRect(); return { x: r.left + X(c.cx), y: r.top + Y(c.cy) }; });
+    await p.mouse.move(aim.x, aim.y); await p.mouse.down(); await p.mouse.up();
+    await p.waitForFunction(() => G.tuto && G.tuto.done, null, { timeout: 8000 }).catch(() => {});
+    const res = await p.evaluate(() => ({ done: G.tuto && G.tuto.done, txt: document.getElementById('tutoBox').textContent }));
+    t.ok(res.done || /Bien joué|étape/.test(res.txt), 'un huck devant le coupeur ★ réussit l’étape', res);
+    for (let i = 0; i < 15 && await p.evaluate(() => !!G.tuto); i++) { await p.click('#tutoSkip'); await p.waitForTimeout(150); }
     t.ok(await p.evaluate(() => !G.tuto) && await vis(p, '#stratCard'), 'toutes les étapes passent, puis un match commence');
     await p.click('#menuBack');
     if (await vis(p, '#askBox')) await p.click('#askYes');

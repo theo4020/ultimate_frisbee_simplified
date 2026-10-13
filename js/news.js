@@ -8,6 +8,11 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
+  { id: 16, date: '2026-10-13', tag: 'Tactique', title: 'La galerie des systèmes 🌍',
+    body: `Dans <b>📋 Mes systèmes</b>, un nouvel onglet <b>🌍 Galerie</b> : les systèmes publiés par tous les joueurs. Regarde-les
+      en aperçu animé, ajoute ceux qui te plaisent à tes systèmes en un clic, et donne un ❤ à tes préférés.
+      Pour publier les tiens, touche 🌍 à côté d'un système (il faut un compte). Le tutoriel a aussi une nouvelle étape :
+      appeler un play.` },
   { id: 15, date: '2026-10-13', tag: 'Jeu', title: 'Nouvelle IA, formation et plays à la demande 🧠',
     body: `<b>Les joueurs lisent le jeu</b> : les coupeurs attaquent l'espace que la défense laisse libre (au lieu de courses
       au hasard) et s'écartent pour laisser la place aux autres. <b>La défense s'entraide</b> : changements de joueur quand deux

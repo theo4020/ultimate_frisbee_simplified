@@ -19,6 +19,13 @@ const sysNum = (v, a, b) => (typeof v === 'number' && isFinite(v) ? Math.round(c
 const sysPt = p => (Array.isArray(p) ? [sysNum(p[0], SYS_F[0], SYS_F[1]), sysNum(p[1], SYS_S[0], SYS_S[1])] : [10, 0]);
 const sysId = () => Math.random().toString(36).slice(2, 8);
 
+// lien avec la galerie : pub = id de sa publication (si tu l'as publié), by = auteur (si tu l'as ajouté depuis la galerie)
+function sysMeta(o) {
+  const m = {};
+  if (typeof o.pub === 'string' && /^[a-z0-9-]{4,12}$/.test(o.pub)) m.pub = o.pub;
+  if (typeof o.by === 'string' && o.by) m.by = o.by.replace(/[<>&"'`]/g, '').slice(0, 12);
+  return m;
+}
 // nettoie un système (venant du navigateur, du compte ou d'un autre joueur en ligne) ; null s'il est invalide
 function cleanSystem(o) {
   if (!o || typeof o !== 'object' || (o.kind !== 'off' && o.kind !== 'def')) return null;
@@ -29,11 +36,11 @@ function cleanSystem(o) {
     const steps = (Array.isArray(o.steps) ? o.steps : []).slice(0, SYS_STEPS)
       .filter(st => st && Number.isInteger(st.p) && st.p >= 0 && st.p < 4)
       .map(st => ({ p: st.p, to: sysPt(st.to), wait: sysNum(st.wait, 0, 3) }));
-    return { id, kind: 'off', name, pos, steps, setup: !!o.setup };
+    return Object.assign({ id, kind: 'off', name, pos, steps, setup: !!o.setup }, sysMeta(o));
   }
   const mode = o.mode === 'man' ? 'man' : 'zone';
-  return { id, kind: 'def', name, mode, zone: Array.from({ length: 4 }, (_, i) => sysPt(o.zone && o.zone[i])),
-    roles: Array.from({ length: 5 }, (_, i) => (o.roles && SYS_ROLES[o.roles[i]] ? o.roles[i] : 'normal')) };
+  return Object.assign({ id, kind: 'def', name, mode, zone: Array.from({ length: 4 }, (_, i) => sysPt(o.zone && o.zone[i])),
+    roles: Array.from({ length: 5 }, (_, i) => (o.roles && SYS_ROLES[o.roles[i]] ? o.roles[i] : 'normal')) }, sysMeta(o));
 }
 // systèmes de départ proposés dans l'éditeur
 const SYS_NEW = {
