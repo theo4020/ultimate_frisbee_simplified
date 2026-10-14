@@ -1,6 +1,7 @@
 // worker/index.js — Cloudflare Worker : sert le site (fichiers statiques), GET /api/turn → { iceServers: [...] }
 // /api/gallery (galerie de systèmes : list, get, publish, unpublish, like — voir plus bas)
-// /api/scores (classement du mode infini : GET → { top }, POST { name, wins, diff, token? } → { rank, id, top })
+// /api/scores (classement du mode infini : GET → { top }, POST { name, wins, diff, token? } → { rank, id, top } ;
+//              ?mode=coop : classement à part du mode infini à plusieurs, avec un nom d'équipe)
 // et /api/account/* (comptes joueurs : register, login, save, logout, delete — voir plus bas).
 // /api/turn donne des identifiants TURN (relais Cloudflare) TEMPORAIRES. Le jeton reste ici, côté serveur : il n'apparaît
 // jamais dans le site. Réglages (Workers → ultimate-frisbee → Settings → Variables and Secrets) :
@@ -68,11 +69,13 @@ async function migrateOnce(state, db, copy) {
 const BOARD_KEY = 'top-2pts', BOARD_MAX = 100, BOARD_SHOW = 50, BOARD_WAIT = 20 * 1000;       // une série toutes les 20 s au plus par adresse IP
 const cleanName = n => String(n || '').replace(/[<>&"'`\u0000-\u001f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 12);
 const cmpRun = (a, b) => b.wins - a.wins || b.diff - a.diff || a.at - b.at;
-function validRun(b) {
+// mode infini à plusieurs : classement à part (un autre objet Board, « coop »), nom d'équipe jusqu'à 24 caractères
+const cleanTeam = n => String(n || '').replace(/[<>&"'`\u0000-\u001f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 24);
+function validRun(b, coop) {
   const wins = b && b.wins, diff = b && b.diff;
   if (!Number.isInteger(wins) || !Number.isInteger(diff) || wins < 0 || wins > 500) return null;
   if (diff < wins - 2 || diff > 2 * wins - 1) return null;
-  const name = cleanName(b.name);
+  const name = coop ? cleanTeam(b.name) : cleanName(b.name);
   return name ? { name, wins, diff } : null;                  // sans pseudo, pas de place au classement
 }
 export class Board {
@@ -305,15 +308,16 @@ async function gallery(request, env) {
 
 async function scores(request, env) {
   if (!env.BOARD) return json({ error: 'classement non configuré' }, 503);
-  const stub = env.BOARD.get(env.BOARD.idFromName('main'));
+  const coop = new URL(request.url).searchParams.get('mode') === 'coop';   // ?mode=coop : classement du mode infini à plusieurs
+  const stub = env.BOARD.get(env.BOARD.idFromName(coop ? 'coop' : 'main'));
   if (request.method === 'GET') return stub.fetch('https://board/');
   if (request.method !== 'POST') return json({ error: 'GET ou POST' }, 405);
   if (!sameSite(request)) return json({ error: 'interdit' }, 403);
   let body = null;
   try { body = await request.json(); } catch (e) { }
-  const run = validRun(body);
-  if (!run) return json({ error: body && !cleanName(body.name) ? 'pseudo manquant' : 'score invalide' }, 400);
-  if (env.ACCOUNTS) {                                          // pseudo d'un compte : seulement par son propriétaire, et écrit comme lui
+  const run = validRun(body, coop);
+  if (!run) return json({ error: body && !(coop ? cleanTeam : cleanName)(body.name) ? (coop ? 'nom d’équipe manquant' : 'pseudo manquant') : 'score invalide' }, 400);
+  if (env.ACCOUNTS && !coop) {                                          // pseudo d'un compte : seulement par son propriétaire, et écrit comme lui
     const c = await (await accStub(env).fetch('https://acc/', { method: 'POST', body: JSON.stringify({ op: 'check', name: run.name, token: typeof body.token === 'string' ? body.token : '' }) })).json();
     if (c.registered && !c.ok) return json({ error: 'ce pseudo appartient à un compte : connecte-toi pour l’utiliser' }, 403);
     if (c.registered) run.name = c.name;

@@ -1,6 +1,6 @@
 // sw.js — Service worker : le jeu reste jouable en solo sans connexion.
 // Stratégie « réseau d'abord » : en ligne on charge toujours la dernière version, hors ligne on sert la copie.
-const CACHE = 'ultimate-frisbee-v9';
+const CACHE = 'ultimate-frisbee-v10';
 const FILES = [
   './',
   'index.html',
@@ -33,7 +33,7 @@ const FILES = [
   'js/render.js',
   'js/ui.js',
   'js/series.js',
-  'js/endless.js',
+  'js/endless.js', 'js/coop.js',
   'js/practice.js',
   'js/achievements.js',
   'js/tuto.js',

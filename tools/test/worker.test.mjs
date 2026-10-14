@@ -1,6 +1,6 @@
 // Serveur (worker/index.js), sans Cloudflare : relais TURN et classement du mode infini (tout est simulé).
 import worker, { Board } from '../../worker/index.js';
-import { fakeState, makeDO } from './lib.mjs';
+import { fakeState, makeDO, fakeNsByName } from './lib.mjs';
 
 export default async function (t) {
   const realFetch = globalThis.fetch;
@@ -64,6 +64,13 @@ export default async function (t) {
     t.ok(nScores() === 100 && full.j.top.length === 50, '100 scores gardés, 50 affichés', [nScores(), full.j.top.length]);
     t.ok(full.j.top[0].name === 'Théo' && full.j.top[1].name === 'Léa', 'les meilleurs restent en tête');
     t.ok((await call('/api/scores', { e: { ASSETS: env.ASSETS } })).s === 503, 'sans stockage : 503');
+
+    t.group('Classement à plusieurs (/api/scores?mode=coop)');
+    const env2 = Object.assign({}, env, { BOARD: fakeNsByName(Board, { main: { st: bs, obj: board } }) });
+    const c1 = await call('/api/scores?mode=coop', { method: 'POST', body: { name: 'Théo + Léa + Max le grand', wins: 3, diff: 4 }, ip: '20.0.0.1', e: env2 });
+    t.ok(c1.s === 200 && c1.j.top.length === 1 && c1.j.top[0].name === 'Théo + Léa + Max le gran', 'une équipe est enregistrée (nom jusqu’à 24 caractères)', c1.txt);
+    t.ok((await call('/api/scores?mode=coop', { e: env2 })).j.top.length === 1 && !(await call('/api/scores', { e: env2 })).j.top.some(e => e.name.startsWith('Théo +')), 'classement à part : rien dans le classement solo');
+    t.ok((await call('/api/scores?mode=coop', { method: 'POST', body: { name: '', wins: 1, diff: 1 }, ip: '20.0.0.2', e: env2 })).j.error === 'nom d’équipe manquant', 'sans nom d’équipe : refusé');
   } finally { globalThis.fetch = realFetch; }
 
   t.group('Classement : recopie de l’ancien stockage');

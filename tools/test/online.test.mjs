@@ -22,7 +22,7 @@ export default async function (t) {
     t.group('Salle d’attente');
     await host.goto(srv.url + 'index.html'); await ready(host);
     await host.fill('#pname', 'Hôte');
-    await host.click('#hostB');
+    await host.click('#onlineMenuB'); await host.click('#hostB');
     await host.waitForFunction(() => /^[A-Z0-9]{4}$/.test(document.getElementById('hostCode').textContent));
     const code = await host.textContent('#hostCode');
     t.ok(true, 'partie créée, code ' + code);
@@ -117,10 +117,58 @@ export default async function (t) {
     t.group('Départ de l’invité');
     await guest.click('#menuB'); await guest.click('#gmQuit');
     if (await guest.isVisible('#askBox')) await guest.click('#askYes');
-    t.ok(await guest.isVisible('#lobbyHome'), 'l’invité quitte et retrouve le menu principal');
+    t.ok(await guest.isVisible('#lobbyOnline'), 'l’invité quitte et retrouve la section En ligne');
     await host.waitForFunction(() => G.humans.length === 1, null, { timeout: 15000 });
     t.ok(await host.evaluate(() => G.net === 'host' && (G.phase === 'play' || G.phase === 'between' || G.phase === 'pull' || G.phase === 'over')), 'la partie continue chez l’hôte');
     await ctx.close();
+
+    t.group('Mode infini à plusieurs');
+    const cx = await browser.newContext({ viewport: { width: 1100, height: 760 } });
+    await cx.addInitScript(shim);
+    const h2 = await cx.newPage(), g2 = await cx.newPage();
+    for (const [n, p] of [['hôte coop', h2], ['invité coop', g2]]) p.on('pageerror', e => errs.push(n + ' : ' + e.message));
+    await h2.goto(srv.url + 'index.html'); await ready(h2);
+    await h2.fill('#pname', 'Théo');
+    await h2.click('#onlineMenuB');
+    t.ok(await h2.isVisible('#coopB') && await h2.isVisible('#hostB') && await h2.isVisible('#joinB'), 'section En ligne : mode infini à plusieurs, créer, rejoindre');
+    await h2.click('#coopB');
+    t.ok(await h2.isVisible('#endlessCard') && (await h2.textContent('#endTitle')).includes('plusieurs'), 'accueil du mode à plusieurs, avec son classement');
+    await h2.click('#endGo');
+    await h2.waitForFunction(() => /^[A-Z0-9]{4}$/.test(document.getElementById('hostCode').textContent));
+    const code2 = await h2.textContent('#hostCode');
+    await g2.goto(srv.url + 'index.html'); await ready(g2);
+    await g2.fill('#pname', 'Léa');
+    await g2.goto('about:blank'); await g2.goto(srv.url + 'index.html#join=' + code2);
+    await h2.waitForFunction(() => G.humans.length === 2, null, { timeout: 10000 });
+    await g2.waitForFunction(() => G.coopRoom === true, null, { timeout: 5000 });
+    t.ok(!(await g2.isVisible('#teamB1')) && await g2.isVisible('#coopNote'), 'chez l’invité : on ne peut rejoindre que les Bleus');
+    await g2.click('#teamB0');
+    await h2.waitForFunction(() => G.humans.every(h => h.team === 0), null, { timeout: 5000 });
+    await h2.click('#startOnline');
+    await g2.waitForFunction(() => document.getElementById('stratCard').style.display !== 'none' && /Match 1/.test(document.getElementById('ovTitle').textContent), null, { timeout: 5000 });
+    t.ok((await g2.textContent('#ovTitle')).includes('Écureuils'), 'l’invité voit le 1er adversaire de la série', await g2.textContent('#ovTitle'));
+    t.ok(await h2.evaluate(() => G.series && G.series.coop && G.form.first === '0' && G.form.allyLevel === 'difficile' && aiLvl(1).react === AI_LEVELS.facile.react),
+      'chez l’hôte : série lancée, l’IA pulle, coéquipiers IA difficiles, adversaire au niveau du 1er match');
+    const finish = (a, b) => h2.evaluate(([a, b]) => { G.score = [a, b]; G.phase = 'over'; onMatchOver(); showMenu('over'); }, [a, b]);
+    await finish(2, 1);
+    await g2.waitForFunction(() => G.series && G.series.wins === 1, null, { timeout: 5000 });
+    t.ok(/1 match gagné/.test(await g2.textContent('#ovText')), 'match gagné : l’invité voit la série avancer', await g2.textContent('#ovText'));
+    await h2.click('#go');
+    await g2.waitForFunction(() => /Match 2/.test(document.getElementById('ovTitle').textContent), null, { timeout: 5000 });
+    t.ok(true, 'le capitaine enchaîne : match 2 pour tout le monde');
+    await finish(0, 2);
+    await h2.click('#go');
+    await g2.waitForFunction(() => document.getElementById('endlessCard').style.display !== 'none', null, { timeout: 5000 });
+    t.ok(!(await g2.isVisible('#endGo')) && (await g2.textContent('#endText')).includes('1 match gagné'), 'défaite : fin de série chez l’invité');
+    t.ok(await h2.isVisible('#endSave') && (await h2.inputValue('#endSaveName')) === 'Théo + Léa', 'chez l’hôte : enregistrer l’équipe, nom proposé', await h2.inputValue('#endSaveName'));
+    await h2.click('#endSaveB');
+    await h2.waitForFunction(() => /classement/.test(document.getElementById('endStatus').textContent), null, { timeout: 5000 }).catch(() => {});
+    t.ok(srv.coop('SELECT name, wins FROM scores').some(r => r.name === 'Théo + Léa' && r.wins === 1) && !srv.board('SELECT name FROM scores').some(r => r.name === 'Théo + Léa'),
+      'score de l’équipe dans le classement à plusieurs (pas dans le solo)', await h2.textContent('#endStatus'));
+    await h2.click('#endBack');
+    await g2.waitForFunction(() => document.getElementById('lobbyRoom').style.display !== 'none', null, { timeout: 5000 });
+    t.ok(await h2.isVisible('#startOnline'), 'retour à la salle, avec les mêmes joueurs');
+    await cx.close();
   } finally {
     await browser.close(); await srv.close();
   }

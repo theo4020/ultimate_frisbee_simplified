@@ -8,6 +8,17 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
+  { id: 19, date: '2026-10-14', tag: 'En ligne', title: 'Mode infini à plusieurs 🤝',
+    body: `Nouvelle section <b>🌐 En ligne</b> dans le menu principal, avec un <b>mode infini à plusieurs</b> : jusqu'à 5 joueurs
+      dans la même équipe contre une IA de plus en plus forte. Une défaite et la série s'arrête ; l'hôte peut alors enregistrer
+      l'équipe dans un <b>classement à part</b>, relancer une série ou revenir à la salle. Créer et rejoindre une partie se font
+      aussi depuis cette section.<br>
+      <b>Mode infini</b> : par défaut, l'adversaire pulle et tes coéquipiers IA sont au niveau difficile (modifiable ; tes
+      réglages du match rapide ne changent pas).<br>
+      <b>Duels</b> : plus de hasard, le mieux placé gagne (le plus haut au bon moment, le plus près du disque).
+      <b>Contres</b> : moins faciles sur une passe courte ou quand le défenseur est au bout du bras.<br>
+      <b>Straight up</b> : les défenseurs ne penchent plus d'un côté, puisque la mark n'en ferme aucun.<br>
+      <b>Passes normales</b> : trajectoire revenue presque à celle d'avant (elles partent moins haut).` },
   { id: 18, date: '2026-10-14', tag: 'Jeu', title: 'Défense plus maligne, débutants plus réalistes, souris 🖱️',
     body: `<b>Défense individuelle</b> : chaque défenseur se place entre son joueur et le disque, sur la ligne de passe.
       Mettre tout le monde sur les côtés puis couper au centre ne marche plus à tous les coups.<br>

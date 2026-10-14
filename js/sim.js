@@ -54,6 +54,13 @@ function avoidDir(p, ux, uy, l) {
   return [nx / n, ny / n];
 }
 
+// chance de toucher un disque à portée : moindre si la passe est courte (elle file vite) ou si le défenseur est au bout de son bras
+function blockOdds(p, diving) {
+  const reach = diving ? 2.0 : 1.05, d = dist(p.x, p.y, disc.x, disc.y);
+  const far = 1 - 0.5 * clamp(d / reach, 0, 1) ** 2;                        // au bout du bras : moitié moins
+  const short = clamp(0.4 + dist(disc.sx, disc.sy, disc.ex, disc.ey) / 15, 0.5, 1);   // passe de 5 m : ~0,7 · dès 9 m : normale
+  return far * short;
+}
 function update(dt) {
   if (G.ms) G.ms.ptT += dt;
   const off = G.off, def = 1 - off, dir = dirOf(off);
@@ -183,9 +190,10 @@ function update(dt) {
     if (A && B && (A.jump > 0 || B.jump > 0)) {
       const catcher = A, b = B;
       blockers.forEach(o => disc.rolled.add(o)); disc.rolled.add(b);
-      const near = q => dist(q.x, q.y, disc.x, disc.y) * 0.25;   // le mieux placé sous le disque a l'avantage
-      const atk = jumpLift(catcher) + Math.random() * 0.8 - near(catcher), dfn = jumpLift(b) + Math.random() * 0.8 - near(b) + (aiLvl(b.team).block - 0.6) * 0.5;
-      if (atk >= dfn) { achEvent('duel', catcher.team); flash('Duel gagné !'); fxEvent('duel', disc.x, disc.y, catcher.team); catchDisc(catcher); return; }
+      // duel : pas de hasard, seul le placement compte — le plus haut au bon moment et le plus près du disque gagne
+      // (à égalité, le receveur : il sait où va le disque)
+      const pos = q => jumpLift(q) - dist(q.x, q.y, disc.x, disc.y) * 0.6;
+      if (pos(catcher) >= pos(b)) { achEvent('duel', catcher.team); flash('Duel gagné !'); fxEvent('duel', disc.x, disc.y, catcher.team); catchDisc(catcher); return; }
       fxEvent('duel', disc.x, disc.y, b.team);
       defStop(b, 'Duel perdu ! Block'); return;
     }
@@ -197,7 +205,7 @@ function update(dt) {
         if (G.tuto) G.tuto.blocked = true;
         defStop(p, 'Block en l’air !'); return;
       }
-      if (r < (diving ? 0.85 : G.tuto && G.tuto.wall ? 1 : L.block)) {
+      if (r < (G.tuto && G.tuto.wall ? 1 : (diving ? 0.85 : L.block) * blockOdds(p, diving))) {
         if (diving) { achEvent('layoutblock', p.team); if (G.tuto) G.tuto.lblock = true; } defStop(p, diving ? 'Layout block !' : p.jump > 0 ? 'Block en l’air !' : 'Block !'); return; }
     }
     if (catcher) {

@@ -87,6 +87,14 @@ export function fakeState(store = new Map()) {
 // les constructeurs lancent leur préparation (tables, recopie) : on attend qu'elle soit finie
 export async function makeDO(Cls, state) { const o = new Cls(state); await new Promise(r => setTimeout(r, 0)); return o; }
 export const fakeNs = obj => ({ idFromName: () => 'main', get: () => ({ fetch: (u, o) => obj.fetch(new Request(u, o)) }) });
+// plusieurs objets selon le nom (ex. classement « main » et « coop ») : ceux qui n'existent pas encore sont créés à la demande
+export function fakeNsByName(Cls, known = {}) {
+  const objs = new Map(Object.entries(known));
+  return { idFromName: n => n, get: n => ({ fetch: async (u, o) => {
+    if (!objs.has(n)) objs.set(n, { st: fakeState(), obj: null });
+    const e = objs.get(n); if (!e.obj) e.obj = await makeDO(Cls, e.st);
+    return e.obj.fetch(new Request(u, o)); } }), objs };
+}
 
 // ---------- serveur local : les fichiers du site + le vrai worker (/api/turn, /api/scores) ----------
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.webmanifest': 'application/manifest+json', '.json': 'application/json' };
@@ -104,7 +112,8 @@ export async function startServer({ turnEnv = false } = {}) {
       return new Response(fs.readFileSync(f), { headers: { 'Content-Type': TYPES[path.extname(f)] || 'application/octet-stream' } });
     }
   };
-  const env = { ASSETS, BOARD: fakeNs(board), ACCOUNTS: fakeNs(accounts), GALLERY: fakeNs(gallery), GALLERY_ADMINS: 'Admin' };
+  const boards = fakeNsByName(Board, { main: { st: bs, obj: board } });
+  const env = { ASSETS, BOARD: boards, ACCOUNTS: fakeNs(accounts), GALLERY: fakeNs(gallery), GALLERY_ADMINS: 'Admin' };
   if (turnEnv) Object.assign(env, { TURN_KEY_ID: 'test', TURN_KEY_API_TOKEN: 'test' });
   const server = http.createServer(async (rq, rs) => {
     const chunks = []; for await (const c of rq) chunks.push(c);
@@ -116,5 +125,6 @@ export async function startServer({ turnEnv = false } = {}) {
   await new Promise(r => server.listen(0, '127.0.0.1', r));
   const url = `http://127.0.0.1:${server.address().port}/`;
   const q = st => (sqlText, ...b) => st.db.prepare(sqlText).all(...b);   // lire les tables pendant un test
-  return { url, board: q(bs), accounts: q(as), gallery: q(gs), close: () => new Promise(r => server.close(r)) };
+  const coop = (sqlText, ...b) => (boards.objs.has('coop') ? q(boards.objs.get('coop').st)(sqlText, ...b) : []);
+  return { url, board: q(bs), coop, accounts: q(as), gallery: q(gs), close: () => new Promise(r => server.close(r)) };
 }

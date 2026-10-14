@@ -120,6 +120,7 @@ function refreshOptions() {
   $('windKmhTxt').textContent = G.form.windKmh + ' km/h';
 }
 function showLobby(err, view) {
+  if (typeof endlessCfgOut === 'function') endlessCfgOut();
   G.menuShown = true; G.teamsOpen = null; G.series = null;
   $('lobbyCard').style.display = ''; for (const id of ['stratCard', 'seriesCard', 'profileCard', 'endlessCard']) $(id).style.display = 'none';
   const tutoDone = storeGet('uf-tuto', false), s = seriesState();
@@ -128,7 +129,8 @@ function showLobby(err, view) {
   $('seriesTxt').textContent = s.round >= SERIES.length ? 'Champion ! 🏆 Rejoue quand tu veux'
     : s.round > 0 || s.tries[0] ? `En cours : tour ${s.round + 1} sur 3 contre les ${SERIES[s.round].name}` : 'Trois matchs contre des équipes de plus en plus fortes';
   if (!G.net && !G.attract) startAttract();                     // un vrai match se joue derrière le menu
-  $('lobbyHome').style.display = view === 'solo' ? 'none' : ''; $('lobbySolo').style.display = view === 'solo' ? '' : 'none';
+  $('lobbyHome').style.display = view ? 'none' : ''; $('lobbySolo').style.display = view === 'solo' ? '' : 'none';
+  $('lobbyOnline').style.display = view === 'online' ? '' : 'none';
   $('lobbyRoom').style.display = 'none'; $('lobbyJoin').style.display = 'none';
   const eb = endlessLocal().best;
   $('endlessTxt').textContent = eb ? `Ton record : ${eb} match${eb > 1 ? 's' : ''} gagné${eb > 1 ? 's' : ''}. Bats-le !` : 'Enchaîne les matchs en 2 points, de plus en plus durs : jusqu’où iras-tu ?';
@@ -174,7 +176,7 @@ function showMenu(kind) {
   refreshOptions();
   refreshCaptainUI();
   $('overlay').classList.remove('hidden');
-  if (G.net === 'host') netSend({ t: 'menu', kind, score: G.score, rec: G.receiving, wind: G.wind, teams: G.teams, pts: winPts(), sum: kind === 'over' ? G.lastSummary : null });
+  if (G.net === 'host') netSend({ t: 'menu', kind, score: G.score, rec: G.receiving, wind: G.wind, teams: G.teams, pts: winPts(), sum: kind === 'over' ? G.lastSummary : null, ser: coopSer() });
 }
 // en ligne : seul le capitaine de chaque équipe choisit la stratégie et se déclare prêt
 function updateFirstText() {
@@ -281,6 +283,7 @@ function tryStartOnline() {
   if (G.net !== 'host' || !G.started || !G.menuShown || $('stratCard').style.display === 'none') return;
   const caps = [0, 1].map(captain).filter(Boolean);
   if (!caps.every(h => G.readyIds && G.readyIds.has(h.id))) return;
+  if (G.series && G.series.coop && G.phase === 'over') { coopNext(); return; }   // mode infini à plusieurs : match suivant ou fin
   if (G.phase === 'over' || G.phase === 'menu') newMatch();
   startPoint();
 }

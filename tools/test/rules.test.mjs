@@ -19,7 +19,7 @@ export default async function (t, { quick }) {
   t.ok(r.stuck === 0, 'aucun point bloqué', r);
   t.ok(r.phase === 'over', 'les matchs vont au bout', r.phase);
   t.ok(r.comp > 0.75 && r.comp < 0.97, 'taux de passes réussies réaliste (75–97 %)', +r.comp.toFixed(2));
-  t.ok(r.to > 0.5 && r.to < 3, 'turnovers par point réalistes (0,5–3)', +r.to.toFixed(2));
+  t.ok(r.to > 0.3 && r.to < 3, 'turnovers par point réalistes (0,3–3)', +r.to.toFixed(2));
   t.ok(r.sec > 8 && r.sec < 150, 'durée d’un point raisonnable', +r.sec.toFixed(0));
   t.ok(r.blocks + r.ints > 0, 'la défense arrête des passes', r);
   t.ok(r.pre > 0.3 && r.pre < 0.98, 'sur une passe sûre, tout le monde se replace avant la réception', +r.pre.toFixed(2));
@@ -112,6 +112,26 @@ export default async function (t, { quick }) {
   t.ok(lvq.same, 'tous les niveaux (mode infini compris) ont les mêmes réglages', lvq);
   t.ok(lvq.greed.every((g, i) => i === 0 || g <= lvq.greed[i - 1]) && lvq.greed[0] > lvq.greed[1], 'le débutant prend plus de risques dans ses passes', lvq.greed);
   t.ok(lvq.hands.every((g, i) => i === 0 || g <= lvq.hands[i - 1]), 'et droppe plus souvent', lvq.hands);
+
+  t.group('Duels et contres');
+  const du = R(`(() => {                                       // contres : la chance baisse si la passe est courte ou le défenseur au bout du bras
+    disc.sx = 40; disc.sy = 18; disc.ex = 44; disc.ey = 18; disc.x = 42; disc.y = 18;
+    const d = TEAMS[1][0]; d.x = 42; d.y = 18.2; const shortNear = blockOdds(d, false); d.y = 19; const shortFar = blockOdds(d, false);
+    disc.ex = 60; d.y = 18.2; const longNear = blockOdds(d, false);
+    return { shortNear, shortFar, longNear };
+  })()`);
+  t.ok(du.longNear > 0.95 && du.shortNear < du.longNear && du.shortFar < du.shortNear * 0.7, 'passe courte ou défenseur loin : moins de chances de contrer', du);
+  t.ok(R("!/Math\\.random/.test(String(update).split('duel :')[1].split('defStop')[0])"), 'duel : aucun tirage au sort, seul le placement compte');
+
+  t.group('Mode infini : réglages par défaut');
+  const ec = R(`(() => { G.form.first = 'r'; G.form.allyLevel = 'normal'; G.me = 0;
+    endlessCfgIn(); const inside = [G.form.first, G.form.allyLevel];
+    G.form.allyLevel = 'facile'; endlessCfgOut(); const after = [G.form.first, G.form.allyLevel];
+    endlessCfgIn(); const again = G.form.allyLevel; endlessCfgOut();
+    return { inside, after, again }; })()`);
+  t.ok(ec.inside.join() === '0,difficile', 'l’adversaire pulle et les coéquipiers IA sont difficiles', ec);
+  t.ok(ec.after.join() === 'r,normal', 'en sortant, les réglages du match rapide reviennent', ec);
+  t.ok(ec.again === 'facile', 'un réglage changé en mode infini est gardé pour la prochaine fois', ec);
 
   t.group('Interceptions');
   const ir = R(`(() => {                                       // 600 arrêts au milieu du terrain, sans jouer la suite

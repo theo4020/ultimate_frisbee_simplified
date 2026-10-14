@@ -79,6 +79,7 @@ Ensuite chaque push sur `main` met le site à jour automatiquement.
 **Voir et modifier les données** : *Workers & Pages → Durable Objects* → `Accounts`, `Board` ou `Gallery` → **Data Studio**,
 identifiant `main`. Tables : `accounts` (comptes : pseudo, empreinte du mot de passe, profil en JSON), `scores` (classement),
 `items` et `likes` (galerie), `meta` (interne). Les données d'avant ont été recopiées automatiquement au premier lancement.
+Le classement du mode infini à plusieurs est un second objet `Board`, d'identifiant `coop` (même table `scores`).
 
 **Modérer la galerie** : dans *Settings → Variables and Secrets* du worker, ajoute une variable `GALLERY_ADMINS` (texte)
 avec ton pseudo de compte (plusieurs pseudos séparés par des virgules). Ces comptes voient ✕ sur toutes les publications.

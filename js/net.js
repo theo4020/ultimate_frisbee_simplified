@@ -42,11 +42,12 @@ function netError(msg) {
   try { if (peer) peer.destroy(); } catch (e) { }
   peer = hostConn = null;
   backToSolo();
-  showLobby(msg);
+  showLobby(msg, 'online');                                    // on revient à la section En ligne
 }
 const connectionLost = msg => netError(msg);
 function backToSolo() {
-  G.attract = false;
+  if (typeof endlessCfgOut === 'function') endlessCfgOut();   // on sort du mode infini : réglages du match rapide
+  G.attract = false; G.coopRoom = false;
   if (G.practice) { G.practice = null; $('pracBox').style.display = 'none'; }
   G.net = null; G.myId = 0; G.humans = [{ id: 0, team: 0, sel: null, name: myName() }]; G.started = false; G.netCfg = null; G.netTeams = null; G.spectator = false;
   G.netSummary = null; G.emotes = []; G.pz = null;
@@ -176,7 +177,7 @@ function admitGuest(c, m) {
   G.humans.push(h);
   sendTo(id, { t: 'welcome', id });
   sendTo(id, roomState());
-  if (G.started && G.menuShown) sendTo(id, { t: 'menu', kind: G.lastMenu || 'first', score: G.score, rec: G.receiving, wind: G.wind, teams: G.teams, pts: winPts(), sum: G.lastMenu === 'over' ? G.lastSummary : null });
+  if (G.started && G.menuShown) sendTo(id, { t: 'menu', kind: G.lastMenu || 'first', score: G.score, rec: G.receiving, wind: G.wind, teams: G.teams, pts: winPts(), sum: G.lastMenu === 'over' ? G.lastSummary : null, ser: coopSer() });
   broadcastRoom();
   if (G.started) flash(humanLabel(h) + ' regarde la partie');
   return id;
@@ -193,12 +194,13 @@ function dropGuest(id, why) {
   if (G.started) { if (G.phase === 'play') updateSelected(); tryStartOnline(); }
   broadcastRoom();
 }
-const roomState = () => ({ t: 'room', started: !!G.started, hum: G.humans.map(h => [h.id, h.team, h.name || '']) });
+const roomState = () => ({ t: 'room', started: !!G.started, coop: !!G.coopRoom, hum: G.humans.map(h => [h.id, h.team, h.name || '']) });
 function broadcastRoom() { syncMe(); netSend(roomState()); renderRoom(); refreshCaptainUI(); }
 function setTeam(id, team) {
   const h = humanById(id);
   if (!h || h.team === team) return;
   if (team >= 0 && teamHumans(team).length >= MAX_PER_TEAM) return;
+  if (G.coopRoom && team === 1) return;                      // mode infini à plusieurs : les Rouges sont l'IA
   if (id === 0 && team < 0) return;                          // l'hôte joue toujours
   h.team = team; h.sel = null;                               // partie en cours : il prend tout de suite un joueur de l'équipe
   if (G.readyIds) G.readyIds.delete(id);
@@ -208,6 +210,7 @@ function setTeam(id, team) {
 }
 function startOnline() {
   if (G.net !== 'host') return;
+  if (G.coopRoom) { coopStart(); return; }                   // mode infini à plusieurs (coop.js)
   G.started = true; newMatch(); G.phase = 'menu';
   broadcastRoom();
   placeForPoint();
@@ -339,7 +342,8 @@ function guestOnData(m) {
     case 'full': netError('La partie est complète.'); break;
     case 'room':
       applyHumans(m.hum.map(([id, team, name]) => [id, team, -1, name]));
-      G.started = m.started; hudKey = '';
+      G.started = m.started; G.coopRoom = !!m.coop; hudKey = '';
+      if (!G.started && G.series) G.series = null;
       if (!G.started || G.teamsOpen) { showRoom(); renderRoom(); }
       else if ((G.phase === 'play' || G.phase === 'pull') && !cardStack.length) { $('overlay').classList.add('hidden'); G.menuShown = false; }
       refreshCaptainUI();
@@ -351,9 +355,11 @@ function guestOnData(m) {
       if (m.teams) G.netTeams = m.teams;
       if (m.pts) G.netPts = m.pts;
       G.netSummary = m.sum || null;
+      G.series = m.ser ? Object.assign({ endless: true, coop: true, pts: ENDLESS_PTS }, m.ser) : null;   // série à plusieurs : où on en est
       if (m.kind === 'over') { if (G.phase !== 'over') achGuestOver(m.score); G.phase = 'over'; }
       showMenu(m.kind);
       break;
+    case 'coopEnd': coopGuestEnd(m); break;
     case 'start':
       replayReset(); FX.celebrate = null; G.teamsOpen = null; resetCards();
       G.phase = 'pull'; G.menuShown = false; G.receiving = m.r;
@@ -436,9 +442,9 @@ function guestFrame(dt) {
 function showRoom() {
   if (G.started && !G.teamsOpen) G.teamsOpen = { menu: G.menuShown };
   G.menuShown = true;
-  for (const id of ['stratCard', 'seriesCard', 'profileCard']) $(id).style.display = 'none';
+  for (const id of ['stratCard', 'seriesCard', 'profileCard', 'endlessCard']) $(id).style.display = 'none';
   $('lobbyCard').style.display = '';
-  for (const id of ['lobbyHome', 'lobbyJoin']) $(id).style.display = 'none';
+  for (const id of ['lobbyHome', 'lobbyJoin', 'lobbySolo', 'lobbyOnline']) $(id).style.display = 'none';
   $('lobbyRoom').style.display = '';
   const host = G.net === 'host' || !G.net;
   $('roomCodeBox').style.display = host ? '' : 'none';
@@ -466,6 +472,9 @@ function renderRoom(note) {
     $('teamB' + t).disabled = !me || me.team === t || hs.length >= MAX_PER_TEAM;
     $('teamB' + t).textContent = 'Rejoindre les ' + DEFAULT_TEAMS[t].name;
   }
+  $('teamB1').style.display = G.coopRoom ? 'none' : '';      // mode infini à plusieurs : tout le monde chez les Bleus
+  $('coopNote').style.display = G.coopRoom ? '' : 'none';
+  if (G.coopRoom) $('rosterR').innerHTML = '<li class="ai">IA (de plus en plus forte)</li>';
   const sp = G.humans.filter(h => h.team < 0), me = meH();
   $('rosterS').innerHTML = sp.length ? sp.map(h => esc(humanLabel(h)) + (h.id === G.myId ? ' (toi)' : '')).join(', ') : 'aucun';
   $('teamBS').disabled = !me || me.team < 0 || me.id === 0 || sp.length >= MAX_SPEC;
@@ -482,9 +491,9 @@ function chooseTeam(t) {
 }
 
 $('soloB').addEventListener('click', () => { backToSolo(); G.series = null; newMatch(); showMenu('first'); });
-$('hostB').addEventListener('click', hostGame);
+$('hostB').addEventListener('click', () => { G.coopRoom = false; hostGame(); });
 $('joinB').addEventListener('click', () => {
-  $('lobbyHome').style.display = 'none'; $('lobbyJoin').style.display = ''; $('lobbyErr').textContent = '';
+  $('lobbyHome').style.display = 'none'; $('lobbyOnline').style.display = 'none'; $('lobbyJoin').style.display = ''; $('lobbyErr').textContent = '';
   $('joinStatus').textContent = ''; $('joinCode').focus();
 });
 $('joinGo').addEventListener('click', () => joinGame($('joinCode').value));

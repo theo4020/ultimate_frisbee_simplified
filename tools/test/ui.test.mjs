@@ -23,7 +23,7 @@ export default async function (t) {
     t.ok(await vis(p, '#lobbyHome'), 'le menu principal s’affiche');
     t.ok(await vis(p, '#moveAlert'), 'bandeau « le jeu change d’adresse » (on n’est pas sur la nouvelle)');
     t.ok(+(await p.textContent('#newsBadge')) > 0, 'badge des nouveautés non lues');
-    for (const id of ['tutoB', 'soloMenuB', 'hostB', 'joinB', 'ctrlB', 'profileB', 'newsB']) t.ok(await vis(p, '#' + id), 'bouton ' + id);
+    for (const id of ['tutoB', 'soloMenuB', 'onlineMenuB', 'ctrlB', 'profileB', 'newsB']) t.ok(await vis(p, '#' + id), 'bouton ' + id);
     t.ok(!(await vis(p, '#pracB')) && !(await vis(p, '#seriesB')), 'les modes solo ne sont plus sur l’accueil');
     await p.fill('#pname', 'Testeur');
 
@@ -72,7 +72,7 @@ export default async function (t) {
     t.ok(srv.board('SELECT * FROM scores').length === 0, 'rien n’est envoyé avant d’avoir choisi');
     await p.fill('#endSaveName', 'Champion'); await p.click('#endSaveB');
     await p.waitForFunction(() => /classement mondial|non enregistré/.test(document.getElementById('endStatus').textContent), null, { timeout: 8000 });
-    t.ok((await p.textContent('#endStatus')).includes('Champion est 1er'), 'score enregistré : 1er du classement', await p.textContent('#endStatus'));
+    t.ok((await p.textContent('#endStatus')).includes('Champion : 1er du classement mondial'), 'score enregistré : 1er du classement', await p.textContent('#endStatus'));
     t.ok(!(await vis(p, '#endSave')), 'le formulaire disparaît');
     t.ok(await p.evaluate(() => myName()) === 'Champion', 'le pseudo choisi est gardé pour la suite');
     t.ok((await p.textContent('#endBoard li.me')).includes('Champion'), 'ma ligne est en évidence avec mon pseudo');

@@ -50,8 +50,12 @@ function clamSlots(defT, ax, ay, dir, closed) {
   s[0] = { x: mx, y: my };
   const near = (x, y, r) => { const [a, d] = nearestD(atk, x, y); return a && d < r ? a : null; };
   const pinch = (x, y) => { const a = near(x, y, 7); return a ? { x: (x + a.x) / 2 + dir * 0.6, y: (y + a.y) / 2 } : { x, y }; };
-  s[2] = pinch(ax + dir * 8, ay + open * 6);                                // pince côté open
-  s[3] = pinch(ax + dir * 10, ay * 0.4 + H / 2 * 0.6 - open * 1.5);         // pince centrale
+  if (forceOf(defT) === 'straight') {                                       // straight up : les deux côtés sont ouverts → une pince de chaque côté
+    s[2] = pinch(ax + dir * 8, clamp(ay + 6, 3, H - 3)); s[3] = pinch(ax + dir * 8, clamp(ay - 6, 3, H - 3));
+  } else {
+    s[2] = pinch(ax + dir * 8, ay + open * 6);                              // pince côté open
+    s[3] = pinch(ax + dir * 10, ay * 0.4 + H / 2 * 0.6 - open * 1.5);       // pince centrale
+  }
   let dd = 18;
   for (const a of atk) dd = Math.max(dd, dir * (a.x - ax) + 2.5);
   const deepY = side => { let best = side < 0 ? H * 0.28 : H * 0.72;        // chaque deep suit l'attaquant le plus profond de sa moitié
@@ -160,6 +164,7 @@ function bestIntercept(d) {
 
 function defenderAI(d, ax, ay, dir, closed, form, slots) {
   const open = -closed;
+  const lean = forceOf(d.team) === 'straight' ? 0 : open;     // straight up : la mark ne ferme aucun côté, personne ne penche d'un côté
   d.sp = SPD.def;
   if (disc.mode === 'air' && !disc.pull) {
     const bi = bestIntercept(d);
@@ -189,13 +194,13 @@ function defenderAI(d, ax, ay, dir, closed, form, slots) {
       [d.tx, d.ty] = markSpot(d.team, disc.x, disc.y); d.react = 0.08;
     } else if (G.dB && G.dB.team === d.team && G.dB.help && G.dB.help.d === d) {   // aide : il ferme la ligne vers l'attaquant libre
       const H_ = G.dB.help, ant = aiLvl(d.team).anticip;
-      const ox = a.x + a.vx * ant + dir * 0.4, oy = a.y + a.vy * ant + open;
+      const ox = a.x + a.vx * ant + dir * 0.4, oy = a.y + a.vy * ant + lean;
       d.tx = ox + (H_.x - ox) * H_.w; d.ty = oy + (H_.y - oy) * H_.w; d.react = Math.min(d.react, 0.1);
     } else if (dsysOf(d.team) && dsysOf(d.team).mode === 'man' && (sp = sysManSpot(dsysOf(d.team), d, a, ax, ay, dir, open))) {
       [d.tx, d.ty] = sp;                                    // rôle donné dans le système perso (serré, profond, double team)
     } else {                                                // on anticipe la course et on se place entre lui et l'espace qu'il veut
       const ant = aiLvl(d.team).anticip, px = a.x + a.vx * ant, py = a.y + a.vy * ant;
-      [d.tx, d.ty] = manSpot(px, py, ax, ay, dir, open);
+      [d.tx, d.ty] = manSpot(px, py, ax, ay, dir, lean);
       const R = G.dB && G.dB.team === d.team && G.dB.read;
       if (R && R.a === a && disc.holder) {                  // c'est lui que le porteur regarde : il se glisse dans la ligne de passe
         const k = readK(d.team), lx = disc.holder.x - d.tx, ly = disc.holder.y - d.ty, l = Math.hypot(lx, ly) || 1;

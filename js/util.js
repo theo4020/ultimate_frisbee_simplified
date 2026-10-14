@@ -73,8 +73,7 @@ const flightTime = d => 0.35 + d / 24;
 const peakOf = (dur, kind) => (0.8 + dur / (THROWS[kind] || THROWS.normal).dur * 1.1) * (THROWS[kind] || THROWS.normal).peak;
 const discPeak = () => peakOf(disc.dur, disc.kind);
 // hauteur du disque à l'instant u (0 → 1) du vol
-//  • passe normale : lâchée vers 0,9 m, elle monte vite (sommet au premier tiers du vol) puis redescend en planant :
-//    la mark et les défenseurs proches du lanceur ont moins de temps pour la toucher
+//  • passe normale : presque une cloche (sommet un peu avant le milieu du vol), lâchée vers 0,5 m
 //  • passe haute : lâchée au-dessus de la tête, à hauteur de saut (une mark debout ne la touche pas,
 //    une mark qui saute au bon moment oui), puis elle monte hors de portée et ne redescend qu'à l'arrivée
 function heightAt(u, peak, kind) {
@@ -82,7 +81,7 @@ function heightAt(u, peak, kind) {
     if (u < 0.45) return 2.3 + (peak - 2.3) * (u / 0.45) * (u / 0.45);
     return peak * Math.sin(Math.PI / 2 * Math.min(1, (1 - u) / 0.55));
   }
-  return 0.9 * (1 - u) + Math.sin(Math.PI * Math.pow(u, 0.65)) * peak;   // lâchée à hauteur de hanche, elle monte vite puis plane
+  return 0.5 * (1 - u) + Math.sin(Math.PI * Math.pow(u, 0.85)) * peak;   // lâchée un peu au-dessus du sol, elle monte un peu plus vite qu'elle ne redescend
 }
 const discZ = u => heightAt(u, discPeak(), disc.kind);
 // hauteur gagnée par un joueur en plein saut (0 au sol, JUMP_H au sommet)

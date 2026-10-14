@@ -53,8 +53,26 @@ function endlessOpp(n) {
   return { name, color: ENDLESS_COLORS[n % ENDLESS_COLORS.length], style, level: () => endlessLevel(endlessD()),
     blurb: `Adversaire n° ${n + 1} · ${endlessTier(n)}. Premier à ${ENDLESS_PTS} points ; une défaite et la série s'arrête.` };
 }
+// réglages propres au mode infini, gardés à part : par défaut l'adversaire pulle (tu commences en attaque) et tes coéquipiers IA
+// sont « difficile » ; ceux du match rapide sont remis en sortant (retour au menu)
+const END_KEYS = ['first', 'allyLevel'];
+function endlessCfgIn() {
+  if (G.endKeep) return;
+  G.endKeep = {}; for (const k of END_KEYS) G.endKeep[k] = G.form[k];
+  const c = storeGet('uf-endless-cfg', null) || {};
+  G.form.first = SAVE_KEYS.first.includes(c.first) ? c.first : String(G.me);
+  G.form.allyLevel = SAVE_KEYS.allyLevel.includes(c.allyLevel) ? c.allyLevel : 'difficile';
+}
+function endlessCfgOut() {
+  if (!G.endKeep) return;
+  const c = {}; for (const k of END_KEYS) c[k] = G.form[k];
+  storeSet('uf-endless-cfg', c);
+  Object.assign(G.form, G.endKeep); G.endKeep = null;
+  saveSettings();
+}
 function endlessStart() {
   backToSolo();
+  endlessCfgIn();
   G.series = { endless: true, cur: 0, opp: endlessOpp(0), pts: ENDLESS_PTS, wins: 0, diff: 0 };
   newMatch();
   $('endlessCard').style.display = 'none'; $('lobbyCard').style.display = 'none';
@@ -66,6 +84,7 @@ function endlessOver(won) {
   S.diff += G.score[G.me] - G.score[1 - G.me];
   if (won) { S.wins++; return; }
   S.done = true;
+  if (S.coop) { S.toSave = true; return; }                     // à plusieurs : pas de record personnel, l'hôte enregistre l'équipe
   const loc = endlessLocal();
   S.best = S.wins > loc.best;
   loc.best = Math.max(loc.best, S.wins);
@@ -92,35 +111,52 @@ function endlessLocal() {
   return o && Array.isArray(o.runs) ? o : { best: 0, runs: [] };
 }
 let boardCache = null;                                         // { top: [...] } ou null si pas de classement mondial
+// le panneau du mode infini sert aussi au mode à plusieurs (coop.js) :
+//   'solo' · 'coop' (accueil à plusieurs, puis fin de série chez l'hôte) · 'coopGuest' (fin de série chez un invité)
+let endMode = 'solo';
+const coopMode = () => endMode !== 'solo';
+const scoresUrl = () => 'api/scores' + (coopMode() ? '?mode=coop' : '');
+const runName = n => (coopMode() ? String(n || '').replace(/[<>&"'`]/g, '').replace(/\s+/g, ' ').trim().slice(0, 24) : cleanName(n));
+const idsKey = () => (coopMode() ? 'uf-coop-ids' : 'uf-endless-ids');
 function endlessFetch() {
-  return fetch('api/scores', { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(j => (boardCache = j && Array.isArray(j.top) ? j : null)).catch(() => (boardCache = null));
+  return fetch(scoresUrl(), { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).then(j => (boardCache = j && Array.isArray(j.top) ? j : null)).catch(() => (boardCache = null));
 }
 const BOARD_LOADING = 'Chargement du classement…';
 function endlessSubmit(name, wins, diff) {
-  return fetch('api/scores', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, wins, diff, token: (accGet() || {}).token }) })
+  return fetch(scoresUrl(), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, wins, diff, token: coopMode() ? undefined : (accGet() || {}).token }) })
     .then(r => r.json().then(j => (r.ok ? j : { error: j.error || 'erreur ' + r.status })))
-    .then(j => { if (j.top) { boardCache = j; if (j.id) storeSet('uf-endless-ids', storeGet('uf-endless-ids', []).concat([j.id]).slice(-20)); } return j; })
+    .then(j => { if (j.top) { boardCache = j; if (j.id) storeSet(idsKey(), storeGet(idsKey(), []).concat([j.id]).slice(-20)); } return j; })
     .catch(() => ({ error: 'classement injoignable' }));
 }
 
 // ---------- panneau ----------
-function showEndless(run) {
+const winsTxt = w => `${w} match${w > 1 ? 's' : ''} gagné${w > 1 ? 's' : ''}`;
+function showEndless(run, mode) {
+  endMode = mode || 'solo';
   G.menuShown = true;
   for (const id of ['lobbyCard', 'stratCard', 'seriesCard']) $(id).style.display = 'none';
   $('endlessCard').style.display = ''; $('overlay').classList.remove('hidden');
-  const loc = endlessLocal();
+  const loc = endlessLocal(), coop = coopMode();
+  $('endTitle').textContent = coop ? '♾️ Mode infini à plusieurs' : '♾️ Mode infini';
   $('endText').innerHTML = run
-    ? `Série terminée : <b>${run.wins} match${run.wins > 1 ? 's' : ''} gagné${run.wins > 1 ? 's' : ''}</b> (écart ${run.diff > 0 ? '+' : ''}${run.diff}).` + (run.best ? ' Nouveau record personnel ! 🏅' : '')
+    ? `Série terminée : <b>${winsTxt(run.wins)}</b> (écart ${run.diff > 0 ? '+' : ''}${run.diff}).` + (run.best ? ' Nouveau record personnel ! 🏅' : '')
+      + (endMode === 'coopGuest' ? ' L’hôte peut enregistrer l’équipe au classement et relancer une série.' : '')
+    : coop ? `Alliez-vous contre l'IA : jusqu'à 5 joueurs dans la même équipe, des matchs en ${ENDLESS_PTS} points contre des adversaires de plus en plus forts, jusqu'à votre première défaite. Classement à part, par équipe.`
     : `Des matchs en ${ENDLESS_PTS} points contre des équipes de plus en plus fortes, jusqu'à ta première défaite. Va le plus loin possible !`;
-  $('endBest').textContent = loc.best ? `Ton record : ${loc.best} match${loc.best > 1 ? 's' : ''} gagné${loc.best > 1 ? 's' : ''}.` : '';
-  $('endGo').textContent = run ? 'Rejouer ▶' : 'Commencer ▶';
-  // fin de série : on propose d'enregistrer le score sous un pseudo (vide = pas enregistré)
+  $('endBest').textContent = !coop && loc.best ? `Ton record : ${winsTxt(loc.best)}.` : '';
+  $('endGo').textContent = run ? 'Rejouer ▶' : coop ? 'Créer la partie ▶' : 'Commencer ▶';
+  $('endGo').style.display = endMode === 'coopGuest' ? 'none' : '';
+  $('endBack').textContent = endMode === 'coopGuest' ? '← Quitter la partie' : coop && run ? '← Retour à la salle' : '← Retour';
+  // fin de série : on propose d'enregistrer le score sous un pseudo (ou un nom d'équipe ; vide = pas enregistré)
   endRun = run && run.toSave ? run : null;
   $('endSave').style.display = endRun ? '' : 'none';
   $('endGo').classList.toggle('primary', !endRun);
-  if (endRun) { $('endSaveName').value = myName(); $('endSaveName').readOnly = !!accGet(); }
+  $('endSaveTitle').textContent = coop ? 'Enregistrer votre équipe au classement à plusieurs ?' : 'Enregistrer ton score au classement mondial ?';
+  $('endSaveName').maxLength = coop ? 24 : 12;
+  $('endSaveName').placeholder = coop ? 'Nom de l’équipe' : 'Ton pseudo';
+  if (endRun) { $('endSaveName').value = coop ? coopTeamName() : myName(); $('endSaveName').readOnly = !coop && !!accGet(); }
   $('endStatus').textContent = BOARD_LOADING;
-  renderBoard();
+  boardCache = null; renderBoard();
   endlessFetch().then(() => {                                  // réponse du serveur : classement mondial, ou message s'il n'y en a pas ici
     if ($('endStatus').textContent === BOARD_LOADING) $('endStatus').textContent = boardCache ? '' : 'Classement mondial indisponible ici (il marche sur ' + NEW_HOST + ').';
     renderBoard();
@@ -129,41 +165,46 @@ function showEndless(run) {
 let endRun = null;
 const rankTxt = r => (r === 1 ? '1er' : r + 'e');
 function endlessSave(skip) {
-  const run = endRun, name = skip ? '' : cleanName($('endSaveName').value);
+  const run = endRun, name = skip ? '' : runName($('endSaveName').value), coop = coopMode();
   if (!run) return;
   run.toSave = false; endRun = null;
   $('endSave').style.display = 'none'; $('endGo').classList.add('primary');
   if (!name) { $('endStatus').textContent = 'Score non enregistré.'; return; }
-  if (!accGet()) { storeSet('uf-name', name); $('pname').value = name; }   // le pseudo est gardé pour la prochaine fois
+  if (!coop && !accGet()) { storeSet('uf-name', name); $('pname').value = name; }   // le pseudo est gardé pour la prochaine fois
   $('endStatus').textContent = 'Envoi…';
   endlessSubmit(name, run.wins, run.diff).then(j => {
     if (j.error) $('endStatus').textContent = '⚠️ Score non enregistré : ' + j.error + '.';
-    else if (j.kept === false) $('endStatus').textContent = `${name} a déjà fait mieux (${j.best.wins} match${j.best.wins > 1 ? 's' : ''} gagné${j.best.wins > 1 ? 's' : ''}) : ce score reste au classement, ${rankTxt(j.rank)}.`;
-    else $('endStatus').textContent = j.rank <= 100 ? `🌍 ${name} est ${rankTxt(j.rank)} du classement mondial !` : 'Score enregistré (au-delà de la 100e place).';
+    else if (j.kept === false) $('endStatus').textContent = `${name} a déjà fait mieux (${winsTxt(j.best.wins)}) : ce score reste au classement, ${rankTxt(j.rank)}.`;
+    else $('endStatus').textContent = j.rank <= 100 ? `🌍 ${name} : ${rankTxt(j.rank)} du classement ${coop ? 'à plusieurs' : 'mondial'} !` : 'Score enregistré (au-delà de la 100e place).';
     renderBoard();
   });
 }
 function renderBoard() {
-  const mine = new Set(storeGet('uf-endless-ids', []));
-  if (!boardCache) {                                           // pas de classement mondial ici : tes meilleures séries
-    const runs = endlessLocal().runs;
-    $('endBoardTitle').textContent = 'Tes meilleures séries';
+  const mine = new Set(storeGet(idsKey(), []));
+  if (!boardCache) {                                           // pas de classement mondial ici : tes meilleures séries (solo)
+    const runs = coopMode() ? [] : endlessLocal().runs;
+    $('endBoardTitle').textContent = coopMode() ? 'Classement à plusieurs' : 'Tes meilleures séries';
     $('endBoard').innerHTML = runs.length ? runs.map((r, i) => `<li><span class="rk">${i + 1}</span><b>${esc(myName() || 'Toi')}</b><span>${r.wins} 🏆</span><small>${r.diff > 0 ? '+' : ''}${r.diff}</small></li>`).join('')
       : '<li class="empty">Aucune série pour l’instant.</li>';
     return;
   }
-  $('endBoardTitle').textContent = '🌍 Classement mondial';
+  $('endBoardTitle').textContent = coopMode() ? '🌍 Classement à plusieurs' : '🌍 Classement mondial';
   $('endBoard').innerHTML = boardCache.top.length ? boardCache.top.slice(0, 50).map((e, i) =>
     `<li class="${mine.has(e.id) ? 'me' : ''}"><span class="rk">${i < 3 ? ['🥇', '🥈', '🥉'][i] : i + 1}</span><b>${esc(e.name)}</b><span>${e.wins} 🏆</span><small>${e.diff > 0 ? '+' : ''}${e.diff}</small></li>`).join('')
-    : '<li class="empty">Personne pour l’instant : sois le premier !</li>';
+    : '<li class="empty">Personne pour l’instant : soyez les premiers !</li>';
 }
 if (typeof document !== 'undefined' && document.getElementById('endGo')) {
   $('soloMenuB').addEventListener('click', () => showLobby('', 'solo'));
   $('soloBack').addEventListener('click', () => showLobby());
   $('endlessB').addEventListener('click', () => { backToSolo(); showEndless(null); });
-  $('endGo').addEventListener('click', endlessStart);
+  $('endGo').addEventListener('click', () => (endMode === 'solo' ? endlessStart() : G.net === 'host' && G.series ? coopRestart() : coopHost()));
   $('endSaveB').addEventListener('click', () => endlessSave(false));
   $('endSkipB').addEventListener('click', () => endlessSave(true));
   $('endSaveName').addEventListener('keydown', e => { if (e.key === 'Enter') endlessSave(false); });
-  $('endBack').addEventListener('click', () => { $('endlessCard').style.display = 'none'; G.series = null; showLobby('', 'solo'); });
+  $('endBack').addEventListener('click', () => {
+    $('endlessCard').style.display = 'none';
+    if (endMode === 'coopGuest') { netError(''); return; }                      // l'invité quitte la partie
+    if (endMode === 'coop' && G.net === 'host') { coopToRoom(); return; }       // l'hôte revient à la salle (on garde les joueurs)
+    G.series = null; showLobby('', endMode === 'solo' ? 'solo' : 'online');
+  });
 }

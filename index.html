@@ -72,8 +72,7 @@
       <p>Ultimate en 5 contre 5, en quelques minutes.</p>
       <button class="bigbtn" id="tutoB">🎓 Tutoriel<small id="tutoTxt">Apprends toutes les commandes en 5 minutes</small></button>
       <button class="bigbtn" id="soloMenuB">🤖 Solo<small>Match, mode infini, mini-tournoi, entraînement</small></button>
-      <button class="bigbtn" id="hostB">🌐 Créer une partie en ligne<small>Jusqu'à 10 joueurs : contre l'IA ensemble ou en vrai 5 contre 5</small></button>
-      <button class="bigbtn" id="joinB">🔗 Rejoindre une partie<small>Avec le code de l'hôte</small></button>
+      <button class="bigbtn" id="onlineMenuB">🌐 En ligne<small>Mode infini à plusieurs, parties entre amis, rejoindre avec un code</small></button>
       <button class="bigbtn" id="sysB">📋 Mes systèmes<small>Crée tes propres attaques et défenses</small></button>
       <button class="bigbtn" id="ctrlB">⚙️ Commandes<small>Gestes ou joystick sur téléphone, touches du clavier</small></button>
       <button class="bigbtn" id="profileB">🏅 Profil<small>Tes statistiques de carrière et tes succès</small></button>
@@ -89,12 +88,20 @@
       <button class="bigbtn" id="pracB">🎯 Entraînement<small>Lance sur des cibles à ton rythme : courbe, passe haute, vent</small></button>
       <button id="soloBack">← Retour</button>
     </div>
+    <div id="lobbyOnline" style="display:none">
+      <h2>🌐 En ligne</h2>
+      <button class="bigbtn" id="coopB">🤝 Mode infini à plusieurs<small>Alliez-vous contre l'IA, de plus en plus forte : classement par équipe</small></button>
+      <button class="bigbtn" id="hostB">🌐 Créer une partie<small>Jusqu'à 10 joueurs : contre l'IA ensemble ou en vrai 5 contre 5</small></button>
+      <button class="bigbtn" id="joinB">🔗 Rejoindre une partie<small>Avec le code de l'hôte</small></button>
+      <button id="onlineBack">← Retour</button>
+    </div>
     <div id="lobbyRoom" style="display:none">
       <div id="roomCodeBox">
         <p>Code de la partie à partager :</p>
         <div class="code" id="hostCode">····</div>
         <button id="copyLink" style="width:100%">Copier le lien d'invitation</button>
       </div>
+      <p class="net" id="coopNote" style="display:none">🤝 <b>Mode infini à plusieurs</b> : tout le monde joue chez les Bleus, contre une IA de plus en plus forte. Une défaite et la série s'arrête.</p>
       <div class="teams">
         <div class="teamcol"><b class="blue">Bleus</b><ul id="rosterB"></ul><button id="teamB0">Rejoindre les Bleus</button></div>
         <div class="teamcol"><b class="red">Rouges</b><ul id="rosterR"></ul><button id="teamB1">Rejoindre les Rouges</button></div>
@@ -139,11 +146,11 @@
     <button id="repBack">← Retour</button>
   </div>
   <div class="card" id="endlessCard" style="display:none">
-    <h1>♾️ Mode infini</h1>
+    <h1 id="endTitle">♾️ Mode infini</h1>
     <p id="endText"></p>
     <p class="net" id="endBest"></p>
     <div id="endSave" style="display:none">
-      <b>Enregistrer ton score au classement mondial ?</b>
+      <b id="endSaveTitle">Enregistrer ton score au classement mondial ?</b>
       <div class="row"><input id="endSaveName" class="tname" maxlength="12" placeholder="Ton pseudo" autocomplete="off" spellcheck="false">
         <button id="endSaveB" class="primary">Enregistrer</button></div>
       <p class="net">Laisse vide pour ne pas l’enregistrer. Un pseudo n’a qu’une ligne : seul son meilleur score est gardé.</p>
@@ -384,6 +391,7 @@
 <script src="js/ui.js"></script>
 <script src="js/series.js"></script>
 <script src="js/endless.js"></script>
+<script src="js/coop.js"></script>
 <script src="js/practice.js"></script>
 <script src="js/achievements.js"></script>
 <script src="js/tuto.js"></script>
