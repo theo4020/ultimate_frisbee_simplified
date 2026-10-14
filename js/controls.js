@@ -54,10 +54,12 @@ canvas.addEventListener('pointerdown', e => {
     return;
   }
   if (G.phase === 'pull') { setPointer(e); const w = toWorld(e); pullPointerDown(w.x, w.y); return; }   // pull : la cible, puis la jauge
-  if (e.button === 2) {                                      // clic droit : en attaque avec le disque, appel de cut ; sinon saut (défense, ou receveur pendant le vol)
+  if (e.button === 2) {                                      // clic droit : saut dès que tu contrôles un joueur ; sinon (tu lances, seul en attaque) appel de cut, ou saut du receveur pendant le vol
     const w = toWorld(e);
-    if (attacking() && disc.mode === 'held') doCall(w.x, w.y);
-    else if (canJump()) userJump();
+    const h = meH(), mine = h && h.sel && !(disc.holder === h.sel && disc.mode !== 'air');
+    if (mine) userJump();                                     // tu contrôles un joueur (sans le disque) : il saute, toujours
+    else if (attacking() && disc.mode === 'held') doCall(w.x, w.y);   // tu lances : appel de cut
+    else if (canJump()) userJump();                           // seul en attaque, disque en vol : ton receveur saute
     return;
   }
   Object.assign(G.pointer, { down: true, downT: G.time, type: e.pointerType });
@@ -186,7 +188,7 @@ $('fsB').addEventListener('click', () => {
 // ---------- téléphone : outils communs aux gestes (gestures.js) ----------
 const fdPull = () => G.phase === 'pull' && localPuller() && G.pullUI && G.pullUI.stage === 'aim' && !!disc.holder;
 const fdRadius = () => clamp(window.innerHeight * 0.32, 80, 150);
-const fdOnUI = t => !!(t && t.closest && t.closest('button, input, textarea, #controls, #tbtns, #tutoBox, #pracBox, #overlay, #hud, #emoBar, #curveV, #highB, #pauseBanner'));
+const fdOnUI = t => !!(t && t.closest && t.closest('button, input, textarea, #controls, #tbtns, #tutoBox, #pracBox, #overlay, #hud, #curveV, #highB, #pauseBanner'));
 
 // ---------- téléphone, réglage « Courbe et passe haute : boutons » : curseur de courbe et bouton sur le bord droit ----------
 // haut = courbe ↶ (comme A), bas = courbe ↷ (comme E)

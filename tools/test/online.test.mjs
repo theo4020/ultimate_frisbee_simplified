@@ -114,6 +114,17 @@ export default async function (t) {
     await host.waitForFunction(() => !G.pz, null, { timeout: 5000 });
     t.ok(true, 'celui qui a mis en pause relance');
 
+    t.group('Réactions');
+    await guest.bringToFront();
+    t.ok(await guest.isVisible('#emoToggle') && !(await guest.isVisible('#emoList')), 'un seul petit bouton 😀 sur le terrain');
+    t.ok(await guest.evaluate(() => getComputedStyle(document.getElementById('emoBar')).pointerEvents === 'none'), 'autour du bouton, le terrain reste cliquable');
+    await guest.click('#emoToggle');
+    t.ok(await guest.isVisible('#emoList'), 'le toucher ouvre la liste des réactions');
+    const ne = await host.evaluate(() => G.emotes.length);
+    await guest.click('#emoList button');
+    await host.waitForFunction(n => G.emotes.length > n, ne, { timeout: 3000 }).catch(() => {});
+    t.ok((await host.evaluate(() => G.emotes.length)) > ne && !(await guest.isVisible('#emoList')), 'réaction envoyée, la liste se referme');
+
     t.group('Départ de l’invité');
     await guest.click('#menuB'); await guest.click('#gmQuit');
     if (await guest.isVisible('#askBox')) await guest.click('#askYes');

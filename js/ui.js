@@ -315,8 +315,17 @@ function cycleThrowKind() { setKind(THROW_ORDER[(THROW_ORDER.indexOf(G.throwKind
 document.querySelectorAll('.tk').forEach(b => b.addEventListener('click', () => setThrowKind(b.dataset.k)));
 
 // chat rapide en ligne
-$('emoBar').innerHTML = EMOTES.map((e, k) => `<button data-e="${k}">${e}</button>`).join('');
-$('emoBar').querySelectorAll('button').forEach(b => b.addEventListener('click', () => sendEmote(+b.dataset.e)));
+// un seul petit bouton 😀 sur le terrain ; la liste des réactions ne s'ouvre qu'en le touchant (et se referme seule)
+$('emoBar').innerHTML = '<button id="emoToggle" title="Réactions">😀</button><span id="emoList">'
+  + EMOTES.map((e, k) => `<button data-e="${k}">${e}</button>`).join('') + '</span>';
+let emoCloseT = null;
+function emoOpen(on) {
+  $('emoBar').classList.toggle('open', on);
+  clearTimeout(emoCloseT);
+  if (on) emoCloseT = setTimeout(() => emoOpen(false), 4000);
+}
+$('emoToggle').addEventListener('click', () => emoOpen(!$('emoBar').classList.contains('open')));
+$('emoList').querySelectorAll('button').forEach(b => b.addEventListener('click', () => { sendEmote(+b.dataset.e); emoOpen(false); }));
 let emoT = -9;
 function sendEmote(k) {
   if (!G.net || G.time - emoT < 1.2 || !EMOTES[k]) return;

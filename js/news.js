@@ -8,6 +8,11 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
+  { id: 20, date: '2026-10-14', tag: 'Commandes', title: 'Clic droit et réactions',
+    body: `<b>Sur PC</b> : le clic droit fait toujours sauter ton joueur dès que tu en contrôles un (en défense, ou en attaque à
+      plusieurs sans le disque). Il appelle un cut seulement quand c'est toi qui lances.<br>
+      <b>Réactions en ligne</b> : elles tiennent dans un petit bouton 😀 ; la liste ne s'ouvre qu'en le touchant et se referme
+      seule. Elles ne bloquent plus le terrain.` },
   { id: 19, date: '2026-10-14', tag: 'En ligne', title: 'Mode infini à plusieurs 🤝',
     body: `Nouvelle section <b>🌐 En ligne</b> dans le menu principal, avec un <b>mode infini à plusieurs</b> : jusqu'à 5 joueurs
       dans la même équipe contre une IA de plus en plus forte. Une défaite et la série s'arrête ; l'hôte peut alors enregistrer
