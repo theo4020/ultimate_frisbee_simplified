@@ -428,7 +428,8 @@ function guestFrame(dt) {
     p.x += (tx - p.x) * k; p.y += (ty - p.y) * k;
   }
   if (disc.mode === 'air') {
-    const u = Math.min(1, (disc.netT + since * sp) / disc.dur);
+    disc.t = Math.min(disc.dur, disc.netT + since * sp);       // temps de vol chez l'invité (trajectoire restante, anneau de hauteur…)
+    const u = Math.min(1, disc.t / disc.dur);
     [disc.x, disc.y] = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u);
     disc.z = discZ(u);
   } else if ((disc.mode === 'held' || disc.mode === 'carry') && disc.holder) { disc.x = disc.holder.x; disc.y = disc.holder.y; disc.z = 0; }

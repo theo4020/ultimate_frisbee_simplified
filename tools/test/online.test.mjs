@@ -87,6 +87,8 @@ export default async function (t) {
     await guest.mouse.move(aim.x, aim.y); await guest.mouse.down(); await guest.mouse.up();
     await host.waitForFunction(n => G.stats.throws > n, th, { timeout: 5000 }).catch(() => {});
     t.ok((await host.evaluate(() => G.stats.throws)) === th + 1, 'la passe de l’invité est jouée chez l’hôte');
+    const fl = await guest.evaluate(() => new Promise(res => setTimeout(() => { const a = disc.t; setTimeout(() => res({ mode: disc.mode, a, b: disc.t, dur: disc.dur }), 120); }, 60)));
+    t.ok(fl.mode !== 'air' || (fl.b > fl.a && fl.b < fl.dur), 'pendant le vol, l’invité suit le temps de vol (trajectoire affichée)', fl);
 
     t.group('Ce que l’adversaire ne voit pas');
     await host.evaluate(() => { G.oplay = null; const p = TEAMS[0].reduce((a, b) => (Math.abs(b.x - W / 2) < Math.abs(a.x - W / 2) ? b : a)); G.off = 0; p.x = W / 2; p.y = H / 2; holdDisc(p); p.think = 99; G.form.play1 = 'split'; });
