@@ -90,6 +90,7 @@
     </div>
     <div id="lobbyOnline" style="display:none">
       <h2>🌐 En ligne</h2>
+      <button class="bigbtn primary" id="rejoinB" style="display:none">↩️ Rejoindre la partie quittée<small id="rejoinTxt"></small></button>
       <button class="bigbtn" id="coopB">🤝 Mode infini à plusieurs<small>Alliez-vous contre l'IA, de plus en plus forte : classement par équipe</small></button>
       <button class="bigbtn" id="hostB">🌐 Créer une partie<small>Jusqu'à 10 joueurs : contre l'IA ensemble ou en vrai 5 contre 5</small></button>
       <button class="bigbtn" id="joinB">🔗 Rejoindre une partie<small>Avec le code de l'hôte</small></button>
@@ -125,6 +126,8 @@
   </div>
   <div class="card" id="gameMenuCard" style="display:none">
     <h1>Menu</h1>
+    <div id="gmCodeBox" style="display:none"><p>Code de la partie : <b class="code" id="gmCode">····</b></p>
+      <button id="gmCopy" style="width:100%">Copier le lien d'invitation</button></div>
     <button class="bigbtn primary" id="gmResume">▶ Reprendre</button>
     <button class="bigbtn" id="gmPause">⏸ Pause pour tout le monde</button>
     <button class="bigbtn" id="gmCtrl">⚙️ Commandes</button>

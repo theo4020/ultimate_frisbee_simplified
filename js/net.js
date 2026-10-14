@@ -47,7 +47,7 @@ function netError(msg) {
 const connectionLost = msg => netError(msg);
 function backToSolo() {
   if (typeof endlessCfgOut === 'function') endlessCfgOut();   // on sort du mode infini : réglages du match rapide
-  G.attract = false; G.coopRoom = false;
+  G.attract = false; G.coopRoom = false; G.roomCode = null;
   if (G.practice) { G.practice = null; $('pracBox').style.display = 'none'; }
   G.net = null; G.myId = 0; G.humans = [{ id: 0, team: 0, sel: null, name: myName() }]; G.started = false; G.netCfg = null; G.netTeams = null; G.spectator = false;
   G.netSummary = null; G.emotes = []; G.pz = null;
@@ -136,7 +136,7 @@ function hostGame() {
       $('hostCode').textContent = code;
       G.net = 'host'; G.myId = 0; G.humans = [{ id: 0, team: 0, sel: null, name: myName() }]; G.started = false; nextId = 1;
       syncMe(); renderRoom();
-      G.inviteUrl = location.href.split('#')[0] + '#join=' + code;
+      G.roomCode = code; G.inviteUrl = location.href.split('#')[0] + '#join=' + code;
     });
     p.on('connection', c => {
       let opened = false;
@@ -235,11 +235,15 @@ function hostOnData(id, m) {
     case 'call': callFor(h, +m.x, +m.y); break;
     case 'pause': setPause(id, !!m.on); break;
     case 'pull': if (G.phase === 'pull' && G.pull && G.pull.by === h.id) launchPull(+m.x, +m.y, m.curve, m.q); break;
+    case 'cfg': if (captain(h.team) === h) takeCfg(h, m.cfg); break;   // le capitaine change sa stratégie : ses coéquipiers la voient
     case 'ready':
-      if (captain(h.team) === h) { h.cfg = Object.assign({}, DEFAULT_CFG, m.cfg, { osys: cleanSystem(m.cfg && m.cfg.osys), dsys: cleanSystem(m.cfg && m.cfg.dsys),
-        p1sys: cleanSystem(m.cfg && m.cfg.p1sys), p2sys: cleanSystem(m.cfg && m.cfg.p2sys) }); (G.readyIds = G.readyIds || new Set()).add(id); }
+      if (captain(h.team) === h) { takeCfg(h, m.cfg); (G.readyIds = G.readyIds || new Set()).add(id); }
       refreshCaptainUI(); tryStartOnline(); break;
   }
+}
+function takeCfg(h, c) {
+  h.cfg = Object.assign({}, DEFAULT_CFG, c, { osys: cleanSystem(c && c.osys), dsys: cleanSystem(c && c.dsys),
+    p1sys: cleanSystem(c && c.p1sys), p2sys: cleanSystem(c && c.p2sys) });
 }
 function hostEmote(id, k) {
   const h = humanById(id);
@@ -256,7 +260,7 @@ let metaJson = '', metaAt = -9;
 function snapshot() {
   const meta = { wind: G.wind, rec: G.receiving, speed: G.form.speed, hum: G.humans.map(h => [h.id, h.team, idx(h.sel)]),
     op: G.oplay && { type: G.oplay.type, team: G.oplay.team }, dp: G.dplay && { type: G.dplay.type, team: G.dplay.team },
-    order: [G.order[0].map(idx), G.order[1].map(idx)], cfg: [cfg(0), cfg(1)], teams: G.teams };
+    order: [G.order[0].map(idx), G.order[1].map(idx)], cfg: [0, 1].map(t => (captain(t) && captain(t).id === G.myId ? myCfg() : cfg(t))), teams: G.teams };
   const mj = JSON.stringify(meta), sendMeta = mj !== metaJson || G.time - metaAt > 1;
   if (sendMeta) { metaJson = mj; metaAt = G.time; }
   return {
@@ -308,6 +312,8 @@ function joinGame(code) {
         c.on('error', () => { if (hostConn === c) connectionLost('Erreur de connexion avec l’hôte.'); });
         G.score = [0, 0]; G.receiving = 0; G.phase = 'menu';
         G.net = 'guest';
+        G.roomCode = code; G.inviteUrl = location.href.split('#')[0] + '#join=' + code;   // pour inviter d'autres joueurs (menu ☰)
+        storeSet('uf-last-room', { code, at: Date.now() });     // pour revenir dans la partie si on la quitte
         $('joinStatus').textContent = 'Connecté !';
         lastMid = -1;
         netSend({ t: 'hello', name: myName() });
@@ -316,6 +322,7 @@ function joinGame(code) {
     p.on('error', err => {
       const t = err && err.type;
       if (hostConn) return;
+      if (t === 'peer-unavailable') storeSet('uf-last-room', null);
       if (t === 'peer-unavailable') netError('Aucune partie trouvée avec ce code. Vérifie le code, et que la page de l’hôte est toujours ouverte au premier plan.');
       else if (t === 'network' || t === 'socket-error' || t === 'server-error') netError('Le service de mise en relation ne répond pas. Réessaie dans un instant.');
       else netError('Connexion impossible (' + (t || 'réseau') + ').');
@@ -358,6 +365,7 @@ function guestOnData(m) {
       G.series = m.ser ? Object.assign({ endless: true, coop: true, pts: ENDLESS_PTS }, m.ser) : null;   // série à plusieurs : où on en est
       if (m.kind === 'over') { if (G.phase !== 'over') achGuestOver(m.score); G.phase = 'over'; }
       showMenu(m.kind);
+      shareCfg();
       break;
     case 'coopEnd': coopGuestEnd(m); break;
     case 'start':
@@ -403,7 +411,9 @@ function applySnapshot(m) {
   if (mt) {
     G.wind = mt.wind; G.receiving = mt.rec; G.form.speed = mt.speed;
     applyHumans(mt.hum);
-    G.oplay = mt.op; G.dplay = mt.dp; G.netCfg = mt.cfg;
+    const cj = JSON.stringify(mt.cfg), cfgChanged = cj !== G.netCfgJson;
+    G.oplay = mt.op; G.dplay = mt.dp; G.netCfg = mt.cfg; G.netCfgJson = cj;
+    if (cfgChanged && G.menuShown) refreshCaptainUI();          // la stratégie du capitaine s'affiche chez ses coéquipiers
     if (mt.teams) G.netTeams = mt.teams;
     G.order = mt.order.map(o => o.map(i => players[i]));
   }
@@ -448,7 +458,8 @@ function showRoom() {
   for (const id of ['lobbyHome', 'lobbyJoin', 'lobbySolo', 'lobbyOnline']) $(id).style.display = 'none';
   $('lobbyRoom').style.display = '';
   const host = G.net === 'host' || !G.net;
-  $('roomCodeBox').style.display = host ? '' : 'none';
+  $('roomCodeBox').style.display = host || G.roomCode ? '' : 'none';   // l'invité voit aussi le code, pour inviter d'autres joueurs
+  if (G.roomCode) $('hostCode').textContent = G.roomCode;
   $('startOnline').style.display = host && !G.started ? '' : 'none';
   $('roomBack').style.display = G.started ? '' : 'none';
   $('backB1').style.display = G.started ? 'none' : '';
@@ -505,13 +516,14 @@ $('roomBack').addEventListener('click', closeTeams);
 document.querySelectorAll('.testNet').forEach(b => b.addEventListener('click', () => testRelay(b.nextElementSibling)));
 $('teamsB').addEventListener('click', () => { if (G.net && G.started) showRoom(); });
 $('startOnline').addEventListener('click', startOnline);
-$('copyLink').addEventListener('click', () => {
+$('copyLink').addEventListener('click', () => copyInvite($('copyLink')));
+function copyInvite(btn) {
   if (!G.inviteUrl) return;
-  const done = () => { $('copyLink').textContent = 'Lien copié ✓'; setTimeout(() => $('copyLink').textContent = 'Copier le lien d’invitation', 1500); };
+  const done = () => { btn.textContent = 'Lien copié ✓'; setTimeout(() => btn.textContent = 'Copier le lien d’invitation', 1500); };
   if (navigator.share && document.body.classList.contains('touch')) navigator.share({ title: 'Ultimate Frisbee', text: 'Rejoins ma partie !', url: G.inviteUrl }).catch(() => {});
   else if (navigator.clipboard) navigator.clipboard.writeText(G.inviteUrl).then(done, () => prompt('Copie ce lien :', G.inviteUrl));
   else prompt('Copie ce lien :', G.inviteUrl);
-});
+}
 for (const id of ['backB1', 'backB2']) $(id).addEventListener('click', () => netError(''));
 
 // pseudo : mémorisé dans le navigateur, envoyé à l'hôte (et modifiable dans la salle d'attente)

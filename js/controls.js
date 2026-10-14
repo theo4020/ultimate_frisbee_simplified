@@ -44,8 +44,17 @@ function trySelectAt(w, r = 2.2) {
 const isTouch = () => document.body.classList.contains('touch');
 // téléphone : tout le tactile est géré par gestures.js (ici : souris et stylet)
 const touchUI = e => e.pointerType !== 'mouse' && isTouch();
-canvas.addEventListener('pointermove', e => { if (!touchUI(e)) setPointer(e); });
-canvas.addEventListener('pointerdown', e => {
+// souris : la visée suit le curseur partout dans la fenêtre (pas seulement sur le terrain), et un clic hors du terrain
+// (bords de l'écran, sauf sur un bouton ou un menu) compte comme un clic sur le terrain : on peut viser et lancer hors des lignes
+const inGame = () => (G.phase === 'play' || G.phase === 'pull') && $('overlay').classList.contains('hidden') && !G.paused;
+window.addEventListener('pointermove', e => { if (!touchUI(e) && (e.target === canvas || inGame())) setPointer(e); });
+window.addEventListener('pointerdown', e => {
+  if (e.target === canvas || touchUI(e) || e.pointerType !== 'mouse' || !inGame() || fdOnUI(e.target)) return;
+  fieldDown(e);
+});
+window.addEventListener('contextmenu', e => { if (inGame() && !fdOnUI(e.target)) e.preventDefault(); });
+canvas.addEventListener('pointerdown', fieldDown);
+function fieldDown(e) {
   e.preventDefault();
   G.gpActive = false;
   if (G.replay) { stopReplay(); return; }
@@ -68,11 +77,11 @@ canvas.addEventListener('pointerdown', e => {
   if (canThrow()) G.aiming = true;
   else if (trySelectAt(G.pointer, 1.6)) { /* clic sur un coéquipier géré par l'IA : tu le prends */ }
   else if (canLayout() && e.pointerType === 'mouse') userDive();
-  canvas.setPointerCapture(e.pointerId);
+  try { canvas.setPointerCapture(e.pointerId); } catch (err) { }
   sendInput(true);
-});
+}
 function pointerEnd(e) {
-  if (touchUI(e) || G.phase === 'pull') return;
+  if (touchUI(e) || G.phase === 'pull' || !G.pointer.down) return;
   if (e.button === 2) return;
   setPointer(e);
   G.pointer.down = false;
@@ -83,7 +92,7 @@ function pointerEnd(e) {
   G.aiming = false;
   sendInput(true);
 }
-canvas.addEventListener('pointerup', pointerEnd);
+window.addEventListener('pointerup', pointerEnd);            // relâché n'importe où (même hors du terrain)
 canvas.addEventListener('pointercancel', e => { if (touchUI(e)) return; G.pointer.down = false; G.aiming = false; sendInput(true); });
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 canvas.addEventListener('wheel', e => { e.preventDefault(); adjustCurve(e.deltaY > 0 ? 0.1 : -0.1); }, { passive: false });

@@ -60,5 +60,10 @@ function coopTeamName() {
 if (typeof document !== 'undefined' && document.getElementById('coopB')) {
   $('onlineMenuB').addEventListener('click', () => showLobby('', 'online'));
   $('onlineBack').addEventListener('click', () => showLobby());
+  $('rejoinB').addEventListener('click', () => {               // revenir dans la dernière partie rejointe
+    const last = storeGet('uf-last-room', null); if (!last) return;
+    $('lobbyOnline').style.display = 'none'; $('lobbyJoin').style.display = ''; $('joinCode').value = last.code;
+    joinGame(last.code);
+  });
   $('coopB').addEventListener('click', () => { backToSolo(); showEndless(null, 'coop'); });
 }

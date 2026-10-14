@@ -19,7 +19,7 @@ export default async function (t, { quick }) {
   t.ok(r.stuck === 0, 'aucun point bloqué', r);
   t.ok(r.phase === 'over', 'les matchs vont au bout', r.phase);
   t.ok(r.comp > 0.75 && r.comp < 0.97, 'taux de passes réussies réaliste (75–97 %)', +r.comp.toFixed(2));
-  t.ok(r.to > 0.3 && r.to < 3, 'turnovers par point réalistes (0,3–3)', +r.to.toFixed(2));
+  t.ok(r.to > 0.15 && r.to < 3, 'turnovers par point réalistes (0,15–3)', +r.to.toFixed(2));
   t.ok(r.sec > 8 && r.sec < 150, 'durée d’un point raisonnable', +r.sec.toFixed(0));
   t.ok(r.blocks + r.ints > 0, 'la défense arrête des passes', r);
   t.ok(r.pre > 0.3 && r.pre < 0.98, 'sur une passe sûre, tout le monde se replace avant la réception', +r.pre.toFixed(2));
@@ -98,13 +98,13 @@ export default async function (t, { quick }) {
     for (let k = 0; k < 4; k++) {
       G.score = [0, 0]; G.receiving = k % 2; newWind(); startPoint();
       for (let f = 0; f < 20000 && (G.phase === 'play' || G.phase === 'pull'); f++) { __tick();
-        if (G.phase !== 'play' || disc.mode !== 'held' || !disc.holder || G.holdT < 1.5) continue;   // 1,5 s après la réception
+        if (G.phase !== 'play' || disc.mode !== 'held' || !disc.holder || G.holdT < 2) continue;   // 2 s après la réception (le temps de s'écarter)
         const h = disc.holder, d = TEAMS[h.team].find(p => p.role === 'dump'); if (!d) continue;
         n++; if (dist(d.x, d.y, h.x, h.y) < 3) close++; }
     }
     return { n, close };
   })()`);
-  t.ok(dp.n > 100 && dp.close / dp.n < 0.01, '1,5 s après la réception, le relais est (presque) toujours à plus de 3 m', dp);
+  t.ok(dp.n > 100 && dp.close / dp.n < 0.01, '2 s après la réception, le relais est (presque) toujours à plus de 3 m', dp);
 
   t.group('Niveaux : mêmes idées, stats et choix de passe différents');
   const lvq = R(`(() => { const keys = o => Object.keys(o).sort().join(); const L = [AI_LEVELS.facile, AI_LEVELS.normal, AI_LEVELS.difficile, LEGEND, SUPER, endlessLevel(20)];

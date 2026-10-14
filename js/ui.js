@@ -131,6 +131,9 @@ function showLobby(err, view) {
   if (!G.net && !G.attract) startAttract();                     // un vrai match se joue derrière le menu
   $('lobbyHome').style.display = view ? 'none' : ''; $('lobbySolo').style.display = view === 'solo' ? '' : 'none';
   $('lobbyOnline').style.display = view === 'online' ? '' : 'none';
+  const last = storeGet('uf-last-room', null), lastOk = last && /^[A-Z0-9]{4}$/.test(last.code) && Date.now() - last.at < 3 * 3600e3;
+  $('rejoinB').style.display = lastOk ? '' : 'none';                     // revenir dans la dernière partie rejointe (3 h)
+  if (lastOk) $('rejoinTxt').textContent = 'Code ' + last.code + ' · si l’hôte joue encore';
   $('lobbyRoom').style.display = 'none'; $('lobbyJoin').style.display = 'none';
   const eb = endlessLocal().best;
   $('endlessTxt').textContent = eb ? `Ton record : ${eb} match${eb > 1 ? 's' : ''} gagné${eb > 1 ? 's' : ''}. Bats-le !` : 'Enchaîne les matchs en 2 points, de plus en plus durs : jusqu’où iras-tu ?';
@@ -189,13 +192,26 @@ function refreshCaptainUI() {
   renderPullerRow();
   const c = captain(G.me), isCap = !G.net || (c && c.id === G.myId);
   $('stratRows').classList.toggle('locked', !isCap);
-  $('stratRows').style.display = G.spectator ? 'none' : '';
-  $('captainNote').textContent = G.spectator ? 'Mode spectateur : les capitaines choisissent leur stratégie. Bouton 👥 Équipes pour jouer.' : G.net && !isCap && c ? `Stratégie choisie par ton capitaine (${humanLabel(c)}).` : '';
+  $('stratRows').style.display = G.spectator || (G.net && !isCap) ? 'none' : '';   // les coéquipiers voient le résumé ci-dessous
+  $('captainNote').innerHTML = G.spectator ? 'Mode spectateur : les capitaines choisissent leur stratégie. Bouton 👥 Équipes pour jouer.'
+    : G.net && !isCap && c ? `Stratégie choisie par ton capitaine (${esc(humanLabel(c))}) :<div class="capStrat">${stratSummary(cfg(G.me))}</div>` : '';
   $('go').style.display = isCap ? '' : 'none';
   if (!G.net) { $('oppReady').textContent = ''; return; }
   const waiting = [0, 1].map(captain).filter(h => h && !(G.readyIds && G.readyIds.has(h.id)) && h.id !== G.myId);
   $('oppReady').textContent = !isCap ? 'En attente des capitaines…'
     : waiting.length ? 'En attente de : ' + waiting.map(humanLabel).join(', ') : '';
+}
+// résumé (lecture seule) de la stratégie d'un capitaine, pour ses coéquipiers
+function stratSummary(c) {
+  c = c || DEFAULT_CFG;
+  const lbl = (g, v) => esc((SEL_LISTS[g].find(o => o[0] === v) || [0, v || '—'])[1]);
+  const sn = s => (s && typeof s === 'object' && s.name ? '★ ' + esc(s.name) : '');
+  const zone = c.dsys && typeof c.dsys === 'object' ? c.dsys.mode === 'zone' : c.def === 'zone';
+  const rows = [['Formation', sn(c.osys) || lbl('off', c.off)], ['Défense', sn(c.dsys) || lbl('def', c.def)]];
+  if (!zone) rows.push(['Force', lbl('force', c.force)]);
+  rows.push(['Play 1', c.play1 === 'sys' ? sn(c.p1sys) || '—' : lbl('play1', c.play1)], ['Play 2', c.play2 === 'sys' ? sn(c.p2sys) || '—' : lbl('play2', c.play2)],
+    ['Play de défense', lbl('dplay', c.dplay)], ['Reprise', c.restart === 'rapide' ? 'Rapide' : 'Posée'], ['Coéquipiers IA', esc(LVL_NAME[c.allyLevel] || 'Normal')]);
+  return rows.map(([a, b]) => `<span><b>${a}</b> ${b}</span>`).join('');
 }
 // systèmes perso proposés dans le menu ; « picked » = celui choisi et encore existant
 const sysAllowed = () => true;                                // partout où l'on choisit sa stratégie (mode infini compris)
@@ -235,6 +251,11 @@ for (const g in SEL_IDS) $(SEL_IDS[g]).addEventListener('change', e => {
     else setOpt(SEL_SYS[g][0], v.slice(4));
   } else setOpt(g, v);
 });
+// en ligne, capitaine invité : ses choix partent tout de suite chez l'hôte, pour que ses coéquipiers les voient
+function shareCfg() {
+  const c = captain(G.me);
+  if (G.net === 'guest' && c && c.id === G.myId && !G.spectator) netSend({ t: 'cfg', cfg: myCfg() });
+}
 function setOpt(g, v) {
   if (g === 'off') G.form.osys = null;                         // une formation de base remplace le système perso
   if (g === 'def') G.form.dsys = null;
@@ -244,7 +265,7 @@ function setOpt(g, v) {
     if (G.net === 'host') netSend({ t: 'rec', rec: G.receiving });
   }
   if (g === 'windMode') { newWind(); hudKey = ''; }
-  refreshOptions(); saveSettings();
+  refreshOptions(); saveSettings(); shareCfg();
   if (G.net === 'host' && ['windMode'].includes(g)) netSend({ t: 'wind', wind: G.wind });
 }
 document.querySelectorAll('.opt').forEach(b => b.addEventListener('click', () => setOpt(b.dataset.g, b.dataset.v)));

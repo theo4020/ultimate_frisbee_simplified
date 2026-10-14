@@ -108,6 +108,22 @@ export default async function (t) {
     t.ok(await p.evaluate(i => meH().sel === TEAMS[G.me][i], pick.i), 'clic sur un coéquipier géré par l’IA : tu le prends');
     await p.mouse.click(pick.x + 40, pick.y, { button: 'right' });
     t.ok(await p.evaluate(() => { const s = meH().sel; return s.jprep > 0 || s.jump > 0; }), 'clic droit en défense : ton joueur saute');
+
+    t.group('PC : viser et lancer hors du terrain');
+    await p.evaluate(() => { G.off = G.me; G.oplay = null; G.pickup = null; const h = TEAMS[G.me][0]; h.x = W / 2; h.y = H - 4; holdDisc(h); h.think = 99; });
+    await p.waitForFunction(() => canThrow(), null, { timeout: 5000 });
+    const out = await p.evaluate(() => {                     // un point de la page sous le terrain (hors du canvas, pas sur un bouton)
+      const r = canvas.getBoundingClientRect(), x = r.left + r.width / 2;
+      for (let y = Math.ceil(r.bottom) + 2; y < innerHeight - 2; y += 3) { const el = document.elementFromPoint(x, y); if (el && el !== canvas && !fdOnUI(el)) return { x, y, inside: false }; }
+      return { x, y: r.bottom - 2, inside: true };
+    });
+    const th1 = await p.evaluate(() => G.stats.throws);
+    await p.mouse.move(out.x, out.y); await p.mouse.down(); await p.mouse.move(out.x + 3, out.y + 1); 
+    const aimOut = await p.evaluate(() => ({ aiming: G.aiming, y: G.pointer.y, out: G.pointer.y > H }));
+    await p.mouse.up();
+    await p.waitForTimeout(150);
+    t.ok(out.inside || (aimOut.aiming && aimOut.out), 'clic sous le terrain : la visée part, hors des lignes', { out, aimOut });
+    t.ok(out.inside || (await p.evaluate(() => G.stats.throws)) === th1 + 1, 'relâcher hors du terrain lance le disque', out);
     await p.click('#menuB');
     t.ok(await vis(p, '#gameMenuCard') && await p.evaluate(() => G.paused), 'menu ☰ : le jeu se met en pause');
     await p.click('#gmCtrl');

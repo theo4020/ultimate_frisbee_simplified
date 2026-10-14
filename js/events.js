@@ -22,7 +22,7 @@ function holdDisc(p) {
 const PULL_DROP = 1 / 3;                                       // un pull se droppe 3 fois moins souvent qu'une passe
 function dropChance() {
   const K = THROWS[disc.kind] || THROWS.normal;
-  return Math.min(0.12, G.wind.kmh * 0.0015 * (0.5 + disc.dur * 0.5)) + K.drop + K.dropWind * G.wind.kmh;
+  return Math.min(0.03, G.wind.kmh * 0.0003 * (0.5 + disc.dur * 0.5)) + K.drop + K.dropWind * G.wind.kmh;   // 20 km/h : ~0,5 % sur une passe courte
 }
 function catchDisc(p) {
   if (disc.pull) { pullCaught(p); return; }

@@ -4,7 +4,7 @@
 // Sauvegardé : tout ce que le jeu mémorise (profil, succès, records, tournoi, réglages de match, équipes…),
 // sauf ce qui dépend de l'appareil (commandes, son).
 
-const ACC_SKIP = new Set(['uf-acc', 'uf-ctrl', 'uf-muted', 'uf-news-seen']);
+const ACC_SKIP = new Set(['uf-acc', 'uf-ctrl', 'uf-muted', 'uf-news-seen', 'uf-last-room']);
 const accGet = () => { const a = storeGet('uf-acc', null); return a && a.name && a.token ? a : null; };
 const accSet = a => (a ? storeSet('uf-acc', a) : (() => { try { localStorage.removeItem('uf-acc'); } catch (e) { } })());
 function accData() {

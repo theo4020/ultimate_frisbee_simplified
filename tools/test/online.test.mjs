@@ -42,6 +42,9 @@ export default async function (t) {
     await guest.waitForFunction(() => document.getElementById('stratCard').style.display !== 'none', null, { timeout: 5000 });
     // l'invité (capitaine des Rouges) choisit un système perso : il doit partir chez l'hôte avec sa stratégie
     await guest.evaluate(() => { const s = cleanSystem(Object.assign(SYS_NEW.off(), { id: 'abc123', name: 'Mon huck', steps: [{ p: 0, to: [6, 10], wait: 0.6 }, { p: 2, to: [32, 6], wait: 1 }, { p: 1, to: [9, -8], wait: 1 }] })); sysSave([s]); G.form.osys = s.id; });
+    await guest.evaluate(() => setOpt('force', 'bas'));
+    await host.waitForFunction(() => cfg(1).force === 'bas', null, { timeout: 3000 }).catch(() => {});
+    t.ok(await host.evaluate(() => cfg(1).force === 'bas'), 'un choix du capitaine invité part tout de suite chez l’hôte (avant « Prêt »)');
     await host.click('#go'); await guest.click('#go');
     await host.waitForFunction(() => G.phase === 'pull' || G.phase === 'play', null, { timeout: 8000 });
     t.ok(true, 'les deux capitaines prêts : le point démarre');
@@ -127,10 +130,25 @@ export default async function (t) {
     await host.waitForFunction(n => G.emotes.length > n, ne, { timeout: 3000 }).catch(() => {});
     t.ok((await host.evaluate(() => G.emotes.length)) > ne && !(await guest.isVisible('#emoList')), 'réaction envoyée, la liste se referme');
 
+    t.group('Code de la partie dans le menu');
+    await guest.click('#menuB');
+    t.ok(await guest.isVisible('#gmCodeBox') && (await guest.textContent('#gmCode')) === code, 'menu ☰ de l’invité : le code pour inviter d’autres joueurs', await guest.textContent('#gmCode'));
+    await guest.click('#gmResume');
+    await host.bringToFront(); await host.click('#menuB');
+    t.ok((await host.textContent('#gmCode')) === code, 'et chez l’hôte');
+    await host.click('#gmResume');
+    await guest.bringToFront();
+
     t.group('Départ de l’invité');
     await guest.click('#menuB'); await guest.click('#gmQuit');
     if (await guest.isVisible('#askBox')) await guest.click('#askYes');
     t.ok(await guest.isVisible('#lobbyOnline'), 'l’invité quitte et retrouve la section En ligne');
+    await host.waitForFunction(() => G.humans.length === 1, null, { timeout: 15000 });
+    t.ok(await guest.isVisible('#rejoinB') && (await guest.textContent('#rejoinTxt')).includes(code), 'bouton pour revenir dans la partie quittée');
+    await guest.click('#rejoinB');
+    await host.waitForFunction(() => G.humans.length === 2, null, { timeout: 10000 }).catch(() => {});
+    t.ok(await host.evaluate(() => G.humans.length === 2), 'il revient dans la partie');
+    await guest.evaluate(() => netError(''));
     await host.waitForFunction(() => G.humans.length === 1, null, { timeout: 15000 });
     t.ok(await host.evaluate(() => G.net === 'host' && (G.phase === 'play' || G.phase === 'between' || G.phase === 'pull' || G.phase === 'over')), 'la partie continue chez l’hôte');
     await ctx.close();
@@ -160,6 +178,9 @@ export default async function (t) {
     await h2.click('#startOnline');
     await g2.waitForFunction(() => document.getElementById('stratCard').style.display !== 'none' && /Match 1/.test(document.getElementById('ovTitle').textContent), null, { timeout: 5000 });
     t.ok((await g2.textContent('#ovTitle')).includes('Écureuils'), 'l’invité voit le 1er adversaire de la série', await g2.textContent('#ovTitle'));
+    await h2.evaluate(() => setOpt('off', 'ho'));
+    await g2.waitForFunction(() => /Horizontal/.test(document.getElementById('captainNote').textContent), null, { timeout: 3000 }).catch(() => {});
+    t.ok(!(await g2.isVisible('#stratRows')) && (await g2.textContent('#captainNote')).includes('Horizontal stack'), 'le coéquipier voit la stratégie choisie par son capitaine, en direct', await g2.textContent('#captainNote'));
     t.ok(await h2.evaluate(() => G.series && G.series.coop && G.form.first === '0' && G.form.allyLevel === 'difficile' && aiLvl(1).react === AI_LEVELS.facile.react),
       'chez l’hôte : série lancée, l’IA pulle, coéquipiers IA difficiles, adversaire au niveau du 1er match');
     const finish = (a, b) => h2.evaluate(([a, b]) => { G.score = [a, b]; G.phase = 'over'; onMatchOver(); showMenu('over'); }, [a, b]);

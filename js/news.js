@@ -8,6 +8,20 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
+  { id: 23, date: '2026-10-14', tag: 'En ligne', title: 'Revenir dans une partie, stratégie du capitaine',
+    body: `<b>↩️ Rejoindre la partie quittée</b> : dans 🌐 En ligne, un bouton te ramène dans la dernière partie rejointe
+      (tant que l'hôte joue encore, pendant 3 h).<br>
+      <b>Stratégie du capitaine</b> : ses coéquipiers voient en direct ce qu'il choisit (formation, défense, force, plays,
+      systèmes perso…) au lieu de leurs propres réglages grisés.` },
+  { id: 22, date: '2026-10-14', tag: 'Jeu', title: 'Beaucoup moins de drops',
+    body: `Le vent fait encore dropper, mais bien moins : par 20 km/h, environ 0,5 % sur une passe courte et 0,8 % sur une longue
+      (avant : 2,6 % et 3,9 %). Une passe haute se droppe environ 2,6 % du temps par 20 km/h (avant : 12 %). Les joueurs IA
+      débutants droppent un peu plus que les autres (+1 %), les meilleurs presque jamais.` },
+  { id: 21, date: '2026-10-14', tag: 'Commandes', title: 'Viser hors du terrain, code dans le menu',
+    body: `<b>Sur PC</b> : tu peux cliquer et viser en dehors du terrain (sur les bords de l'écran) : la visée suit la souris
+      partout, et relâcher hors du terrain lance le disque.<br>
+      <b>En ligne</b> : le code de la partie (et le lien d'invitation) est dans le menu ☰ pendant le jeu, pour l'hôte comme pour
+      les invités, pour faire venir d'autres joueurs en cours de partie.` },
   { id: 20, date: '2026-10-14', tag: 'Commandes', title: 'Clic droit et réactions',
     body: `<b>Sur PC</b> : le clic droit fait toujours sauter ton joueur dès que tu en contrôles un (en défense, ou en attaque à
       plusieurs sans le disque). Il appelle un cut seulement quand c'est toi qui lances.<br>

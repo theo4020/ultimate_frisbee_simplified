@@ -386,3 +386,7 @@ body.touch #playBtns button{font-size:13px;padding:7px 12px}
 #galItems .kind.def{background:rgba(239,68,68,.25);color:#fca5a5}
 #sysItems button.on{border-color:#4ade80;color:#4ade80}
 .edModes.ro button:not(#edPlay){opacity:.5;pointer-events:none}
+
+/* résumé de la stratégie du capitaine, chez ses coéquipiers */
+.capStrat{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:6px;font-size:13px}
+.capStrat b{opacity:.7;font-weight:600;margin-right:4px}
