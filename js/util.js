@@ -83,20 +83,22 @@ function heightAt(u, peak, kind, len) {
     return peak * Math.sin(Math.PI / 2 * Math.min(1, (1 - u) / 0.55));
   }
   // passe normale : sa hauteur dépend de la distance parcourue depuis le lanceur (et de celle qui reste jusqu'au receveur) :
-  //   dans le cercle de stall (STALL_R) → contrable en plongeant ; 2 m de plus → debout ; encore 2 m → en sautant ;
-  //   au-delà, hors de portée jusqu'à la même zone, à l'envers, avant l'arrivée
+  //   au lancer : cercle de stall (STALL_R) → en plongeant ; 3 m de plus → debout ; encore 3 m → en sautant ;
+  //   à l'arrivée, les mêmes zones 1,5 fois plus longues (le disque redescend plus doucement qu'il ne monte) ;
+  //   entre les deux, hors de portée
   const L = len || 15, top = Math.max(NORMAL_TOP, peak);
-  return Math.min(normalZ(u * L, 0.9, top), normalZ((1 - u) * L, 1.0, top));
+  return Math.min(normalZ(u * L, 0.9, top, 1), normalZ((1 - u) * L, 1.0, top, 1.5));
 }
 const discLen = () => dist(disc.sx, disc.sy, disc.ex, disc.ey);
 const discZ = u => heightAt(u, discPeak(), disc.kind, discLen());
-// hauteur d'une passe normale à s mètres de son extrémité (lancer ou réception), en partant de z0
-function normalZ(s, z0, top) {
-  const R = STALL_R, dive = REACH_DIVE, stand = REACH_STAND, jump = REACH_STAND + JUMP_H;
-  if (s <= R) return z0 + (dive - z0) * s / R;
-  if (s <= R + 2) return dive + (stand - dive) * (s - R) / 2;
-  if (s <= R + 4) return stand + (jump - stand) * (s - R - 2) / 2;
-  return jump + (top - jump) * Math.min(1, (s - R - 4) / 4);
+// hauteur d'une passe normale à s mètres de son extrémité (lancer ou réception), en partant de z0 ; k allonge les zones
+const PASS_STAND = 3, PASS_JUMP = 3;                            // longueur des zones « debout » et « en sautant » au lancer (m)
+function normalZ(s, z0, top, k) {
+  const a = STALL_R * k, b = a + PASS_STAND * k, c = b + PASS_JUMP * k, dive = REACH_DIVE, stand = REACH_STAND, jump = REACH_STAND + JUMP_H;
+  if (s <= a) return z0 + (dive - z0) * s / a;
+  if (s <= b) return dive + (stand - dive) * (s - a) / (b - a);
+  if (s <= c) return stand + (jump - stand) * (s - b) / (c - b);
+  return jump + (top - jump) * Math.min(1, (s - c) / 4);
 }
 // hauteur gagnée par un joueur en plein saut (0 au sol, JUMP_H au sommet)
 const jumpLift = p => (p.jump > 0 ? JUMP_H * Math.sin(Math.PI * (1 - p.jump / JUMP_T)) : 0);

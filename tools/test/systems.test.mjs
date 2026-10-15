@@ -73,7 +73,7 @@ export default async function (t, { quick }) {
       if (!(G.phase === 'play' && disc.mode === 'held' && disc.holder)) { G.off = 0; G.phase = 'play'; G.pickup = null; holdDisc(TEAMS[0][0]); }   // rare : on force la situation
       G.oplay = null; const t = G.off; const c = cfg(t); c.play1 = ty;
       const ok = callPlay(t, 1), P = G.oplay;
-      for (let f = 0; f < 18; f++) __tick();                      // 0,3 s plus tard : le play est déjà en route
+      for (let f = 0; f < 18; f++) { if (disc.holder) disc.holder.think = 99; __tick(); }   // le porteur garde le disque : on regarde les courses                      // 0,3 s plus tard : le play est déjà en route
       const moving = P && TEAMS[t].some(q => q !== disc.holder && ['jab', 'cut', 'park'].includes(q.state));
       out[ty] = { ok, moving, again: callPlay(t, 1) };
     }

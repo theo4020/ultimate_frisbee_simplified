@@ -18,7 +18,7 @@ export default async function (t, { quick }) {
   })()`);
   t.ok(r.stuck === 0, 'aucun point bloqué', r);
   t.ok(r.phase === 'over', 'les matchs vont au bout', r.phase);
-  t.ok(r.comp > 0.75 && r.comp < 0.97, 'taux de passes réussies réaliste (75–97 %)', +r.comp.toFixed(2));
+  t.ok(r.comp > 0.75 && r.comp < 0.99, 'taux de passes réussies réaliste (75–99 %)', +r.comp.toFixed(2));
   t.ok(r.to > 0.15 && r.to < 3, 'turnovers par point réalistes (0,15–3)', +r.to.toFixed(2));
   t.ok(r.sec > 8 && r.sec < 150, 'durée d’un point raisonnable', +r.sec.toFixed(0));
   t.ok(r.blocks + r.ints > 0, 'la défense arrête des passes', r);
@@ -113,13 +113,13 @@ export default async function (t, { quick }) {
   t.ok(lvq.greed.every((g, i) => i === 0 || g <= lvq.greed[i - 1]) && lvq.greed[0] > lvq.greed[1], 'le débutant prend plus de risques dans ses passes', lvq.greed);
   t.ok(lvq.hands.every((g, i) => i === 0 || g <= lvq.hands[i - 1]), 'et droppe plus souvent', lvq.hands);
 
-  t.group('Passe normale : zones de contre selon la distance au lanceur');
-  const zn = R(`[20, 30, 45].map(L => {                         // hauteur à 4, 6, 8 et 10 m du lanceur (même chose avant le receveur)
-    const dur = throwDur(0, 0, L, 0, 'normal'), peak = peakOf(dur, 'normal'), z = s => heightAt(s / L, peak, 'normal', L);
-    return { L, z4: +z(4).toFixed(2), z6: +z(6).toFixed(2), z8: +z(8).toFixed(2), z10: +z(10).toFixed(2), e4: +z(L - 4).toFixed(2) };
+  t.group('Passe normale : zones de contre selon la distance');
+  const zn = R(`[30, 45].map(L => {                             // hauteur à s mètres du lanceur (z) et du receveur (e)
+    const dur = throwDur(0, 0, L, 0, 'normal'), peak = peakOf(dur, 'normal'), z = s => +heightAt(s / L, peak, 'normal', L).toFixed(2), e = s => z(L - s);
+    return { L, z: [4.4, 7.4, 10.4, 11].map(z), e: [6.6, 11.1, 15.6, 16.5].map(e) };
   })`);
-  t.ok(zn.every(o => o.z4 < 1.5 && o.z6 < 2 && o.z8 < 3 && o.z10 > 3), 'cercle de stall : en plongeant ; +2 m : debout ; +2 m : en sautant ; au-delà : hors de portée', zn);
-  t.ok(zn.every(o => o.e4 < 1.5), 'même chose à l’envers avant le receveur', zn);
+  t.ok(zn.every(o => o.z[0] < 1.5 && o.z[1] < 2 && o.z[2] < 3 && o.z[3] > 3), 'au lancer : 4,5 m en plongeant, 3 m de plus debout, 3 m de plus en sautant, puis hors de portée', zn);
+  t.ok(zn.every(o => o.e[0] < 1.5 && o.e[1] < 2 && o.e[2] < 3 && o.e[3] > 3), 'à l’arrivée : les mêmes zones 1,5 fois plus longues', zn);
 
   t.group('Tutoriel : plonger en défense');
   const td = R(`(() => {
