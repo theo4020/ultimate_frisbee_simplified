@@ -35,7 +35,7 @@ $('menuB').addEventListener('click', () => { if ($('gameMenuCard').style.display
 $('gmResume').addEventListener('click', closeCard);
 $('gmCopy').addEventListener('click', () => copyInvite($('gmCopy')));
 $('gmCtrl').addEventListener('click', () => openCard('ctrlCard'));
-$('gmReport').addEventListener('click', () => { $('repStatus').textContent = ''; $('repOut').style.display = 'none'; openCard('reportCard'); });
+$('gmReport').addEventListener('click', () => { $('repStatus').textContent = ''; $('repOut').style.display = 'none'; $('repSend').disabled = false; openCard('reportCard'); });
 $('gmQuit').addEventListener('click', () => { closeAllCards(); goMainMenu(); });
 $('gmPause').addEventListener('click', () => { togglePause(); closeCard(); });
 $('ctrlB').addEventListener('click', () => openCard('ctrlCard'));
@@ -89,6 +89,20 @@ function buildReport() {
     players: players.map(pl), frames: DBG.frames, errors: DBG.errors
   };
 }
+// envoi direct au développeur (serveur du site : /api/report) ; si ça échoue, on propose de copier le rapport
+$('repSend').addEventListener('click', () => {
+  const txt = JSON.stringify(buildReport());
+  $('repSend').disabled = true; $('repStatus').textContent = 'Envoi…';
+  fetch('api/report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: txt })
+    .then(r => r.json().catch(() => ({})).then(j => (r.ok ? j : { error: j.error || 'erreur ' + r.status })))
+    .catch(() => ({ error: 'serveur injoignable' }))
+    .then(j => {
+      $('repSend').disabled = false;
+      if (j.error) { $('repStatus').textContent = '⚠️ Envoi impossible (' + j.error + ') : touche « Copier le rapport » et envoie-le au développeur.'; return; }
+      $('repDesc').value = '';
+      $('repStatus').textContent = '✅ Rapport envoyé au développeur (n° ' + j.id + '). Merci !';
+    });
+});
 $('repCopy').addEventListener('click', () => {
   const txt = JSON.stringify(buildReport());
   const fallback = () => {

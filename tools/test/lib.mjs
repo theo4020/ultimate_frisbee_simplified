@@ -99,10 +99,10 @@ export function fakeNsByName(Cls, known = {}) {
 // ---------- serveur local : les fichiers du site + le vrai worker (/api/turn, /api/scores) ----------
 const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.webmanifest': 'application/manifest+json', '.json': 'application/json' };
 export async function startServer({ turnEnv = false } = {}) {
-  const { default: worker, Board, Accounts, Gallery } = await import(path.join(ROOT, 'worker', 'index.js'));
+  const { default: worker, Board, Accounts, Gallery, Reports } = await import(path.join(ROOT, 'worker', 'index.js'));
   const store = new Map();
-  const bs = fakeState(), as = fakeState(), gs = fakeState();
-  const board = await makeDO(Board, bs), accounts = await makeDO(Accounts, as), gallery = await makeDO(Gallery, gs);
+  const bs = fakeState(), as = fakeState(), gs = fakeState(), rs = fakeState();
+  const board = await makeDO(Board, bs), accounts = await makeDO(Accounts, as), gallery = await makeDO(Gallery, gs), reports = await makeDO(Reports, rs);
   const ASSETS = {
     async fetch(req) {
       let p = decodeURIComponent(new URL(req.url).pathname);
@@ -113,7 +113,7 @@ export async function startServer({ turnEnv = false } = {}) {
     }
   };
   const boards = fakeNsByName(Board, { main: { st: bs, obj: board } });
-  const env = { ASSETS, BOARD: boards, ACCOUNTS: fakeNs(accounts), GALLERY: fakeNs(gallery), GALLERY_ADMINS: 'Admin' };
+  const env = { ASSETS, BOARD: boards, ACCOUNTS: fakeNs(accounts), GALLERY: fakeNs(gallery), REPORTS: fakeNs(reports), GALLERY_ADMINS: 'Admin' };
   if (turnEnv) Object.assign(env, { TURN_KEY_ID: 'test', TURN_KEY_API_TOKEN: 'test' });
   const server = http.createServer(async (rq, rs) => {
     const chunks = []; for await (const c of rq) chunks.push(c);
@@ -126,5 +126,5 @@ export async function startServer({ turnEnv = false } = {}) {
   const url = `http://127.0.0.1:${server.address().port}/`;
   const q = st => (sqlText, ...b) => st.db.prepare(sqlText).all(...b);   // lire les tables pendant un test
   const coop = (sqlText, ...b) => (boards.objs.has('coop') ? q(boards.objs.get('coop').st)(sqlText, ...b) : []);
-  return { url, board: q(bs), coop, accounts: q(as), gallery: q(gs), close: () => new Promise(r => server.close(r)) };
+  return { url, board: q(bs), coop, accounts: q(as), gallery: q(gs), reports: q(rs), close: () => new Promise(r => server.close(r)) };
 }

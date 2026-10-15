@@ -141,9 +141,10 @@
   </div>
   <div class="card" id="reportCard" style="display:none">
     <h1>🐞 Signaler un problème</h1>
-    <p>Décris ce qui s’est passé, puis copie le rapport et envoie-le au développeur (message, e-mail…). Il contient ta description, l’état du jeu et ses 10 dernières secondes, pour retrouver la situation exacte.</p>
+    <p>Décris ce qui s’est passé, puis envoie : le rapport part directement au développeur. Il contient ta description, l’état du jeu et ses 10 dernières secondes, pour retrouver la situation exacte.</p>
     <textarea id="repDesc" rows="3" placeholder="Ce que j’ai fait, ce que j’attendais, ce qui s’est passé…"></textarea>
-    <button id="repCopy" class="primary">Copier le rapport</button>
+    <button id="repSend" class="primary">Envoyer le rapport</button>
+    <button id="repCopy" class="ghost">Copier le rapport</button>
     <p class="net" id="repStatus"></p>
     <textarea id="repOut" rows="4" readonly style="display:none"></textarea>
     <button id="repBack">← Retour</button>

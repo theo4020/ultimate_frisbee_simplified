@@ -139,9 +139,14 @@ export default async function (t) {
     await p.click('#ctrlBack'); await p.click('#gmReport');
     await p.fill('#repDesc', 'un test avec des espaces');
     t.ok((await p.inputValue('#repDesc')) === 'un test avec des espaces', 'les espaces passent dans la description');
+    await p.click('#repSend');
+    await p.waitForFunction(() => /envoyé|impossible/.test(document.getElementById('repStatus').textContent), null, { timeout: 5000 });
+    t.ok(/envoyé/.test(await p.textContent('#repStatus')), 'rapport envoyé au développeur en un clic', await p.textContent('#repStatus'));
+    const saved = srv.reports('SELECT descr, mode, device, data FROM reports');
+    t.ok(saved.length === 1 && saved[0].descr === 'un test avec des espaces' && JSON.parse(saved[0].data).frames.length > 0, 'gardé sur le serveur, avec l’état du jeu', saved.map(r => [r.descr, r.mode, r.device]));
     await ctx.grantPermissions(['clipboard-read', 'clipboard-write']);
     await p.click('#repCopy');
-    await p.waitForFunction(() => document.getElementById('repStatus').textContent.length > 0);
+    await p.waitForFunction(() => /copié|sélectionne/.test(document.getElementById('repStatus').textContent), null, { timeout: 5000 }).catch(() => {});
     t.ok(/copié|sélectionne/.test(await p.textContent('#repStatus')), 'rapport copié', await p.textContent('#repStatus'));
     await p.click('#repBack'); await p.click('#gmResume');
     t.ok(!(await p.evaluate(() => G.paused)) && !(await vis(p, '#gameMenuCard')), 'reprise du jeu');

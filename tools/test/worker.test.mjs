@@ -1,5 +1,5 @@
 // Serveur (worker/index.js), sans Cloudflare : relais TURN et classement du mode infini (tout est simulé).
-import worker, { Board } from '../../worker/index.js';
+import worker, { Board, Reports } from '../../worker/index.js';
 import { fakeState, makeDO, fakeNsByName } from './lib.mjs';
 
 export default async function (t) {
@@ -72,6 +72,25 @@ export default async function (t) {
     t.ok((await call('/api/scores?mode=coop', { e: env2 })).j.top.length === 1 && !(await call('/api/scores', { e: env2 })).j.top.some(e => e.name.startsWith('Théo +')), 'classement à part : rien dans le classement solo');
     t.ok((await call('/api/scores?mode=coop', { method: 'POST', body: { name: '', wins: 1, diff: 1 }, ip: '20.0.0.2', e: env2 })).j.error === 'nom d’équipe manquant', 'sans nom d’équipe : refusé');
   } finally { globalThis.fetch = realFetch; }
+
+  t.group('Rapports de bug (/api/report)');
+  {
+    const rs = fakeState(), reports = await makeDO(Reports, rs); let hook = null;
+    const keep = globalThis.fetch; globalThis.fetch = async (url, o) => { hook = { url, form: o.body }; return new Response('{}', { status: 200 }); };
+    const e2 = { ASSETS: { fetch: async () => new Response('page') }, REPORTS: { idFromName: () => 'main', get: () => ({ fetch: (u, o) => reports.fetch(new Request(u, o)) }) }, REPORT_WEBHOOK: 'https://discord.com/api/webhooks/x/y' };
+    const send = (body, ip = '40.0.0.1', h = { 'Sec-Fetch-Site': 'same-origin' }) => worker.fetch(new Request('https://jeu.example/api/report', { method: 'POST', headers: { ...h, 'CF-Connecting-IP': ip }, body }), e2).then(async r => ({ s: r.status, j: await r.json() }));
+    const rep = { v: 'ultimate-report-1', desc: 'les joueurs sont figés @everyone', ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) Safari/604.1', touch: true, mode: 'series 5', phase: 'play', score: [1, 0], errors: [], frames: [] };
+    const ok = await send(JSON.stringify(rep));
+    const row = rs.db.prepare('SELECT * FROM reports').get();
+    t.ok(ok.s === 200 && ok.j.id && row && row.descr.startsWith('les joueurs sont figés') && row.device === 'iPhone · Safari · tactile', 'rapport gardé sur le serveur (description, appareil)', ok.j);
+    const content = hook && JSON.parse(hook.form.get('payload_json')).content, file = hook && hook.form.get('files[0]');
+    t.ok(ok.j.notified && hook.url.includes('discord.com') && content.includes('figés') && content.includes('iPhone') && !content.includes('@everyone') && file && file.size > 50, 'message Discord : résumé lisible, rapport complet en pièce jointe, sans mention @everyone', content);
+    t.ok((await send(JSON.stringify(rep))).s === 429, 'pas deux rapports en 30 s depuis la même adresse');
+    t.ok((await send('{"v":"autre"}', '40.0.0.2')).s === 400, 'rapport invalide refusé');
+    t.ok((await send('x'.repeat(300000), '40.0.0.3')).s === 413, 'rapport trop gros refusé');
+    t.ok((await send(JSON.stringify(rep), '40.0.0.4', { 'Sec-Fetch-Site': 'cross-site' })).s === 403, 'un autre site ne peut pas envoyer de rapport');
+    globalThis.fetch = keep;
+  }
 
   t.group('Classement : recopie de l’ancien stockage');
   const st = fakeState(new Map([['top-2pts', [{ id: 'aa', name: 'Ancien', wins: 7, diff: 9, at: 1 }, { id: 'bb', name: 'Autre', wins: 2, diff: 1, at: 2 }]]]));

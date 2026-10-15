@@ -373,9 +373,65 @@ async function scores(request, env) {
   return stub.fetch('https://board/', { method: 'POST', body: JSON.stringify({ run, ip }) });
 }
 
+// ---------- rapports de bug (bouton 🐞 du jeu) ----------
+// Gardés dans un objet Reports (table reports, visible dans Data Studio : les 300 derniers) et, si la variable secrète
+// REPORT_WEBHOOK contient l'adresse d'un webhook Discord, envoyés aussitôt dans ce salon (résumé + rapport complet en pièce jointe).
+const REPORT_MAX = 256 * 1024, REPORT_KEEP = 300, REPORT_WAIT = 30 * 1000;
+export class Reports {
+  constructor(state) {
+    this.state = state; this.last = new Map(); this.db = sql(state);
+    state.blockConcurrencyWhile(async () => {
+      this.db.run('CREATE TABLE IF NOT EXISTS reports (id TEXT PRIMARY KEY, at INTEGER, descr TEXT, mode TEXT, device TEXT, data TEXT)');
+    });
+  }
+  async fetch(request) {
+    const { r, ip, device } = await request.json(), now = Date.now();
+    if (now - (this.last.get(ip) || 0) < REPORT_WAIT) return json({ error: 'un rapport vient déjà d’être envoyé, réessaie dans un instant' }, 429);
+    this.last.set(ip, now); if (this.last.size > 5000) this.last.clear();
+    const id = crypto.randomUUID().slice(0, 8);
+    this.db.run('INSERT INTO reports (id, at, descr, mode, device, data) VALUES (?, ?, ?, ?, ?, ?)', id, now, String(r.desc || '').slice(0, 1000), String(r.mode || ''), device, JSON.stringify(r));
+    this.db.run('DELETE FROM reports WHERE id NOT IN (SELECT id FROM reports ORDER BY at DESC LIMIT ?)', REPORT_KEEP);
+    return json({ id });
+  }
+}
+// appareil en clair pour le résumé : « iPhone · Safari », « Windows · Chrome »…
+function deviceOf(ua, touch) {
+  const os = /iPhone|iPad/.test(ua) ? (/iPad/.test(ua) ? 'iPad' : 'iPhone') : /Android/.test(ua) ? 'Android' : /Windows/.test(ua) ? 'Windows' : /Mac OS/.test(ua) ? 'Mac' : /Linux/.test(ua) ? 'Linux' : '?';
+  const br = /OPR\//.test(ua) ? 'Opera' : /Edg\//.test(ua) ? 'Edge' : /Firefox\//.test(ua) ? 'Firefox' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : '?';
+  return os + ' · ' + br + (touch ? ' · tactile' : '');
+}
+async function report(request, env) {
+  if (!env.REPORTS) return json({ error: 'rapports indisponibles ici' }, 503);
+  if (request.method !== 'POST') return json({ error: 'POST seulement' }, 405);
+  if (!sameSite(request)) return json({ error: 'interdit' }, 403);
+  const txt = await request.text();
+  if (txt.length > REPORT_MAX) return json({ error: 'rapport trop volumineux' }, 413);
+  let r = null; try { r = JSON.parse(txt); } catch (e) { }
+  if (!r || r.v !== 'ultimate-report-1') return json({ error: 'rapport invalide' }, 400);
+  const device = deviceOf(String(r.ua || ''), !!r.touch);
+  const res = await env.REPORTS.get(env.REPORTS.idFromName('main')).fetch('https://rep/', { method: 'POST', body: JSON.stringify({ r, ip: request.headers.get('CF-Connecting-IP') || '?', device }) });
+  const j = await res.json();
+  if (!res.ok) return json(j, res.status);
+  let notified = false;
+  if (env.REPORT_WEBHOOK) {                                     // message instantané (Discord) : résumé lisible + fichier complet
+    try {
+      const who = (r.humans || []).find(h => h.id === r.myId);
+      const msg = `🐞 **Rapport ${j.id}** — ${String(r.desc || '(sans description)').slice(0, 900)}\n` +
+        `Mode : ${r.mode} · phase ${r.phase} · score ${(r.score || []).join('–')}${r.net ? ' · en ligne (' + r.net + ')' : ''}${who && who.name ? ' · ' + who.name : ''}\n${device}` +
+        ((r.errors || []).length ? `\n⚠️ Erreurs : ${r.errors.slice(0, 3).join(' | ').slice(0, 500)}` : '');
+      const form = new FormData();
+      form.append('payload_json', JSON.stringify({ content: msg.replace(/@/g, '@\u200b') }));
+      form.append('files[0]', new Blob([txt], { type: 'application/json' }), 'rapport-' + j.id + '.json');
+      notified = (await fetch(env.REPORT_WEBHOOK, { method: 'POST', body: form })).ok;
+    } catch (e) { }
+  }
+  return json({ id: j.id, notified });
+}
+
 export default {
   fetch(request, env) {
     const path = new URL(request.url).pathname;
+    if (path === '/api/report') return report(request, env);
     if (path === '/api/turn') return request.method === 'GET' ? turn(request, env) : json({ error: 'GET seulement' }, 405);
     if (path === '/api/scores') return scores(request, env);
     if (path === '/api/gallery') return gallery(request, env);

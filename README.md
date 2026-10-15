@@ -84,6 +84,12 @@ Le classement du mode infini à plusieurs est un second objet `Board`, d'identif
 **Modérer la galerie** : dans *Settings → Variables and Secrets* du worker, ajoute une variable `GALLERY_ADMINS` (texte)
 avec ton pseudo de compte (plusieurs pseudos séparés par des virgules). Ces comptes voient ✕ sur toutes les publications.
 
+**Recevoir les rapports de bug** (bouton 🐞 du jeu) : ils sont toujours gardés dans l'objet `Reports` (table `reports`,
+les 300 derniers, visibles dans Data Studio). Pour les recevoir aussi sur ton téléphone, crée un webhook Discord
+(salon → Modifier → Intégrations → Webhooks → Nouveau webhook → Copier l'URL), puis ajoute dans *Settings → Variables
+and Secrets* du worker un **secret** `REPORT_WEBHOOK` contenant cette URL. Chaque rapport arrive alors dans ce salon :
+un résumé lisible et le rapport complet en pièce jointe.
+
 **Ménage après la bascule**
 - Dans Metered, supprime l'ancien identifiant fixe (il était visible dans l'ancien site), voire le compte ;
 - désactive GitHub Pages (*Settings → Pages*), supprime `.github/workflows/deploy.yml` et les secrets `TURN_*` du dépôt.
