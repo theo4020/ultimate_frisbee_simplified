@@ -22,13 +22,15 @@ function holdDisc(p) {
 const PULL_DROP = 1 / 3;                                       // un pull se droppe 3 fois moins souvent qu'une passe
 function dropChance() {
   const K = THROWS[disc.kind] || THROWS.normal;
-  return Math.min(0.03, G.wind.kmh * 0.0003 * (0.5 + disc.dur * 0.5)) + K.drop + K.dropWind * G.wind.kmh;   // 20 km/h : ~0,5 % sur une passe courte
+  return Math.min(0.02, G.wind.kmh * 0.0002 * (0.5 + disc.dur * 0.5)) + K.drop + K.dropWind * G.wind.kmh;   // 20 km/h : ~0,35 % sur une passe courte
 }
 function catchDisc(p) {
   if (disc.pull) { pullCaught(p); return; }
   // le vent fait bouger le disque : plus de drops ; une passe haute retombe en flottant, plus dure à attraper
   const hands = G.tuto || G.practice || controllerOf(p) ? 0 : aiLvl(p.team).hands || 0;   // mains du niveau (joueurs IA)
-  if (Math.random() < dropChance() + hands) { G.stats.drops = (G.stats.drops || 0) + 1; msTurnover(p, 'drop'); turnover(p.x, p.y, 'Drop ! Turnover'); return; }
+  // sans défenseur autour, on attrape tranquillement : 3 fois moins de drops quand le plus proche est à 4 m ou plus
+  const near = nearestD(TEAMS[1 - p.team], p.x, p.y)[1], calm = clamp(1 - (near - 1) / 3 * 0.7, 0.3, 1);
+  if (Math.random() < (dropChance() + hands) * calm) { G.stats.drops = (G.stats.drops || 0) + 1; msTurnover(p, 'drop'); turnover(p.x, p.y, 'Drop ! Turnover'); return; }
   G.stats.comps++;
   const scored = inScoreZone(p.team, disc.x);                   // le point se joue là où le disque est attrapé
   msCatch(p, scored);

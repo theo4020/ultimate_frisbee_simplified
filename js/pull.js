@@ -5,7 +5,7 @@
 //      le temps à sa défense de monter ; trop tôt = pull court ; tout au bout = trop fort.
 // Si le pull sort des limites, l'équipe qui reçoit repart du « brick ».
 
-const PULL = { BRICK: 12, MAX: 72, AUTO_T: 25, GAUGE_HZ: 0.8, PERFECT: [0.82, 0.95] };
+const PULL = { BRICK: 12, MAX: 72, AUTO_T: 60, GAUGE_HZ: 0.8, PERFECT: [0.82, 0.95] };
 const goalLine = t => (t === 0 ? EZ : W - EZ);   // ligne d'en-but que l'équipe t défend
 
 const PULL_YS = [4, 11, 18.5, 26, 33], REGROUP_SPD = 11;   // places sur la ligne · vitesse de mise en place (m/s)
@@ -137,10 +137,16 @@ function pullTick(dt, gdt) {
   if (G.phase !== 'pull' || !G.pull) return;
   regroupStep(gdt || dt);                                      // mise en place en marchant
   if (!pullReady()) return;                                    // on attend que tout le monde soit en place
-  G.pull.t += gdt || dt;                                       // temps de jeu (le pull automatique suit la vitesse du jeu)
+  G.pull.t += dt;                                              // temps réel : pull automatique au bout de 60 s
   if (G.pull.by != null && !humanById(G.pull.by)) G.pull.by = null;   // le pulleur choisi est parti : l'IA prend le relais
   if (G.pull.by == null) { G.pull.aiT -= gdt || dt; if (G.pull.aiT <= 0) aiPull(); }
   else if (G.pull.t > PULL.AUTO_T) aiPull();                    // personne ne pulle : pull automatique
+}
+// secondes avant le pull automatique (pulleur humain qui tarde) ; null si l'IA pulle elle-même
+function pullLeft() {
+  if (G.phase !== 'pull' || !G.pull || G.pull.by == null) return null;
+  if (G.net === 'guest') return G.netPullLeft == null ? null : G.netPullLeft;
+  return Math.max(0, Math.ceil(PULL.AUTO_T - G.pull.t));
 }
 function aiPull() {
   const r = G.receiving, gl = goalLine(r), dr = dirOf(r), h = disc.holder;
@@ -253,6 +259,11 @@ function drawPullUI() {
   if (!pullReady()) {
     label(G.pull && G.pull.team === G.me && !G.spectator ? 'Mise en place pour le pull…' : 'L’autre équipe se met en place…', Y(2.5) + fs);
     ctx.restore(); return;
+  }
+  const left = pullLeft();                                     // pulleur humain : temps avant le pull automatique
+  if (left != null) {
+    ctx.font = `600 ${fs * 0.8}px system-ui`; ctx.fillStyle = left <= 10 ? '#fbbf24' : 'rgba(248,250,252,.8)';
+    ctx.fillText(`Pull automatique dans ${left} s`, X(W / 2), Y(2.5) + fs * 2.4);
   }
   if (!localPuller()) {
     const by = G.pull && G.pull.by != null && humanById(G.pull.by);

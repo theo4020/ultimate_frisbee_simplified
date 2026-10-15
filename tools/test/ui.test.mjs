@@ -36,6 +36,14 @@ export default async function (t) {
     const href = await p.getAttribute('#moveGo', 'href');
     t.ok(/^https:\/\/ultimate-frisbee-simplified\.theosyle42\.workers\.dev\/#import=/.test(href), 'le lien emporte le profil', href.slice(0, 80));
     await p.click('#moveBack');
+    const op = await ctx.newPage();
+    await op.goto(srv.url + 'index.html?oldsite'); await op.waitForFunction(() => typeof G !== 'undefined' && G.attract);
+    await op.waitForFunction(() => document.getElementById('moveCard').style.display !== 'none', null, { timeout: 3000 }).catch(() => {});
+    t.ok(await vis(op, '#moveCard') && await op.isDisabled('#moveBack'), 'ancienne adresse : le panneau s’impose à l’ouverture, « continuer » bloqué quelques secondes');
+    await op.waitForFunction(() => !document.getElementById('moveBack').disabled, null, { timeout: 8000 });
+    await op.click('#moveBack');
+    t.ok(await vis(op, '#lobbyHome') && !(await vis(op, '#moveCard')), 'puis on peut continuer sur l’ancienne adresse');
+    await op.close(); await p.bringToFront();
     t.ok(await vis(p, '#lobbyHome'), 'retour à l’accueil');
 
     t.group('Section Solo');

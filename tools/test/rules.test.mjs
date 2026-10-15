@@ -113,6 +113,67 @@ export default async function (t, { quick }) {
   t.ok(lvq.greed.every((g, i) => i === 0 || g <= lvq.greed[i - 1]) && lvq.greed[0] > lvq.greed[1], 'le débutant prend plus de risques dans ses passes', lvq.greed);
   t.ok(lvq.hands.every((g, i) => i === 0 || g <= lvq.hands[i - 1]), 'et droppe plus souvent', lvq.hands);
 
+  t.group('Passe normale : fenêtre de contre fixe');
+  const win = R(`[6, 15, 30, 45].map(d => {                     // temps (s) pendant lequel le disque est à portée debout, au début et à la fin
+    const dur = throwDur(0, 0, d, 0, 'normal'), peak = peakOf(dur, 'normal'); let a = 0, b = 0;
+    for (let t = 0; t <= dur; t += 0.005) if (heightAt(t / dur, peak, 'normal') < REACH_STAND) { if (t < dur / 2) a += 0.005; else b += 0.005; }
+    return [+a.toFixed(2), +b.toFixed(2)];
+  })`);
+  t.ok(win.every(([a]) => a >= 0.05 && a <= 0.16) && Math.max(...win.map(w => w[0])) - Math.min(...win.map(w => w[0])) < 0.03, 'au lancer : ~0,1 s à portée, quelle que soit la distance', win);
+  t.ok(win.every(([, b]) => b >= 0.2 && b <= 0.35) && Math.max(...win.map(w => w[1])) - Math.min(...win.map(w => w[1])) < 0.03, 'à l’arrivée : à portée pendant les ~0,3 dernières secondes, quelle que soit la distance', win);
+
+  t.group('Tutoriel : plonger en défense');
+  const td = R(`(() => {
+    const keepH = G.humans, keepS = G.series; G.series = null; G.humans = [{ id: 0, team: 0, sel: null }]; G.myId = 0; syncMe();
+    tutoStart(); tutoGo(TUTO_STEPS.findIndex(s => s.title === 'Plonger en défense'));
+    const msgs = []; let last = '', cue = -1;
+    for (let f = 0; f < 60 * 8 && !G.tuto.done; f++) {
+      Object.assign(G.pointer, { x: 51, y: 21.2, last: G.time, active: true });     // le joueur attend à sa place…
+      __tick(); tutoFrame(1 / 60);
+      if (G.msg !== last) { last = G.msg; msgs.push(last); }
+      if (cue < 0 && /PLONGE/.test(G.msg)) { cue = f; doDive(50, 18.5); }          // …et plonge au signal
+    }
+    const r = { msgs, done: G.tuto.done, lblock: G.tuto.lblock };
+    tutoCleanup(); G.humans = keepH; G.series = keepS; syncMe();
+    return r;
+  })()`);
+  t.ok(td.msgs.slice(0, 3).join() === 'Passe dans 3…,Passe dans 2…,Passe dans 1…' && td.msgs.some(m => /PLONGE/.test(m)), 'compte à rebours, puis le signal « PLONGE ! »', td.msgs);
+  t.ok(td.done && td.lblock, 'plonger au signal contre la passe (layout block)', td);
+
+  t.group('Tutoriel : contrer une passe haute');
+  const tj = R(`(() => {
+    const keepH = G.humans, keepS = G.series; G.series = null; G.humans = [{ id: 0, team: 0, sel: null }]; G.myId = 0; syncMe();
+    tutoStart(); tutoGo(TUTO_STEPS.findIndex(s => s.title === 'Contrer une passe haute'));
+    const msgs = []; let last = '', cue = -1;
+    for (let f = 0; f < 60 * 8 && !G.tuto.done; f++) {
+      const me = TEAMS[0][0]; Object.assign(G.pointer, { x: me.x, y: me.y, last: G.time, active: true });
+      __tick(); tutoFrame(1 / 60);
+      if (G.msg !== last) { last = G.msg; msgs.push(last); }
+      if (cue < 0 && /SAUTE/.test(G.msg)) cue = f;
+      if (cue >= 0 && f === cue + 12) doJump();                    // saute 0,2 s après le signal (temps de réaction)
+    }
+    const r = { msgs, done: G.tuto.done, blocked: G.tuto.blocked };
+    tutoCleanup(); G.humans = keepH; G.series = keepS; syncMe();
+    return r;
+  })()`);
+  t.ok(tj.msgs.slice(0, 3).join() === 'Il lance dans 3…,Il lance dans 2…,Il lance dans 1…' && tj.msgs.some(m => /SAUTE/.test(m)), 'compte à rebours, puis le signal « SAUTE ! »', tj.msgs);
+  t.ok(tj.done && tj.blocked, 'sauter au signal contre la passe haute au lâcher', tj);
+
+  t.group('Pull automatique');
+  const ap = R(`(() => {
+    const keepH = G.humans; G.humans = [{ id: 0, team: 0, sel: null }]; G.myId = 0; syncMe(); G.form.puller = 'cap';
+    G.score = [0, 0]; G.receiving = 1; newWind(); startPoint();
+    for (let f = 0; f < 60 * 20 && !pullReady(); f++) pullTick(1 / 60, 0.78 / 60);
+    const first = pullLeft();
+    for (let k = 0; k < 30 * 60; k++) pullTick(1 / 60, 0.78 / 60);
+    const half = pullLeft(), stillPull = G.phase === 'pull';
+    for (let k = 0; k < 31 * 60 && G.phase === 'pull'; k++) pullTick(1 / 60, 0.78 / 60);
+    const r = { first, half, stillPull, after: G.phase };
+    G.humans = keepH; syncMe(); return r;
+  })()`);
+  t.ok(ap.first === 60 && ap.half === 30 && ap.stillPull, 'pulleur humain : 60 s pour pull, le temps restant est affiché', ap);
+  t.ok(ap.after !== 'pull', 'au bout de 60 s, le pull part tout seul', ap);
+
   t.group('Duels et contres');
   const du = R(`(() => {                                       // contres : la chance baisse si la passe est courte ou le défenseur au bout du bras
     disc.sx = 40; disc.sy = 18; disc.ex = 44; disc.ey = 18; disc.x = 42; disc.y = 18;

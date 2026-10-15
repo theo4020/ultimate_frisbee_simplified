@@ -181,6 +181,10 @@ export default async function (t) {
     await h2.evaluate(() => setOpt('off', 'ho'));
     await g2.waitForFunction(() => /Horizontal/.test(document.getElementById('captainNote').textContent), null, { timeout: 3000 }).catch(() => {});
     t.ok(!(await g2.isVisible('#stratRows')) && (await g2.textContent('#captainNote')).includes('Horizontal stack'), 'le coéquipier voit la stratégie choisie par son capitaine, en direct', await g2.textContent('#captainNote'));
+    await h2.evaluate(() => { const s = cleanSystem(Object.assign(SYS_NEW.off(), { id: 'cap123', name: 'Plan du cap', steps: [{ p: 0, to: [8, 6], wait: 0.3 }] })); sysSave([s]); G.form.p1sys = s.id; setOpt('play1', 'sys'); });
+    await g2.waitForFunction(() => playOf(0, 1) === 'sys' && playSys(0, 1) && playSys(0, 1).name === 'Plan du cap', null, { timeout: 3000 }).catch(() => {});
+    t.ok(await g2.evaluate(() => !sysList().some(x => x.id === 'cap123') && playSys(0, 1) && playSys(0, 1).name === 'Plan du cap'),
+      'le coéquipier peut appeler le play perso du capitaine, même sans l’avoir dans ses systèmes');
     t.ok(await h2.evaluate(() => G.series && G.series.coop && G.form.first === '0' && G.form.allyLevel === 'difficile' && aiLvl(1).react === AI_LEVELS.facile.react),
       'chez l’hôte : série lancée, l’IA pulle, coéquipiers IA difficiles, adversaire au niveau du 1er match');
     const finish = (a, b) => h2.evaluate(([a, b]) => { G.score = [a, b]; G.phase = 'over'; onMatchOver(); showMenu('over'); }, [a, b]);

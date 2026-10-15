@@ -269,7 +269,7 @@ function snapshot() {
     d: [disc.mode, idx(disc.holder), r1(disc.x), r1(disc.y), r1(disc.sx), r1(disc.sy), r1(disc.cx), r1(disc.cy), r1(disc.ex), r1(disc.ey), r2(disc.t), r2(disc.dur), idx(disc.intended), disc.kind],
     g: { score: G.score, off: G.off, phase: G.phase, stall: r1(G.stall), mk: idx(G.marker), msg: G.msg, mid: G.msgId, mt: G.msgTeam, ma: G.msgAlt,
       dbl: idx(G.dbl), gt: r1(G.gt), carry: G.carryTo,
-      pull: G.phase === 'pull' && G.pull ? G.pull.team : -1, pullBy: G.pull ? G.pull.by : null, pready: G.phase === 'pull' && pullReady(), tell: highTell(), pz: G.pz || null }
+      pull: G.phase === 'pull' && G.pull ? G.pull.team : -1, pullBy: G.pull ? G.pull.by : null, pready: G.phase === 'pull' && pullReady(), pleft: pullLeft(), tell: highTell(), pz: G.pz || null }
   };
 }
 // envoi aux invités : on n'empile jamais les états chez un invité dont la connexion sature
@@ -423,7 +423,7 @@ function applySnapshot(m) {
   }
   if (g.phase === 'pull' && (G.phase !== 'pull' || !G.pull)) { G.pull = { team: g.pull, t: 0, by: g.pullBy }; G.pullUI = { stage: 'aim', t0: 0, x: 0, y: 0, q: 0 }; }
   if (g.phase === 'pull' && G.pull) G.pull.by = g.pullBy;
-  G.netPullReady = !!g.pready;
+  G.netPullReady = !!g.pready; G.netPullLeft = g.pleft == null ? null : g.pleft;
   if (g.phase !== G.phase) { G.phase = g.phase; if (g.phase !== 'play') G.aiming = false; }
   if (m.fx) for (const e of m.fx) fxPlay(e[0], e[1], e[2], e[3]);   // effets après l'état (direction des lancers)
   if (lastMid === -1) lastMid = g.mid;

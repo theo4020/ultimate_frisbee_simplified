@@ -13,9 +13,9 @@ const ACC = { atk: 24, def: 21 };
 //   speed : vitesse des joueurs · err : imprécision des lancers · hands : chance de drop en plus à la réception
 //   safe : prudence dans le choix des passes · greed : goût du risque (0 = joue sûr, 1 = débutant qui force les passes)
 const AI_LEVELS = {
-  facile:    { react: 1.3,  anticip: 0.22, block: 0.5,  speed: 0.9,  err: 1.45, safe: -0.05, hands: 0.01,  greed: 0.5 },
-  normal:    { react: 1,    anticip: 0.3,  block: 0.6,  speed: 1,    err: 1,    safe: 0,     hands: 0.003, greed: 0.1 },
-  difficile: { react: 0.72, anticip: 0.4,  block: 0.68, speed: 1.04, err: 0.65, safe: 0.08,  hands: 0.0015, greed: 0.03 }
+  facile:    { react: 1.3,  anticip: 0.22, block: 0.5,  speed: 0.9,  err: 1.45, safe: -0.05, hands: 0.006, greed: 0.5 },
+  normal:    { react: 1,    anticip: 0.3,  block: 0.6,  speed: 1,    err: 1,    safe: 0,     hands: 0.002, greed: 0.1 },
+  difficile: { react: 0.72, anticip: 0.4,  block: 0.68, speed: 1.04, err: 0.65, safe: 0.08,  hands: 0.001, greed: 0.03 }
 };
 const DEF_TUNE = {
   reactMan: [0.14, 0.24],   // temps de réaction en individuelle (s)
@@ -32,6 +32,7 @@ const SPEEDS = { lent: 0.6, normal: 0.78, rapide: 1 };
 const DRIFT = 0.5;                                          // dérive du disque : vent (m/s) × temps de vol × DRIFT
 const STALL_R = 4.5;                                        // rayon du stall count (agrandi par rapport aux 3 m réels)
 const STALL_RATE = 1 / 0.78;                                // stall count : 1 compte par seconde réelle à vitesse normale (le jeu tourne à 0,78)
+const NORMAL_TOP = 2.35, RISE_T = 0.2, FALL_T = 0.4;              // passe normale : hauteur de croisière (m), montée et descente (s)
 const REACH_STAND = 2.0, REACH_DIVE = 1.5;                  // hauteur max du disque contrable debout / en plongeon
 const CANCEL_R = 2.5;                                       // relâcher à moins de 2,5 m du handler annule le lancer
 const PEER_PREFIX = 'ultimate-frisbee-proto-v1-';
@@ -91,7 +92,7 @@ const DESCS = {
 //    et plus dure à attraper
 const THROWS = {
   normal: { name: 'Normal', dur: 1, peak: 1, drift: 1, min: 2, max: 50, drop: 0, dropWind: 0 },
-  high: { name: 'Passe haute', dur: 1.4, peak: 2.4, drift: 1.3, min: 6, max: 30, drop: 0.01, dropWind: 0.0004 }
+  high: { name: 'Passe haute', dur: 1.4, peak: 2.4, drift: 1.3, min: 6, max: 30, drop: 0.006, dropWind: 0.00025 }
 };
 const THROW_ORDER = ['normal', 'high'];
 const KIND_DELAY = 0.4;   // après un passage normal <-> passe haute, on ne peut pas lancer tout de suite (s)

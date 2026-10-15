@@ -7,11 +7,11 @@ const ENDLESS_PTS = 2;
 // niveaux de référence (d = numéro du match à partir de 0, plus la montée pendant le match) :
 //   facile au 1er match, normal au 2e, difficile (Titans) au 5e, légende au 10e, surhumain au 15e,
 //   puis ça ne s'arrête jamais : chaque match rend l'adversaire encore un peu plus fort (voir endlessLevel)
-const LEGEND = { react: 0.55, anticip: 0.55, block: 0.78, speed: 1.09, err: 0.45, safe: 0.14, hands: 0.0008, greed: 0.03 };
-const SUPER = { react: 0.45, anticip: 0.65, block: 0.85, speed: 1.13, err: 0.35, safe: 0.18, hands: 0.0005, greed: 0 };
+const LEGEND = { react: 0.55, anticip: 0.55, block: 0.78, speed: 1.09, err: 0.45, safe: 0.14, hands: 0.0005, greed: 0.03 };
+const SUPER = { react: 0.45, anticip: 0.65, block: 0.85, speed: 1.13, err: 0.35, safe: 0.18, hands: 0.0003, greed: 0 };
 const ENDLESS_STEPS = [[0, AI_LEVELS.facile], [1, AI_LEVELS.normal], [4, AI_LEVELS.difficile], [9, LEGEND], [14, SUPER]];
 // au-delà du dernier palier : plus vif, plus précis, plus rapide à chaque match, sans jamais dépasser des limites humaines
-const BEYOND = { react: [0.92, 0.2], anticip: [0.05, 1], block: [0.88, 0.97], speed: [0.02, 1.3], err: [0.9, 0.1], safe: [0.01, 0.3], hands: [0.88, 0.0002] };
+const BEYOND = { react: [0.92, 0.2], anticip: [0.05, 1], block: [0.88, 0.97], speed: [0.02, 1.3], err: [0.9, 0.1], safe: [0.01, 0.3], hands: [0.88, 0.0001] };
 function endlessLevel(d) {
   const S = ENDLESS_STEPS;
   if (d <= S[0][0]) return S[0][1];

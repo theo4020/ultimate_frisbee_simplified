@@ -15,8 +15,9 @@ function resize() {
     // téléphone / tablette (paysage) : le terrain prend tout l'écran sous un fin bandeau ; les commandes flottent sur les bords
     availW = window.innerWidth; availH = window.innerHeight - TOUCH_HUD;
   } else {
-    const others = [...wrap.children].filter(e => e !== stage).reduce((h, e) => h + e.offsetHeight, 0);
-    availW = wrap.clientWidth; availH = window.innerHeight - others - 30;
+    // PC : le terrain prend toute la largeur et la hauteur de la fenêtre (le texte d'aide reste en dessous, on peut défiler)
+    const others = [...wrap.children].filter(e => e !== stage && e.id !== 'hint').reduce((h, e) => h + e.offsetHeight, 0);
+    availW = wrap.clientWidth; availH = window.innerHeight - others - 24;
   }
   S = Math.max(3, Math.min(availW / (W + 2 * M), availH / (H + 2 * M)));
   const w = (W + 2 * M) * S, h = (H + 2 * M) * S;
@@ -73,7 +74,7 @@ const flightTime = d => 0.35 + d / 24;
 const peakOf = (dur, kind) => (0.8 + dur / (THROWS[kind] || THROWS.normal).dur * 1.1) * (THROWS[kind] || THROWS.normal).peak;
 const discPeak = () => peakOf(disc.dur, disc.kind);
 // hauteur du disque à l'instant u (0 → 1) du vol
-//  • passe normale : presque une cloche (sommet un peu avant le milieu du vol), lâchée vers 0,5 m
+//  • passe normale : lâchée vers 0,9 m, au-dessus des bras après RISE_T, redescend pendant les FALL_T dernières secondes
 //  • passe haute : lâchée au-dessus de la tête, à hauteur de saut (une mark debout ne la touche pas,
 //    une mark qui saute au bon moment oui), puis elle monte hors de portée et ne redescend qu'à l'arrivée
 function heightAt(u, peak, kind) {
@@ -81,7 +82,14 @@ function heightAt(u, peak, kind) {
     if (u < 0.45) return 2.3 + (peak - 2.3) * (u / 0.45) * (u / 0.45);
     return peak * Math.sin(Math.PI / 2 * Math.min(1, (1 - u) / 0.55));
   }
-  return 0.5 * (1 - u) + Math.sin(Math.PI * Math.pow(u, 0.85)) * peak;   // lâchée un peu au-dessus du sol, elle monte un peu plus vite qu'elle ne redescend
+  // passe normale : en temps réel, pas en proportion du vol — elle passe au-dessus des bras (debout) en ~0,1 s, quelle que
+  // soit la distance, et ne redescend à portée qu'à la toute fin (~0,2 s avant l'arrivée) ; les longues passes montent plus haut
+  const dur = Math.max(0.2, (peak / THROWS.normal.peak - 0.8) / 1.1 * THROWS.normal.dur), t = u * dur, top = Math.max(NORMAL_TOP, peak);
+  const ease = x => 1 - (1 - clamp(x, 0, 1)) ** 2, left = Math.max(0, dur - t);
+  // d'abord au-dessus des bras (même vitesse pour toutes les passes), ensuite seulement plus haut pour les longues
+  const rise = 0.9 + (NORMAL_TOP - 0.9) * ease(t / RISE_T) + (top - NORMAL_TOP) * ease((t - RISE_T) / 0.5);
+  const fall = 1.0 + (NORMAL_TOP - 1.0) * clamp(left / FALL_T, 0, 1) + (top - NORMAL_TOP) * ease((left - FALL_T) / 0.5);   // redescente régulière jusqu'à 1 m
+  return Math.min(rise, fall);
 }
 const discZ = u => heightAt(u, discPeak(), disc.kind);
 // hauteur gagnée par un joueur en plein saut (0 au sol, JUMP_H au sommet)

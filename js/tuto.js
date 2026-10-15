@@ -218,10 +218,10 @@ const TUTO_STEPS = [
     title: 'Plonger en défense',
     ctx: 'move',
     text: {
-      mouse: () => `Une passe va passer à côté de toi. Juste avant, <b>clique sur sa trajectoire</b> (ou ${tutoCmd('dive')}) : layout block.`,
-      touch: 'Une passe va passer à côté de toi. Juste avant, <b>glisse vite vers sa trajectoire</b> : layout block.',
-      joy: 'Une passe va passer à côté de toi. Juste avant, oriente le joystick vers elle et touche <b>Layout</b>.',
-      pad: 'Une passe va passer à côté de toi. Juste avant, stick vers elle et <b>B</b> : layout block.'
+      mouse: () => `Une passe va passer à côté de toi (compte à rebours en haut). Dès que <b>PLONGE !</b> s'affiche, <b>clique sur sa trajectoire</b> (ou ${tutoCmd('dive')}).`,
+      touch: 'Une passe va passer à côté de toi (compte à rebours en haut). Dès que <b>PLONGE !</b> s\'affiche, <b>glisse vite vers sa trajectoire</b>.',
+      joy: 'Une passe va passer à côté de toi (compte à rebours en haut). Dès que <b>PLONGE !</b> s\'affiche, oriente le joystick vers elle et touche <b>Layout</b>.',
+      pad: 'Une passe va passer à côté de toi (compte à rebours en haut). Dès que <b>PLONGE !</b> s\'affiche, stick vers elle et <b>B</b>.'
     },
     still: true,
     setup() {
@@ -231,7 +231,21 @@ const TUTO_STEPS = [
       tutoPut(0, [[51, 21.2], [95, 4], [95, 11], [95, 26], [95, 33]]);
       tutoGive(TEAMS[1][0]);
       const h = meH(); if (h) h.sel = TEAMS[0][0];
-      G.tuto.armT = rand(2.2, 3.2);
+      G.tuto.armT = 3;                                           // toujours 3 s : compte à rebours, puis signal « PLONGE ! »
+    },
+    frame() {                                                    // compte à rebours avant la passe, puis le bon moment pour plonger
+      const T = G.tuto, me = TEAMS[0][0];
+      if (T.done) return;
+      if (!T.thrown) { const n = Math.ceil(T.armT - (T.holdT || 0)); if (n > 0 && n !== T.cd) { T.cd = n; flash('Passe dans ' + n + '…', true); } return; }
+      if (T.cued || disc.mode !== 'air') return;
+      const u0 = disc.t / disc.dur, peak = discPeak();          // premier point où le disque passe à portée d'un plongeon près de toi
+      for (let u = u0; u <= 1; u += 0.01) {
+        const [x, y] = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u);
+        if (dist(x, y, me.x, me.y) < 4 && heightAt(u, peak, disc.kind) < REACH_DIVE) {
+          if ((u - u0) * disc.dur <= 0.3) { T.cued = true; flash('PLONGE ! 🥏', true); }
+          break;
+        }
+      }
     },
     pin(p) { return p === disc.holder && disc.mode === 'held' ? null : [[64, 18.5], [48, 18.5], [80, 5], [80, 32], [76, 18.5]][p.i]; },
     pinD(d) { return d.i === 0 ? [51, 21.2] : tutoFar(d); },
@@ -251,10 +265,10 @@ const TUTO_STEPS = [
     title: 'Contrer une passe haute',
     ctx: 'move',
     text: {
-      mouse: () => `Le porteur a armé une passe haute. <b>Saute (${tutoCmd('jump')} ou clic droit)</b> juste avant qu’il lance : il faut deviner !`,
-      touch: 'Le porteur a armé une passe haute. <b>Tape ton joueur</b> pour sauter juste avant qu’il lance : il faut deviner !',
-      joy: 'Le porteur a armé une passe haute. Touche <b>Saut</b> juste avant qu’il lance : il faut deviner !',
-      pad: 'Le porteur a armé une passe haute. <b>A</b> pour sauter juste avant qu’il lance : il faut deviner !'
+      mouse: () => `Le porteur a armé une passe haute (compte à rebours en haut). Dès que <b>SAUTE !</b> s'affiche, saute (${tutoCmd('jump')} ou clic droit) : tu contres au lâcher.`,
+      touch: 'Le porteur a armé une passe haute (compte à rebours en haut). Dès que <b>SAUTE !</b> s\'affiche, <b>tape ton joueur</b> pour sauter : tu contres au lâcher.',
+      joy: 'Le porteur a armé une passe haute (compte à rebours en haut). Dès que <b>SAUTE !</b> s\'affiche, touche <b>Saut</b> : tu contres au lâcher.',
+      pad: 'Le porteur a armé une passe haute (compte à rebours en haut). Dès que <b>SAUTE !</b> s\'affiche, <b>A</b> pour sauter : tu contres au lâcher.'
     },
     setup() {
       tutoReset(); G.tuto.level = 'facile';
@@ -263,14 +277,20 @@ const TUTO_STEPS = [
       tutoPut(1, [[60, 18.5], [45, 18.5]], true);
       tutoPut(0, [[58.6, 18.5], [6, 4], [6, 12], [6, 25], [6, 33]]);
       tutoGive(TEAMS[1][0]);
-      G.tuto.armT = rand(1.0, 2.6);
+      G.tuto.armT = 3;                                           // toujours 3 s : compte à rebours, puis signal « SAUTE ! »
     },
-    pin(p) {
-      if (p.team === 1) return p.i === 1 ? [45, 18.5] : null;
+    frame() {
+      const T = G.tuto, h = disc.holder, w = h && disc.mode === 'held' && h.windup;
+      if (T.done || !w) return;
+      const n = Math.ceil(w.t);
+      if (w.t > JUMP_CUE && n !== T.cd) { T.cd = n; flash('Il lance dans ' + n + '…', true); }
+      if (w.t <= JUMP_CUE && !T.cued) { T.cued = true; flash('SAUTE ! 🙌', true); }
+    },
+    pin(p) {                                                 // les deux équipes : le porteur et ton défenseur libres, le receveur à 45 m
+      if (p.team === 1) return p.i === 0 ? null : p.i === 1 ? [45, 18.5] : tutoFar(p);
       return p.i === 0 ? null : [6, [4, 12, 25, 33][p.i - 1]];
     },
-    pinD(d) { return d.i === 0 ? null : d.i === 1 ? [45, 18.5] : tutoFar(d); },
-    hold(h, dt) {                                            // le porteur arme puis lance après un délai imprévisible
+    hold(h, dt) {                                            // le porteur arme puis lance au bout de 3 s
       const T = G.tuto;
       if (T.done) return true;
       if (!h.windup) h.windup = { t: T.armT };
@@ -279,7 +299,7 @@ const TUTO_STEPS = [
       return true;
     },
     on(ev, p) {
-      if (ev === 'turnover' && G.off === 0) { if (G.tuto.blocked) tutoSuccess('Contré ! Bien deviné 💪'); else tutoFail('Passe ratée par le lanceur : on recommence.'); }
+      if (ev === 'turnover' && G.off === 0) { if (G.tuto.blocked) tutoSuccess('Contré au lâcher ! 💪'); else tutoFail('Passe ratée par le lanceur : on recommence.'); }
       if (ev === 'catch' && p.team === 1) tutoFail(G.tuto.jumped ? 'Mauvais moment… recommence !' : `Il est passé : saute (${tutoCmd('jump')}) au bon moment !`);
     }
   },
@@ -310,7 +330,7 @@ function tutoReset() {
     match: null, diveTried: false, called: 0, freeAcc: 0, free: false }));
   Object.assign(G, { oplay: null, dplay: null, pendingOPlay: null, pullPending: false, carryTo: null, stall: 0, marker: null, dbl: null,
     pickup: null, throwKind: 'normal', score: [0, 0], celebrate: null, scorer: null, phase: 'play', pull: null });
-  Object.assign(G.tuto, { wall: false, level: null, count: 0, called: false, played: false, jumped: false, blocked: false, lblock: false, thrown: false, holdT: 0 });
+  Object.assign(G.tuto, { wall: false, level: null, count: 0, called: false, played: false, jumped: false, blocked: false, lblock: false, thrown: false, holdT: 0, cd: 0, cued: false });
   G.wind = { x: 0, y: 0, kmh: 0 };                             // pas de vent pendant le tutoriel
   setCurve(0);
   disc.pull = false; disc.kind = 'normal';
@@ -332,7 +352,7 @@ function tutoGive(p) {
 function tutoPin(p) {
   const T = G.tuto, S = T && TUTO_STEPS[T.step];
   if (!S) return false;
-  const at = p.team === 1 && S.pinD ? S.pinD(p) : S.pin ? S.pin(p) : null;
+  const at = p.team !== G.off && S.pinD ? S.pinD(p) : S.pin ? S.pin(p) : null;   // pinD : l'équipe qui défend (toi ou l'IA), pin : l'autre
   if (!at) return false;
   p.tx = clamp(at[0], 0.5, W - 0.5); p.ty = clamp(at[1], 0.5, H - 0.5); p.sp = SPD.cut;
   return true;
@@ -402,6 +422,7 @@ function tutoFrame(dt) {
   const T = G.tuto;
   T.t += dt;
   tutoText(false);
+  const S = TUTO_STEPS[T.step]; if (S && S.frame && !T.done) S.frame(dt);
   if (T.wait > 0) { T.wait -= dt; if (T.wait <= 0 && T.after) { const f = T.after; T.after = null; f(); } }
 }
 function tutoFinish() {
@@ -434,6 +455,8 @@ if (typeof document !== 'undefined' && document.getElementById('tutoB')) {
   });
 }
 
+// tutoriel « contrer une passe haute » : signal de saut à 0,4 s du lâcher (préparation du saut + montée jusqu'en haut)
+const JUMP_CUE = 0.4;
 // lanceur scénarisé par l'étape en cours (sinon l'IA normale)
 function tutoHold(h, dt) {
   const S = G.tuto && TUTO_STEPS[G.tuto.step];
