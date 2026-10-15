@@ -381,6 +381,7 @@ function doPlay(n) {
 // boutons ▶ sur le terrain : visibles quand tu as le disque et qu'un play peut être appelé
 function playBtnsFrame() {
   const show = canThrow() && !G.replay && $('overlay').classList.contains('hidden');
+  document.body.classList.toggle('tutoplays', !!G.tuto && show && (canCallPlay(G.me, 1) || canCallPlay(G.me, 2)));
   for (const n of [1, 2]) {
     const b = $('play' + n + 'B'), ok = show && canCallPlay(G.me, n);
     b.style.display = ok ? '' : 'none';
