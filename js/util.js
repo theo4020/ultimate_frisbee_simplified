@@ -69,7 +69,7 @@ function bez(sx, sy, cx, cy, ex, ey, u) {
   const a = 1 - u;
   return [a * a * sx + 2 * a * u * cx + u * u * ex, a * a * sy + 2 * a * u * cy + u * u * ey];
 }
-const flightTime = d => 0.35 + d / 24;
+const flightTime = d => 0.45 + d / 19;                    // 10 m : ~1 s · 30 m : ~2 s
 // hauteur max d'une passe haute ou d'un pull (une passe haute monte bien plus haut)
 const peakOf = (dur, kind) => (0.8 + dur / (THROWS[kind] || THROWS.normal).dur * 1.1) * (THROWS[kind] || THROWS.normal).peak;
 const discPeak = () => peakOf(disc.dur, disc.kind);
@@ -80,8 +80,8 @@ const discPeak = () => peakOf(disc.dur, disc.kind);
 //  • passe haute : lâchée au-dessus de la tête, à hauteur de saut, puis elle monte haut et ne redescend qu'à l'arrivée
 //  • pull : une grande cloche
 const PASS_Z0 = 1.0, PASS_ZEND = 1.3, CURVE_RISE = 0.8;
-const cruiseZ = (L, curve) => clamp(1.4 + Math.max(0, L - 8) * 0.09, 1.4, 4.5) + CURVE_RISE * Math.min(1, Math.abs(curve || 0));
-const easeOut = x => 1 - (1 - x) * (1 - x);
+const cruiseZ = (L, curve) => clamp(1.4 + Math.max(0, L - 10) * 0.08, 1.4, 4) + CURVE_RISE * Math.min(1, Math.abs(curve || 0));
+const smooth = x => x * x * (3 - 2 * x);                   // montée progressive : le disque reste longtemps à portée près du lanceur
 function heightAt(u, peak, kind, len, curve) {
   if (kind === 'high') {
     if (u < 0.45) return 2.3 + (peak - 2.3) * (u / 0.45) * (u / 0.45);
@@ -89,9 +89,9 @@ function heightAt(u, peak, kind, len, curve) {
   }
   if (kind === 'pull') return PASS_Z0 + (Math.max(peak, 3) - PASS_Z0) * Math.sin(Math.PI * u);
   const L = len || 15, c = Math.min(1, Math.abs(curve || 0)), top = cruiseZ(L, c), s = u * L;
-  const rise = clamp(0.25 * L, 1.5, 7) * (1 - 0.4 * c), fall = clamp(0.3 * L, 1.5, 10);
-  const up = s < rise ? PASS_Z0 + (top - PASS_Z0) * easeOut(s / rise) : top;
-  const down = L - s < fall ? PASS_ZEND + (top - PASS_ZEND) * easeOut((L - s) / fall) : top;
+  const rise = clamp(0.4 * L, 2, 12) * (1 - 0.4 * c), fall = clamp(0.4 * L, 2, 12);
+  const up = s < rise ? PASS_Z0 + (top - PASS_Z0) * smooth(s / rise) : top;
+  const down = L - s < fall ? PASS_ZEND + (top - PASS_ZEND) * smooth((L - s) / fall) : top;
   return Math.min(up, down);
 }
 const discLen = () => dist(disc.sx, disc.sy, disc.ex, disc.ey);

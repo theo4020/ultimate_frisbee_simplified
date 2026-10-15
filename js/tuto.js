@@ -238,14 +238,13 @@ const TUTO_STEPS = [
       if (T.done) return;
       if (!T.thrown) { const n = Math.ceil(T.armT - (T.holdT || 0)); if (n > 0 && n !== T.cd) { T.cd = n; flash('Passe dans ' + n + '…', true); } return; }
       if (T.cued || disc.mode !== 'air') return;
-      const u0 = disc.t / disc.dur, peak = discPeak();          // premier point où le disque passe à portée d'un plongeon près de toi
+      const u0 = disc.t / disc.dur;                             // point de la trajectoire le plus proche de toi, à portée d'un plongeon
+      let bu = -1, bd = 2.8;
       for (let u = u0; u <= 1; u += 0.01) {
-        const [x, y] = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u);
-        if (dist(x, y, me.x, me.y) < 2.8 && discZ(u) < REACH_DIVE) {
-          if ((u - u0) * disc.dur <= 0.3) { T.cued = true; flash('PLONGE ! 🥏', true); }
-          break;
-        }
+        const [x, y] = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u), d = dist(x, y, me.x, me.y);
+        if (d < bd && discZ(u) < REACH_DIVE) { bd = d; bu = u; }
       }
+      if (bu >= 0 && (bu - u0) * disc.dur <= DIVE_T + 0.05) { T.cued = true; flash('PLONGE ! 🥏', true); }   // le disque y arrive à la fin du plongeon
     },
     pin(p) { return p === disc.holder && disc.mode === 'held' ? null : [[64, 18.5], [48, 18.5], [80, 5], [80, 32], [76, 18.5]][p.i]; },
     pinD(d) { return d.i === 0 ? [50.5, 20.9] : tutoFar(d); },

@@ -9,6 +9,9 @@ function startCut(c, x, y, deep) {
   c.cx = x; c.cy = y; clampPt(c);
   c.wx = c.x + dir * (deep ? -2 : 2); c.wy = c.y + (deep ? open : -open) * 1.2;
   c.role = 'cutter'; c.state = 'jab'; c.timer = 0.3;
+  // déjà lancé dans cette direction : pas de feinte (elle le forcerait à s'arrêter), il continue sa course
+  const dx = c.cx - c.x, dy = c.cy - c.y, l = Math.hypot(dx, dy), sp = Math.hypot(c.vx || 0, c.vy || 0);
+  if (l > 0.5 && sp > 2 && (c.vx * dx + c.vy * dy) / (l * sp) > 0.5) { c.state = 'cut'; c.timer = Math.max(2.4, l / SPD.cut + 0.6); }
 }
 
 // ---------- plays d'attaque : appelés en jeu par le porteur (touches, boutons, ou l'IA), joués depuis là où sont les joueurs ----------

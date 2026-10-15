@@ -117,7 +117,7 @@ export default async function (t, { quick }) {
   const zn = R(`(() => { const z = (L, s, c) => +heightAt(s / L, 0, 'normal', L, c || 0).toFixed(2);
     return { short: [z(8, 1), z(8, 4), z(8, 7)], mid: z(16, 8), long: [z(30, 1), z(30, 15), z(30, 29)], curved: [z(20, 2, 1), z(20, 10, 1)], flat: [z(20, 2), z(20, 10)] }; })()`);
   t.ok(zn.short.every(v => v >= 1 && v <= 1.6), 'passe courte : à hauteur de poitrine, contestable', zn);
-  t.ok(zn.mid < 2.2 && zn.long[1] > 3, 'passe moyenne atteignable debout, passe longue hors de portée au milieu', zn);
+  t.ok(zn.mid < 2.2 && zn.long[1] > 2.8, 'passe moyenne atteignable debout, passe longue hors de portée au milieu', zn);
   t.ok(zn.long[0] < 2 && zn.long[2] < 2, 'lâchée et rattrapée à hauteur de main', zn);
   t.ok(zn.curved.every((v, i) => v > zn.flat[i]), 'une passe courbée monte plus vite et plus haut', zn);
 
@@ -129,6 +129,11 @@ export default async function (t, { quick }) {
   t.ok(acc.v[0] > 2 && acc.v[0] < 4 && acc.v[3] > 7, 'vitesse de pointe en ~1,3 s', acc);
   t.ok(acc.back > 0.55 && acc.back < 1, 'faire demi-tour en pleine course coûte du temps', acc);
   t.ok(acc.est > 3 && acc.est < 3.5, 'estimation du temps de course cohérente', acc);
+
+  t.group('Coupe demandée dans sa direction de course');
+  const cf = R(`(() => { const c = TEAMS[0][2]; Object.assign(c, { x: 40, y: 15, vx: 7, vy: 0 }); startCut(c, 60, 16, false);
+    const st = c.state; Object.assign(c, { x: 40, y: 15, vx: -6, vy: 0 }); startCut(c, 60, 16, false); return { same: st, back: c.state }; })()`);
+  t.ok(cf.same === 'cut' && cf.back === 'jab', 'déjà lancé vers la cible : il continue sans s’arrêter (feinte seulement sinon)', cf);
 
   t.group('Tutoriel : plonger en défense');
   const td = R(`(() => {

@@ -173,7 +173,7 @@ function update(dt) {
     // qui peut toucher le disque à cet instant ?
     const blockers = []; let catcher = null, cd = 1e9;
     for (const p of players) {
-      if (p === disc.thrower) continue;
+      if (p === disc.thrower || p.down > 0) continue;           // au sol après un plongeon : il ne touche plus le disque
       const d = dist(p.x, p.y, disc.x, disc.y), lift = jumpLift(p);
       if (p.team !== disc.team) {
         if (disc.pull) continue;                           // on ne contre pas un pull
