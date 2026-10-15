@@ -4,36 +4,39 @@
 //  Constantes (unités : mètres, secondes)
 // =====================================================================
 const W = 100, H = 37, EZ = 18, M = 2, N = 5, WIN = 5;   // WIN : points pour gagner par défaut (réglable, voir winPts)
-const SPD = { jog: 4.6, cut: 7.6, def: 7.4, user: 7.5, sprint: 7.8, dive: 11 };
-const ACC = { atk: 24, def: 21 };
+const SPD = { jog: 4.6, cut: 7.6, def: 7.4, user: 7.5, sprint: 7.8, dive: 7 };
+// course (voir la fiche « Fondations physiques ») : accélération réaliste (~1,3 s jusqu'à la pointe), freinage et virages
+// plus vifs mais pas instantanés — un changement de direction coûte vraiment du temps, c'est ce qui crée les démarquages
+const RUN = { acc: 6, dec: 12, lat: 9, defK: 0.95 };
 // Réglages de la défense IA (plus les temps de réaction sont courts et l'anticipation forte, plus elle est dure)
 // Niveaux de l'IA (« IA adverse » pour les équipes sans humain, « Coéquipiers IA » pour les autres, voir humans.js)
 // Tous les niveaux jouent avec la même intelligence (placements, coupes, défense collective) ; ce qui change :
-//   react : multiplie les temps de réaction · anticip : anticipation des courses (s) · block : chance de contre (debout)
-//   speed : vitesse des joueurs · err : imprécision des lancers · hands : chance de drop en plus à la réception
+//   react : multiplie les temps de réaction · anticip : anticipation des courses (s) · block : réussite d'un contre à portée
+//   speed : vitesse des joueurs · jump : hauteur gagnée en sautant (m) · tspd : durée de vol de ses passes (< 1 = disque plus rapide)
+//   err : imprécision des lancers · hands : chance de drop en plus à la réception
 //   safe : prudence dans le choix des passes · greed : goût du risque (0 = joue sûr, 1 = débutant qui force les passes)
 const AI_LEVELS = {
-  facile:    { react: 1.3,  anticip: 0.22, block: 0.5,  speed: 0.9,  err: 1.45, safe: -0.05, hands: 0.006, greed: 0.5 },
-  normal:    { react: 1,    anticip: 0.3,  block: 0.6,  speed: 1,    err: 1,    safe: 0,     hands: 0.002, greed: 0.1 },
-  difficile: { react: 0.72, anticip: 0.4,  block: 0.68, speed: 1.04, err: 0.65, safe: 0.08,  hands: 0.001, greed: 0.03 }
+  facile:    { react: 1.3, anticip: 0.22, block: 0.8,  speed: 0.9,  jump: 0.4,  tspd: 1.12, err: 1.9,  safe: -0.05, hands: 0.004,  greed: 0.6 },
+  normal:    { react: 1,   anticip: 0.3,  block: 0.9,  speed: 1,    jump: 0.55, tspd: 1,    err: 1,    safe: 0,     hands: 0.001,  greed: 0.1 },
+  difficile: { react: 0.8, anticip: 0.4,  block: 0.95, speed: 1.09, jump: 0.7,  tspd: 0.92, err: 0.65, safe: 0.08,  hands: 0.0004, greed: 0.03 }
 };
 const DEF_TUNE = {
-  reactMan: [0.14, 0.24],   // temps de réaction en individuelle (s)
-  reactZone: [0.1, 0.16],   // temps de réaction en zone (s)
+  reactMan: [0.2, 0.3],     // temps de réaction en individuelle (s)
+  reactZone: [0.15, 0.22],  // temps de réaction en zone (s)
   anticip: 0.3,             // anticipation de la course de l'attaquant (s)
   block: 0.6                // chance de contrer quand le disque passe à portée (debout)
 };
-const DIVE_T = 0.33, DOWN_T = 0.8;
+const DIVE_T = 0.3, DOWN_T = 1.2;                         // plongeon : ~2 m en vol, puis 1,2 s au sol
 // saut : préparation (le joueur s'accroupit et ralentit), temps en l'air, gain de hauteur au sommet,
 // récupération à la réception (ralenti) et délai avant de pouvoir ressauter
-const JUMP_PREP = 0.12, JUMP_T = 0.5, JUMP_H = 1.0, JUMP_REC = 0.15, JUMP_CD = 0.35;
+const JUMP_PREP = 0.12, JUMP_T = 0.5, JUMP_H = 0.6, JUMP_REC = 0.15, JUMP_CD = 0.35;
 const HIGH_WINDUP = [0.3, 1.2];                            // l'IA arme sa passe haute plus ou moins longtemps avant de lancer
-const SPEEDS = { lent: 0.6, normal: 0.78, rapide: 1 };
+const SPEEDS = { lent: 0.78, normal: 1, rapide: 1.2 };
 const DRIFT = 0.5;                                          // dérive du disque : vent (m/s) × temps de vol × DRIFT
-const STALL_R = 4.5;                                        // rayon du stall count (agrandi par rapport aux 3 m réels)
-const STALL_RATE = 1 / 0.78;                                // stall count : 1 compte par seconde réelle à vitesse normale (le jeu tourne à 0,78)
-const NORMAL_TOP = 3.2;                                       // passe normale : hauteur de croisière (hors de portée, même en sautant)             // passe normale : hauteur de croisière (m), montée et descente (s)
-const REACH_STAND = 2.0, REACH_DIVE = 1.5;                  // hauteur max du disque contrable debout / en plongeon
+const STALL_R = 3;                                          // rayon du stall count (3 m, règle WFDF)
+const STALL_RATE = 1;                                       // stall count : 1 compte par seconde
+const REACH_STAND = 2.2, REACH_DIVE = 1.9;                  // hauteur max du disque atteignable debout (bras levé) / en plongeon
+const ARM_R = 1.0, DIVE_R = 1.1;                            // portée des bras autour du corps : debout / en plongeon (en plus du vol)
 const CANCEL_R = 2.5;                                       // relâcher à moins de 2,5 m du handler annule le lancer
 const PEER_PREFIX = 'ultimate-frisbee-proto-v1-';
 // ---------------------------------------------------------------------

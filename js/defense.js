@@ -151,13 +151,13 @@ function defenseBrain(defT, dt) {
 
 // Où un défenseur peut-il couper la trajectoire avant le disque ?
 function bestIntercept(d) {
-  const u0 = disc.t / disc.dur, peak = discPeak();
+  const u0 = disc.t / disc.dur, sp = SPD.sprint * aiLvl(d.team).speed;
   for (let u = u0 + 0.03; u <= 1.001; u += 0.04) {
     const [x, y] = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u);
-    if (heightAt(u, peak, disc.kind, discLen(), disc.curveV) > 1.9) continue;
+    if (discZ(u) > REACH_STAND - 0.1) continue;
     const tA = (u - u0) * disc.dur;
     const r = dist(d.x, d.y, x, y);
-    if (Math.max(0, r - 0.9) / SPD.sprint + 0.12 <= tA) return { x, y, tA, r };
+    if (reachTime(d, x, y, sp, ARM_R * 0.9) + 0.05 <= tA) return { x, y, tA, r };
   }
   return null;
 }
@@ -170,7 +170,7 @@ function defenderAI(d, ax, ay, dir, closed, form, slots) {
     const bi = bestIntercept(d);
     if (bi) {
       d.tx = bi.x; d.ty = bi.y; d.sp = SPD.sprint; d.react = 0.1;
-      if (!d.diveTried && bi.tA < 0.32 && bi.r > 1 && bi.r < 2.8) { d.diveTried = true; if (Math.random() < 0.55) diveTo(d, bi.x, bi.y); }
+      if (!d.diveTried && bi.tA < 0.32 && bi.r > 1 && bi.r < SPD.dive * DIVE_T + DIVE_R) { d.diveTried = true; if (Math.random() < 0.55) diveTo(d, bi.x, bi.y); }
       return;
     }
     if (form === 'man' && d.match === disc.intended) { d.tx = disc.ex; d.ty = disc.ey; d.sp = SPD.sprint; return; }

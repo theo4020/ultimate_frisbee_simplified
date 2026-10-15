@@ -10,6 +10,16 @@ function throwErr(d, curve, kind) {
   if (kind === 'high') return (0.07 * d + 0.005 * d * d + Math.abs(curve) * 1.2) * (1 + w * 0.012);
   return (d * 0.03 + Math.abs(curve) * 0.8) * (1 + w * 0.022);
 }
+// le lanceur pivote et lâche le disque environ 0,8 m sur le côté de son corps, du côté opposé à la mark
+function releasePoint(h, tx, ty) {
+  const m = G.marker;
+  if (!m || m.team === h.team || dist(m.x, m.y, h.x, h.y) > STALL_R) return [h.x, h.y];
+  const dx = tx - h.x, dy = ty - h.y, l = Math.hypot(dx, dy) || 1, nx = -dy / l, ny = dx / l;
+  const side = nx * (m.x - h.x) + ny * (m.y - h.y) > 0 ? -1 : 1;
+  return [h.x + nx * side * 0.8, h.y + ny * side * 0.8];
+}
+// vitesse des passes d'un joueur IA selon son niveau (un humain lance à la vitesse normale)
+const throwSpd = h => (controllerOf(h) ? 1 : aiLvl(h.team).tspd || 1);
 // kind : 'normal' ou 'high' (passe haute, par-dessus la défense), voir THROWS
 function throwDisc(h, tx, ty, curve, errScale, kind) {
   kind = THROWS[kind] ? kind : 'normal';
@@ -21,20 +31,20 @@ function throwDisc(h, tx, ty, curve, errScale, kind) {
   const er = throwErr(d, curve, kind) * errScale * Math.sqrt(Math.random());
   const ea = rand(0, Math.PI * 2);
   const ax = tx + Math.cos(ea) * er, ay = ty + Math.sin(ea) * er;          // point réellement visé
-  const dur = throwDur(h.x, h.y, ax, ay, kind);
+  const dur = throwDur(h.x, h.y, ax, ay, kind) * throwSpd(h);
   const [wx0, wy0] = drift(dur, kind);
   const gv = kind === 'high' ? [0.07, 0.05] : [0.16, 0.11];                  // petite rafale imprévisible pendant le vol
   const gk = rand(1 - gv[0], 1 + gv[0]), ga = rand(-gv[1], gv[1]);
   const wx = (wx0 * Math.cos(ga) - wy0 * Math.sin(ga)) * gk, wy = (wx0 * Math.sin(ga) + wy0 * Math.cos(ga)) * gk;
   const ex = ax + wx, ey = ay + wy;                                        // le vent déplace l'arrivée
-  const [cx, cy] = ctrlFor(h.x, h.y, ax, ay, curve);
-  Object.assign(disc, { mode: 'air', holder: null, sx: h.x, sy: h.y, ex, ey, cx, cy,
+  const [sx, sy] = releasePoint(h, ax, ay), [cx, cy] = ctrlFor(sx, sy, ax, ay, curve);
+  Object.assign(disc, { mode: 'air', holder: null, sx, sy, ex, ey, cx, cy,
     t: 0, dur, thrower: h, team: h.team, rolled: new Set(), kind, curveV: curve,
     rx: tx + wx0, ry: ty + wy0 });                                          // là où la passe devait arriver (sans erreur)
   msThrow(h, d, kind);
   if (G.dplay && G.dplay.team !== h.team) G.dplay.throws++;
   disc.intended = nearest(TEAMS[h.team], ex, ey, h);
-  players.forEach(p => { p.diveTried = false; p.diveArmed = false; p.jumpTried = false; if (p.team !== h.team) p.react = rand(0.15, 0.25) * aiLvl(p.team).react; });   // la défense voit le lancer, puis réagit (course, plongeon)
+  players.forEach(p => { p.diveTried = false; p.diveArmed = false; p.jumpTried = false; if (p.team !== h.team) p.react = rand(0.2, 0.3) * aiLvl(p.team).react; });   // la défense voit le lancer, puis réagit (course, plongeon)
   G.stall = 0; G.stats.throws++;
   fxEvent('throw', h.x, h.y, h.team);
   preCatch();
@@ -55,19 +65,21 @@ function preCatch() {
   G.stats.preCatch = (G.stats.preCatch || 0) + 1;
 }
 
-// Marge de sécurité d'une trajectoire (positive = aucun défenseur ne peut l'atteindre à temps)
+// Marge de sécurité d'une trajectoire (positive = aucun défenseur ne peut l'atteindre à temps, en secondes) :
+// pour chaque point du vol à portée, temps de réaction + course du défenseur, comparé au temps du disque
 function laneSlack(h, aimX, aimY, tx, ty, curve, opp, kind) {
-  const dur = throwDur(h.x, h.y, aimX, aimY, kind), peak = peakOf(dur, kind);
-  const [cx, cy] = ctrlFor(h.x, h.y, aimX, aimY, curve);
+  const dur = throwDur(h.x, h.y, aimX, aimY, kind) * throwSpd(h), peak = peakOf(dur, kind);
+  const [sx, sy] = releasePoint(h, aimX, aimY), [cx, cy] = ctrlFor(sx, sy, aimX, aimY, curve);
+  const L = opp.length ? aiLvl(opp[0].team) : AI_LEVELS.normal, react = 0.25 * L.react, vmax = SPD.def * L.speed;
+  const jumpMax = REACH_STAND + (L.jump || JUMP_H), len = dist(sx, sy, tx, ty);
   let min = 9;
   for (let u = 0.04; u <= 1.001; u += 0.06) {
-    const z = heightAt(u, peak, kind, dist(h.x, h.y, tx, ty), curve);
-    if (z > REACH_STAND + JUMP_H) continue;
+    const z = heightAt(u, peak, kind, len, curve);
+    if (z > jumpMax) continue;
     const jumpOnly = z > REACH_STAND;                         // à portée seulement en sautant : moins risqué
-    const [x, y] = bez(h.x, h.y, cx, cy, tx, ty, u), tA = u * dur;
+    const [x, y] = bez(sx, sy, cx, cy, tx, ty, u), tA = u * dur;
     for (const o of opp) {
-      const r = dist(o.x, o.y, x, y);
-      const s = (r < 1.1 ? -1 : (r - 1.05) / SPD.def + 0.3 - tA) + (jumpOnly ? 0.45 : 0);
+      const s = (dist(o.x, o.y, x, y) < ARM_R ? -0.6 : reachTime(o, x, y, vmax, ARM_R) + react - tA) + (jumpOnly ? 0.45 : 0);
       if (s < min) min = s;
     }
   }

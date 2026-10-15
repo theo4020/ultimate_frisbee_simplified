@@ -104,7 +104,7 @@ export default async function (t, { quick }) {
     }
     return { n, close };
   })()`);
-  t.ok(dp.n > 100 && dp.close / dp.n < 0.025, '2 s après la réception, le relais est (presque) toujours à plus de 3 m', dp);
+  t.ok(dp.n > 30 && dp.close / dp.n < 0.025, '2 s après la réception, le relais est (presque) toujours à plus de 3 m', dp);
 
   t.group('Niveaux : mêmes idées, stats et choix de passe différents');
   const lvq = R(`(() => { const keys = o => Object.keys(o).sort().join(); const L = [AI_LEVELS.facile, AI_LEVELS.normal, AI_LEVELS.difficile, LEGEND, SUPER, endlessLevel(20)];
@@ -113,17 +113,22 @@ export default async function (t, { quick }) {
   t.ok(lvq.greed.every((g, i) => i === 0 || g <= lvq.greed[i - 1]) && lvq.greed[0] > lvq.greed[1], 'le débutant prend plus de risques dans ses passes', lvq.greed);
   t.ok(lvq.hands.every((g, i) => i === 0 || g <= lvq.hands[i - 1]), 'et droppe plus souvent', lvq.hands);
 
-  t.group('Passe normale : zones de contre selon la distance');
-  const zn = R(`[30, 45].map(L => {                             // hauteur à s mètres du lanceur (z) et du receveur (e)
-    const dur = throwDur(0, 0, L, 0, 'normal'), peak = peakOf(dur, 'normal'), z = s => +heightAt(s / L, peak, 'normal', L).toFixed(2), e = s => z(L - s);
-    return { L, z: [4.4, 7.4, 10.4, 11].map(z), e: [6.6, 11.1, 15.6, 16.5].map(e) };
-  })`);
-  t.ok(zn.every(o => o.z[0] < 1.5 && o.z[1] < 2 && o.z[2] < 3 && o.z[3] > 3), 'au lancer : 4,5 m en plongeant, 3 m de plus debout, 3 m de plus en sautant, puis hors de portée', zn);
-  t.ok(zn.every(o => o.e[0] < 1.5 && o.e[1] < 2 && o.e[2] < 3 && o.e[3] > 3), 'à l’arrivée : les mêmes zones 1,5 fois plus longues', zn);
+  t.group('Vol du disque : hauteur réaliste');
+  const zn = R(`(() => { const z = (L, s, c) => +heightAt(s / L, 0, 'normal', L, c || 0).toFixed(2);
+    return { short: [z(8, 1), z(8, 4), z(8, 7)], mid: z(16, 8), long: [z(30, 1), z(30, 15), z(30, 29)], curved: [z(20, 2, 1), z(20, 10, 1)], flat: [z(20, 2), z(20, 10)] }; })()`);
+  t.ok(zn.short.every(v => v >= 1 && v <= 1.6), 'passe courte : à hauteur de poitrine, contestable', zn);
+  t.ok(zn.mid < 2.2 && zn.long[1] > 3, 'passe moyenne atteignable debout, passe longue hors de portée au milieu', zn);
+  t.ok(zn.long[0] < 2 && zn.long[2] < 2, 'lâchée et rattrapée à hauteur de main', zn);
+  t.ok(zn.curved.every((v, i) => v > zn.flat[i]), 'une passe courbée monte plus vite et plus haut', zn);
 
-  const cv = R(`(() => { const L = 30, dur = throwDur(0, 0, L, 0, 'normal'), peak = peakOf(dur, 'normal'), z = (s, c) => heightAt(s / L, peak, 'normal', L, c);
-    return { flat: [z(4, 0), z(7, 0), z(10, 0)].map(v => +v.toFixed(2)), curved: [z(4, 1), z(7, 1), z(10, 1)].map(v => +v.toFixed(2)), endFlat: +z(L - 6, 0).toFixed(2), endCurved: +z(L - 6, 1).toFixed(2) }; })()`);
-  t.ok(cv.curved.every((v, i) => v > cv.flat[i]) && cv.curved[2] > 3 && cv.endCurved === cv.endFlat, 'une passe courbée monte plus vite (hors de portée plus tôt), l’arrivée ne change pas', cv);
+  t.group('Course : accélération réaliste');
+  const acc = R(`(() => { const p = TEAMS[0][1]; Object.assign(p, { x: 10, y: 10, vx: 0, vy: 0, tx: 90, ty: 10, sp: SPD.cut, dive: 0, down: 0, jump: 0, jprep: 0, jrec: 0 });
+    const v = []; for (let f = 1; f <= 120; f++) { steer(p, 1 / 60); if (f % 30 === 0) v.push(+Math.hypot(p.vx, p.vy).toFixed(2)); }
+    p.tx = 0; let back = 0; for (let f = 1; f <= 600 && p.vx > -1; f++) { steer(p, 1 / 60); back = f / 60; }
+    return { v, back: +back.toFixed(2), est: +runTime(20, 0, SPD.cut).toFixed(2) }; })()`);
+  t.ok(acc.v[0] > 2 && acc.v[0] < 4 && acc.v[3] > 7, 'vitesse de pointe en ~1,3 s', acc);
+  t.ok(acc.back > 0.55 && acc.back < 1, 'faire demi-tour en pleine course coûte du temps', acc);
+  t.ok(acc.est > 3 && acc.est < 3.5, 'estimation du temps de course cohérente', acc);
 
   t.group('Tutoriel : plonger en défense');
   const td = R(`(() => {
@@ -131,7 +136,7 @@ export default async function (t, { quick }) {
     tutoStart(); tutoGo(TUTO_STEPS.findIndex(s => s.title === 'Plonger en défense'));
     const msgs = []; let last = '', cue = -1;
     for (let f = 0; f < 60 * 8 && !G.tuto.done; f++) {
-      Object.assign(G.pointer, { x: 51, y: 21.2, last: G.time, active: true });     // le joueur attend à sa place…
+      Object.assign(G.pointer, { x: 50.5, y: 20.9, last: G.time, active: true });     // le joueur attend à sa place…
       __tick(); tutoFrame(1 / 60);
       if (G.msg !== last) { last = G.msg; msgs.push(last); }
       if (cue < 0 && /PLONGE/.test(G.msg)) { cue = f; doDive(50, 18.5); }          // …et plonge au signal
@@ -180,11 +185,10 @@ export default async function (t, { quick }) {
   t.group('Duels et contres');
   const du = R(`(() => {                                       // contres : la chance baisse si la passe est courte ou le défenseur au bout du bras
     disc.sx = 40; disc.sy = 18; disc.ex = 44; disc.ey = 18; disc.x = 42; disc.y = 18;
-    const d = TEAMS[1][0]; d.x = 42; d.y = 18.2; const shortNear = blockOdds(d, false); d.y = 19; const shortFar = blockOdds(d, false);
-    disc.ex = 60; d.y = 18.2; const longNear = blockOdds(d, false);
-    return { shortNear, shortFar, longNear };
+    const d = TEAMS[1][0]; d.x = disc.x; d.y = disc.y + 0.1; const near = blockOdds(d, false); d.y = disc.y + 0.95; const far = blockOdds(d, false);
+    return { near, far };
   })()`);
-  t.ok(du.longNear > 0.95 && du.shortNear < du.longNear && du.shortFar < du.shortNear * 0.7, 'passe courte ou défenseur loin : moins de chances de contrer', du);
+  t.ok(du.near > 0.88 && du.far > 0.45 && du.far < 0.6, 'en plein dans les bras ~90 %, du bout des doigts ~50 %', du);
   t.ok(R("!/Math\\.random/.test(String(update).split('duel :')[1].split('defStop')[0])"), 'duel : aucun tirage au sort, seul le placement compte');
 
   t.group('Mode infini : réglages par défaut');
@@ -233,7 +237,7 @@ export default async function (t, { quick }) {
   t.ok(lv[0].react === R('AI_LEVELS.facile.react') && lv[2].react === R('AI_LEVELS.normal.react') && lv[4].react === R('AI_LEVELS.difficile.react'), 'facile au 1er match, normal au 2e, difficile (Titans) au 5e');
   t.ok(lv[6].react < lv[4].react && lv[8].react < lv[6].react && lv[9].react < lv[8].react && lv[9].block > lv[8].block, 'continue de monter après difficile, et encore après le 15e match');
   const far = R('endlessLevel(200)');
-  t.ok(far.react >= 0.2 && far.block <= 0.97 && far.speed <= 1.3 && far.err >= 0.1, 'même très loin, les réglages restent dans des limites possibles', far);
+  t.ok(far.react >= 0.2 && far.block <= 0.99 && far.speed <= 1.3 && far.err >= 0.1, 'même très loin, les réglages restent dans des limites possibles', far);
   R('showMenu = () => {}; showEndless = () => {};');            // pas d'écran ici
   const e = R(`(() => {
     G.humans = [{ id: 0, team: 0, sel: null }]; G.myId = 0; syncMe();

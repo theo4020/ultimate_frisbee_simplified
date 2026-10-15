@@ -131,13 +131,13 @@ function armedDive(p) {
 // (négatif = il l'attrape ; mêmes règles que sim.js : 2 m en plongeon, disque assez bas, dans le terrain)
 function diveMiss(p, x, y) {
   let dx = x - p.x, dy = y - p.y; const l = Math.hypot(dx, dy) || 1; dx /= l; dy /= l;
-  const peak = discPeak(), step = 0.78 / 60; let miss = 99;
+  const step = 1 / 60; let miss = 99;
   for (let t = step; t <= DIVE_T + 1e-6; t += step) {
     const u = (disc.t + t) / disc.dur, px = p.x + dx * SPD.dive * t, py = p.y + dy * SPD.dive * t;
-    if (u >= 1) { if (inField(disc.ex, disc.ey)) miss = Math.min(miss, dist(px, py, disc.ex, disc.ey) - 2.6); break; }   // il touche le sol en plongeant
-    if (u <= 0.3 || heightAt(u, peak, disc.kind, discLen(), disc.curveV) >= REACH_DIVE + 0.3) continue;
+    if (u >= 1) { if (inField(disc.ex, disc.ey)) miss = Math.min(miss, dist(px, py, disc.ex, disc.ey) - 2.4); break; }   // il touche le sol en plongeant
+    if (u <= 0.3 || discZ(u) >= REACH_DIVE + 0.3) continue;
     const [bx, by] = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u);
-    if (inField(bx, by)) miss = Math.min(miss, dist(px, py, bx, by) - 2.0);
+    if (inField(bx, by)) miss = Math.min(miss, dist(px, py, bx, by) - DIVE_R);
   }
   return miss;
 }
@@ -166,12 +166,12 @@ const inSpot = (x, y) => [clamp(x, 0.3, W - 0.3), clamp(y, 0.3, H - 0.3)];
 // receveur IA : il attaque le disque — il court vers le premier point de la trajectoire qu'il peut atteindre avant le disque
 // (au lieu d'attendre au point d'arrivée, où le défenseur a le temps de revenir)
 function runPoint(p) {
-  const u0 = disc.t / disc.dur, peak = discPeak(), sp = SPD.cut * aiLvl(p.team).speed;
+  const u0 = disc.t / disc.dur, sp = SPD.cut * aiLvl(p.team).speed;
   for (let u = Math.max(u0 + 0.02, 0.5); u <= 1.001; u += 0.025) {
-    if (heightAt(u, peak, disc.kind, discLen(), disc.curveV) > 2.1) continue;
+    if (discZ(u) > REACH_STAND) continue;
     const [x, y] = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u);
     if (!inField(x, y)) continue;                              // il ne va pas chercher le disque hors du terrain
-    const d = dist(p.x, p.y, x, y), need = d > 0.9 ? (d - 0.9) / sp + 0.12 : 0, tA = (u - u0) * disc.dur;
+    const need = reachTime(p, x, y, sp, 0.9), tA = (u - u0) * disc.dur;
     if (need <= Math.max(0, tA - 0.06)) return [x, y, true];
   }
   return [...inSpot(disc.ex, disc.ey), false];               // sinon il attend au bord du terrain, au plus près du disque

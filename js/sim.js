@@ -27,14 +27,26 @@ function steer(p, dt) {
     p.x += p.vx * dt; p.y += p.vy * dt; return;
   }
   const dx = p.tx - p.x, dy = p.ty - p.y, l = Math.hypot(dx, dy);
-  let want = Math.min(p.sp * (controllerOf(p) ? 1 : aiLvl(p.team).speed), l * 2.5);
+  // il ralentit en arrivant (assez tôt pour s'arrêter avec son freinage)
+  let want = Math.min(p.sp * (controllerOf(p) ? 1 : aiLvl(p.team).speed), Math.sqrt(2 * RUN.dec * 0.8 * l), l * 6);
   if (p.jrec > 0) { p.jrec -= dt; want *= 0.5; }            // réception d'un saut : il repart lentement
   let ux = l > 0.01 ? dx / l : 0, uy = l > 0.01 ? dy / l : 0;
   if (p.avoid && l > 0.8) [ux, uy] = avoidDir(p, ux, uy, l);  // pas d'écran : il contourne les autres joueurs
-  const dvx = ux * want - p.vx, dvy = uy * want - p.vy;
-  const dl = Math.hypot(dvx, dvy), maxd = (p.team === G.off ? ACC.atk : ACC.def) * dt;
-  const k = dl > maxd ? maxd / dl : 1;
-  p.vx += dvx * k; p.vy += dvy * k;
+  // accélération réaliste : on accélère doucement (RUN.acc), on freine et on tourne plus vite (RUN.dec, RUN.lat)
+  let dvx = ux * want - p.vx, dvy = uy * want - p.vy;
+  const sp = Math.hypot(p.vx, p.vy), kT = p.team === G.off ? 1 : RUN.defK;
+  if (sp < 0.5) {
+    const dl = Math.hypot(dvx, dvy), maxd = RUN.acc * kT * dt;
+    if (dl > maxd) { dvx *= maxd / dl; dvy *= maxd / dl; }
+  } else {
+    const ex = p.vx / sp, ey = p.vy / sp;
+    let par = dvx * ex + dvy * ey, px = dvx - par * ex, py = dvy - par * ey;
+    par = par > 0 ? Math.min(par, RUN.acc * kT * dt) : Math.max(par, -RUN.dec * kT * dt);
+    const pl = Math.hypot(px, py), maxp = RUN.lat * kT * dt;
+    if (pl > maxp) { px *= maxp / pl; py *= maxp / pl; }
+    dvx = par * ex + px; dvy = par * ey + py;
+  }
+  p.vx += dvx; p.vy += dvy;
   p.x += p.vx * dt; p.y += p.vy * dt;
 }
 
@@ -54,12 +66,10 @@ function avoidDir(p, ux, uy, l) {
   return [nx / n, ny / n];
 }
 
-// chance de toucher un disque à portée : moindre si la passe est courte (elle file vite) ou si le défenseur est au bout de son bras
+// chance de contrer un disque à portée : ~90 % en plein dans les bras, ~50 % du bout des doigts
 function blockOdds(p, diving) {
-  const reach = diving ? 2.0 : 1.05, d = dist(p.x, p.y, disc.x, disc.y);
-  const far = 1 - 0.5 * clamp(d / reach, 0, 1) ** 2;                        // au bout du bras : moitié moins
-  const short = clamp(0.4 + dist(disc.sx, disc.sy, disc.ex, disc.ey) / 15, 0.5, 1);   // passe de 5 m : ~0,7 · dès 9 m : normale
-  return far * short;
+  const reach = diving ? DIVE_R : ARM_R, r = clamp(dist(p.x, p.y, disc.x, disc.y) / reach, 0, 1);
+  return 0.92 - 0.42 * r * r;
 }
 function update(dt) {
   if (G.ms) G.ms.ptT += dt;
@@ -168,9 +178,9 @@ function update(dt) {
       if (p.team !== disc.team) {
         if (disc.pull) continue;                           // on ne contre pas un pull
         const diving = p.dive > 0;
-        const reach = diving ? 2.0 : 1.05, high = diving ? REACH_DIVE : REACH_STAND + lift;
+        const reach = diving ? DIVE_R : ARM_R, high = diving ? REACH_DIVE : REACH_STAND + lift;
         if (u > 0.03 && d < reach && disc.z < high && !disc.rolled.has(p)) blockers.push(p);
-      } else if (inField(disc.x, disc.y) && (p.dive > 0 ? (u > 0.3 && d < 2.0 && disc.z < REACH_DIVE + 0.3) : (u > 0.45 && d < 1.3 && disc.z < 2.3 + lift))) {   // pas de réception tant que le disque est dehors
+      } else if (inField(disc.x, disc.y) && (p.dive > 0 ? (u > 0.3 && d < DIVE_R + 0.2 && disc.z < REACH_DIVE + 0.3) : (u > 0.45 && d < ARM_R + 0.2 && disc.z < REACH_STAND + 0.1 + lift))) {   // pas de réception tant que le disque est dehors
         if (d < cd) { cd = d; catcher = p; }
       }
     }
@@ -185,7 +195,7 @@ function update(dt) {
       return best;
     };
     const okD = !disc.pull;
-    const A = catcher || (blockers.length && u > 0.45 ? contest(disc.team, 2.0, 2.3) : null);
+    const A = catcher || (blockers.length && u > 0.45 ? contest(disc.team, 2.0, REACH_STAND + 0.1) : null);
     const B = blockers.length ? blockers.reduce((a, c) => (jumpLift(c) > jumpLift(a) ? c : a)) : catcher && okD ? contest(1 - disc.team, 1.8, REACH_STAND) : null;
     if (A && B && (A.jump > 0 || B.jump > 0)) {
       const catcher = A, b = B;
@@ -205,7 +215,7 @@ function update(dt) {
         if (G.tuto) G.tuto.blocked = true;
         defStop(p, 'Block en l’air !'); return;
       }
-      if (r < (G.tuto && (G.tuto.wall || diving) ? 1 : (diving ? 0.85 : L.block) * blockOdds(p, diving))) {   // tutoriel : bien placé = contré
+      if (r < (G.tuto && (G.tuto.wall || diving) ? 1 : (diving ? 0.95 : L.block) * blockOdds(p, diving))) {   // tutoriel : bien placé = contré
         if (diving) { achEvent('layoutblock', p.team); if (G.tuto) G.tuto.lblock = true; } defStop(p, diving ? 'Layout block !' : p.jump > 0 ? 'Block en l’air !' : 'Block !'); return; }
     }
     if (catcher) {
@@ -301,14 +311,14 @@ function aiJumps(u) {
   const t2 = disc.t + JUMP_PREP + JUMP_T * 0.5, u2 = t2 / disc.dur;
   if (u2 > 1) return;
   const z2 = discZ(u2);
-  if (z2 < REACH_STAND - 0.1 || z2 > 2.3 + JUMP_H * 0.95) return;
+  if (z2 < REACH_STAND - 0.1 || z2 > REACH_STAND + 0.1 + 0.95 * Math.max(JUMP_H, aiLvl(0).jump || 0, aiLvl(1).jump || 0)) return;
   const [x2, y2] = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u2);
   for (const p of players) {
     if (p === disc.thrower || p.jumpTried || controllerOf(p) && userControls(p)) continue;
     if (disc.t < 0.4 && dist(p.x, p.y, disc.sx, disc.sy) < 3) continue;   // la mark : voir plus haut
     const mine = p.team === disc.team;
     if (!mine && disc.t < 0.2 * aiLvl(p.team).react) continue;       // un défenseur ne saute pas avant d'avoir vu le lancer
-    if (dist(p.x, p.y, x2, y2) > (mine ? 1.3 : 1.05) + 0.4) continue;
+    if (dist(p.x, p.y, x2, y2) > (mine ? ARM_R + 0.2 : ARM_R) + 0.4) continue;
     p.jumpTried = true;
     const L = aiLvl(p.team);
     if (Math.random() < (mine ? 0.75 : L.block + 0.15)) jumpTo(p);

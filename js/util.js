@@ -70,37 +70,53 @@ function bez(sx, sy, cx, cy, ex, ey, u) {
   return [a * a * sx + 2 * a * u * cx + u * u * ex, a * a * sy + 2 * a * u * cy + u * u * ey];
 }
 const flightTime = d => 0.35 + d / 24;
-// hauteur max du disque : plus haute = plus longtemps hors de portée (une passe haute monte bien plus haut)
+// hauteur max d'une passe haute ou d'un pull (une passe haute monte bien plus haut)
 const peakOf = (dur, kind) => (0.8 + dur / (THROWS[kind] || THROWS.normal).dur * 1.1) * (THROWS[kind] || THROWS.normal).peak;
 const discPeak = () => peakOf(disc.dur, disc.kind);
-// hauteur du disque à l'instant u (0 → 1) du vol
-//  • passe normale : lâchée vers 0,9 m, au-dessus des bras après RISE_T, redescend pendant les FALL_T dernières secondes
-//  • passe haute : lâchée au-dessus de la tête, à hauteur de saut (une mark debout ne la touche pas,
-//    une mark qui saute au bon moment oui), puis elle monte hors de portée et ne redescend qu'à l'arrivée
+// Vol du disque (voir la fiche « Fondations physiques ») : hauteur à l'instant u (0 → 1) du vol
+//  • passe normale : lâchée vers 1 m, elle monte vers sa hauteur de croisière, plane, puis redescend vers 1,3 m
+//    chez le receveur. Courte, elle reste à hauteur de poitrine (contestable : c'est le timing qui la protège) ;
+//    longue, elle croise plus haut. Une passe courbée est lâchée plus inclinée : elle monte plus vite et plus haut.
+//  • passe haute : lâchée au-dessus de la tête, à hauteur de saut, puis elle monte haut et ne redescend qu'à l'arrivée
+//  • pull : une grande cloche
+const PASS_Z0 = 1.0, PASS_ZEND = 1.3, CURVE_RISE = 0.8;
+const cruiseZ = (L, curve) => clamp(1.4 + Math.max(0, L - 8) * 0.09, 1.4, 4.5) + CURVE_RISE * Math.min(1, Math.abs(curve || 0));
+const easeOut = x => 1 - (1 - x) * (1 - x);
 function heightAt(u, peak, kind, len, curve) {
   if (kind === 'high') {
     if (u < 0.45) return 2.3 + (peak - 2.3) * (u / 0.45) * (u / 0.45);
     return peak * Math.sin(Math.PI / 2 * Math.min(1, (1 - u) / 0.55));
   }
-  // passe normale : sa hauteur dépend de la distance parcourue depuis le lanceur (et de celle qui reste jusqu'au receveur) :
-  //   au lancer : cercle de stall (STALL_R) → en plongeant ; 3 m de plus → debout ; encore 3 m → en sautant ;
-  //   à l'arrivée, les mêmes zones 1,5 fois plus longues (le disque redescend plus doucement qu'il ne monte) ;
-  //   entre les deux, hors de portée ; une passe courbée monte plus vite (zones du lancer jusqu'à 40 % plus courtes)
-  const L = len || 15, top = Math.max(NORMAL_TOP, peak);
-  const kUp = 1 - CURVE_RISE * Math.min(1, Math.abs(curve || 0));
-  return Math.min(normalZ(u * L, 0.9, top, kUp), normalZ((1 - u) * L, 1.0, top, 1.5));
+  if (kind === 'pull') return PASS_Z0 + (Math.max(peak, 3) - PASS_Z0) * Math.sin(Math.PI * u);
+  const L = len || 15, c = Math.min(1, Math.abs(curve || 0)), top = cruiseZ(L, c), s = u * L;
+  const rise = clamp(0.25 * L, 1.5, 7) * (1 - 0.4 * c), fall = clamp(0.3 * L, 1.5, 10);
+  const up = s < rise ? PASS_Z0 + (top - PASS_Z0) * easeOut(s / rise) : top;
+  const down = L - s < fall ? PASS_ZEND + (top - PASS_ZEND) * easeOut((L - s) / fall) : top;
+  return Math.min(up, down);
 }
 const discLen = () => dist(disc.sx, disc.sy, disc.ex, disc.ey);
-const discZ = u => heightAt(u, discPeak(), disc.kind, discLen(), disc.curveV);
-// hauteur d'une passe normale à s mètres de son extrémité (lancer ou réception), en partant de z0 ; k allonge les zones
-const PASS_STAND = 3, PASS_JUMP = 3, CURVE_RISE = 0.4;                            // longueur des zones « debout » et « en sautant » au lancer (m)
-function normalZ(s, z0, top, k) {
-  const a = STALL_R * k, b = a + PASS_STAND * k, c = b + PASS_JUMP * k, dive = REACH_DIVE, stand = REACH_STAND, jump = REACH_STAND + JUMP_H;
-  if (s <= a) return z0 + (dive - z0) * s / a;
-  if (s <= b) return dive + (stand - dive) * (s - a) / (b - a);
-  if (s <= c) return stand + (jump - stand) * (s - b) / (c - b);
-  return jump + (top - jump) * Math.min(1, (s - c) / 4);
+const discKind = () => (disc.pull ? 'pull' : disc.kind);
+const discZ = u => heightAt(u, discPeak(), discKind(), discLen(), disc.curveV);
+// Course : temps pour parcourir d mètres en partant à la vitesse v0 dans cette direction (négative : il s'éloigne),
+// avec l'accélération et le freinage de RUN, jusqu'à la vitesse de pointe vmax
+function runTime(d, v0, vmax) {
+  let t = 0;
+  if (v0 < 0) { t = -v0 / RUN.dec; d += v0 * v0 / (2 * RUN.dec); v0 = 0; }
+  if (d <= 0) return t;
+  if (v0 >= vmax) return t + d / vmax;
+  const a = RUN.acc, sAcc = (vmax * vmax - v0 * v0) / (2 * a);
+  if (d <= sAcc) return t + (Math.sqrt(v0 * v0 + 2 * a * d) - v0) / a;
+  return t + (vmax - v0) / a + (d - sAcc) / vmax;
 }
-// hauteur gagnée par un joueur en plein saut (0 au sol, JUMP_H au sommet)
-const jumpLift = p => (p.jump > 0 ? JUMP_H * Math.sin(Math.PI * (1 - p.jump / JUMP_T)) : 0);
+// temps pour que le joueur p arrive à moins de « reach » mètres de (x, y), vu sa vitesse actuelle
+function reachTime(p, x, y, vmax, reach) {
+  const dx = x - p.x, dy = y - p.y, l = Math.hypot(dx, dy), d = l - (reach || 0);
+  if (d <= 0) return 0;
+  const vx = p.vx || 0, vy = p.vy || 0, along = (vx * dx + vy * dy) / l, side = Math.abs(vx * dy - vy * dx) / l;
+  return runTime(d, along, vmax) + side / RUN.lat * 0.5;      // la vitesse sur le côté doit d'abord être corrigée
+}
+// hauteur gagnée en sautant : JUMP_H pour un humain, selon son niveau pour un joueur IA
+const jumpH = p => (typeof controllerOf === 'function' && controllerOf(p) ? JUMP_H : (aiLvl(p.team).jump || JUMP_H));
+// hauteur gagnée par un joueur en plein saut (0 au sol, jumpH au sommet)
+const jumpLift = p => (p.jump > 0 ? jumpH(p) * Math.sin(Math.PI * (1 - p.jump / JUMP_T)) : 0);
 

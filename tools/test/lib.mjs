@@ -51,7 +51,7 @@ export function loadGame() {
   vm.runInContext(files.map(f => fs.readFileSync(path.join(ROOT, f), 'utf8')).join('\n;\n'), sandbox, { filename: 'jeu.js' });
   const run = code => vm.runInContext(code, sandbox);
   run(`G.humans = []; G.myId = -1; G.attract = false;
-    function __tick() { const dt = 0.78 / 60; if (G.phase === 'pull') pullTick(1 / 60); else { G.gt += dt; update(dt); } G.time += 1 / 60; fxUpdate(1 / 60); }
+    function __tick() { const dt = 1 / 60; if (G.phase === 'pull') pullTick(1 / 60); else { G.gt += dt; update(dt); } G.time += 1 / 60; fxUpdate(1 / 60); }
     // joue un point entier (IA contre IA) ; renvoie le nombre d'images, ou -1 s'il ne finit pas en 10 min de jeu
     function __playPoint() { newWind(); startPoint(); let f = 0; while ((G.phase === 'play' || G.phase === 'pull') && f < 36000) { __tick(); f++; } return f >= 36000 ? -1 : f; }`);
   return { run, sandbox };

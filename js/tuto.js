@@ -228,7 +228,7 @@ const TUTO_STEPS = [
       tutoReset();
       Object.assign(G.form, { def: 'man', force: 'straight', dplay: 'none', play: 'none' });
       tutoPut(1, [[64, 18.5], [48, 18.5], [80, 5], [80, 32], [76, 18.5]]);
-      tutoPut(0, [[51, 21.2], [95, 4], [95, 11], [95, 26], [95, 33]]);
+      tutoPut(0, [[50.5, 20.9], [95, 4], [95, 11], [95, 26], [95, 33]]);
       tutoGive(TEAMS[1][0]);
       const h = meH(); if (h) h.sel = TEAMS[0][0];
       G.tuto.armT = 3;                                           // toujours 3 s : compte à rebours, puis signal « PLONGE ! »
@@ -241,14 +241,14 @@ const TUTO_STEPS = [
       const u0 = disc.t / disc.dur, peak = discPeak();          // premier point où le disque passe à portée d'un plongeon près de toi
       for (let u = u0; u <= 1; u += 0.01) {
         const [x, y] = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u);
-        if (dist(x, y, me.x, me.y) < 2.8 && heightAt(u, peak, disc.kind, discLen(), disc.curveV) < REACH_DIVE) {
+        if (dist(x, y, me.x, me.y) < 2.8 && discZ(u) < REACH_DIVE) {
           if ((u - u0) * disc.dur <= 0.3) { T.cued = true; flash('PLONGE ! 🥏', true); }
           break;
         }
       }
     },
     pin(p) { return p === disc.holder && disc.mode === 'held' ? null : [[64, 18.5], [48, 18.5], [80, 5], [80, 32], [76, 18.5]][p.i]; },
-    pinD(d) { return d.i === 0 ? [51, 21.2] : tutoFar(d); },
+    pinD(d) { return d.i === 0 ? [50.5, 20.9] : tutoFar(d); },
     hold(h, dt) {
       const T = G.tuto;
       if (T.thrown || T.done) return true;

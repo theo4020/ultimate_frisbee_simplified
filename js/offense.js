@@ -98,12 +98,12 @@ function bestCut(t, h, ax, ay, dir, open, cands, need) {
       const lane = clamp(laneSlack(h, x, y, x, y, 0, opp), -1, 0.6);
       if (lane < -0.4) continue;
       let td = 1e9;
-      for (const d of opp) { if (d === G.marker) continue; td = Math.min(td, Math.max(0, dist(d.x, d.y, x, y) - 1.2) / SPD.def + 0.22 * L.react); }
+      for (const d of opp) { if (d === G.marker) continue; td = Math.min(td, reachTime(d, x, y, SPD.def * L.speed, 1.2) + 0.25 * L.react); }
       const gain = f * 0.14 - (f > 18 ? (1.7 - huckK) * 2 : 0) + (inScoreZone(t, x) ? 4 : 0) - (open * (y - ay) < -4 ? 0.8 : 0);   // deep : risqué (sauf équipes de hucks) ; côté break : passe plus dure
       for (const c of cands) {
         const dc = dist(c.x, c.y, x, y);
         if (dc < 3.5 || dc > 27) continue;
-        const race = td - (dc / SPD.cut + 0.35);                // > 0 : le coupeur arrive le premier
+        const race = td - (reachTime(c, x, y, SPD.cut * aiLvl(t).speed, 0) + 0.1);                // > 0 : le coupeur arrive le premier
         const v = clamp(race, -1.5, 1.5) * 3 + lane * 3 + gain - dc * 0.04;
         if (v > need && (!best || v > best.v)) best = { c, x, y, v, deep: f > 18 };
       }

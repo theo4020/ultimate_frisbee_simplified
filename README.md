@@ -52,6 +52,7 @@ Les scripts sont chargés dans cet ordre par `index.html` et partagent le même 
 | `sw.js` | Service worker : garde une copie des fichiers pour jouer hors connexion |
 | `manifest.webmanifest`, `icons/` | Nom, icônes et affichage de l'application installée |
 | `tools/simulate.js` | Matchs IA contre IA sans navigateur : `node tools/simulate.js 20` |
+| `tools/bench.mjs` | Banc de réalisme : chiffres par niveau (passes réussies, pertes, contres par distance) : `node tools/bench.mjs 100` |
 | `tools/test/` | Suite de tests (voir « Tests ») |
 
 ## Hébergement et relais TURN

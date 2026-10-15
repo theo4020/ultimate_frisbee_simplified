@@ -29,7 +29,7 @@ function drawFlightPath(sx, sy, cx, cy, ex, ey, peak, u0, alpha, width, dash, ki
 function drawHeightLegend() {
   const fs = Math.max(9, S * 1.15), x0 = X(0.8), y0 = Y(0.8) + fs;
   ctx.save(); ctx.font = `600 ${fs}px system-ui`; ctx.textAlign = 'left';
-  const items = [['contrable', REACH_DIVE - 0.1], ['debout seulement', REACH_STAND - 0.1], ['en sautant', REACH_STAND + 0.5], ['trop haut', REACH_STAND + JUMP_H + 0.5]];
+  const items = [['contrable', REACH_DIVE - 0.1], ['debout seulement', REACH_STAND - 0.1], ['en sautant', REACH_STAND + JUMP_H * 0.5], ['trop haut', REACH_STAND + JUMP_H + 0.5]];
   let x = x0;
   ctx.fillStyle = 'rgba(15,23,42,.55)';
   const wTot = items.reduce((w, [t]) => w + ctx.measureText(t).width + fs * 1.8, fs * 0.6);
@@ -210,13 +210,13 @@ function draw() {
     let tx = G.pointer.x, ty = G.pointer.y, dx = tx - h.x, dy = ty - h.y, d = Math.hypot(dx, dy) || 0.01;
     if (d > K.max) { tx = h.x + dx / d * K.max; ty = h.y + dy / d * K.max; d = K.max; }
     if (d < K.min && d >= CANCEL_R) { tx = h.x + dx / d * K.min; ty = h.y + dy / d * K.min; d = K.min; }
-    const [cx, cy] = ctrlFor(h.x, h.y, tx, ty, G.curve);
+    const [sx, sy] = releasePoint(h, tx, ty), [cx, cy] = ctrlFor(sx, sy, tx, ty, G.curve);
     const dur = throwDur(h.x, h.y, tx, ty, kind);
     const [wx, wy] = drift(dur, kind), ex = tx + wx, ey = ty + wy;
     ctx.save();
     const cancel = G.aiming && dist(G.pointer.x, G.pointer.y, h.x, h.y) < CANCEL_R;
     ctx.globalAlpha = cancel ? 0.3 : kindLocked() ? 0.35 : 1;          // changement de passe en cours : aperçu estompé
-    drawFlightPath(h.x, h.y, cx, cy, ex, ey, peakOf(dur, kind), 0, G.aiming ? 0.95 : 0.7, G.aiming ? 3 : 2, kind === 'high' ? [2, 5] : [6, 5], kind, G.curve);
+    drawFlightPath(sx, sy, cx, cy, ex, ey, peakOf(dur, kind), 0, G.aiming ? 0.95 : 0.7, G.aiming ? 3 : 2, kind === 'high' ? [2, 5] : [6, 5], kind, G.curve);
     ctx.strokeStyle = G.aiming ? 'rgba(250,204,21,.95)' : 'rgba(255,255,255,.75)'; ctx.lineWidth = 2;
     const er = throwErr(d, G.curve, kind) + Math.hypot(wx, wy) * 0.08;
     circle(X(ex), Y(ey), Math.max(er * S, 4)); ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.fill(); ctx.stroke();
@@ -234,7 +234,7 @@ function draw() {
   // Trajectoire restante du disque en vol, colorée selon la hauteur
   if (disc.mode === 'air') {
     const u0 = Math.min(1, disc.t / disc.dur);
-    drawFlightPath(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, discPeak(), u0, 0.7, 2.5, [5, 4], disc.kind, disc.curveV);
+    drawFlightPath(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, discPeak(), u0, 0.7, 2.5, [5, 4], discKind(), disc.curveV);
   }
   if (playing && (disc.mode === 'air' || (canThrow() && G.pointer.active))) drawHeightLegend();
 

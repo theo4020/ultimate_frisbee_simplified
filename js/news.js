@@ -8,6 +8,15 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
+  { id: 20, date: '2026-10-15', tag: 'Gameplay', title: 'Nouvelle physique, plus réaliste 🏃',
+    body: `Le jeu repose maintenant sur une vraie physique :<br>
+      • <b>Les joueurs accélèrent</b> en un peu plus d'une seconde au lieu de démarrer à fond : un bon changement de direction
+      fait vraiment gagner un ou deux mètres sur son défenseur.<br>
+      • <b>Le disque a un vrai vol</b> : une passe courte reste à hauteur de poitrine, une passe longue monte plus haut, une passe
+      courbée monte plus vite. Ce qui protège une passe, c'est le timing : le défenseur doit arriver à temps.<br>
+      • <b>Contres</b> : ~90 % en plein dans les bras, ~50 % du bout des doigts. Le lanceur pivote pour lâcher le disque à côté de la mark.<br>
+      • <b>Drops</b> plus rares, surtout sur une prise simple ; ils viennent d'un disque rapide, d'une prise en extension ou d'un défenseur au contact.<br>
+      • Le jeu tourne à vitesse réelle, et la mark se place à 3 m comme dans les règles.` },
   { id: 19, date: '2026-10-14', tag: 'En ligne', title: 'Mode infini à plusieurs 🤝',
     body: `Nouvelle section <b>🌐 En ligne</b> dans le menu principal, avec un <b>mode infini à plusieurs</b> : jusqu'à 5 joueurs
       dans la même équipe contre une IA de plus en plus forte. Une défaite et la série s'arrête ; l'hôte peut alors enregistrer

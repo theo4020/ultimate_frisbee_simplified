@@ -18,19 +18,28 @@ function holdDisc(p) {
   if (G.pullPending) { G.pullPending = false; afterPull(p); }   // première possession après le pull
 }
 
-// chance de drop du disque en vol (passe ou pull) : le vent et le temps de vol, plus le type de lancer
+// chance de drop due au disque lui-même (passe ou pull) : le vent et le temps de vol, plus le type de lancer
 const PULL_DROP = 1 / 3;                                       // un pull se droppe 3 fois moins souvent qu'une passe
 function dropChance() {
   const K = THROWS[disc.kind] || THROWS.normal;
-  return Math.min(0.02, G.wind.kmh * 0.0002 * (0.5 + disc.dur * 0.5)) + K.drop + K.dropWind * G.wind.kmh;   // 20 km/h : ~0,35 % sur une passe courte
+  return Math.min(0.012, G.wind.kmh * 0.00012 * (0.5 + disc.dur * 0.5)) + K.drop + K.dropWind * G.wind.kmh;   // 20 km/h : ~0,2 % sur une passe courte
+}
+// chance de drop d'une réception (voir la fiche « Fondations physiques ») : une prise simple, à hauteur de poitrine,
+// sans défenseur ni vent, ne se droppe presque jamais ; ce qui la rend difficile :
+//   disque rapide à l'arrivée · prise en extension (loin du corps, en plongeon, en l'air) · bras d'un défenseur tout près
+function catchOdds(p) {
+  const v = discLen() / Math.max(0.2, disc.dur), reachD = dist(p.x, p.y, disc.x, disc.y);
+  const near = nearestD(TEAMS[1 - p.team], p.x, p.y)[1];
+  return 0.001
+    + Math.max(0, v - 19) * 0.001                                       // 25 m/s : +0,6 %
+    + Math.max(0, reachD - 0.9) * 0.008 + (p.dive > 0 ? 0.008 : 0) + (p.jump > 0 && disc.z > REACH_STAND ? 0.005 : 0)
+    + Math.max(0, 1.2 - near) * 0.015                                   // défenseur au contact : +1,5 %
+    + dropChance();
 }
 function catchDisc(p) {
   if (disc.pull) { pullCaught(p); return; }
-  // le vent fait bouger le disque : plus de drops ; une passe haute retombe en flottant, plus dure à attraper
-  const hands = G.tuto || G.practice || controllerOf(p) ? 0 : aiLvl(p.team).hands || 0;   // mains du niveau (joueurs IA)
-  // sans défenseur autour, on attrape tranquillement : 3 fois moins de drops quand le plus proche est à 4 m ou plus
-  const near = nearestD(TEAMS[1 - p.team], p.x, p.y)[1], calm = clamp(1 - (near - 1) / 3 * 0.7, 0.3, 1);
-  if (Math.random() < (dropChance() + hands) * calm) { G.stats.drops = (G.stats.drops || 0) + 1; msTurnover(p, 'drop'); turnover(p.x, p.y, 'Drop ! Turnover'); return; }
+  const hands = controllerOf(p) ? 0 : aiLvl(p.team).hands || 0;   // mains du niveau (joueurs IA)
+  if (!G.tuto && !G.practice && Math.random() < catchOdds(p) + hands) { G.stats.drops = (G.stats.drops || 0) + 1; msTurnover(p, 'drop'); turnover(p.x, p.y, 'Drop ! Turnover'); return; }
   G.stats.comps++;
   const scored = inScoreZone(p.team, disc.x);                   // le point se joue là où le disque est attrapé
   msCatch(p, scored);
