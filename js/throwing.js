@@ -5,10 +5,12 @@
 // =====================================================================
 // Imprécision maximale (m) d'un lancer. La passe haute se dégrade vite avec la distance et le vent :
 // sans vent, environ 1,2 m à 10 m, 3,4 m à 20 m, 6,6 m à 30 m (passe normale : 0,3 / 0,6 / 0,9 m).
+// Passe normale courbée : plus elle est courbée, plus le vent la rend imprévisible (droite : comme avant ;
+// pleine courbe : l'effet du vent sur l'imprécision est triplé)
 function throwErr(d, curve, kind) {
-  const w = G.wind.kmh;
-  if (kind === 'high') return (0.07 * d + 0.005 * d * d + Math.abs(curve) * 1.2) * (1 + w * 0.012);
-  return (d * 0.03 + Math.abs(curve) * 0.8) * (1 + w * 0.022);
+  const w = G.wind.kmh, c = Math.min(1, Math.abs(curve || 0));
+  if (kind === 'high') return (0.07 * d + 0.005 * d * d + c * 1.2) * (1 + w * 0.012);
+  return (d * 0.03 + c * 0.8) * (1 + w * 0.022 * (1 + 2 * c));
 }
 // le lanceur pivote et lâche le disque environ 0,8 m sur le côté de son corps, du côté opposé à la mark
 function releasePoint(h, tx, ty) {
@@ -33,7 +35,8 @@ function throwDisc(h, tx, ty, curve, errScale, kind) {
   const ax = tx + Math.cos(ea) * er, ay = ty + Math.sin(ea) * er;          // point réellement visé
   const dur = throwDur(h.x, h.y, ax, ay, kind) * throwSpd(h);
   const [wx0, wy0] = drift(dur, kind);
-  const gv = kind === 'high' ? [0.07, 0.05] : [0.16, 0.11];                  // petite rafale imprévisible pendant le vol
+  const cw = kind === 'high' ? 1 : 1 + Math.min(1, Math.abs(curve || 0));    // une passe courbée subit plus les rafales
+  const gv = kind === 'high' ? [0.07, 0.05] : [0.16 * cw, 0.11 * cw];        // petite rafale imprévisible pendant le vol
   const gk = rand(1 - gv[0], 1 + gv[0]), ga = rand(-gv[1], gv[1]);
   const wx = (wx0 * Math.cos(ga) - wy0 * Math.sin(ga)) * gk, wy = (wx0 * Math.sin(ga) + wy0 * Math.cos(ga)) * gk;
   const ex = ax + wx, ey = ay + wy;                                        // le vent déplace l'arrivée
@@ -132,7 +135,7 @@ function aiThrow(h, release) {
         const kindCost = kind === 'high' ? (release ? 0 : (0.1 + G.wind.kmh * 0.04 + throwErr(d, 0, kind) * 0.2) / ST.high + (ST.high < 1 ? 1.5 : 0)) : 0;
         // les passes qui font avancer le jeu valent plus, les longues encore plus (huck)
         const v = clamp(slack, -1, 0.6) * 4 * (1 - 0.45 * greed) + gain * 0.3 * (1 + 0.6 * greed) + (long ? 2.2 * ST.huck * (1 + greed) : 0) + (Math.random() - 0.5) * 4 * greed + (inScoreZone(t, cx0) ? 8 : 0)
-          + (G.stall > 5 && p.role === 'dump' ? 2.5 : 0) + (p.free ? 4 : 0) + playBonus - Math.abs(curve) * 0.6 - d * (0.02 + G.wind.kmh * 0.003) - kindCost;
+          + (G.stall > 5 && p.role === 'dump' ? 2.5 : 0) + (p.free ? 4 : 0) + playBonus - Math.abs(curve) * (0.6 + G.wind.kmh * 0.03) - d * (0.02 + G.wind.kmh * 0.003) - kindCost;   // courbe dans le vent : risquée
         // un huck peut être un peu disputé : le disque passe au-dessus de la défense au milieu
         const minSlack = (playBonus && P.type === 'huck' ? -0.15 : long ? -0.08 - (ST.huck - 1) * 0.25 : p.free ? -0.08 : 0.05) + L.safe - 0.45 * greed + (kind === 'high' ? (release ? -0.15 : 0) : 0);
         if (slack < minSlack && press < 8.3) continue;

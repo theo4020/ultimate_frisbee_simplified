@@ -130,6 +130,12 @@ export default async function (t, { quick }) {
   t.ok(acc.back > 0.55 && acc.back < 1, 'faire demi-tour en pleine course coûte du temps', acc);
   t.ok(acc.est > 3 && acc.est < 3.5, 'estimation du temps de course cohérente', acc);
 
+  t.group('Courbe et vent');
+  const cw = R(`(() => { const k = G.wind.kmh; G.wind.kmh = 0; const calm = [throwErr(20, 0, 'normal'), throwErr(20, 1, 'normal')];
+    G.wind.kmh = 25; const windy = [throwErr(20, 0, 'normal'), throwErr(20, 1, 'normal')]; G.wind.kmh = k; return { calm, windy }; })()`);
+  t.ok(Math.abs(cw.windy[0] - 0.6 * 1.55) < 0.01, 'passe droite dans le vent : imprécision inchangée', cw);
+  t.ok(cw.windy[1] / cw.calm[1] > 2.5 && cw.windy[0] / cw.calm[0] < 1.6, 'passe très courbée dans le vent : bien plus aléatoire', cw);
+
   t.group('Coupe demandée dans sa direction de course');
   const cf = R(`(() => { const c = TEAMS[0][2]; Object.assign(c, { x: 40, y: 15, vx: 7, vy: 0 }); startCut(c, 60, 16, false);
     const st = c.state; Object.assign(c, { x: 40, y: 15, vx: -6, vy: 0 }); startCut(c, 60, 16, false); return { same: st, back: c.state }; })()`);
