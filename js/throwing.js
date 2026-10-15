@@ -61,7 +61,7 @@ function laneSlack(h, aimX, aimY, tx, ty, curve, opp, kind) {
   const [cx, cy] = ctrlFor(h.x, h.y, aimX, aimY, curve);
   let min = 9;
   for (let u = 0.04; u <= 1.001; u += 0.06) {
-    const z = heightAt(u, peak, kind, dist(h.x, h.y, tx, ty));
+    const z = heightAt(u, peak, kind, dist(h.x, h.y, tx, ty), curve);
     if (z > REACH_STAND + JUMP_H) continue;
     const jumpOnly = z > REACH_STAND;                         // à portée seulement en sautant : moins risqué
     const [x, y] = bez(h.x, h.y, cx, cy, tx, ty, u), tA = u * dur;

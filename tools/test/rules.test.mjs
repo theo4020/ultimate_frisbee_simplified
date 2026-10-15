@@ -121,6 +121,10 @@ export default async function (t, { quick }) {
   t.ok(zn.every(o => o.z[0] < 1.5 && o.z[1] < 2 && o.z[2] < 3 && o.z[3] > 3), 'au lancer : 4,5 m en plongeant, 3 m de plus debout, 3 m de plus en sautant, puis hors de portée', zn);
   t.ok(zn.every(o => o.e[0] < 1.5 && o.e[1] < 2 && o.e[2] < 3 && o.e[3] > 3), 'à l’arrivée : les mêmes zones 1,5 fois plus longues', zn);
 
+  const cv = R(`(() => { const L = 30, dur = throwDur(0, 0, L, 0, 'normal'), peak = peakOf(dur, 'normal'), z = (s, c) => heightAt(s / L, peak, 'normal', L, c);
+    return { flat: [z(4, 0), z(7, 0), z(10, 0)].map(v => +v.toFixed(2)), curved: [z(4, 1), z(7, 1), z(10, 1)].map(v => +v.toFixed(2)), endFlat: +z(L - 6, 0).toFixed(2), endCurved: +z(L - 6, 1).toFixed(2) }; })()`);
+  t.ok(cv.curved.every((v, i) => v > cv.flat[i]) && cv.curved[2] > 3 && cv.endCurved === cv.endFlat, 'une passe courbée monte plus vite (hors de portée plus tôt), l’arrivée ne change pas', cv);
+
   t.group('Tutoriel : plonger en défense');
   const td = R(`(() => {
     const keepH = G.humans, keepS = G.series; G.series = null; G.humans = [{ id: 0, team: 0, sel: null }]; G.myId = 0; syncMe();

@@ -266,7 +266,7 @@ function snapshot() {
   return {
     t: 's', m: sendMeta ? meta : undefined,
     p: players.map(p => [r1(p.x), r1(p.y), r1(p.vx), r1(p.vy), p.dive > 0 ? 1 : 0, p.down > 0 ? 1 : 0, p.tag, p.state, p.role, r1(p.cx), r1(p.cy), idx(p.match), p.jprep > 0 ? -1 : r1(jumpLift(p))]),
-    d: [disc.mode, idx(disc.holder), r1(disc.x), r1(disc.y), r1(disc.sx), r1(disc.sy), r1(disc.cx), r1(disc.cy), r1(disc.ex), r1(disc.ey), r2(disc.t), r2(disc.dur), idx(disc.intended), disc.kind],
+    d: [disc.mode, idx(disc.holder), r1(disc.x), r1(disc.y), r1(disc.sx), r1(disc.sy), r1(disc.cx), r1(disc.cy), r1(disc.ex), r1(disc.ey), r2(disc.t), r2(disc.dur), idx(disc.intended), disc.kind, r2(disc.curveV || 0)],
     g: { score: G.score, off: G.off, phase: G.phase, stall: r1(G.stall), mk: idx(G.marker), msg: G.msg, mid: G.msgId, mt: G.msgTeam, ma: G.msgAlt,
       dbl: idx(G.dbl), gt: r1(G.gt), carry: G.carryTo,
       pull: G.phase === 'pull' && G.pull ? G.pull.team : -1, pullBy: G.pull ? G.pull.by : null, pready: G.phase === 'pull' && pullReady(), pleft: pullLeft(), tell: highTell(), pz: G.pz || null }
@@ -403,7 +403,7 @@ function applySnapshot(m) {
   disc.mode = d[0]; disc.holder = d[1] >= 0 ? players[d[1]] : null;
   disc.nx = d[2]; disc.ny = d[3];
   [disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey] = d.slice(4, 10);
-  disc.netT = d[10]; disc.dur = d[11]; disc.intended = d[12] >= 0 ? players[d[12]] : null; disc.kind = THROWS[d[13]] ? d[13] : 'normal';
+  disc.netT = d[10]; disc.dur = d[11]; disc.intended = d[12] >= 0 ? players[d[12]] : null; disc.kind = THROWS[d[13]] ? d[13] : 'normal'; disc.curveV = +d[14] || 0;
   const g = m.g;
   G.score = g.score; G.off = g.off; G.stall = g.stall; G.marker = g.mk >= 0 ? players[g.mk] : null;
   G.dbl = g.dbl >= 0 ? players[g.dbl] : null; G.carryTo = g.carry || null; G.gt = g.gt;

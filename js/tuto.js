@@ -241,7 +241,7 @@ const TUTO_STEPS = [
       const u0 = disc.t / disc.dur, peak = discPeak();          // premier point où le disque passe à portée d'un plongeon près de toi
       for (let u = u0; u <= 1; u += 0.01) {
         const [x, y] = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u);
-        if (dist(x, y, me.x, me.y) < 2.8 && heightAt(u, peak, disc.kind, discLen()) < REACH_DIVE) {
+        if (dist(x, y, me.x, me.y) < 2.8 && heightAt(u, peak, disc.kind, discLen(), disc.curveV) < REACH_DIVE) {
           if ((u - u0) * disc.dur <= 0.3) { T.cued = true; flash('PLONGE ! 🥏', true); }
           break;
         }

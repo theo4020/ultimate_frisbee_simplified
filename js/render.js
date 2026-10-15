@@ -13,14 +13,14 @@ function heightColor(z, a) {
   const c = HC[G.form.cb === '1' ? 'cb' : 'std'];
   return `rgba(${z < REACH_DIVE ? c[0] : z < REACH_STAND ? c[1] : z < REACH_STAND + JUMP_H ? c[2] : c[3]},${a})`;
 }
-function drawFlightPath(sx, sy, cx, cy, ex, ey, peak, u0, alpha, width, dash, kind) {
+function drawFlightPath(sx, sy, cx, cy, ex, ey, peak, u0, alpha, width, dash, kind, curve) {
   const step = 0.025, len = dist(sx, sy, ex, ey);
   ctx.save(); ctx.lineWidth = width; ctx.lineCap = 'round'; if (dash) ctx.setLineDash(dash);
   let [px, py] = bez(sx, sy, cx, cy, ex, ey, u0);
   for (let u = u0 + step; u <= 1.0001; u += step) {
     const [x, y] = bez(sx, sy, cx, cy, ex, ey, Math.min(1, u));
     const um = u - step / 2;
-    ctx.strokeStyle = heightColor(heightAt(um, peak, kind, len), alpha);
+    ctx.strokeStyle = heightColor(heightAt(um, peak, kind, len, curve), alpha);
     ctx.beginPath(); ctx.moveTo(X(px), Y(py)); ctx.lineTo(X(x), Y(y)); ctx.stroke();
     px = x; py = y;
   }
@@ -216,7 +216,7 @@ function draw() {
     ctx.save();
     const cancel = G.aiming && dist(G.pointer.x, G.pointer.y, h.x, h.y) < CANCEL_R;
     ctx.globalAlpha = cancel ? 0.3 : kindLocked() ? 0.35 : 1;          // changement de passe en cours : aperçu estompé
-    drawFlightPath(h.x, h.y, cx, cy, ex, ey, peakOf(dur, kind), 0, G.aiming ? 0.95 : 0.7, G.aiming ? 3 : 2, kind === 'high' ? [2, 5] : [6, 5], kind);
+    drawFlightPath(h.x, h.y, cx, cy, ex, ey, peakOf(dur, kind), 0, G.aiming ? 0.95 : 0.7, G.aiming ? 3 : 2, kind === 'high' ? [2, 5] : [6, 5], kind, G.curve);
     ctx.strokeStyle = G.aiming ? 'rgba(250,204,21,.95)' : 'rgba(255,255,255,.75)'; ctx.lineWidth = 2;
     const er = throwErr(d, G.curve, kind) + Math.hypot(wx, wy) * 0.08;
     circle(X(ex), Y(ey), Math.max(er * S, 4)); ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.fill(); ctx.stroke();
@@ -234,7 +234,7 @@ function draw() {
   // Trajectoire restante du disque en vol, colorée selon la hauteur
   if (disc.mode === 'air') {
     const u0 = Math.min(1, disc.t / disc.dur);
-    drawFlightPath(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, discPeak(), u0, 0.7, 2.5, [5, 4], disc.kind);
+    drawFlightPath(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, discPeak(), u0, 0.7, 2.5, [5, 4], disc.kind, disc.curveV);
   }
   if (playing && (disc.mode === 'air' || (canThrow() && G.pointer.active))) drawHeightLegend();
 

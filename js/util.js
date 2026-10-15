@@ -77,7 +77,7 @@ const discPeak = () => peakOf(disc.dur, disc.kind);
 //  • passe normale : lâchée vers 0,9 m, au-dessus des bras après RISE_T, redescend pendant les FALL_T dernières secondes
 //  • passe haute : lâchée au-dessus de la tête, à hauteur de saut (une mark debout ne la touche pas,
 //    une mark qui saute au bon moment oui), puis elle monte hors de portée et ne redescend qu'à l'arrivée
-function heightAt(u, peak, kind, len) {
+function heightAt(u, peak, kind, len, curve) {
   if (kind === 'high') {
     if (u < 0.45) return 2.3 + (peak - 2.3) * (u / 0.45) * (u / 0.45);
     return peak * Math.sin(Math.PI / 2 * Math.min(1, (1 - u) / 0.55));
@@ -85,14 +85,15 @@ function heightAt(u, peak, kind, len) {
   // passe normale : sa hauteur dépend de la distance parcourue depuis le lanceur (et de celle qui reste jusqu'au receveur) :
   //   au lancer : cercle de stall (STALL_R) → en plongeant ; 3 m de plus → debout ; encore 3 m → en sautant ;
   //   à l'arrivée, les mêmes zones 1,5 fois plus longues (le disque redescend plus doucement qu'il ne monte) ;
-  //   entre les deux, hors de portée
+  //   entre les deux, hors de portée ; une passe courbée monte plus vite (zones du lancer jusqu'à 40 % plus courtes)
   const L = len || 15, top = Math.max(NORMAL_TOP, peak);
-  return Math.min(normalZ(u * L, 0.9, top, 1), normalZ((1 - u) * L, 1.0, top, 1.5));
+  const kUp = 1 - CURVE_RISE * Math.min(1, Math.abs(curve || 0));
+  return Math.min(normalZ(u * L, 0.9, top, kUp), normalZ((1 - u) * L, 1.0, top, 1.5));
 }
 const discLen = () => dist(disc.sx, disc.sy, disc.ex, disc.ey);
-const discZ = u => heightAt(u, discPeak(), disc.kind, discLen());
+const discZ = u => heightAt(u, discPeak(), disc.kind, discLen(), disc.curveV);
 // hauteur d'une passe normale à s mètres de son extrémité (lancer ou réception), en partant de z0 ; k allonge les zones
-const PASS_STAND = 3, PASS_JUMP = 3;                            // longueur des zones « debout » et « en sautant » au lancer (m)
+const PASS_STAND = 3, PASS_JUMP = 3, CURVE_RISE = 0.4;                            // longueur des zones « debout » et « en sautant » au lancer (m)
 function normalZ(s, z0, top, k) {
   const a = STALL_R * k, b = a + PASS_STAND * k, c = b + PASS_JUMP * k, dive = REACH_DIVE, stand = REACH_STAND, jump = REACH_STAND + JUMP_H;
   if (s <= a) return z0 + (dive - z0) * s / a;
