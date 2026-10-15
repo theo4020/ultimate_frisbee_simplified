@@ -1,0 +1,14 @@
+# fichiers du dépôt qui ne doivent pas être servis comme pages du site
+.git
+.github
+.gitignore
+.assetsignore
+.dev.vars
+.wrangler
+node_modules
+worker
+tools
+wrangler.jsonc
+README.md
+js/secrets.js
+js/secrets.example.js

@@ -1,0 +1,7 @@
+# Identifiants (relais TURN…) : jamais dans Git
+js/secrets.js
+.DS_Store
+Thumbs.db
+.dev.vars
+.wrangler/
+node_modules/
