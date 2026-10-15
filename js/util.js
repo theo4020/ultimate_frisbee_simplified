@@ -77,21 +77,27 @@ const discPeak = () => peakOf(disc.dur, disc.kind);
 //  • passe normale : lâchée vers 0,9 m, au-dessus des bras après RISE_T, redescend pendant les FALL_T dernières secondes
 //  • passe haute : lâchée au-dessus de la tête, à hauteur de saut (une mark debout ne la touche pas,
 //    une mark qui saute au bon moment oui), puis elle monte hors de portée et ne redescend qu'à l'arrivée
-function heightAt(u, peak, kind) {
+function heightAt(u, peak, kind, len) {
   if (kind === 'high') {
     if (u < 0.45) return 2.3 + (peak - 2.3) * (u / 0.45) * (u / 0.45);
     return peak * Math.sin(Math.PI / 2 * Math.min(1, (1 - u) / 0.55));
   }
-  // passe normale : en temps réel, pas en proportion du vol — elle passe au-dessus des bras (debout) en ~0,1 s, quelle que
-  // soit la distance, et ne redescend à portée qu'à la toute fin (~0,2 s avant l'arrivée) ; les longues passes montent plus haut
-  const dur = Math.max(0.2, (peak / THROWS.normal.peak - 0.8) / 1.1 * THROWS.normal.dur), t = u * dur, top = Math.max(NORMAL_TOP, peak);
-  const ease = x => 1 - (1 - clamp(x, 0, 1)) ** 2, left = Math.max(0, dur - t);
-  // d'abord au-dessus des bras (même vitesse pour toutes les passes), ensuite seulement plus haut pour les longues
-  const rise = 0.9 + (NORMAL_TOP - 0.9) * ease(t / RISE_T) + (top - NORMAL_TOP) * ease((t - RISE_T) / 0.5);
-  const fall = 1.0 + (NORMAL_TOP - 1.0) * clamp(left / FALL_T, 0, 1) + (top - NORMAL_TOP) * ease((left - FALL_T) / 0.5);   // redescente régulière jusqu'à 1 m
-  return Math.min(rise, fall);
+  // passe normale : sa hauteur dépend de la distance parcourue depuis le lanceur (et de celle qui reste jusqu'au receveur) :
+  //   dans le cercle de stall (STALL_R) → contrable en plongeant ; 2 m de plus → debout ; encore 2 m → en sautant ;
+  //   au-delà, hors de portée jusqu'à la même zone, à l'envers, avant l'arrivée
+  const L = len || 15, top = Math.max(NORMAL_TOP, peak);
+  return Math.min(normalZ(u * L, 0.9, top), normalZ((1 - u) * L, 1.0, top));
 }
-const discZ = u => heightAt(u, discPeak(), disc.kind);
+const discLen = () => dist(disc.sx, disc.sy, disc.ex, disc.ey);
+const discZ = u => heightAt(u, discPeak(), disc.kind, discLen());
+// hauteur d'une passe normale à s mètres de son extrémité (lancer ou réception), en partant de z0
+function normalZ(s, z0, top) {
+  const R = STALL_R, dive = REACH_DIVE, stand = REACH_STAND, jump = REACH_STAND + JUMP_H;
+  if (s <= R) return z0 + (dive - z0) * s / R;
+  if (s <= R + 2) return dive + (stand - dive) * (s - R) / 2;
+  if (s <= R + 4) return stand + (jump - stand) * (s - R - 2) / 2;
+  return jump + (top - jump) * Math.min(1, (s - R - 4) / 4);
+}
 // hauteur gagnée par un joueur en plein saut (0 au sol, JUMP_H au sommet)
 const jumpLift = p => (p.jump > 0 ? JUMP_H * Math.sin(Math.PI * (1 - p.jump / JUMP_T)) : 0);
 

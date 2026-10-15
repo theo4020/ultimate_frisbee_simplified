@@ -154,7 +154,7 @@ function bestIntercept(d) {
   const u0 = disc.t / disc.dur, peak = discPeak();
   for (let u = u0 + 0.03; u <= 1.001; u += 0.04) {
     const [x, y] = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u);
-    if (heightAt(u, peak, disc.kind) > 1.9) continue;
+    if (heightAt(u, peak, disc.kind, discLen()) > 1.9) continue;
     const tA = (u - u0) * disc.dur;
     const r = dist(d.x, d.y, x, y);
     if (Math.max(0, r - 0.9) / SPD.sprint + 0.12 <= tA) return { x, y, tA, r };

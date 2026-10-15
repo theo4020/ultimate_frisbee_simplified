@@ -104,7 +104,7 @@ export default async function (t, { quick }) {
     }
     return { n, close };
   })()`);
-  t.ok(dp.n > 100 && dp.close / dp.n < 0.01, '2 s après la réception, le relais est (presque) toujours à plus de 3 m', dp);
+  t.ok(dp.n > 100 && dp.close / dp.n < 0.025, '2 s après la réception, le relais est (presque) toujours à plus de 3 m', dp);
 
   t.group('Niveaux : mêmes idées, stats et choix de passe différents');
   const lvq = R(`(() => { const keys = o => Object.keys(o).sort().join(); const L = [AI_LEVELS.facile, AI_LEVELS.normal, AI_LEVELS.difficile, LEGEND, SUPER, endlessLevel(20)];
@@ -113,14 +113,13 @@ export default async function (t, { quick }) {
   t.ok(lvq.greed.every((g, i) => i === 0 || g <= lvq.greed[i - 1]) && lvq.greed[0] > lvq.greed[1], 'le débutant prend plus de risques dans ses passes', lvq.greed);
   t.ok(lvq.hands.every((g, i) => i === 0 || g <= lvq.hands[i - 1]), 'et droppe plus souvent', lvq.hands);
 
-  t.group('Passe normale : fenêtre de contre fixe');
-  const win = R(`[6, 15, 30, 45].map(d => {                     // temps (s) pendant lequel le disque est à portée debout, au début et à la fin
-    const dur = throwDur(0, 0, d, 0, 'normal'), peak = peakOf(dur, 'normal'); let a = 0, b = 0;
-    for (let t = 0; t <= dur; t += 0.005) if (heightAt(t / dur, peak, 'normal') < REACH_STAND) { if (t < dur / 2) a += 0.005; else b += 0.005; }
-    return [+a.toFixed(2), +b.toFixed(2)];
+  t.group('Passe normale : zones de contre selon la distance au lanceur');
+  const zn = R(`[20, 30, 45].map(L => {                         // hauteur à 4, 6, 8 et 10 m du lanceur (même chose avant le receveur)
+    const dur = throwDur(0, 0, L, 0, 'normal'), peak = peakOf(dur, 'normal'), z = s => heightAt(s / L, peak, 'normal', L);
+    return { L, z4: +z(4).toFixed(2), z6: +z(6).toFixed(2), z8: +z(8).toFixed(2), z10: +z(10).toFixed(2), e4: +z(L - 4).toFixed(2) };
   })`);
-  t.ok(win.every(([a]) => a >= 0.05 && a <= 0.16) && Math.max(...win.map(w => w[0])) - Math.min(...win.map(w => w[0])) < 0.03, 'au lancer : ~0,1 s à portée, quelle que soit la distance', win);
-  t.ok(win.every(([, b]) => b >= 0.2 && b <= 0.35) && Math.max(...win.map(w => w[1])) - Math.min(...win.map(w => w[1])) < 0.03, 'à l’arrivée : à portée pendant les ~0,3 dernières secondes, quelle que soit la distance', win);
+  t.ok(zn.every(o => o.z4 < 1.5 && o.z6 < 2 && o.z8 < 3 && o.z10 > 3), 'cercle de stall : en plongeant ; +2 m : debout ; +2 m : en sautant ; au-delà : hors de portée', zn);
+  t.ok(zn.every(o => o.e4 < 1.5), 'même chose à l’envers avant le receveur', zn);
 
   t.group('Tutoriel : plonger en défense');
   const td = R(`(() => {

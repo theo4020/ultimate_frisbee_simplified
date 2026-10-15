@@ -205,7 +205,7 @@ function update(dt) {
         if (G.tuto) G.tuto.blocked = true;
         defStop(p, 'Block en l’air !'); return;
       }
-      if (r < (G.tuto && G.tuto.wall ? 1 : (diving ? 0.85 : L.block) * blockOdds(p, diving))) {
+      if (r < (G.tuto && (G.tuto.wall || diving) ? 1 : (diving ? 0.85 : L.block) * blockOdds(p, diving))) {   // tutoriel : bien placé = contré
         if (diving) { achEvent('layoutblock', p.team); if (G.tuto) G.tuto.lblock = true; } defStop(p, diving ? 'Layout block !' : p.jump > 0 ? 'Block en l’air !' : 'Block !'); return; }
     }
     if (catcher) {
@@ -307,6 +307,7 @@ function aiJumps(u) {
     if (p === disc.thrower || p.jumpTried || controllerOf(p) && userControls(p)) continue;
     if (disc.t < 0.4 && dist(p.x, p.y, disc.sx, disc.sy) < 3) continue;   // la mark : voir plus haut
     const mine = p.team === disc.team;
+    if (!mine && disc.t < 0.2 * aiLvl(p.team).react) continue;       // un défenseur ne saute pas avant d'avoir vu le lancer
     if (dist(p.x, p.y, x2, y2) > (mine ? 1.3 : 1.05) + 0.4) continue;
     p.jumpTried = true;
     const L = aiLvl(p.team);

@@ -34,7 +34,7 @@ function throwDisc(h, tx, ty, curve, errScale, kind) {
   msThrow(h, d, kind);
   if (G.dplay && G.dplay.team !== h.team) G.dplay.throws++;
   disc.intended = nearest(TEAMS[h.team], ex, ey, h);
-  players.forEach(p => { p.diveTried = false; p.diveArmed = false; p.jumpTried = false; if (p.team !== h.team) p.react = 0; });
+  players.forEach(p => { p.diveTried = false; p.diveArmed = false; p.jumpTried = false; if (p.team !== h.team) p.react = rand(0.15, 0.25) * aiLvl(p.team).react; });   // la défense voit le lancer, puis réagit (course, plongeon)
   G.stall = 0; G.stats.throws++;
   fxEvent('throw', h.x, h.y, h.team);
   preCatch();
@@ -61,7 +61,7 @@ function laneSlack(h, aimX, aimY, tx, ty, curve, opp, kind) {
   const [cx, cy] = ctrlFor(h.x, h.y, aimX, aimY, curve);
   let min = 9;
   for (let u = 0.04; u <= 1.001; u += 0.06) {
-    const z = heightAt(u, peak, kind);
+    const z = heightAt(u, peak, kind, dist(h.x, h.y, tx, ty));
     if (z > REACH_STAND + JUMP_H) continue;
     const jumpOnly = z > REACH_STAND;                         // à portée seulement en sautant : moins risqué
     const [x, y] = bez(h.x, h.y, cx, cy, tx, ty, u), tA = u * dur;

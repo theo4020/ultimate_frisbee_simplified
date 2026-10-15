@@ -32,7 +32,7 @@ const SPEEDS = { lent: 0.6, normal: 0.78, rapide: 1 };
 const DRIFT = 0.5;                                          // dérive du disque : vent (m/s) × temps de vol × DRIFT
 const STALL_R = 4.5;                                        // rayon du stall count (agrandi par rapport aux 3 m réels)
 const STALL_RATE = 1 / 0.78;                                // stall count : 1 compte par seconde réelle à vitesse normale (le jeu tourne à 0,78)
-const NORMAL_TOP = 2.35, RISE_T = 0.2, FALL_T = 0.4;              // passe normale : hauteur de croisière (m), montée et descente (s)
+const NORMAL_TOP = 3.2;                                       // passe normale : hauteur de croisière (hors de portée, même en sautant)             // passe normale : hauteur de croisière (m), montée et descente (s)
 const REACH_STAND = 2.0, REACH_DIVE = 1.5;                  // hauteur max du disque contrable debout / en plongeon
 const CANCEL_R = 2.5;                                       // relâcher à moins de 2,5 m du handler annule le lancer
 const PEER_PREFIX = 'ultimate-frisbee-proto-v1-';

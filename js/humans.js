@@ -135,7 +135,7 @@ function diveMiss(p, x, y) {
   for (let t = step; t <= DIVE_T + 1e-6; t += step) {
     const u = (disc.t + t) / disc.dur, px = p.x + dx * SPD.dive * t, py = p.y + dy * SPD.dive * t;
     if (u >= 1) { if (inField(disc.ex, disc.ey)) miss = Math.min(miss, dist(px, py, disc.ex, disc.ey) - 2.6); break; }   // il touche le sol en plongeant
-    if (u <= 0.3 || heightAt(u, peak, disc.kind) >= REACH_DIVE + 0.3) continue;
+    if (u <= 0.3 || heightAt(u, peak, disc.kind, discLen()) >= REACH_DIVE + 0.3) continue;
     const [bx, by] = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u);
     if (inField(bx, by)) miss = Math.min(miss, dist(px, py, bx, by) - 2.0);
   }
@@ -168,7 +168,7 @@ const inSpot = (x, y) => [clamp(x, 0.3, W - 0.3), clamp(y, 0.3, H - 0.3)];
 function runPoint(p) {
   const u0 = disc.t / disc.dur, peak = discPeak(), sp = SPD.cut * aiLvl(p.team).speed;
   for (let u = Math.max(u0 + 0.02, 0.5); u <= 1.001; u += 0.025) {
-    if (heightAt(u, peak, disc.kind) > 2.1) continue;
+    if (heightAt(u, peak, disc.kind, discLen()) > 2.1) continue;
     const [x, y] = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u);
     if (!inField(x, y)) continue;                              // il ne va pas chercher le disque hors du terrain
     const d = dist(p.x, p.y, x, y), need = d > 0.9 ? (d - 0.9) / sp + 0.12 : 0, tA = (u - u0) * disc.dur;

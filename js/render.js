@@ -14,13 +14,13 @@ function heightColor(z, a) {
   return `rgba(${z < REACH_DIVE ? c[0] : z < REACH_STAND ? c[1] : z < REACH_STAND + JUMP_H ? c[2] : c[3]},${a})`;
 }
 function drawFlightPath(sx, sy, cx, cy, ex, ey, peak, u0, alpha, width, dash, kind) {
-  const step = 0.025;
+  const step = 0.025, len = dist(sx, sy, ex, ey);
   ctx.save(); ctx.lineWidth = width; ctx.lineCap = 'round'; if (dash) ctx.setLineDash(dash);
   let [px, py] = bez(sx, sy, cx, cy, ex, ey, u0);
   for (let u = u0 + step; u <= 1.0001; u += step) {
     const [x, y] = bez(sx, sy, cx, cy, ex, ey, Math.min(1, u));
     const um = u - step / 2;
-    ctx.strokeStyle = heightColor(heightAt(um, peak, kind), alpha);
+    ctx.strokeStyle = heightColor(heightAt(um, peak, kind, len), alpha);
     ctx.beginPath(); ctx.moveTo(X(px), Y(py)); ctx.lineTo(X(x), Y(y)); ctx.stroke();
     px = x; py = y;
   }
