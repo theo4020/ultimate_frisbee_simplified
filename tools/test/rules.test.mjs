@@ -95,7 +95,7 @@ export default async function (t, { quick }) {
   t.group('Relais : jamais collé au porteur');
   const dp = R(`(() => {
     let n = 0, close = 0;
-    for (let k = 0; k < 4; k++) {
+    for (let k = 0; k < 10; k++) {
       G.score = [0, 0]; G.receiving = k % 2; newWind(); startPoint();
       for (let f = 0; f < 20000 && (G.phase === 'play' || G.phase === 'pull'); f++) { __tick();
         if (G.phase !== 'play' || disc.mode !== 'held' || !disc.holder || G.holdT < 2) continue;   // 2 s après la réception (le temps de s'écarter)

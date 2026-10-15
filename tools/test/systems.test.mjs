@@ -86,7 +86,7 @@ export default async function (t, { quick }) {
     const t = G.off, c = cfg(t); c.play1 = 'sys'; c.p1sys = ${SYS}; G.oplay = null;
     callPlay(t, 1); const P = G.oplay, q = P.map[0], starts = [];
     const _st = startCut; startCut = function (p, x, y, d) { if (p === q) starts.push({ x: p.x, y: p.y, st: p.state, by: (new Error().stack.split(String.fromCharCode(10))[2] || '').trim().split(' ')[1] }); return _st(p, x, y, d); };
-    for (let f = 0; f < 2400 && G.oplay === P; f++) { disc.holder.think = 99; G.stall = 0; __tick(); }
+    for (let f = 0; f < 2400 && G.oplay === P; f++) { if (disc.holder) { disc.holder.think = 99; disc.holder.windup = null; } G.stall = 0; __tick(); }
     startCut = _st;
     return { n: starts.length, second: starts[1] && starts[1].st, ended: G.oplay !== P, by: starts.map(s => s.by).join() };
   })()`);
@@ -98,11 +98,11 @@ export default async function (t, { quick }) {
     callPlay(t, 1); const P = G.oplay, parked = P.map.filter(Boolean).every(q => q.state === 'park' && q.sprintPark);
     let firstAt = -1, f = 0;
     const _st = startCut; startCut = function (p, x, y, d) { if (firstAt < 0) firstAt = f; return _st(p, x, y, d); };
-    for (; f < 400 && firstAt < 0; f++) { disc.holder.think = 99; G.stall = 0; __tick(); }
+    for (; f < 400 && firstAt < 0; f++) { if (disc.holder) { disc.holder.think = 99; disc.holder.windup = null; } G.stall = 0; __tick(); }
     startCut = _st;
-    return { parked, wait: firstAt / 60 * 0.78 };
+    return { parked, wait: firstAt / 60 };
   })()`);
-  t.ok(su.parked && su.wait < 1.8, '« se mettre en place » : chacun file à sa place, puis les courses partent (1,5 s au plus)', su);
+  t.ok(su.parked && su.wait < 2.1, '« se mettre en place » : chacun file à sa place (1,5 s au plus), puis les courses partent', su);
   t.ok(ch.n === 2 && ch.second === 'park' && ch.ended, 'deux courses de suite pour un joueur : la 2e part de la fin de la 1re, puis le play se termine', ch);
 
   t.group('Où les systèmes comptent');
