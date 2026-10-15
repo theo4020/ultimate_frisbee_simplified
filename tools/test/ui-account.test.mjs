@@ -70,6 +70,18 @@ export default async function (t) {
     await c.waitForFunction(() => /non enregistré/.test(document.getElementById('endStatus').textContent), null, { timeout: 8000 });
     t.ok((await c.textContent('#endStatus')).includes('compte'), 'quelqu’un d’autre ne peut pas prendre ce pseudo', await c.textContent('#endStatus'));
 
+    t.group('Changer de pseudo');
+    await b.click('#endBack').catch(() => {});
+    await b.evaluate(() => { openCard('accountCard'); accRender(); });
+    await b.click('#accRenameB');
+    await b.fill('#accRenameIn', 'Joueur9'); await b.click('#accRenameGo');
+    await b.waitForFunction(() => document.getElementById('pname').value === 'Joueur9', null, { timeout: 8000 }).catch(() => {});
+    t.ok((await b.inputValue('#pname')) === 'Joueur9' && (await b.textContent('#accBody')).includes('Joueur9'), 'pseudo du compte changé', await b.inputValue('#pname'));
+    t.ok(srv.board('SELECT name FROM scores').some(r => r.name === 'Joueur9') && !srv.board('SELECT name FROM scores').some(r => r.name === 'Joueur1'), 'le classement affiche le nouveau pseudo');
+    await a.evaluate(() => accSave());
+    await a.waitForFunction(() => storeGet('uf-acc', {}).name === 'Joueur9', null, { timeout: 8000 }).catch(() => {});
+    t.ok(await a.evaluate(() => storeGet('uf-acc', {}).name === 'Joueur9' && document.getElementById('pname').value === 'Joueur9'), 'l’autre appareil suit le nouveau pseudo tout seul');
+
     t.group('Déconnexion');
     await a.click('#accB'); await a.click('#accOut');
     t.ok(!(await a.evaluate(() => document.getElementById('pname').readOnly)) && (await a.textContent('#accB')).includes('Créer'), 'déconnecté : pseudo de nouveau modifiable');

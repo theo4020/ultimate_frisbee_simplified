@@ -1,10 +1,11 @@
 // Comptes côté serveur (worker/index.js), sans Cloudflare : création, connexion, sauvegarde, pseudo réservé au classement.
-import worker, { Board, Accounts } from '../../worker/index.js';
+import worker, { Board, Accounts, Gallery } from '../../worker/index.js';
 import { fakeState, fakeNs, makeDO } from './lib.mjs';
 
 export default async function (t) {
   const as = fakeState(), acc = k => as.db.prepare('SELECT * FROM accounts WHERE k = ?').get(k);
-  const env = { ASSETS: { fetch: async () => new Response('page') }, ACCOUNTS: fakeNs(await makeDO(Accounts, as)), BOARD: fakeNs(await makeDO(Board, fakeState())) };
+  const bs = fakeState(), gs = fakeState();
+  const env = { ASSETS: { fetch: async () => new Response('page') }, ACCOUNTS: fakeNs(await makeDO(Accounts, as)), BOARD: fakeNs(await makeDO(Board, bs)), GALLERY: fakeNs(await makeDO(Gallery, gs)) };
   let ipN = 0;
   const call = async (path, body, { ip, h = { 'Sec-Fetch-Site': 'same-origin' }, e = env } = {}) => {
     const r = await worker.fetch(new Request('https://jeu.example' + path, { method: 'POST', headers: { ...h, 'CF-Connecting-IP': ip || '10.1.0.' + (ipN++) }, body: JSON.stringify(body) }), e);
@@ -49,6 +50,27 @@ export default async function (t) {
   t.ok((await A('load', { name: 'Théo', token: lg.j.token })).s === 401, 'après déconnexion, le jeton ne marche plus');
   t.ok((await A('delete', { name: 'Théo', token: r1.j.token })).s === 200 && !acc('théo'), 'compte supprimé');
   t.ok((await A('register', { name: 'Théo', password: 'nouveau1' })).s === 200, 'le pseudo redevient libre');
+
+  t.group('Changer de pseudo');
+  const nt = (await A('login', { name: 'Théo', password: 'nouveau1' })).j.token;
+  await call('/api/scores', { name: 'Théo', wins: 3, diff: 4, token: nt }, { ip: '30.0.0.1' });
+  await call('/api/gallery', { op: 'publish', name: 'Théo', token: nt, sys: { kind: 'off', id: 'abc123', name: 'Mon huck', pos: [[8, 2], [14, 1], [20, 0], [-3, -5]], steps: [] } });
+  await call('/api/gallery', { op: 'like', name: 'Théo', token: nt, id: gs.db.prepare('SELECT id FROM items').get().id });
+  await A('register', { name: 'Pris', password: 'abcd' });
+  t.ok((await A('rename', { name: 'Théo', token: nt, newName: 'pris' })).s === 409, 'nouveau pseudo déjà pris par un compte : refusé');
+  t.ok((await A('rename', { name: 'Théo', token: nt, newName: 'libre' })).s === 409, 'nouveau pseudo déjà au classement (joueur sans compte) : refusé');
+  t.ok((await A('rename', { name: 'Théo', token: 'faux', newName: 'Théodore' })).s === 401, 'sans le bon jeton : refusé');
+  const rn = await A('rename', { name: 'Théo', token: nt, newName: 'Théodore' });
+  t.ok(rn.s === 200 && rn.j.name === 'Théodore' && acc('théodore') && !acc('théo'), 'pseudo changé', rn.j);
+  t.ok((await A('load', { name: 'Théodore', token: nt })).s === 200, 'le compte garde ses jetons et ses données');
+  t.ok((await A('login', { name: 'Théodore', password: 'nouveau1' })).s === 200, 'même mot de passe');
+  t.ok(bs.db.prepare("SELECT name FROM scores WHERE k = 'théodore'").get()?.name === 'Théodore' && !bs.db.prepare("SELECT 1 FROM scores WHERE k = 'théo'").get(), 'sa ligne du classement prend le nouveau nom');
+  const it = gs.db.prepare('SELECT author, bykey FROM items').get(), lk = gs.db.prepare('SELECT user FROM likes').get();
+  t.ok(it.author === 'Théodore' && it.bykey === 'théodore' && lk.user === 'théodore', 'ses publications et ses ❤ dans la galerie suivent', { it, lk });
+  const other = await A('load', { name: 'Théo', token: nt });
+  t.ok(other.s === 409 && other.j.renamed === 'Théodore', 'un autre appareil resté sur l’ancien pseudo apprend le nouveau', other.j);
+  t.ok((await A('register', { name: 'Théo', password: 'abcd' })).s === 200, 'l’ancien pseudo redevient libre');
+  t.ok((await A('rename', { name: 'Théodore', token: nt, newName: 'THÉODORE' })).s === 200 && acc('théodore').name === 'THÉODORE', 'changer seulement les majuscules marche aussi');
 
   t.group('Recopie de l’ancien stockage (une seule fois)');
   const old = new Map([['u:ancien', { name: 'Ancien', salt: 's', hash: 'h', tokens: ['tok1'], data: { 'uf-ach': '{"a":1}' }, created: 5, updated: 6 }]]);

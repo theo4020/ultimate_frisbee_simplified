@@ -2,7 +2,7 @@
 // /api/gallery (galerie de systèmes : list, get, publish, unpublish, like — voir plus bas)
 // /api/scores (classement du mode infini : GET → { top }, POST { name, wins, diff, token? } → { rank, id, top } ;
 //              ?mode=coop : classement à part du mode infini à plusieurs, avec un nom d'équipe)
-// et /api/account/* (comptes joueurs : register, login, save, logout, delete — voir plus bas).
+// et /api/account/* (comptes joueurs : register, login, save, logout, delete, rename — voir plus bas).
 // /api/turn donne des identifiants TURN (relais Cloudflare) TEMPORAIRES. Le jeton reste ici, côté serveur : il n'apparaît
 // jamais dans le site. Réglages (Workers → ultimate-frisbee → Settings → Variables and Secrets) :
 //   TURN_KEY_ID         identifiant de la clé TURN (Realtime → TURN)
@@ -93,6 +93,13 @@ export class Board {
   top(n) { return this.db.all('SELECT id, name, wins, diff, at FROM scores ORDER BY wins DESC, diff DESC, at ASC LIMIT ?', n); }
   rankOf(e) { return this.db.one('SELECT COUNT(*) AS n FROM scores WHERE wins > ? OR (wins = ? AND (diff > ? OR (diff = ? AND at < ?)))', e.wins, e.wins, e.diff, e.diff, e.at).n + 1; }
   async fetch(request) {
+    const path = new URL(request.url).pathname;
+    if (path === '/has') { const { k } = await request.json(); return json({ has: !!this.db.one('SELECT 1 AS x FROM scores WHERE k = ?', k) }); }
+    if (path === '/rename') {                                   // un compte change de pseudo : sa ligne du classement suit
+      const { from, to } = await request.json();
+      this.db.run('UPDATE scores SET k = ?, name = ? WHERE k = ?', to.toLowerCase(), to, from);
+      return json({ ok: true });
+    }
     if (request.method !== 'POST') return json({ top: this.top(BOARD_SHOW) });
     const { run, ip } = await request.json(), now = Date.now();
     if (now - (this.last.get(ip) || 0) < BOARD_WAIT) return json({ error: 'trop de scores envoyés, réessaie dans un instant' }, 429);
@@ -127,6 +134,8 @@ export class Accounts {
     state.blockConcurrencyWhile(async () => {
       // comptes : k = pseudo en minuscules ; tokens et data en JSON (data = profil sauvegardé du joueur)
       this.db.run('CREATE TABLE IF NOT EXISTS accounts (k TEXT PRIMARY KEY, name TEXT, salt TEXT, hash TEXT, tokens TEXT, data TEXT, created INTEGER, updated INTEGER)');
+      // ancien pseudo → nouveau, pour prévenir les autres appareils d'un compte qui a changé de pseudo
+      this.db.run('CREATE TABLE IF NOT EXISTS aliases (old TEXT PRIMARY KEY, name TEXT)');
       await migrateOnce(state, this.db, async () => {
         for (const [key, a] of await state.storage.list({ prefix: 'u:' })) this.put(key.slice(2), a);
       });
@@ -141,14 +150,19 @@ export class Accounts {
       k, a.name, a.salt, a.hash, JSON.stringify(a.tokens || []), a.data ? JSON.stringify(a.data) : null, a.created || 0, a.updated || 0);
   }
   async fetch(request) {
-    const { op, name, password, token, data, ip } = await request.json();
+    const { op, name, password, token, data, ip, newName } = await request.json();
     const k = String(name || '').toLowerCase(), now = Date.now();
     const acc = this.get(k);
+    if (!acc && op !== 'check' && op !== 'register') {          // ancien pseudo d'un compte renommé : on donne le nouveau
+      const al = this.db.one('SELECT name FROM aliases WHERE old = ?', k);
+      if (al) return json({ error: 'ce compte s’appelle maintenant ' + al.name, renamed: al.name }, 409);
+    }
     const authed = () => acc && token && acc.tokens.includes(token);
     if (op === 'check') return json({ registered: !!acc, ok: !!authed(), name: acc ? acc.name : null });
     if (op === 'register') {
       if (acc) return json({ error: 'ce pseudo est déjà pris' }, 409);
       const salt = randHex(16), t = randHex(16);
+      this.db.run('DELETE FROM aliases WHERE old = ?', k);        // un ancien pseudo libéré peut être repris
       this.put(k, { name, salt, hash: await pwHash(password, salt), tokens: [t], data: data || null, created: now, updated: now });
       return json({ name, token: t, data: data || null });
     }
@@ -169,6 +183,18 @@ export class Accounts {
     if (op === 'load') return json({ name: acc.name, data: acc.data, updated: acc.updated });
     if (op === 'logout') { acc.tokens = acc.tokens.filter(x => x !== token); this.put(k, acc); return json({ ok: true }); }
     if (op === 'delete') { this.db.run('DELETE FROM accounts WHERE k = ?', k); return json({ ok: true }); }
+    if (op === 'rename') {                                       // nouveau pseudo : tout le compte le suit (jetons, données)
+      const nk = newName.toLowerCase();
+      if (nk !== k && this.get(nk)) return json({ error: 'ce pseudo est déjà pris' }, 409);
+      this.db.run('DELETE FROM accounts WHERE k = ?', k);
+      this.put(nk, Object.assign(acc, { name: newName, updated: now }));
+      if (nk !== k) {
+        this.db.run('DELETE FROM aliases WHERE old = ?', nk);
+        this.db.run('UPDATE aliases SET name = ? WHERE lower(name) = ?', newName, k);   // renommages en chaîne
+        this.db.run('INSERT OR REPLACE INTO aliases (old, name) VALUES (?, ?)', k, newName);
+      }
+      return json({ name: newName, updated: now });
+    }
     return json({ error: 'action inconnue' }, 400);
   }
 }
@@ -191,7 +217,23 @@ async function account(request, env, op) {
     if (op === 'save' && !data) return json({ error: 'rien à sauvegarder' }, 400);
   }
   const body = { op, name, password, token: typeof b.token === 'string' ? b.token : '', data, ip: request.headers.get('CF-Connecting-IP') || '?' };
+  if (op === 'rename') return renameAccount(env, body, cleanName(b.newName));
   return accStub(env).fetch('https://acc/', { method: 'POST', body: JSON.stringify(body) });
+}
+// changer de pseudo : le compte, sa ligne du classement et ses publications de la galerie prennent le nouveau nom
+async function renameAccount(env, body, to) {
+  if (to.length < 3) return json({ error: 'pseudo trop court (3 caractères au moins)' }, 400);
+  const from = body.name.toLowerCase(), post = (stub, url, o) => stub.fetch(url, { method: 'POST', body: JSON.stringify(o) }).then(r => r.json());
+  const board = env.BOARD && env.BOARD.get(env.BOARD.idFromName('main'));
+  // le nouveau pseudo a déjà un score (joueur sans compte) : on ne lui prend pas sa place
+  if (board && to.toLowerCase() !== from && (await post(board, 'https://board/has', { k: to.toLowerCase() })).has)
+    return json({ error: 'ce pseudo est déjà au classement : choisis-en un autre' }, 409);
+  const r = await accStub(env).fetch('https://acc/', { method: 'POST', body: JSON.stringify(Object.assign(body, { newName: to })) });
+  const j = await r.json();
+  if (!r.ok) return json(j, r.status);
+  if (board) await post(board, 'https://board/rename', { from, to });
+  if (env.GALLERY) await post(env.GALLERY.get(env.GALLERY.idFromName('main')), 'https://gal/rename', { from, to });
+  return json(j);
 }
 
 // ---------- galerie de systèmes ----------
@@ -239,6 +281,11 @@ export class Gallery {
   }
   async fetch(request) {
     const b = await request.json(), db = this.db, lc = s => String(s || '').toLowerCase();
+    if (new URL(request.url).pathname === '/rename') {         // un compte change de pseudo : ses publications et ses ❤ suivent
+      db.run('UPDATE items SET author = ?, bykey = ? WHERE bykey = ?', b.to, lc(b.to), b.from);
+      db.run('UPDATE likes SET user = ? WHERE user = ?', lc(b.to), b.from);
+      return json({ ok: true });
+    }
     const COLS = 'id, src, author AS "by", kind, name, info, likes, at, up';
     if (b.op === 'list') {
       const where = [], args = [];
@@ -332,7 +379,7 @@ export default {
     if (path === '/api/turn') return request.method === 'GET' ? turn(request, env) : json({ error: 'GET seulement' }, 405);
     if (path === '/api/scores') return scores(request, env);
     if (path === '/api/gallery') return gallery(request, env);
-    const m = /^\/api\/account\/(register|login|save|load|logout|delete)$/.exec(path);
+    const m = /^\/api\/account\/(register|login|save|load|logout|delete|rename)$/.exec(path);
     if (m) return account(request, env, m[1]);
     return env.ASSETS.fetch(request);
   }

@@ -19,9 +19,15 @@ function accApply(data) {
     for (const k in data) if (k.startsWith('uf-') && !ACC_SKIP.has(k) && typeof data[k] === 'string') localStorage.setItem(k, data[k]);
   } catch (e) { }
 }
-function accApi(op, body) {
+function accApi(op, body, retried) {
   return fetch('api/account/' + op, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), keepalive: op === 'save' })
-    .then(r => r.json().catch(() => ({})).then(j => (r.ok ? j : { error: j.error || (r.status === 404 ? 'comptes indisponibles ici (ils marchent sur ' + NEW_HOST + ')' : 'erreur ' + r.status), status: r.status })))
+    .then(r => r.json().catch(() => ({})).then(j => (r.ok ? j : { error: j.error || (r.status === 404 ? 'comptes indisponibles ici (ils marchent sur ' + NEW_HOST + ')' : 'erreur ' + r.status), status: r.status, renamed: j.renamed })))
+    .then(j => {                                                // le compte a changé de pseudo sur un autre appareil : on suit
+      if (!j.renamed || retried || op === 'register') return j;
+      const a = storeGet('uf-acc', null);
+      if (a && a.name && a.name.toLowerCase() === String(body.name || '').toLowerCase()) { a.name = j.renamed; accSet(a); storeSet('uf-name', j.renamed); syncNameUI(); }
+      return accApi(op, Object.assign({}, body, { name: j.renamed }), true);
+    })
     .catch(() => ({ error: 'serveur injoignable' }));
 }
 // mot de passe proposé à la création (lisible, facile à recopier)
@@ -105,6 +111,24 @@ function accLogout() {
   accSet(null); accState = '';
   syncNameUI(); accRender(); toast('Déconnecté. Ton profil reste sur cet appareil.');
 }
+// changer de pseudo : le compte garde tout (profil, mot de passe) ; le classement et la galerie prennent le nouveau nom
+function accRename() {
+  const a = accGet(), to = cleanName($('accRenameIn').value);
+  if (!a) return;
+  if (to.length < 3) { $('accMsg').textContent = '⚠️ Pseudo trop court (3 caractères au moins).'; return; }
+  if (to === a.name) { accRenaming = false; accRender(); return; }
+  $('accMsg').textContent = 'Changement…';
+  accApi('rename', { name: a.name, token: a.token, newName: to }).then(j => {
+    if (j.status === 401) { accRelogin().then(ok => (ok ? accRename() : null)); return; }
+    if (j.error) { $('accMsg').textContent = '⚠️ ' + j.error; return; }
+    const cur = storeGet('uf-acc', {});
+    accSet(Object.assign(cur, { name: j.name, synced: j.updated }));
+    storeSet('uf-name', j.name);
+    accRenaming = false; $('accMsg').textContent = '';
+    syncNameUI(); accRender();
+    toast('✅ Tu t’appelles maintenant ' + j.name + ' (classement et galerie mis à jour)');
+  });
+}
 function accDelete() {
   const a = accGet(); if (!a) return;
   askConfirm(`Supprimer le compte ${a.name} ? Ses données en ligne seront effacées (ton profil reste sur cet appareil) et le pseudo redeviendra libre.`, 'Supprimer', () => {
@@ -116,7 +140,7 @@ function accDelete() {
 }
 
 // ---------- affichage ----------
-let accTab = 'new', accShowPw = false;
+let accTab = 'new', accShowPw = false, accRenaming = false;
 function syncNameUI() {
   const a = accGet();
   $('pname').value = myName(); $('pname').readOnly = !!a;
@@ -132,12 +156,19 @@ function accRender() {
     $('accBody').innerHTML = `
       <p>Connecté en tant que <b>${esc(a.name)}</b>. Ton profil, tes succès, tes records et tes réglages sont sauvegardés en ligne :
         connecte-toi avec ce pseudo et ce mot de passe sur un autre appareil pour tout retrouver.</p>
-      <div class="accRow"><span>Pseudo</span><b>${esc(a.name)}</b></div>
+      <div class="accRow"><span>Pseudo</span>${accRenaming
+        ? `<input id="accRenameIn" class="tname" maxlength="12" autocomplete="off" spellcheck="false" value="${esc(a.name)}"><button id="accRenameGo" class="primary">Valider</button><button id="accRenameNo" class="ghost">Annuler</button>`
+        : `<b>${esc(a.name)}</b><button id="accRenameB" class="ghost">Changer</button>`}</div>
+      ${accRenaming ? '<p class="net">Ton profil et ton mot de passe ne changent pas. Ta place au classement et tes publications dans la galerie prennent le nouveau nom ; l’ancien pseudo redevient libre.</p>' : ''}
       <div class="accRow"><span>Mot de passe</span><b class="pw">${accShowPw ? esc(pw) : '•'.repeat(Math.max(6, pw.length))}</b>
         <button id="accEye" class="ghost">${accShowPw ? 'Masquer' : 'Afficher'}</button></div>
       <p class="net">${esc(accState)}</p>
       <div class="accBtns"><button id="accSaveB">Sauvegarder maintenant</button><button id="accOut">Se déconnecter</button><button id="accDel" class="ghost">Supprimer le compte</button></div>`;
     $('accEye').onclick = () => { accShowPw = !accShowPw; accRender(); };
+    if (accRenaming) {
+      $('accRenameGo').onclick = accRename; $('accRenameNo').onclick = () => { accRenaming = false; $('accMsg').textContent = ''; accRender(); };
+      $('accRenameIn').addEventListener('keydown', e => { if (e.key === 'Enter') accRename(); });
+    } else $('accRenameB').onclick = () => { accRenaming = true; accRender(); setTimeout(() => { const el = $('accRenameIn'); if (el) { el.focus(); el.select(); } }, 0); };
     $('accSaveB').onclick = accSave; $('accOut').onclick = accLogout; $('accDel').onclick = accDelete;
   } else {
     $('accBody').innerHTML = `
