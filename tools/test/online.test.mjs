@@ -87,7 +87,10 @@ export default async function (t) {
         if (document.elementFromPoint(x, y) === canvas) return { x, y };
       }
       return { x: r.left + X(h.x + 10 * dirOf(1)), y: r.top + Y(h.y) }; });
-    await guest.mouse.move(aim.x, aim.y); await guest.mouse.down(); await guest.mouse.up();
+    await guest.mouse.move(aim.x, aim.y);
+    await host.waitForFunction(() => { const g = G.humans.find(h => h.id !== G.myId); return g && inputOf(g).aim; }, null, { timeout: 3000 }).catch(() => {});
+    t.ok(await host.evaluate(() => !!netAimOut() && !allyAim()), 'l’invité vise : l’hôte reçoit sa visée, mais ne l’affiche pas (équipe adverse)');
+    await guest.mouse.down(); await guest.mouse.up();
     await host.waitForFunction(n => G.stats.throws > n, th, { timeout: 5000 }).catch(() => {});
     t.ok((await host.evaluate(() => G.stats.throws)) === th + 1, 'la passe de l’invité est jouée chez l’hôte');
     const fl = await guest.evaluate(() => new Promise(res => setTimeout(() => { const a = disc.t; setTimeout(() => res({ mode: disc.mode, a, b: disc.t, dur: disc.dur }), 120); }, 60)));

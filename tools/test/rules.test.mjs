@@ -130,6 +130,15 @@ export default async function (t, { quick }) {
   t.ok(acc.back > 0.55 && acc.back < 1, 'faire demi-tour en pleine course coûte du temps', acc);
   t.ok(acc.est > 3 && acc.est < 3.5, 'estimation du temps de course cohérente', acc);
 
+  t.group('En ligne : visée du porteur coéquipier');
+  const al = R(`(() => { const keep = [G.net, G.humans, G.myId, G.me, G.phase, G.off];
+    const p = TEAMS[0][1]; G.phase = 'play'; G.off = 0; holdDisc(p);
+    G.net = 'host'; G.myId = 0; G.humans = [{ id: 0, team: 0, sel: TEAMS[0][0] }, { id: 1, team: 0, sel: p, inp: { x: 60, y: 10, aim: true, aiming: true, curve: 0.5, high: false } }]; syncMe();
+    const mate = allyAim(); G.humans[1].team = 1; G.humans[0].team = 1; syncMe(); const opp = allyAim();
+    [G.net, G.humans, G.myId, G.me, G.phase, G.off] = keep; syncMe();
+    return { mate: !!mate && mate.curve === 0.5, opp: !!opp }; })()`);
+  t.ok(al.mate && !al.opp, 'un coéquipier humain vise : son aperçu de passe s’affiche, pas chez l’adversaire', al);
+
   t.group('Courbe et vent');
   const cw = R(`(() => { const k = G.wind.kmh; G.wind.kmh = 0; const calm = [throwErr(20, 0, 'normal'), throwErr(20, 1, 'normal')];
     G.wind.kmh = 25; const windy = [throwErr(20, 0, 'normal'), throwErr(20, 1, 'normal')]; G.wind.kmh = k; return { calm, windy }; })()`);

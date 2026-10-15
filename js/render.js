@@ -3,6 +3,39 @@
 // =====================================================================
 //  Rendu
 // =====================================================================
+// en ligne : visée d'un coéquipier humain qui a le disque (visible seulement par son équipe)
+function allyAim() {
+  if (!G.net || G.phase !== 'play' || disc.mode !== 'held' || !disc.holder || disc.holder.team !== G.me || G.spectator) return null;
+  const th = throwerHuman();
+  if (!th || th.id === G.myId) return null;
+  const a = G.net === 'guest' ? G.netAim : (() => { const i = inputOf(th); return i.aim ? { x: i.x, y: i.y, curve: i.curve || 0, kind: i.high ? 'high' : 'normal', aiming: !!i.aiming } : null; })();
+  return a && isFinite(a.x) && isFinite(a.y) ? a : null;
+}
+function drawAim(h, px, py, curve, kind, aiming, ally) {
+  const K = THROWS[kind] || THROWS.normal; kind = THROWS[kind] ? kind : 'normal';
+  let tx = px, ty = py, dx = tx - h.x, dy = ty - h.y, d = Math.hypot(dx, dy) || 0.01;
+  if (d > K.max) { tx = h.x + dx / d * K.max; ty = h.y + dy / d * K.max; d = K.max; }
+  if (d < K.min && d >= CANCEL_R) { tx = h.x + dx / d * K.min; ty = h.y + dy / d * K.min; d = K.min; }
+  const [sx, sy] = releasePoint(h, tx, ty), [cx, cy] = ctrlFor(sx, sy, tx, ty, curve);
+  const dur = throwDur(h.x, h.y, tx, ty, kind);
+  const [wx, wy] = drift(dur, kind), ex = tx + wx, ey = ty + wy;
+  ctx.save();
+  const cancel = aiming && dist(px, py, h.x, h.y) < CANCEL_R;
+  ctx.globalAlpha = (cancel ? 0.3 : !ally && kindLocked() ? 0.35 : 1) * (ally ? 0.6 : 1);   // changement de passe en cours : aperçu estompé
+  drawFlightPath(sx, sy, cx, cy, ex, ey, peakOf(dur, kind), 0, aiming ? 0.95 : 0.7, aiming ? 3 : 2, kind === 'high' ? [2, 5] : [6, 5], kind, curve);
+  ctx.strokeStyle = aiming ? 'rgba(250,204,21,.95)' : 'rgba(255,255,255,.75)'; ctx.lineWidth = 2;
+  const er = throwErr(d, curve, kind) + Math.hypot(wx, wy) * 0.08;
+  circle(X(ex), Y(ey), Math.max(er * S, 4)); ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.fill(); ctx.stroke();
+  if (Math.hypot(wx, wy) > 0.6) {                         // croix = point visé, le vent emmène le disque jusqu'au cercle
+    ctx.strokeStyle = 'rgba(125,211,252,.9)'; ctx.lineWidth = 2; const k = 5;
+    ctx.beginPath(); ctx.moveTo(X(tx) - k, Y(ty) - k); ctx.lineTo(X(tx) + k, Y(ty) + k); ctx.moveTo(X(tx) + k, Y(ty) - k); ctx.lineTo(X(tx) - k, Y(ty) + k); ctx.stroke();
+  }
+  if (kind !== 'normal') {                                  // rappel du type de lancer choisi
+    ctx.font = `800 ${Math.max(10, S * 1.3)}px system-ui`; ctx.textAlign = 'center'; ctx.fillStyle = '#facc15';
+    ctx.fillText(K.name.toUpperCase(), X(ex), Y(ey) - Math.max(er * S, 4) - 4);
+  }
+  ctx.restore();
+}
 function canThrow() { const h = throwerHuman(); return G.phase === 'play' && !!h && h.id === G.myId; }
 function defending() { return G.phase === 'play' && G.off !== G.me; }
 // couleur selon la hauteur : rouge = contrable (même en plongeon), orange = contrable debout,
@@ -204,32 +237,9 @@ function draw() {
     ctx.beginPath(); ctx.moveTo(X(a.x), Y(a.y)); ctx.lineTo(X(b.x), Y(b.y)); ctx.stroke(); ctx.restore();
   }
 
-  // Aperçu du lancer
-  if (canThrow() && G.pointer.active) {
-    const h = disc.holder, kind = G.throwKind, K = THROWS[kind];
-    let tx = G.pointer.x, ty = G.pointer.y, dx = tx - h.x, dy = ty - h.y, d = Math.hypot(dx, dy) || 0.01;
-    if (d > K.max) { tx = h.x + dx / d * K.max; ty = h.y + dy / d * K.max; d = K.max; }
-    if (d < K.min && d >= CANCEL_R) { tx = h.x + dx / d * K.min; ty = h.y + dy / d * K.min; d = K.min; }
-    const [sx, sy] = releasePoint(h, tx, ty), [cx, cy] = ctrlFor(sx, sy, tx, ty, G.curve);
-    const dur = throwDur(h.x, h.y, tx, ty, kind);
-    const [wx, wy] = drift(dur, kind), ex = tx + wx, ey = ty + wy;
-    ctx.save();
-    const cancel = G.aiming && dist(G.pointer.x, G.pointer.y, h.x, h.y) < CANCEL_R;
-    ctx.globalAlpha = cancel ? 0.3 : kindLocked() ? 0.35 : 1;          // changement de passe en cours : aperçu estompé
-    drawFlightPath(sx, sy, cx, cy, ex, ey, peakOf(dur, kind), 0, G.aiming ? 0.95 : 0.7, G.aiming ? 3 : 2, kind === 'high' ? [2, 5] : [6, 5], kind, G.curve);
-    ctx.strokeStyle = G.aiming ? 'rgba(250,204,21,.95)' : 'rgba(255,255,255,.75)'; ctx.lineWidth = 2;
-    const er = throwErr(d, G.curve, kind) + Math.hypot(wx, wy) * 0.08;
-    circle(X(ex), Y(ey), Math.max(er * S, 4)); ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.fill(); ctx.stroke();
-    if (Math.hypot(wx, wy) > 0.6) {                         // croix = point visé, le vent emmène le disque jusqu'au cercle
-      ctx.strokeStyle = 'rgba(125,211,252,.9)'; ctx.lineWidth = 2; const k = 5;
-      ctx.beginPath(); ctx.moveTo(X(tx) - k, Y(ty) - k); ctx.lineTo(X(tx) + k, Y(ty) + k); ctx.moveTo(X(tx) + k, Y(ty) - k); ctx.lineTo(X(tx) - k, Y(ty) + k); ctx.stroke();
-    }
-    if (kind !== 'normal') {                                  // rappel du type de lancer choisi
-      ctx.font = `800 ${Math.max(10, S * 1.3)}px system-ui`; ctx.textAlign = 'center'; ctx.fillStyle = '#facc15';
-      ctx.fillText(K.name.toUpperCase(), X(ex), Y(ey) - Math.max(er * S, 4) - 4);
-    }
-    ctx.restore();
-  }
+  // Aperçu du lancer (le tien, ou celui d'un coéquipier humain qui vise, en ligne)
+  if (canThrow() && G.pointer.active) drawAim(disc.holder, G.pointer.x, G.pointer.y, G.curve, G.throwKind, G.aiming, false);
+  else { const A = allyAim(); if (A) drawAim(disc.holder, A.x, A.y, A.curve, A.kind, A.aiming, true); }
 
   // Trajectoire restante du disque en vol, colorée selon la hauteur
   if (disc.mode === 'air') {
