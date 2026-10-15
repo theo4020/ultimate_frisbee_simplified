@@ -6,11 +6,11 @@
 // Imprécision maximale (m) d'un lancer. La passe haute se dégrade vite avec la distance et le vent :
 // sans vent, environ 1,2 m à 10 m, 3,4 m à 20 m, 6,6 m à 30 m (passe normale : 0,3 / 0,6 / 0,9 m).
 // Passe normale courbée : plus elle est courbée, plus le vent la rend imprévisible (droite : comme avant ;
-// pleine courbe : l'effet du vent sur l'imprécision est triplé)
+// pleine courbe : l'effet du vent sur l'imprécision est multiplié par 4)
 function throwErr(d, curve, kind) {
   const w = G.wind.kmh, c = Math.min(1, Math.abs(curve || 0));
   if (kind === 'high') return (0.07 * d + 0.005 * d * d + c * 1.2) * (1 + w * 0.012);
-  return (d * 0.03 + c * 0.8) * (1 + w * 0.022 * (1 + 2 * c));
+  return (d * 0.03 + c * 0.8) * (1 + w * 0.022 * (1 + 3 * c));
 }
 // le lanceur pivote et lâche le disque environ 0,8 m sur le côté de son corps, du côté opposé à la mark
 function releasePoint(h, tx, ty) {
@@ -35,7 +35,7 @@ function throwDisc(h, tx, ty, curve, errScale, kind) {
   const ax = tx + Math.cos(ea) * er, ay = ty + Math.sin(ea) * er;          // point réellement visé
   const dur = throwDur(h.x, h.y, ax, ay, kind) * throwSpd(h);
   const [wx0, wy0] = drift(dur, kind);
-  const cw = kind === 'high' ? 1 : 1 + Math.min(1, Math.abs(curve || 0));    // une passe courbée subit plus les rafales
+  const cw = kind === 'high' ? 1 : 1 + 1.4 * Math.min(1, Math.abs(curve || 0));    // une passe courbée subit plus les rafales
   const gv = kind === 'high' ? [0.07, 0.05] : [0.16 * cw, 0.11 * cw];        // petite rafale imprévisible pendant le vol
   const gk = rand(1 - gv[0], 1 + gv[0]), ga = rand(-gv[1], gv[1]);
   const wx = (wx0 * Math.cos(ga) - wy0 * Math.sin(ga)) * gk, wy = (wx0 * Math.sin(ga) + wy0 * Math.cos(ga)) * gk;

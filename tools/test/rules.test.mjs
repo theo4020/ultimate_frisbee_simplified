@@ -33,7 +33,7 @@ export default async function (t, { quick }) {
     h.x = W / 2 - 3; h.y = H / 2; q.x = W / 2 + 3; q.y = H / 2;     // milieu du terrain, loin des en-buts : la situation ne dépend pas de la partie jouée
     for (const p of TEAMS[t]) p.vx = p.vy = 0;
     for (const d of TEAMS[1 - t]) { d.x = W - 2 + (t ? -W + 4 : 0); d.y = 2; d.vx = d.vy = 0; }  // défenseurs loin : personne ne peut couper
-    G.stats.preCatch = 0;
+    G.stats.preCatch = 0; Object.assign(G.wind, { x: 0, y: 0, kmh: 0 });   // sans vent : le disque arrive pile sur le receveur
     throwDisc(h, q.x, q.y, 0, 0, 'normal');
     const r = disc.intended;
     return { pre: G.stats.preCatch, inOrder: G.order[t].includes(r), throwerIsCutter: G.order[t].includes(h) || h.role === 'dump', marked: TEAMS[1 - t].some(d => d.match === r) || defFormOf(1 - t) !== 'man' };
