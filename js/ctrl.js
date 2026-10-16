@@ -7,7 +7,7 @@
 //  • manette : schéma fixe (voir gamepad.js).
 
 const KEY_ACTIONS = [
-  ['high', 'Armer / désarmer la passe haute'], ['curveL', 'Courbe ↶'], ['curveR', 'Courbe ↷'],
+  ['high', 'Pivot (appui) · passe haute (maintenir)'], ['curveL', 'Courbe ↶'], ['curveR', 'Courbe ↷'],
   ['jump', 'Sauter'], ['dive', 'Layout'], ['switch', 'Changer de joueur'], ['play1', 'Appeler le play 1'], ['play2', 'Appeler le play 2']
 ];
 const DEFAULT_KEYS = { high: ['z', 'w'], curveL: ['a', 'q', 'arrowleft'], curveR: ['e', 'd', 'arrowright'], jump: ['s'], dive: ['f', 'shift'], switch: [' '], play1: ['r'], play2: ['t'] };

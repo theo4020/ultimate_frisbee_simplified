@@ -48,7 +48,8 @@ function gpPlay(sx, sy, m, press) {
   }
   if (press(4)) adjustCurve(-0.25);
   if (press(5)) adjustCurve(0.25);
-  if (press(3)) cycleThrowKind();
+  if (press(3)) pivotBtnDown();                               // Y : pivot (appui) / passe haute (maintenu)
+  if (!btn(3) && GP.prev[3]) pivotBtnUp();
   // pull
   if (G.phase === 'pull') {
     if (!localPuller()) return;

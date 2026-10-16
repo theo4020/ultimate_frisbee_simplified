@@ -3,7 +3,7 @@
 //   • lancer : poser le doigt n'importe où et tirer en arrière (lance-pierre) — ou vers la cible, selon les réglages ;
 //     la longueur règle la distance, relâcher lance, revenir au point de départ annule ;
 //   • courbe : pendant la visée, un 2e doigt glisse sur le côté et « pousse » la trajectoire de ce côté ;
-//   • taper ton porteur : armer / désarmer la passe haute · taper ailleurs : appeler un cut.
+//   • taper ton porteur : changer de pied de pivot · le maintenir : passe haute · taper ailleurs : appeler un cut.
 //  Sans le disque :
 //   • taper un endroit : ton joueur y va · taper un coéquipier : tu le prends · taper ton joueur : il saute ;
 //   • glisser vite n'importe où : layout dans cette direction ;
@@ -23,13 +23,16 @@ const gsAimCtx = () => canThrow() || fdPull();
 window.addEventListener('pointerdown', e => {
   if (!gsReady(e)) return;
   if (G.phase === 'pull' && !fdPull()) return;                // pendant la jauge, le tap l'arrête (controls.js)
-  GS.ptr.set(e.pointerId, { id: e.pointerId, x0: e.clientX, y0: e.clientY, t: G.time, len: 0, role: null });
+  const F = { id: e.pointerId, x0: e.clientX, y0: e.clientY, t: G.time, len: 0, role: null };
+  if (G.phase === 'play' && canThrow()) { const w = toWorld(e), h = disc.holder; if (h && dist(w.x, w.y, h.x, h.y) < 2.5) { F.pb = true; pivotBtnDown(); } }   // doigt sur ton porteur : pivot / passe haute
+  GS.ptr.set(e.pointerId, F);
 }, true);
 
 window.addEventListener('pointermove', e => {
   const F = GS.ptr.get(e.pointerId); if (!F) return;
   const dx = e.clientX - F.x0, dy = e.clientY - F.y0, len = Math.hypot(dx, dy);
   F.len = Math.max(F.len, len);
+  if (F.pb && F.len >= GS_TAP) { F.pb = false; pivotBtnCancel(); }   // il glisse : c'est une visée, pas le bouton pivot
   if (!F.role && len >= GS_DEAD) {                            // ce doigt commence à glisser : quel rôle ?
     if (gsAimCtx() && !GS.aim) {
       F.role = 'aim'; F.pull = fdPull(); GS.aim = F;
@@ -67,6 +70,7 @@ window.addEventListener('pointermove', e => {
 function gsEnd(e, cancel) {
   const F = GS.ptr.get(e.pointerId); if (!F) return;
   GS.ptr.delete(e.pointerId);
+  if (F.pb) { if (cancel) pivotBtnCancel(); else pivotBtnUp(); }
   const dx = e.clientX - F.x0, dy = e.clientY - F.y0, len = Math.hypot(dx, dy), dt = G.time - F.t;
   if (F.role === 'aim') {
     GS.aim = null; $('fjoy').style.display = 'none'; G.aiming = false;
@@ -96,11 +100,10 @@ function gsCanMove() {
   const h = meH(), sel = h && h.sel;
   return !!sel && G.phase === 'play' && (defending() || !soloStyle(h.team)) && !(disc.holder === sel && disc.mode !== 'air');
 }
-// tap avec le disque : sur ton porteur = passe haute, ailleurs = appel de cut
+// tap avec le disque : sur ton porteur = pivot (géré à l'appui, voir pivotBtnDown), ailleurs = appel de cut
 function gsTapWithDisc(w) {
   const h = disc.holder; if (!h) return;
-  if (dist(w.x, w.y, h.x, h.y) < 2.5) toggleHigh();
-  else if (attacking()) doCall(w.x, w.y);
+  if (dist(w.x, w.y, h.x, h.y) >= 2.5 && attacking()) doCall(w.x, w.y);
 }
 // tap sans le disque : prendre un coéquipier, sauter, se déplacer, ou appeler un cut
 function gsTap(w) {

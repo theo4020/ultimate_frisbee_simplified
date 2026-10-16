@@ -26,7 +26,7 @@ function updateHud() {
   document.body.classList.toggle('curveon', ct || localPuller() || throwSoon());
   document.body.classList.toggle('highon', ct);
   $('highB').classList.toggle('on', G.throwKind === 'high');
-  $('highB').innerHTML = G.throwKind === 'high' ? 'Armée ✓<br><small>annuler</small>' : 'Passe<br>haute';
+  $('highB').innerHTML = G.throwKind === 'high' ? 'Haute ✓<br><small>annuler</small>' : 'Pivot<br><small>maintenir : haute</small>';
   $('curveVThumb').style.top = ((G.curve + 1) / 2 * 100) + '%';
   const key = [att, G.phase, pulling, G.phase === 'play', forceOf(0), forceOf(1), formOf(0), formOf(1), defFormOf(0), defFormOf(1), op, dp, G.wind.kmh, G.net, G.me, hk,
     tn(0), tn(1), tcol(0), tcol(1), G.spectator, !!G.gpActive, !!G.tuto, !!G.attract, !!G.practice].join('|');
@@ -344,6 +344,26 @@ function doThrow(x, y, curve) {
   if (canThrow()) throwDisc(disc.holder, x, y, curve, 1, kind);
 }
 function setThrowKind(k) { setKind(k); }
+// Bouton pivot (Z, Y à la manette, bouton à l'écran, appui sur ton porteur au doigt) :
+//  appui court = changer de pied de pivot (côté open ↔ côté fermé, la mark suit : feinte possible) ;
+//  maintenu PIVOT_HOLD s = armer la passe haute (le temps de maintien compte dans sa préparation) ; appui court si armée = annuler
+const PIVOT_HOLD = 0.3, PB = { down: false, at: 0, done: false };
+function pivotBtnDown() { if (!canThrow() || PB.down) return; PB.down = true; PB.at = G.time; PB.done = false; }
+function pivotBtnCancel() { PB.down = false; }
+function pivotBtnUp() {
+  if (!PB.down) return;
+  PB.down = false;
+  if (PB.done || !canThrow()) return;
+  if (G.throwKind === 'high') setKind('normal'); else togglePivot();
+}
+function togglePivot() { if (G.pivHolder !== disc.holder) { G.pivHolder = disc.holder; G.pivSel = -1; } G.pivSel = G.pivSel > 0 ? -1 : 1; sendInput(true); }
+function pivotBtnFrame() {
+  if (disc.mode === 'held' && disc.holder !== G.pivHolder) { G.pivHolder = disc.holder; G.pivSel = -1; }   // nouvelle réception : pivot côté open
+  if (PB.down && !PB.done && G.time - PB.at >= PIVOT_HOLD) {
+    PB.done = true;
+    if (canThrow() && G.throwKind !== 'high') { setKind('high'); G.kindAt -= PIVOT_HOLD; }
+  }
+}
 // armer / désarmer la passe haute (les défenseurs voient le disque levé tant qu'elle est armée)
 function toggleHigh() { setKind(G.throwKind === 'high' ? 'normal' : 'high'); }
 function cycleThrowKind() { setKind(THROW_ORDER[(THROW_ORDER.indexOf(G.throwKind) + 1) % THROW_ORDER.length]); }

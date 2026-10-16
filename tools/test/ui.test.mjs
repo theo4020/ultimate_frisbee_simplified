@@ -132,6 +132,21 @@ export default async function (t) {
     await p.waitForTimeout(150);
     t.ok(out.inside || (aimOut.aiming && aimOut.out), 'clic sous le terrain : la visée part, hors des lignes', { out, aimOut });
     t.ok(out.inside || (await p.evaluate(() => G.stats.throws)) === th1 + 1, 'relâcher hors du terrain lance le disque', out);
+    t.group('PC : pied de pivot et passe haute sur la même touche');
+    await p.evaluate(() => { G.off = G.me; G.oplay = null; G.pickup = null; const h = TEAMS[G.me][0]; h.x = W / 2; h.y = H / 2; holdDisc(h); h.think = 99; });
+    await p.waitForFunction(() => canThrow(), null, { timeout: 5000 });
+    await p.waitForTimeout(100);
+    const pv0 = await p.evaluate(() => G.pivSel);
+    await p.keyboard.press('z');
+    await p.waitForTimeout(400);
+    const pv1 = await p.evaluate(() => ({ sel: G.pivSel, kind: G.throwKind, piv: disc.holder.pivY }));
+    t.ok(pv0 === -1 && pv1.sel === 1 && pv1.kind === 'normal' && pv1.piv > 0.5, 'appui court : il change de pied de pivot (côté fermé)', { pv0, pv1 });
+    await p.keyboard.down('z'); await p.waitForTimeout(380);
+    const hi = await p.evaluate(() => ({ kind: G.throwKind, lockLeft: KIND_DELAY - (G.time - G.kindAt) }));
+    await p.keyboard.up('z');
+    t.ok(hi.kind === 'high' && hi.lockLeft < 0.15 && (await p.evaluate(() => G.throwKind)) === 'high', 'maintenu : passe haute armée, le maintien compte dans sa préparation', hi);
+    await p.keyboard.press('z');
+    t.ok((await p.evaluate(() => G.throwKind)) === 'normal', 'appui court quand elle est armée : annulée');
     await p.click('#menuB');
     t.ok(await vis(p, '#gameMenuCard') && await p.evaluate(() => G.paused), 'menu ☰ : le jeu se met en pause');
     await p.click('#gmCtrl');
@@ -212,6 +227,20 @@ export default async function (t) {
     await q.waitForTimeout(300);
     t.ok((await q.evaluate(() => G.stats.throws)) === before + 1, 'relâcher lance le disque');
     t.ok(await q.evaluate(d => disc.mode === 'air' ? Math.sign(disc.ex - disc.sx) === d : true, pt.dir), 'le disque part dans le sens opposé au glissé');
+
+    t.group('Téléphone : pivot et passe haute sur ton porteur');
+    await q.waitForTimeout(300);
+    await q.evaluate(() => { G.off = G.me; G.oplay = null; G.pickup = null; const p = TEAMS[G.me][0]; p.x = W / 2; p.y = H / 2; holdDisc(p); p.think = 99; });
+    await q.waitForFunction(() => canThrow(), null, { timeout: 5000 });
+    const hp = await q.evaluate(() => { const r = canvas.getBoundingClientRect(), h = disc.holder; return { x: r.left + X(h.x) * r.width / (canvas.width / dpr), y: r.top + Y(h.y) * r.height / (canvas.height / dpr) }; });
+    const tch = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts });
+    await tch('touchStart', [{ x: hp.x, y: hp.y, id: 5 }]); await q.waitForTimeout(80); await tch('touchEnd', [{ x: hp.x, y: hp.y, id: 5 }]);
+    await q.waitForTimeout(100);
+    t.ok(await q.evaluate(() => G.pivSel === 1 && G.throwKind === 'normal'), 'tap sur ton porteur : il change de pied de pivot');
+    await tch('touchStart', [{ x: hp.x, y: hp.y, id: 6 }]); await q.waitForTimeout(400);
+    t.ok(await q.evaluate(() => G.throwKind === 'high'), 'appui maintenu sur ton porteur : passe haute armée');
+    await tch('touchEnd', [{ x: hp.x, y: hp.y, id: 6 }]);
+    await q.evaluate(() => setKind('normal'));
 
     t.group('Téléphone : appeler un play pendant la visée');
     await q.waitForTimeout(400);

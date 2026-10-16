@@ -57,9 +57,9 @@ const TUTO_STEPS = [
     ctx: 'throw',
     text: {
       mouse: () => `Un mur bloque le passage. <b>${tutoCmd('high')}</b> arme la passe haute, puis lance par-dessus.`,
-      touch: 'Un mur bloque le passage. <b>Tape ton porteur</b> pour armer la passe haute, puis lance par-dessus.',
-      joy: 'Un mur bloque le passage. Touche <b>Passe haute</b> (bord droit), puis lance par-dessus.',
-      pad: 'Un mur bloque le passage. <b>Y</b> arme la passe haute, puis lance par-dessus avec A.'
+      touch: 'Un mur bloque le passage. <b>Maintiens ton doigt sur ton porteur</b> pour armer la passe haute, puis lance par-dessus.',
+      joy: 'Un mur bloque le passage. <b>Maintiens</b> la touche <b>Pivot</b> (bord droit) pour armer la passe haute, puis lance par-dessus.',
+      pad: 'Un mur bloque le passage. <b>Maintiens Y</b> pour armer la passe haute, puis lance par-dessus avec A.'
     },
     setup() {
       tutoReset(); G.tuto.wall = true;
@@ -383,11 +383,11 @@ function tutoInput(S) {
 // commande à utiliser, telle que réglée par le joueur (touches choisies, gestes ou boutons, manette)
 function tutoCmd(a, touchAlt) {
   const inp = tutoInput(G.tuto && TUTO_STEPS[G.tuto.step]);
-  if (inp === 'mouse') return keysOf(a).map(keyName).join(' / ');
+  if (inp === 'mouse') return keysOf(a).map(keyName).join(' / ') + (a === 'high' ? ' maintenu' : '');
   if (a === 'play1') return inp === 'pad' ? 'croix ←' : 'bouton ▶';
-  if (inp === 'pad') return { high: 'Y', jump: 'A', dive: 'B', switch: 'X', curveL: 'LB', curveR: 'RB' }[a];
-  if (inp === 'joy') return { high: 'bouton Passe haute', jump: 'bouton Saut', dive: 'bouton Layout', switch: 'bouton Switch', curveL: 'curseur', curveR: 'curseur' }[a];
-  return touchAlt || { high: 'tape ton porteur', jump: 'tape ton joueur', dive: 'glisse vite', switch: 'tape un coéquipier', curveL: '2e doigt', curveR: '2e doigt' }[a];
+  if (inp === 'pad') return { high: 'Y maintenu', jump: 'A', dive: 'B', switch: 'X', curveL: 'LB', curveR: 'RB' }[a];
+  if (inp === 'joy') return { high: 'bouton Pivot maintenu', jump: 'bouton Saut', dive: 'bouton Layout', switch: 'bouton Switch', curveL: 'curseur', curveR: 'curseur' }[a];
+  return touchAlt || { high: 'maintiens ton porteur', jump: 'tape ton joueur', dive: 'glisse vite', switch: 'tape un coéquipier', curveL: '2e doigt', curveR: '2e doigt' }[a];
 }
 function tutoText(force) {
   const T = G.tuto, S = TUTO_STEPS[T.step], inp = tutoInput(S), sig = inp + JSON.stringify(CTRL);

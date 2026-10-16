@@ -43,7 +43,7 @@ function sendInput(force) {
   if (!force && G.time - inT < 0.033) return;
   inT = G.time;
   const aim = canThrow() && G.pointer.active;                  // il vise : ses coéquipiers voient l'aperçu de sa passe
-  netSend({ t: 'in', x: +G.pointer.x.toFixed(2), y: +G.pointer.y.toFixed(2), down: G.pointer.down, high: G.throwKind === 'high' && canThrow(), aim, aiming: aim && !!G.aiming, curve: aim ? +(+G.curve || 0).toFixed(2) : 0 });
+  netSend({ t: 'in', x: +G.pointer.x.toFixed(2), y: +G.pointer.y.toFixed(2), down: G.pointer.down, high: G.throwKind === 'high' && canThrow(), aim, aiming: aim && !!G.aiming, curve: aim ? +(+G.curve || 0).toFixed(2) : 0, piv: canThrow() && G.pivHolder === disc.holder ? G.pivSel : -1 });
 }
 function netError(msg) {
   for (const c of conns.values()) { try { c.close(); } catch (e) { } }
@@ -235,7 +235,7 @@ function hostOnData(id, m) {
     case 'team': setTeam(id, m.team === 1 ? 1 : m.team === -1 ? -1 : 0); break;
     case 'emo': hostEmote(id, m.e | 0); break;
     case 'name': h.name = cleanName(m.name); broadcastRoom(); break;
-    case 'in': Object.assign(inputOf(h), { x: +m.x || 0, y: +m.y || 0, down: !!m.down, high: !!m.high, aim: !!m.aim, aiming: !!m.aiming, curve: clamp(+m.curve || 0, -1, 1), last: G.time }); break;
+    case 'in': Object.assign(inputOf(h), { x: +m.x || 0, y: +m.y || 0, down: !!m.down, high: !!m.high, aim: !!m.aim, aiming: !!m.aiming, curve: clamp(+m.curve || 0, -1, 1), piv: m.piv === 1 ? 1 : -1, last: G.time }); break;
     case 'callplay': if (G.phase === 'play' && throwerHuman() === h) callPlay(h.team, m.n === 2 ? 2 : 1); break;
     case 'throw': if (G.phase === 'play' && throwerHuman() === h) throwDisc(disc.holder, +m.x, +m.y, clamp(+m.curve || 0, -1, 1), 1, THROWS[m.kind] ? m.kind : 'normal'); break;
     case 'dive': diveFor(h, +m.x, +m.y); break;

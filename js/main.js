@@ -36,6 +36,7 @@ function loop(now) {
   dbgRecord(dt);
   pauseFrame();
   playBtnsFrame();
+  pivotBtnFrame();
   replayTick(dt);
   joyFrame();
   netHeartbeat(dt);

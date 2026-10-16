@@ -188,6 +188,13 @@ function draw() {
   const playing = G.phase === 'play';
   const myAttack = playing && G.off === G.me && !G.practice, ME = G.me, mySel = (meH() || {}).sel || null;
 
+  // Ta passe : la zone où la mark peut contrer en se fendant (lancer dedans = risqué) — seulement quand c'est toi qui lances
+  if (canThrow() && !G.tuto) {
+    const mk = markOf(disc.holder);
+    if (mk) { ctx.fillStyle = 'rgba(239,68,68,.13)'; ctx.strokeStyle = 'rgba(248,113,113,.45)'; ctx.lineWidth = 1.5;
+      circle(X(mk.x), Y(mk.y), (ARM_R + MARK_LUNGE) * S); ctx.fill(); ctx.stroke(); }
+  }
+
   // Structure offensive de ton équipe (repère visuel)
   if (myAttack && disc.mode === 'held') {
     const ord = G.order[ME], dir = dirOf(ME), ax = disc.x, ay = disc.y;
@@ -266,10 +273,6 @@ function draw() {
     ctx.globalAlpha = 1;
     if (p === disc.holder && (disc.mode === 'held' || disc.mode === 'carry')) {
       ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; circle(X(p.x), Y(p.y), r + 4); ctx.stroke();
-      if (disc.mode === 'held' && Math.abs(p.pivY || 0) > 0.15) {   // pivot : le bras tendu du côté où il va lâcher le disque
-        const [rx, ry] = releasePoint(p, p.x, p.y); ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.moveTo(X(p.x), Y(p.y)); ctx.lineTo(X(rx), Y(ry)); ctx.stroke(); circle(X(rx), Y(ry), 3); ctx.fillStyle = '#fff'; ctx.fill();
-      }
     }
     if (myAttack && disc.mode === 'held' && p.team === ME && p !== disc.holder && nearestD(TEAMS[1 - ME], p.x, p.y)[1] > 2.8) {
       ctx.strokeStyle = 'rgba(74,222,128,.95)'; ctx.lineWidth = 2.5; circle(X(p.x), Y(p.y), r + 3); ctx.stroke();
@@ -338,9 +341,11 @@ function draw() {
   if (disc.mode !== 'dead') {
     let dx = disc.x, dy = disc.y;
     const tell = playing && highTell();                     // passe haute en préparation : disque levé au-dessus de la tête
-    if ((disc.mode === 'held' || disc.mode === 'carry') && !tell) {   // dans la main, du côté où il regarde
-      const f = disc.holder.face !== undefined ? disc.holder.face : (dirOf(disc.holder.team) > 0 ? 0 : Math.PI);
-      dx += Math.cos(f + 0.5) * 0.95; dy += Math.sin(f + 0.5) * 0.95;
+    if ((disc.mode === 'held' || disc.mode === 'carry') && !tell) {   // dans la main : du côté de son pivot (sinon du côté où il regarde)
+      const h = disc.holder, pv = disc.mode === 'held' ? h.pivY || 0 : 0;
+      const f = h.face !== undefined ? h.face : (dirOf(h.team) > 0 ? 0 : Math.PI);
+      const [rx, ry] = releasePoint(h, h.x, h.y), w = Math.min(1, Math.abs(pv) * 1.5);
+      dx += (Math.cos(f + 0.5) * 0.95) * (1 - w) + (rx - h.x) * w; dy += (Math.sin(f + 0.5) * 0.95) * (1 - w) + (ry - h.y) * w;
     }
     const lift = disc.mode === 'air' ? disc.z * S * 1.2 : tell ? 1.9 * S : 0;
     if (tell) {

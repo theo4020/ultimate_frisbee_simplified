@@ -19,9 +19,11 @@ const NEWS = [
       Nouveau aussi : les <b>consignes d'équipe</b> du menu d'avant-point (jeu long, passes hautes, prise de risque, aide en
       défense), et un jeu plus structuré : stacks plus loin du disque, un receveur rattrapé en pleine course freine avant
       de lancer, et un <b>style d'attaque</b> à choisir à côté de la formation : structuré (on se replace) ou enchaîné (flow).<br>
-      <b>Duel avec la mark</b> : le porteur pivote pour lâcher le disque sur le côté (son bras tendu le montre), la mark suit son
-      pivot et se fend vers le disque au lâcher. Lancer dans la mark, c'est souvent contré : pivote du côté open, ou feinte
-      d'un côté puis lance de l'autre pour la prendre à contre-pied.` },
+      <b>Duel avec la mark</b> : le porteur lâche le disque du côté de son pied de pivot (le disque est dessiné dans sa main),
+      la mark suit son pivot et se fend vers le disque au lâcher (sa zone rouge le montre). Lancer dans la mark, c'est
+      souvent contré : pivote de l'autre côté, ou feinte d'un côté puis lance de l'autre pour la prendre à contre-pied.<br>
+      Le bouton de passe haute devient le bouton <b>Pivot</b> : un appui change de pied (côté open à chaque réception),
+      le maintenir arme la passe haute, sans la ralentir.` },
   { id: 20, date: '2026-10-15', tag: 'Gameplay', title: 'Nouvelle physique, plus réaliste 🏃',
     body: `Le jeu repose maintenant sur une vraie physique :<br>
       • <b>Les joueurs accélèrent</b> en un peu plus d'une seconde au lieu de démarrer à fond : un bon changement de direction

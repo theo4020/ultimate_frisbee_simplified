@@ -16,8 +16,9 @@ function throwErr(d, curve, kind) {
 // contourner ; -1 = côté open, un peu vers l'avant), et lâche le disque jusqu'à PIVOT_R m de son corps.
 // L'axe du pivot est perpendiculaire à la direction porteur → mark (sans mark : là où elle se placerait).
 function pivotAxis(h) {
-  const m = markOf(h), c = closedOf(1 - h.team), d = dirOf(h.team);
-  let ux = m ? m.x - h.x : d * 1.0, uy = m ? m.y - h.y : c * 1.3;
+  // axe fixe : calculé depuis la place de base de la mark (pas sa position réelle, qui suit le pivot : sinon ça tourne en rond)
+  const c = closedOf(1 - h.team), d = dirOf(h.team), [mx, my] = markSpotFor(1 - h.team, h.x, h.y, 0);
+  let ux = mx - h.x, uy = my - h.y;
   const l = Math.hypot(ux, uy) || 1; ux /= l; uy /= l;
   let bx = -uy, by = ux;                                           // perpendiculaire…
   if (by * c < 0 || (Math.abs(by) < 0.05 && bx * d > 0)) { bx = -bx; by = -by; }   // …du côté fermé (et vers l'arrière)

@@ -103,7 +103,7 @@ window.addEventListener('keydown', e => {
   if (G.replay) { if (k === 'escape' || k === ' ' || k === 'enter') { e.preventDefault(); stopReplay(); } return; }
   if (keyIs('play1', k)) { doPlay(1); return; }
   if (keyIs('play2', k)) { doPlay(2); return; }
-  if (keyIs('high', k)) { cycleThrowKind(); return; }
+  if (keyIs('high', k)) { if (!e.repeat) pivotBtnDown(); return; }
   if (keyIs('curveL', k)) adjustCurve(-0.25);
   else if (keyIs('curveR', k)) adjustCurve(0.25);
   else if ((k === ' ' || k === 'enter') && localPuller()) { e.preventDefault(); pullStop(); }
@@ -212,4 +212,7 @@ $('curveV').addEventListener('pointermove', e => { if (e.pointerId === curveVId)
 $('curveV').addEventListener('pointerup', e => { if (e.pointerId === curveVId) curveVId = null; });
 $('curveV').addEventListener('pointercancel', () => { curveVId = null; });
 $('curveV').addEventListener('dblclick', () => setCurve(0));
-$('highB').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); toggleHigh(); });
+$('highB').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); pivotBtnDown(); });
+$('highB').addEventListener('pointerup', e => { e.preventDefault(); e.stopPropagation(); pivotBtnUp(); });
+$('highB').addEventListener('pointercancel', () => pivotBtnCancel());
+window.addEventListener('keyup', e => { if (keyIs('high', e.key.toLowerCase())) pivotBtnUp(); });

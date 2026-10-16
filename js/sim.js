@@ -158,8 +158,9 @@ function update(dt) {
     if (G.marker && !G.dbl) G.stall += dt * STALL_RATE;
     if (G.stall >= 10) { G.stats.stalls++; msTurnover(h, 'stall'); turnover(h.x, h.y, 'Stall 10 ! Turnover', 'stall'); return; }
     // pivot du porteur : humain, vers le côté où il vise ; IA, choisi dans aiThrow (passe ou feinte)
+    // pivot du porteur : un humain le choisit (bouton pivot, côté open au départ) ; l'IA, dans aiThrow (passe ou feinte)
     const th = throwerHuman();
-    if (th) { const inp = inputOf(th); if (th.id === G.myId ? G.pointer.active : inp.aim) h.pivTo = pivotFor(h, inp.x, inp.y); }
+    if (th) h.pivTo = th.id === G.myId ? (G.pivHolder === h ? G.pivSel : -1) : (inputOf(th).piv === 1 ? 1 : -1);
     const pt = h.pivTo ?? 0, pv = h.pivY || 0;
     const pT = PIVOT_T * (th ? 1 : aiLvl(h.team).react);       // un bon lanceur IA pivote plus vite (un humain : vitesse normale)
     h.pivY = pv + clamp(pt - pv, -dt / pT, dt / pT);
