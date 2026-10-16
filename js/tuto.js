@@ -246,10 +246,10 @@ const TUTO_STEPS = [
     title: 'Plonger en défense',
     ctx: 'move',
     text: {
-      mouse: () => `Une passe va passer à côté de toi (compte à rebours en haut). Dès que <b>PLONGE !</b> s'affiche, <b>clique sur sa trajectoire</b> (ou ${tutoCmd('dive')}).`,
-      touch: 'Une passe va passer à côté de toi (compte à rebours en haut). Dès que <b>PLONGE !</b> s\'affiche, <b>glisse vite vers sa trajectoire</b>.',
-      joy: 'Une passe va passer à côté de toi (compte à rebours en haut). Dès que <b>PLONGE !</b> s\'affiche, oriente le joystick vers elle et touche <b>Layout</b>.',
-      pad: 'Une passe va passer à côté de toi (compte à rebours en haut). Dès que <b>PLONGE !</b> s\'affiche, stick vers elle et <b>B</b>.'
+      mouse: () => `Une passe va passer à côté de toi (compte à rebours en bas). Dès que <b>PLONGE !</b> s'affiche, <b>clique sur sa trajectoire</b> (ou ${tutoCmd('dive')}).`,
+      touch: 'Une passe va passer à côté de toi (compte à rebours en bas). Dès que <b>PLONGE !</b> s\'affiche, <b>glisse vite vers sa trajectoire</b>.',
+      joy: 'Une passe va passer à côté de toi (compte à rebours en bas). Dès que <b>PLONGE !</b> s\'affiche, oriente le joystick vers elle et touche <b>Layout</b>.',
+      pad: 'Une passe va passer à côté de toi (compte à rebours en bas). Dès que <b>PLONGE !</b> s\'affiche, stick vers elle et <b>B</b>.'
     },
     still: true,
     setup() {
@@ -292,10 +292,10 @@ const TUTO_STEPS = [
     title: 'Contrer une passe haute',
     ctx: 'move',
     text: {
-      mouse: () => `Le porteur a armé une passe haute (compte à rebours en haut). Dès que <b>SAUTE !</b> s'affiche, saute (${tutoCmd('jump')} ou clic droit) : tu contres au lâcher.`,
-      touch: 'Le porteur a armé une passe haute (compte à rebours en haut). Dès que <b>SAUTE !</b> s\'affiche, <b>tape ton joueur</b> pour sauter : tu contres au lâcher.',
-      joy: 'Le porteur a armé une passe haute (compte à rebours en haut). Dès que <b>SAUTE !</b> s\'affiche, touche <b>Saut</b> : tu contres au lâcher.',
-      pad: 'Le porteur a armé une passe haute (compte à rebours en haut). Dès que <b>SAUTE !</b> s\'affiche, <b>A</b> pour sauter : tu contres au lâcher.'
+      mouse: () => `Le porteur a armé une passe haute (compte à rebours en bas). Dès que <b>SAUTE !</b> s'affiche, saute (${tutoCmd('jump')} ou clic droit) : tu contres au lâcher.`,
+      touch: 'Le porteur a armé une passe haute (compte à rebours en bas). Dès que <b>SAUTE !</b> s\'affiche, <b>tape ton joueur</b> pour sauter : tu contres au lâcher.',
+      joy: 'Le porteur a armé une passe haute (compte à rebours en bas). Dès que <b>SAUTE !</b> s\'affiche, touche <b>Saut</b> : tu contres au lâcher.',
+      pad: 'Le porteur a armé une passe haute (compte à rebours en bas). Dès que <b>SAUTE !</b> s\'affiche, <b>A</b> pour sauter : tu contres au lâcher.'
     },
     setup() {
       tutoReset(); G.tuto.level = 'facile';

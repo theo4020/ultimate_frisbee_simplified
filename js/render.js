@@ -371,7 +371,7 @@ function draw() {
   drawPullUI();
   if (G.msgT > 0) {                                         // message central, avec un petit effet de « pop »
     const sc = 1 + FX.pop * 0.5 + Math.max(0, G.msgT - 1.5) * 0.6;
-    ctx.save(); ctx.translate(cw / 2, ch / 2); ctx.scale(sc, sc);
+    ctx.save(); ctx.translate(cw / 2, G.tuto ? ch * 0.86 : ch / 2); ctx.scale(sc, sc);   // tutoriel : en bas, hors de l'action (au milieu du terrain)
     ctx.globalAlpha = Math.min(1, G.msgT);
     ctx.font = `800 ${Math.max(18, S * 3.4)}px system-ui`; ctx.textAlign = 'center';
     const txt = hiddenFromMe(G.msgTeam) ? G.msgAlt : G.msg;
