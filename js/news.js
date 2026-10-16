@@ -17,7 +17,8 @@ const NEWS = [
       avec son placement, son comportement, s'il peut aider ou échanger son joueur. Tu peux tout mélanger (junk).<br>
       Tes anciennes attaques avec des courses sont devenues une formation + un play.<br>
       Nouveau aussi : les <b>consignes d'équipe</b> du menu d'avant-point (jeu long, passes hautes, prise de risque, aide en
-      défense), et des stacks plus loin du disque, qui se remettent en place avant de recouper.` },
+      défense), et un jeu plus structuré : stacks plus loin du disque, un receveur rattrapé en pleine course freine avant
+      de lancer et lit le jeu, et l'attaque n'enchaîne que si un coupeur est déjà lancé ; sinon la formation se remet en place.` },
   { id: 20, date: '2026-10-15', tag: 'Gameplay', title: 'Nouvelle physique, plus réaliste 🏃',
     body: `Le jeu repose maintenant sur une vraie physique :<br>
       • <b>Les joueurs accélèrent</b> en un peu plus d'une seconde au lieu de démarrer à fond : un bon changement de direction

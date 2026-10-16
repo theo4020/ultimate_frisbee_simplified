@@ -82,7 +82,7 @@ function update(dt) {
   runCutSequencer(off, ax, ay, dir, open, oform, dt);
   for (const p of atk) {
     p.avoid = false;
-    if (disc.mode === 'held' && disc.holder === p) { p.tx = p.x; p.ty = p.y; p.sp = 0; p.vx = p.vy = 0; continue; }
+    if (disc.mode === 'held' && disc.holder === p) { p.tx = p.x; p.ty = p.y; p.sp = 0; continue; }   // il freine (voir plus bas)
     if (disc.mode === 'ground' && G.pickup === p) { p.tx = disc.x; p.ty = disc.y; p.sp = pickupSpeed(p); continue; }
     if (disc.mode === 'carry' && disc.holder === p) { p.tx = G.carryTo.x; p.ty = G.carryTo.y; p.sp = 5.5; continue; }
     if (userControls(p)) { const inp = inputOf(controllerOf(p)); p.tx = inp.x; p.ty = inp.y; p.sp = SPD.user; continue; }   // humain (à plusieurs par équipe)
@@ -117,6 +117,10 @@ function update(dt) {
   holdOffMark(dfn);
 
   for (const p of players) if (p !== disc.holder || disc.mode !== 'held') steer(p, dt);
+  else {                                                     // porteur : attrapé en pleine course, il freine (2-3 pas) avant de pouvoir pivoter
+    const v = Math.hypot(p.vx, p.vy), k = v > 0.01 ? Math.max(0, v - RUN.dec * dt) / v : 0;
+    p.vx *= k; p.vy *= k; p.x += p.vx * dt; p.y += p.vy * dt;
+  }
   for (let i = 0; i < players.length; i++)
     for (let j = i + 1; j < players.length; j++) {
       const a = players[i], b = players[j];
@@ -161,7 +165,7 @@ function update(dt) {
         if (mk && (mk.jprep > 0 || mk.jump > 0) && L.safe >= 0) w.t = Math.max(w.t, 0.08);   // la mark a sauté : il attend qu'elle retombe…
         else if (mk && mk.jumpCd > 0 && w.t > 0.1 && L.safe >= 0) w.t = 0.06;                 // …et lance pendant qu'elle récupère
         if (w.t <= 0 || G.stall > 8) { h.windup = null; aiThrow(h, true); if (disc.mode !== 'held') return; }
-      } else { h.think -= dt; if (h.think <= 0) aiThrow(h); }
+      } else { h.think -= dt; if (h.think <= 0 && (Math.hypot(h.vx, h.vy) < 1.5 || G.stall > 6)) aiThrow(h); }   // l'IA lance une fois arrêtée
     }
     markReads(dt);
   } else if (disc.mode === 'air') {

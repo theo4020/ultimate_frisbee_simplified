@@ -30,7 +30,8 @@ function throwDisc(h, tx, ty, curve, errScale, kind) {
   if (d < 2) return false;
   if (d > K.max) { tx = h.x + dx / d * K.max; ty = h.y + dy / d * K.max; d = K.max; }
   if (d < K.min) { tx = h.x + dx / d * K.min; ty = h.y + dy / d * K.min; d = K.min; }
-  const er = throwErr(d, curve, kind) * errScale * Math.sqrt(Math.random());
+  const run = Math.hypot(h.vx || 0, h.vy || 0);                // lancer en courant (pas encore arrêté) : moins précis
+  const er = throwErr(d, curve, kind) * errScale * (1 + run * 0.15) * Math.sqrt(Math.random());
   const ea = rand(0, Math.PI * 2);
   const ax = tx + Math.cos(ea) * er, ay = ty + Math.sin(ea) * er;          // point réellement visé
   const dur = throwDur(h.x, h.y, ax, ay, kind) * throwSpd(h);
@@ -99,6 +100,12 @@ function aiThrow(h, release) {
     if (Math.random() < 0.5 && callPlay(t, Math.random() < 0.6 ? 1 : 2)) { h.think = 0.35; return; }
   }
   let best = null, bv = -1e9;
+  // lecture du jeu : juste après la réception, le porteur ne voit que ce qui est devant lui (dans le sens de sa course) ;
+  // le reste du terrain apparaît après un court instant (plus long pour un débutant), les passes longues encore un peu après
+  const scan = 1.6 * L.react, face = h.face ?? (dir > 0 ? 0 : Math.PI);
+  const seen = (x, y) => { if (G.stall > 6 || release) return true;
+    let a = Math.abs(Math.atan2(y - h.y, x - h.x) - face); if (a > Math.PI) a = 2 * Math.PI - a;
+    return G.holdT >= scan * Math.max(0, a - 0.6) / (Math.PI - 0.6) + (dist(h.x, h.y, x, y) > 22 ? 0.35 * L.react : 0); };
   for (const p of TEAMS[t]) {
     if (p === h) continue;
     let tx = p.x, ty = p.y;
@@ -121,6 +128,7 @@ function aiThrow(h, release) {
     }
     const pSpeed = Math.hypot(p.vx, p.vy);
     for (const [cx0, cy0] of cands) {
+      if (!seen(cx0, cy0)) continue;
       const d = dist(h.x, h.y, cx0, cy0);
       if (d < 4 || d > 48 || cx0 < 0.8 || cx0 > W - 0.8 || cy0 < 0.8 || cy0 > H - 0.8) continue;
       const gain = dir * (cx0 - h.x), long = gain > 20;

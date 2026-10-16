@@ -134,8 +134,15 @@ const CUT_GAP = 1.2, CUT_FROM = 4;
 function continuationCut(t, h) {
   if (G.oplay && G.oplay.team === t) return;
   const dir = dirOf(t), open = -closedOf(1 - t);
-  const cands = G.order[t].filter(p => !userControls(p) && p.state !== 'jab' && p.state !== 'cut' && ['auto', 'turn', 'catch'].includes(posteOf(p).when));
-  const b = bestCut(t, h, h.x, h.y, dir, open, cands, 1.5);
+  // seulement un coupeur déjà lancé vers l'espace (le jeu continue), ou un poste réglé « juste après une réception » ;
+  // sinon tout le monde se replace et la formation réapparaît
+  const cands = G.order[t].filter(p => !userControls(p) && p.state !== 'jab' && p.state !== 'cut'
+    && (posteOf(p).when === 'catch' || (['auto', 'turn'].includes(posteOf(p).when) && p.state === 'stack' && Math.hypot(p.vx, p.vy) > 4.5)));
+  let b = bestCut(t, h, h.x, h.y, dir, open, cands, 3.2);   // vraiment ouvert : sinon on se replace
+  if (b && posteOf(b.c).when !== 'catch') {                   // la coupe doit prolonger sa course, pas la retourner
+    const c = b.c, ahead = dist(b.x, b.y, c.x + c.vx * 1.3, c.y + c.vy * 1.3);   // là où sa course l'emmène déjà
+    if (ahead > 6.5) b = null;
+  }
   if (b) { launchCut(b); b.c.state = 'cut'; b.c.timer = Math.max(2.4, dist(b.c.x, b.c.y, b.x, b.y) / SPD.cut + 0.6); }   // déjà lancé : pas de feinte
   G.cutT = 0.4;
 }

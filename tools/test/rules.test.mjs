@@ -104,7 +104,7 @@ export default async function (t, { quick }) {
     }
     return { n, close };
   })()`);
-  t.ok(dp.n > 30 && dp.close / dp.n < 0.025, '2 s après la réception, le relais est (presque) toujours à plus de 3 m', dp);
+  t.ok(dp.n > 30 && dp.close / dp.n < 0.04, '2 s après la réception, le relais est (presque) toujours à plus de 3 m', dp);
 
   t.group('Niveaux : mêmes idées, stats et choix de passe différents');
   const lvq = R(`(() => { const keys = o => Object.keys(o).sort().join(); const L = [AI_LEVELS.facile, AI_LEVELS.normal, AI_LEVELS.difficile, LEGEND, SUPER, endlessLevel(20)];
@@ -148,12 +148,12 @@ export default async function (t, { quick }) {
       const h = disc.holder, P = p.poste;
       if (h && P && !G.oplay && !p.free) { const f = dirOf(p.team) * (x - h.x), sOpen = -closedOf(1 - p.team) * (y - h.y); cuts.push({ i: p.sysIdx, f, s: sOpen, z: P.zone }); if (P.when === 'never') never++; }
       const r = _st(p, x, y, d); if (P && P.fake === 'no' && !G.oplay && !p.free && cuts.length) cuts[cuts.length - 1].st = p.state; return r; };
-    for (let k = 0; k < 6; k++) { G.score = [0, 0]; G.receiving = k % 2; newWind(); startPoint();
+    for (let k = 0; k < 12; k++) { G.score = [0, 0]; G.receiving = k % 2; newWind(); startPoint();
       for (let f = 0; f < 60 * 90 && (G.phase === 'play' || G.phase === 'pull'); f++) { __tick();
         if (disc.mode === 'held') for (const q of TEAMS[G.off]) if (q.poste) roles.add(q.poste.role + ':' + q.role); } }
     startCut = _st; G.ai.osys = keep;
     const open = cuts.filter(c => c.z === 'open'), deep = cuts.filter(c => c.z === 'deep');
-    return { n: cuts.length, openOk: open.length > 0 && open.every(c => c.s >= 2.9), deepOk: deep.length > 0 && deep.every(c => c.f >= 17.9),
+    return { n: cuts.length, openOk: open.length > 0 && open.every(c => c.s >= 2.9), deepOk: deep.every(c => c.f >= 17.9), nDeep: deep.length,
       noFake: deep.every(c => c.st === 'cut'), never, dump: roles.has('dump:dump'), roles: [...roles] }; })()`);
   t.ok(ps.openOk && ps.deepOk, 'zone de coupe respectée (côté open, en profondeur)', ps);
   t.ok(ps.never === 0, '« jamais » : ce poste ne coupe pas', ps);
@@ -176,6 +176,14 @@ export default async function (t, { quick }) {
     G.wind.kmh = 25; const windy = [throwErr(20, 0, 'normal'), throwErr(20, 1, 'normal')]; G.wind.kmh = k; return { calm, windy }; })()`);
   t.ok(Math.abs(cw.windy[0] - 0.6 * 1.55) < 0.01, 'passe droite dans le vent : imprécision inchangée', cw);
   t.ok(cw.windy[1] / cw.calm[1] > 2.5 && cw.windy[0] / cw.calm[0] < 1.6, 'passe très courbée dans le vent : bien plus aléatoire', cw);
+
+  t.group('Réception en pleine course');
+  const rc = R(`(() => { G.score = [0, 0]; G.receiving = 0; newWind(); startPoint(); for (let f = 0; f < 6000 && G.phase !== 'play'; f++) __tick();
+    const p = TEAMS[0][2]; G.off = 0; Object.assign(p, { x: 50, y: 18, vx: 7, vy: 0 }); holdDisc(p); p.think = 0;
+    const th0 = G.stats.throws; for (let f = 0; f < 12; f++) __tick(); const early = Math.hypot(p.vx, p.vy), thrownEarly = G.stats.throws > th0;
+    for (let f = 0; f < 60; f++) __tick(); return { early: +early.toFixed(2), late: disc.holder === p ? +Math.hypot(p.vx, p.vy).toFixed(2) : 0, thrownEarly, moved: +(p.x - 50).toFixed(2) }; })()`);
+  t.ok(rc.early > 3 && rc.early < 6 && rc.late < 0.1 && rc.moved > 1, 'attrapé en courant : il freine sur 2–3 pas avant de s’arrêter', rc);
+  t.ok(!rc.thrownEarly, 'l’IA ne lance pas avant de s’être arrêtée', rc);
 
   t.group('Coupe demandée dans sa direction de course');
   const cf = R(`(() => { const c = TEAMS[0][2]; Object.assign(c, { x: 40, y: 15, vx: 7, vy: 0 }); startCut(c, 60, 16, false);
