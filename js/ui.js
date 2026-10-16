@@ -89,6 +89,7 @@ function refreshOptions() {
   $('descPlay').innerHTML = [1, 2].map(n => pd(n) && `<b>Play ${n}</b> : ${esc(pd(n))}`).filter(Boolean).join('<br>')
     + `<br><i>Avec le disque, appelle-les quand tu veux : ${keysOf('play1').map(keyName)[0] || '?'} / ${keysOf('play2').map(keyName)[0] || '?'}, boutons ▶ sur le terrain, ou ← / → à la manette.</i>`;
   $('descDPlay').textContent = DPLAYS[G.form.dplay];
+  $('ordersSum').textContent = ordersText(G.form) ? '· ' + ordersText(G.form) : '';
   $('rowPlay').style.display = G.spectator ? 'none' : '';
   $('rowDPlay').style.display = G.receiving !== G.me ? '' : 'none';
   $('ovWind').textContent = 'Vent pour ce point : ' + windLabel() + '.' + (G.net === 'guest' ? ' (réglé par l’hôte)' : '');
@@ -201,6 +202,15 @@ function refreshCaptainUI() {
   $('oppReady').textContent = !isCap ? 'En attente des capitaines…'
     : waiting.length ? 'En attente de : ' + waiting.map(humanLabel).join(', ') : '';
 }
+// consignes d'équipe qui ne sont pas « normales », en quelques mots
+function ordersText(c) {
+  const t = [];
+  if (c.huck && c.huck !== 'normal') t.push(c.huck === 'plus' ? 'plus de jeu long' : 'moins de jeu long');
+  if (c.high && c.high !== 'normal') t.push(c.high === 'plus' ? 'plus de passes hautes' : 'moins de passes hautes');
+  if (c.risk && c.risk !== 'normal') t.push(c.risk === 'ose' ? 'osé' : 'prudent');
+  if (c.help && c.help !== 'parfois') t.push(c.help === 'jamais' ? 'jamais d’aide' : 'aide toujours');
+  return t.join(', ');
+}
 // résumé (lecture seule) de la stratégie d'un capitaine, pour ses coéquipiers
 function stratSummary(c) {
   c = c || DEFAULT_CFG;
@@ -211,6 +221,7 @@ function stratSummary(c) {
   if (!zone) rows.push(['Force', lbl('force', c.force)]);
   rows.push(['Play 1', c.play1 === 'sys' ? sn(c.p1sys) || '—' : lbl('play1', c.play1)], ['Play 2', c.play2 === 'sys' ? sn(c.p2sys) || '—' : lbl('play2', c.play2)],
     ['Play de défense', lbl('dplay', c.dplay)], ['Reprise', c.restart === 'rapide' ? 'Rapide' : 'Posée'], ['Coéquipiers IA', esc(LVL_NAME[c.allyLevel] || 'Normal')]);
+  if (ordersText(c)) rows.push(['Consignes', esc(ordersText(c))]);
   return rows.map(([a, b]) => `<span><b>${a}</b> ${b}</span>`).join('');
 }
 // systèmes perso proposés dans le menu ; « picked » = celui choisi et encore existant
@@ -285,7 +296,7 @@ document.querySelectorAll('.swatches').forEach(box => {
 for (const id of ['tname', 'oname']) $(id).addEventListener('input', e => { G.form[id] = e.target.value.slice(0, 16); hudKey = ''; computeTeams(); saveSettings(); });
 
 const myCfg = () => ({ off: G.form.off, def: G.form.def, force: G.form.force, play: G.form.play, dplay: G.form.dplay, allyLevel: G.form.allyLevel,
-  tname: G.form.tname, tcol: G.form.tcol, puller: G.form.puller, restart: G.form.restart,
+  tname: G.form.tname, tcol: G.form.tcol, puller: G.form.puller, restart: G.form.restart, huck: G.form.huck, high: G.form.high, risk: G.form.risk, help: G.form.help,
   osys: pickedSys('osys'), dsys: pickedSys('dsys'), play1: G.form.play1, play2: G.form.play2,
   p1sys: G.form.play1 === 'sys' ? pickedSys('p1sys') : null, p2sys: G.form.play2 === 'sys' ? pickedSys('p2sys') : null });   // en ligne, les systèmes entiers partent chez l'hôte
 $('replayB').addEventListener('click', startReplay);

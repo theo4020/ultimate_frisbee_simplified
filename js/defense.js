@@ -136,7 +136,9 @@ function defenseBrain(defT, dt) {
   if (!best) return;
   B.read = best;
   // 3) aide : si cet attaquant est vraiment libre, le défenseur le mieux placé (et dont le joueur est moins dangereux) ferme la ligne
-  if (best.sep > 4 && best.lane > 0) {
+  //    (consigne d'équipe : jamais · parfois = attaquant vraiment libre · toujours = dès qu'il se démarque un peu)
+  const help = ORDERS.help[(cfg(defT) || {}).help] ?? 1;
+  if (help && (help === 2 ? best.sep > 3 && best.lane > -0.15 : best.sep > 4 && best.lane > 0)) {
     const px = h.x + (best.x - h.x) * 0.65, py = h.y + (best.y - h.y) * 0.65;
     let hb = null, hv = 1e9;
     for (const d of dfn) {
@@ -145,7 +147,7 @@ function defenseBrain(defT, dt) {
       const v = dist(d.x, d.y, px, py) + clamp(own, -10, 25) * 0.3;
       if (v < hv) { hv = v; hb = d; }
     }
-    if (hb && hv < 14) B.help = { d: hb, x: px, y: py, w: 0.45 + 0.5 * k };
+    if (hb && hv < (help === 2 ? 18 : 14)) B.help = { d: hb, x: px, y: py, w: (help === 2 ? 0.6 : 0.45) + 0.5 * k };
   }
 }
 

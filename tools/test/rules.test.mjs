@@ -139,6 +139,38 @@ export default async function (t, { quick }) {
     return { mate: !!mate && mate.curve === 0.5, opp: !!opp }; })()`);
   t.ok(al.mate && !al.opp, 'un coéquipier humain vise : son aperçu de passe s’affiche, pas chez l’adversaire', al);
 
+  t.group('Formation perso : consignes des postes');
+  const ps = R(`(() => {
+    const keep = G.ai.osys; G.ai.osys = cleanSystem({ kind: 'off', name: 'Test', pos: [[8, 4], [14, -4], [20, 0], [-3.5, -5]],
+      postes: [{ role: 'cutter', zone: 'open', when: 'auto' }, { role: 'cutter', zone: 'auto', when: 'never' }, { role: 'deep', zone: 'deep', fake: 'no' }, { role: 'dump', when: 'stall' }] });
+    const cuts = [], roles = new Set(); let never = 0;
+    const _st = startCut; startCut = function (p, x, y, d) {
+      const h = disc.holder, P = p.poste;
+      if (h && P && !G.oplay && !p.free) { const f = dirOf(p.team) * (x - h.x), sOpen = -closedOf(1 - p.team) * (y - h.y); cuts.push({ i: p.sysIdx, f, s: sOpen, z: P.zone }); if (P.when === 'never') never++; }
+      const r = _st(p, x, y, d); if (P && P.fake === 'no' && !G.oplay) cuts[cuts.length - 1].st = p.state; return r; };
+    for (let k = 0; k < 6; k++) { G.score = [0, 0]; G.receiving = k % 2; newWind(); startPoint();
+      for (let f = 0; f < 60 * 90 && (G.phase === 'play' || G.phase === 'pull'); f++) { __tick();
+        if (disc.mode === 'held') for (const q of TEAMS[G.off]) if (q.poste) roles.add(q.poste.role + ':' + q.role); } }
+    startCut = _st; G.ai.osys = keep;
+    const open = cuts.filter(c => c.z === 'open'), deep = cuts.filter(c => c.z === 'deep');
+    return { n: cuts.length, openOk: open.length > 0 && open.every(c => c.s >= 2.9), deepOk: deep.length > 0 && deep.every(c => c.f >= 17.9),
+      noFake: deep.every(c => c.st === 'cut'), never, dump: roles.has('dump:dump'), roles: [...roles] }; })()`);
+  t.ok(ps.openOk && ps.deepOk, 'zone de coupe respectée (côté open, en profondeur)', ps);
+  t.ok(ps.never === 0, '« jamais » : ce poste ne coupe pas', ps);
+  t.ok(ps.noFake, '« sans feinte » : la coupe part tout de suite', ps);
+  t.ok(ps.dump, 'poste « relais » : il joue le relais', ps);
+
+  t.group('Consignes d’équipe avant le point');
+  const od = R(`(() => { const keep = Object.assign({}, G.ai); const res = {};
+    G.ai.huck = 'plus'; G.ai.high = 'moins'; res.style = aiStyle(1); G.ai.risk = 'ose'; res.risk = riskOf(1);
+    for (const hp of ['jamais', 'toujours']) { G.ai.help = hp; let n = 0;
+      for (let k = 0; k < 3; k++) { G.score = [0, 0]; G.receiving = k % 2; newWind(); startPoint();
+        for (let f = 0; f < 60 * 60 && (G.phase === 'play' || G.phase === 'pull'); f++) { __tick(); if (G.dB && G.dB.help && G.dbT > 0.32) n++; } }
+      res[hp] = n; }
+    Object.keys(G.ai).forEach(k => delete G.ai[k]); Object.assign(G.ai, keep); return res; })()`);
+  t.ok(od.style.huck > 1.5 && od.style.high < 0.5 && od.risk[1] > 0, 'jeu long, passes hautes et risque suivent les consignes', od);
+  t.ok(od.jamais === 0 && od.toujours > 0, 'aide en défense : jamais / toujours', od);
+
   t.group('Courbe et vent');
   const cw = R(`(() => { const k = G.wind.kmh; G.wind.kmh = 0; const calm = [throwErr(20, 0, 'normal'), throwErr(20, 1, 'normal')];
     G.wind.kmh = 25; const windy = [throwErr(20, 0, 'normal'), throwErr(20, 1, 'normal')]; G.wind.kmh = k; return { calm, windy }; })()`);

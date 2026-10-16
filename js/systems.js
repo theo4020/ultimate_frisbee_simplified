@@ -4,15 +4,26 @@
 //   f = mètres vers l'avant (vers l'en-but attaqué), s = mètres vers le côté OPEN (négatif = côté break).
 // Le système suit donc le disque partout sur le terrain et se retourne tout seul selon le côté forcé.
 //
-// Attaque : { kind:'off', name, pos:[[f,s]×4] (joueurs ① à ④), steps:[{ p:0..3, to:[f,s], wait:s }] }
-//   Choisie comme FORMATION : les 4 joueurs sans le disque prennent les places ① à ④ et coupent librement depuis là
-//   (offense.js lit l'espace). Choisie comme PLAY 1 / PLAY 2 : quand on l'appelle, chaque rôle ①–④ va au joueur le plus
+// Attaque : { kind:'off', name, pos:[[f,s]×4] (joueurs ① à ④), postes:[{ role, zone, when, after, fake }×4], steps:[{ p:0..3, to:[f,s], wait:s }] }
+//   Choisie comme FORMATION : après chaque passe, le joueur le plus proche de chaque place prend ce poste, et suit ses
+//   consignes (POSTE_OPTS) ; « au choix » = l'IA lit l'espace comme dans les formations du jeu (offense.js). Choisie comme PLAY 1 / PLAY 2 : quand on l'appelle, chaque rôle ①–④ va au joueur le plus
 //   proche de sa place et les courses partent dans l'ordre, chacune « wait » secondes après la précédente (plays.js).
 // Défense : { kind:'def', name, mode:'zone', zone:[[f,s]×4] } — la mark reste sur le porteur, 4 défenseurs aux places dessinées
 //           { kind:'def', name, mode:'man', roles:[×5] } — individuelle, un rôle par défenseur (numéros 1 à 5) :
 //             'normal' · 'serre' (colle à son joueur) · 'profond' (reste entre son joueur et l'en-but) · 'double' (double team dès 5 de stall)
 
 const SYS_MAX = 12, SYS_STEPS = 12;
+// consignes d'un poste d'attaque (formation perso) ; la première valeur est celle par défaut
+const POSTE_OPTS = {
+  role: { cutter: 'Coupeur', dump: 'Relais', deep: 'Profond' },
+  zone: { auto: 'Au choix de l’IA', open: 'Côté open', break: 'Côté break', deep: 'En profondeur', under: 'Vers le disque' },
+  when: { auto: 'Dès que l’espace s’ouvre', turn: 'À son tour', catch: 'Juste après une réception', stall: 'Quand le stall monte', never: 'Jamais (reste placé)' },
+  after: { auto: 'Au choix de l’IA', back: 'Revient à sa place', clear: 'Dégage côté break', chain: 'Reste où il est' },
+  fake: { yes: 'Avec feinte', no: 'Sans feinte' }
+};
+const POSTE_LBL = { role: 'Rôle', zone: 'Zone de coupe', when: 'Quand couper', after: 'Après la coupe', fake: 'Feinte' };
+const POSTE_DEF = { role: 'cutter', zone: 'auto', when: 'auto', after: 'auto', fake: 'yes' };
+const cleanPoste = o => { const r = {}; for (const k in POSTE_OPTS) r[k] = o && POSTE_OPTS[k][o[k]] ? o[k] : POSTE_DEF[k]; return r; };
 const SYS_ROLES = { normal: 'Normal', serre: 'Serré', profond: 'Profond', double: 'Double team' };
 const SYS_F = [-12, 40], SYS_S = [-18, 18];                    // limites des positions dans l'éditeur
 const sysNum = (v, a, b) => (typeof v === 'number' && isFinite(v) ? Math.round(clamp(v, a, b) * 10) / 10 : (a + b) / 2);
@@ -36,7 +47,8 @@ function cleanSystem(o) {
     const steps = (Array.isArray(o.steps) ? o.steps : []).slice(0, SYS_STEPS)
       .filter(st => st && Number.isInteger(st.p) && st.p >= 0 && st.p < 4)
       .map(st => ({ p: st.p, to: sysPt(st.to), wait: sysNum(st.wait, 0, 3) }));
-    return Object.assign({ id, kind: 'off', name, pos, steps, setup: !!o.setup }, sysMeta(o));
+    const postes = Array.from({ length: 4 }, (_, i) => cleanPoste(o.postes && o.postes[i]));
+    return Object.assign({ id, kind: 'off', name, pos, postes, steps, setup: !!o.setup }, sysMeta(o));
   }
   const mode = o.mode === 'man' ? 'man' : 'zone';
   return Object.assign({ id, kind: 'def', name, mode, zone: Array.from({ length: 4 }, (_, i) => sysPt(o.zone && o.zone[i])),
@@ -44,7 +56,10 @@ function cleanSystem(o) {
 }
 // systèmes de départ proposés dans l'éditeur
 const SYS_NEW = {
-  off: () => ({ kind: 'off', name: 'Mon attaque', pos: [[8, 2], [14, 1], [20, 0], [-3, -5]],
+  // départ : un vertical stack (deux coupeurs à tour de rôle côté open, un profond, un relais derrière côté break)
+  off: () => ({ kind: 'off', name: 'Mon attaque', pos: [[8, 1], [13, 1], [19, 0], [-3.5, -5]],
+    postes: [{ role: 'cutter', zone: 'open', when: 'turn', after: 'clear' }, { role: 'cutter', zone: 'auto', when: 'turn', after: 'clear' },
+      { role: 'deep', zone: 'deep', when: 'auto', after: 'back' }, { role: 'dump', zone: 'under', when: 'stall', after: 'back' }].map(cleanPoste),
     steps: [] }),
   def: () => ({ kind: 'def', name: 'Ma défense', mode: 'zone', zone: [[5, 6], [5, -5], [13, 0], [25, 0]], roles: ['normal', 'normal', 'normal', 'normal', 'normal'] })
 };
@@ -85,8 +100,9 @@ function sysAssign(t, h) {                                     // remplace assig
   for (let k = 0; k < 4; k++) {                                // chaque place prend le joueur libre le plus proche
     const p = nearest(pool, spots[k][0], spots[k][1]); if (!p) break;
     pool.splice(pool.indexOf(p), 1);
-    p.sysIdx = k; p.role = 'cutter'; p.state = 'stack'; p.timer = 0; p.sysCut = false;
-    order.push(p);
+    p.sysIdx = k; p.poste = S.postes ? S.postes[k] : POSTE_DEF; p.sysCut = false;
+    if (p.poste.role === 'dump') { p.role = 'dump'; p.state = 'set'; p.timer = rand(1, 2); }   // relais : il se propose derrière le porteur
+    else { p.role = 'cutter'; p.state = 'stack'; p.timer = 0; order.push(p); }
   }
   G.order[t] = order;
   h.role = 'holder'; h.sysIdx = -1;

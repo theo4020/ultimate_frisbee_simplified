@@ -50,7 +50,8 @@ function storeSet(k, v) {
 const SAVE_KEYS = {
   off: ['vert', 'ho', 'side'], def: ['man', 'zone', 'clam'], force: ['haut', 'bas', 'middle', 'straight'],
   speed: ['lent', 'normal', 'rapide'], level: ['facile', 'normal', 'difficile'], allyLevel: ['facile', 'normal', 'difficile'],
-  windMode: ['random', 'fixed'], play1: ['none', 'huck', 'split', 'give', 'flood', 'swing', 'sys'], play2: ['none', 'huck', 'split', 'give', 'flood', 'swing', 'sys'], points: ['3', '5', '7'], cb: ['0', '1'], first: ['0', '1', 'r'], restart: ['pose', 'rapide']
+  windMode: ['random', 'fixed'], play1: ['none', 'huck', 'split', 'give', 'flood', 'swing', 'sys'], play2: ['none', 'huck', 'split', 'give', 'flood', 'swing', 'sys'], points: ['3', '5', '7'], cb: ['0', '1'], first: ['0', '1', 'r'], restart: ['pose', 'rapide'],
+  huck: ['moins', 'normal', 'plus'], high: ['moins', 'normal', 'plus'], risk: ['prudent', 'normal', 'ose'], help: ['jamais', 'parfois', 'toujours']
 };
 function loadSettings() {
   const o = storeGet('uf-settings', null);

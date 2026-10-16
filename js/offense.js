@@ -44,6 +44,7 @@ function assignRoles(t, h) {
   if (osysOf(t)) { sysAssign(t, h); return; }                 // système perso (systems.js)
   const dir = dirOf(t), open = -closedOf(1 - t);
   const others = TEAMS[t].filter(p => p !== h);
+  others.forEach(p => { p.poste = null; });                  // formation du jeu : consignes « au choix de l'IA »
   const ds = dumpSlot(h.x, h.y, dir, open);
   const dump = nearest(others, ds.x, ds.y);
   const cutters = others.filter(p => p !== dump);
@@ -86,6 +87,17 @@ function hustle(p, base) {
 //  • l'espace des autres : on ne coupe pas dans la zone d'une coupe déjà en cours
 // La meilleure coupe part si elle est assez bonne ; sinon on attend que l'espace s'ouvre (l'exigence baisse avec le temps et le stall).
 const CUT_F = [4, 7, 10, 13, 16, 20, 24, 28, 32];
+// consignes du poste d'un joueur (formation perso) ; formation du jeu : tout « au choix de l'IA »
+const posteOf = p => p.poste || POSTE_DEF;
+// la coupe vers (f m devant le disque, s m côté open) respecte-t-elle la zone de son poste ?
+function zoneOk(c, f, s, x, y, h) {
+  const P = posteOf(c), z = P.zone === 'auto' && P.role === 'deep' ? 'deep' : P.zone;
+  if (z === 'open') return s >= 3 && f < 22;
+  if (z === 'break') return s <= -3 && f < 22;
+  if (z === 'deep') return f >= 18;
+  if (z === 'under') return f < 13 && dist(x, y, h.x, h.y) < dist(c.x, c.y, h.x, h.y) - 3;   // il revient vers le disque
+  return true;
+}
 function bestCut(t, h, ax, ay, dir, open, cands, need) {
   const opp = TEAMS[1 - t], L = aiLvl(1 - t), huckK = aiStyle(t).huck;
   const busy = TEAMS[t].filter(p => p !== h && (p.state === 'jab' || p.state === 'cut' || p.state === 'park')).map(p => [p.cx, p.cy]);
@@ -102,7 +114,7 @@ function bestCut(t, h, ax, ay, dir, open, cands, need) {
       const gain = f * 0.14 - (f > 18 ? (1.7 - huckK) * 2 : 0) + (inScoreZone(t, x) ? 4 : 0) - (open * (y - ay) < -4 ? 0.8 : 0);   // deep : risqué (sauf équipes de hucks) ; côté break : passe plus dure
       for (const c of cands) {
         const dc = dist(c.x, c.y, x, y);
-        if (dc < 3.5 || dc > 27) continue;
+        if (dc < 3.5 || dc > 27 || !zoneOk(c, f, open * (y - ay), x, y, h)) continue;
         const race = td - (reachTime(c, x, y, SPD.cut * aiLvl(t).speed, 0) + 0.1);                // > 0 : le coupeur arrive le premier
         const v = clamp(race, -1.5, 1.5) * 3 + lane * 3 + gain - dc * 0.04;
         if (v > need && (!best || v > best.v)) best = { c, x, y, v, deep: f > 18 };
@@ -120,7 +132,7 @@ function launchCut(b) {
 function continuationCut(t, h) {
   if (G.oplay && G.oplay.team === t) return;
   const dir = dirOf(t), open = -closedOf(1 - t);
-  const cands = G.order[t].filter(p => !userControls(p) && p.state !== 'jab' && p.state !== 'cut');
+  const cands = G.order[t].filter(p => !userControls(p) && p.state !== 'jab' && p.state !== 'cut' && ['auto', 'turn', 'catch'].includes(posteOf(p).when));
   const b = bestCut(t, h, h.x, h.y, dir, open, cands, 1.5);
   if (b) { launchCut(b); b.c.state = 'cut'; b.c.timer = Math.max(2.4, dist(b.c.x, b.c.y, b.x, b.y) / SPD.cut + 0.6); }   // déjà lancé : pas de feinte
   G.cutT = 0.4;
@@ -138,7 +150,16 @@ function runCutSequencer(t, ax, ay, dir, open, form, dt) {
   const ord = G.order[t];
   const running = ord.filter(p => p.state === 'jab' || p.state === 'cut').length;
   if (running >= (G.stall > 5 ? 2 : 1)) return;             // une coupe à la fois ; deux quand le compte presse
-  const ready = ord.filter(p => cutReady(p, t));
+  // consignes « quand couper » : jamais, juste après une réception (voir continuationCut), quand le stall monte,
+  // à son tour (seul le premier poste « à son tour » prêt, dans l'ordre des postes)
+  let turn = false;
+  const ready = ord.filter(p => {
+    if (!cutReady(p, t)) return false;
+    const w = posteOf(p).when;
+    if (w === 'never' || w === 'catch' || (w === 'stall' && G.stall < 4.5)) return false;
+    if (w === 'turn') { if (turn) return false; turn = true; }
+    return true;
+  });
   if (!ready.length) return;
   const need = 4.2 - G.cutIdle * 1.2 - G.stall * 0.25;      // plus on attend, moins on est exigeant
   const b = bestCut(t, disc.holder, ax, ay, dir, open, ready, need);
@@ -187,7 +208,7 @@ function attackerAI(p, t, ax, ay, dir, open, form, dt) {
   // attaquant lâché par son défenseur : il coupe tout de suite vers un espace libre où le handler peut le servir
   p.freeAcc = isAbandoned(p, t) ? (p.freeAcc || 0) + dt : 0;   // lâché depuis un moment (pas juste un décalage)
   p.free = p.freeAcc > 0.7;
-  if (p.free && disc.mode === 'held' && disc.holder && disc.holder.team === t && p.role === 'cutter'
+  if (p.free && disc.mode === 'held' && disc.holder && disc.holder.team === t && p.role === 'cutter' && posteOf(p).when !== 'never'
       && p.state !== 'jab' && p.state !== 'cut' && (p.freeT = (p.freeT || 0) - dt) <= 0) {
     const sp = freeSpace(p, t, ax, ay, dir, open);
     if (sp) { startCut(p, sp[0], sp[1], dir * (sp[0] - p.x) > 12); p.state = 'cut'; p.timer = 1.8; }
@@ -198,10 +219,10 @@ function attackerAI(p, t, ax, ay, dir, open, form, dt) {
     p.tx = s.x - dir * 2; p.ty = clamp(s.y + open * 7, 2, H - 2); p.sp = hustle(p, SPD.jog); roomAroundHolder(p); return;
   }
   if (p.role === 'dump') {
-    const s = dumpSlot(ax, ay, dir, open);
+    const S = p.poste && osysOf(t), s = S ? sysSpot(S, p, ax, ay, dir, open) : dumpSlot(ax, ay, dir, open);   // relais d'une formation perso : sa place
     if (p.state === 'set') {
       p.tx = s.x; p.ty = s.y; p.sp = SPD.jog + 1;
-      if (disc.mode === 'held' && G.stall > 4.5 && p.timer <= 0) {   // compte élevé : le relais vient chercher le disque
+      if (disc.mode === 'held' && G.stall > 4.5 && p.timer <= 0 && posteOf(p).when !== 'never') {   // compte élevé : le relais vient chercher le disque
         p.state = 'reset'; p.timer = 1.8;
         if (Math.random() < 0.5) { p.cx = ax - dir * 3; p.cy = ay + open * 5.5; }      // reset côté open, un peu derrière
         else { p.cx = ax + dir * 4.5; p.cy = ay - open * 5; }                            // ou devant, côté fermé
@@ -229,9 +250,13 @@ function attackerAI(p, t, ax, ay, dir, open, form, dt) {
     case 'hold':
       p.tx = p.cx; p.ty = p.cy; p.sp = 1.5;
       if (p.timer <= 0) {
-        if (p.sysStay) { p.state = 'park'; p.cx = p.x; p.cy = p.y; p.sysStay = false; p.sysCut = false; break; }   // système perso : il enchaîne depuis ici
+        const after = posteOf(p).after;
+        if (p.sysStay || after === 'chain') { p.state = 'park'; p.cx = p.x; p.cy = p.y; p.sysStay = false; p.sysCut = false; break; }   // il enchaîne depuis ici
         p.state = 'clear'; p.timer = 4; p.sysCut = false;
-        if (isColumn(form) && !osysOf(t)) {                                // dégage côté fermé puis retourne au bout de la colonne
+        if (after === 'clear') {                                           // consigne : dégage côté break, puis revient à sa place
+          p.wx = clamp(p.x + dir * 2, 1, W - 1); p.wy = clamp(ay - open * 6, 2, H - 2); p.wDone = false;
+        } else if (after === 'back') p.wDone = true;
+        else if (isColumn(form) && !osysOf(t)) {                           // dégage côté fermé puis retourne au bout de la colonne
           const ord = G.order[t], i = ord.indexOf(p);
           if (i >= 0) { ord.splice(i, 1); ord.push(p); }
           p.wx = p.x + dir * 2; p.wy = clamp(lineY(t, ay, form) - open * (form === 'side' ? 2 : 5), 2, H - 2); p.wDone = false;

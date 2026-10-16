@@ -253,7 +253,9 @@ function validSys(o) {                                           // même règle
     if (pos.length !== 4 || pos.includes(null)) return null;
     const steps = (Array.isArray(o.steps) ? o.steps : []).slice(0, 12).map(s => s && Number.isInteger(s.p) && s.p >= 0 && s.p < 4 && pt(s.to)
       ? { p: s.p, to: pt(s.to), wait: num(s.wait, 0, 3) ?? 0.6 } : null).filter(Boolean);
-    return { id, kind: 'off', name, pos, steps, setup: !!o.setup };
+    const P = { role: ['cutter', 'dump', 'deep'], zone: ['auto', 'open', 'break', 'deep', 'under'], when: ['auto', 'turn', 'catch', 'stall', 'never'], after: ['auto', 'back', 'clear', 'chain'], fake: ['yes', 'no'] };
+    const postes = Array.from({ length: 4 }, (_, i) => { const q = Array.isArray(o.postes) && o.postes[i] || {}, r = {}; for (const k in P) r[k] = P[k].includes(q[k]) ? q[k] : P[k][0]; return r; });
+    return { id, kind: 'off', name, pos, postes, steps, setup: !!o.setup };
   }
   const zone = Array.isArray(o.zone) ? o.zone.slice(0, 4).map(pt) : [];
   if (zone.length !== 4 || zone.includes(null)) return null;

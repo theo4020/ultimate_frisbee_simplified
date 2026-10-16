@@ -16,8 +16,13 @@ function aiLvl(t) {
   return AI_LEVELS[lv] || AI_LEVELS.normal;
 }
 // style de jeu de l'IA de l'équipe t (personnalité des équipes du tournoi)
-const aiStyle = t => (G.series && !human(t) ? serOpp().style : DEFAULT_STYLE);
-const DEFAULT_CFG = { off: 'vert', def: 'man', force: 'haut', play: 'none', play1: 'huck', play2: 'give', dplay: 'none', allyLevel: 'normal', tname: '', tcol: '', puller: 'cap', restart: 'pose' };
+const aiStyle = t => {
+  if (G.series && !human(t)) return serOpp().style;
+  const c = cfg(t) || {};                                       // consignes d'équipe choisies avant le point
+  return { huck: ORDERS.huck[c.huck] || 1, high: ORDERS.high[c.high] || 1, bluff: DEFAULT_STYLE.bluff };
+};
+const riskOf = t => ORDERS.risk[(cfg(t) || {}).risk] || ORDERS.risk.normal;
+const DEFAULT_CFG = { off: 'vert', def: 'man', force: 'haut', play: 'none', play1: 'huck', play2: 'give', dplay: 'none', allyLevel: 'normal', tname: '', tcol: '', puller: 'cap', restart: 'pose', huck: 'normal', high: 'normal', risk: 'normal', help: 'parfois' };
 G.humans = [{ id: 0, team: 0, sel: null }];
 G.myId = 0;
 

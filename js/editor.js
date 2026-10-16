@@ -57,19 +57,20 @@ function edRender() {
   const off = s.kind === 'off';
   $('edTitle').textContent = (off ? 'Attaque' : 'Défense') + (ED.ro ? ' (aperçu)' : '');
   $('edModes').innerHTML = off
-    ? `<button data-m="place" class="${ED.mode === 'place' ? 'on' : ''}">✋ Placer</button><button data-m="cut" class="${ED.mode === 'cut' ? 'on' : ''}">➜ Courses</button><button id="edPlay">▶ Aperçu</button>`
+    ? `<button data-m="place" class="${ED.mode === 'place' ? 'on' : ''}">✋ Placer</button><button data-m="post" class="${ED.mode === 'post' ? 'on' : ''}">🎯 Consignes</button><button data-m="cut" class="${ED.mode === 'cut' ? 'on' : ''}">➜ Courses</button><button id="edPlay">▶ Aperçu</button>`
     : `<button data-m="zone" class="${s.mode === 'zone' ? 'on' : ''}">Zone</button><button data-m="man" class="${s.mode === 'man' ? 'on' : ''}">Individuelle</button>`;
   $('edModes').querySelectorAll('[data-m]').forEach(b => b.onclick = () => { if (ED.ro) return; if (off) ED.mode = b.dataset.m; else s.mode = b.dataset.m; edRender(); });
   $('edModes').classList.toggle('ro', !!ED.ro);
   if ($('edPlay')) $('edPlay').onclick = startAnim;
   $('edHelp').textContent = off
-    ? (ED.mode === 'place' ? 'Glisse ①–④ pour placer ta formation autour du porteur (H). Choisie comme Formation, chacun part de sa place et coupe librement. Les flèches se déplacent par leur pointe.'
+    ? (ED.mode === 'place' ? 'Glisse ①–④ pour placer ta formation autour du porteur (H). Choisie comme Formation, après chaque passe le joueur le plus proche de chaque place prend ce poste et suit ses consignes. Les flèches se déplacent par leur pointe.'
+      : ED.mode === 'post' ? 'Consignes de chaque poste quand ce système est ta Formation. « Au choix de l’IA » : elle lit l’espace comme dans les formations du jeu.'
       : 'Glisse depuis un joueur (ou le bout de sa flèche) jusqu’à sa destination. Ces courses se jouent quand tu choisis ce système comme Play 1 ou Play 2 et que tu l’appelles.')
     : s.mode === 'zone' ? 'Glisse les défenseurs 1–4 pour dessiner ta zone. M marque le porteur (côté forcé).'
     : 'Choisis le rôle de chaque défenseur (le numéro est celui affiché sur le terrain).';
   if (ED.ro) $('edHelp').textContent = off ? 'Aperçu en lecture seule : ▶ Aperçu montre ses courses. Ajoute-le à tes systèmes pour le modifier.' : 'Aperçu en lecture seule. Ajoute-le à tes systèmes pour le modifier.';
   edCanvas().style.display = !off && s.mode === 'man' ? 'none' : '';
-  $('edSteps').innerHTML = (off ? `<label class="edSetup"><input type="checkbox" id="edSetupCb"${s.setup ? ' checked' : ''}> Se mettre en place avant de partir
+  $('edSteps').innerHTML = off && ED.mode === 'post' ? postesHtml(s) : (off ? `<label class="edSetup"><input type="checkbox" id="edSetupCb"${s.setup ? ' checked' : ''}> Se mettre en place avant de partir
       <small>(quand tu l’appelles comme play : chacun file d’abord à sa place, 1,5 s au plus, puis les courses commencent)</small></label>` + stepsHtml(s) : '')
     + (!off && s.mode === 'man' ? rolesHtml(s) : '');
   if ($('edSetupCb')) $('edSetupCb').onchange = e => { s.setup = e.target.checked; };
@@ -93,6 +94,13 @@ function stepsHtml(s) {
     <label>${i === 0 ? 'départ après' : 'puis après'} <select data-i="${i}">${WAITS.map(w => `<option value="${w}"${Math.abs(w - st.wait) < 0.05 ? ' selected' : ''}>${String(w).replace('.', ',')} s</option>`).join('')}</select></label>
     <span class="sb"><button data-up="${i}" ${i ? '' : 'disabled'}>↑</button><button data-dn="${i}" ${i < s.steps.length - 1 ? '' : 'disabled'}>↓</button><button data-rm="${i}" class="ghost">✕</button></span></li>`).join('') + '</ol>';
 }
+// consignes des postes ①–④ (formation perso)
+function postesHtml(s) {
+  s.postes = (s.postes || []).concat([]).slice(0, 4); while (s.postes.length < 4) s.postes.push(cleanPoste(null));
+  return '<div class="postes">' + s.postes.map((P, i) => `<div class="poste"><b>${NUM[i]} ${esc(POSTE_OPTS.role[P.role])}</b>`
+    + Object.keys(POSTE_OPTS).map(k => `<label>${POSTE_LBL[k]}<select data-p="${i}" data-k="${k}">${Object.entries(POSTE_OPTS[k]).map(([v, l]) => `<option value="${v}"${v === P[k] ? ' selected' : ''}>${l}</option>`).join('')}</select></label>`).join('')
+    + '</div>').join('') + '</div><p class="net">Relais : se propose derrière le porteur et vient le chercher quand le stall monte · Profond : reste loin devant et attaque la profondeur · À son tour : dans l’ordre des postes, un seul à la fois.</p>';
+}
 function rolesHtml(s) {
   return '<div class="roles">' + s.roles.map((r, i) => `<div class="accRow"><span>Défenseur ${i + 1}</span><select data-r="${i}">${Object.entries(SYS_ROLES).map(([k, l]) => `<option value="${k}"${k === r ? ' selected' : ''}>${l}</option>`).join('')}</select></div>`).join('')
     + '<p class="net">Serré : colle à son joueur · Profond : reste entre son joueur et l’en-but · Double team : vient presser le porteur dès 5 de stall.</p></div>';
@@ -104,6 +112,7 @@ function bindSteps(s) {
   q('[data-dn]').forEach(b => b.onclick = () => { const i = +b.dataset.dn; [s.steps[i + 1], s.steps[i]] = [s.steps[i], s.steps[i + 1]]; edRender(); });
   q('[data-rm]').forEach(b => b.onclick = () => { s.steps.splice(+b.dataset.rm, 1); edRender(); });
   q('select[data-r]').forEach(e => e.onchange = () => { s.roles[+e.dataset.r] = e.value; });
+  q('select[data-p]').forEach(e => e.onchange = () => { s.postes[+e.dataset.p][e.dataset.k] = e.value; if (e.dataset.k === 'role') edRender(); else drawEditor(); });
 }
 
 // ---------- dessin ----------
@@ -135,7 +144,8 @@ function drawEditor(animPos) {
       g.fillText(String(i + 1), (from[0] + to[0]) / 2 + 4, (from[1] + to[1]) / 2 - 4);
     });
     token([hx, hy], 'H', '#e2e8f0', '#1e293b');
-    s.pos.forEach((p, i) => token(edToPx(animPos ? animPos[i] : p), String(i + 1), '#3b82f6'));
+    s.pos.forEach((p, i) => { const role = s.postes && s.postes[i] ? s.postes[i].role : 'cutter';   // relais en jaune, profond en violet
+      token(edToPx(animPos ? animPos[i] : p), String(i + 1), role === 'dump' ? '#ca8a04' : role === 'deep' ? '#7c3aed' : '#3b82f6'); });
     if (ED.drag && ED.drag.cut) edArrow(g, edToPx(chainEnd(s, ED.drag.i)), ED.drag.at, '#fff', r);
   } else {
     token([hx, hy], 'H', '#e2e8f0', '#1e293b');

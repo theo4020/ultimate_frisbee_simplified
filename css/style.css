@@ -396,3 +396,11 @@ body.touch.tutoplays #tutoBox{top:auto;bottom:max(10px,env(safe-area-inset-botto
 /* résumé de la stratégie du capitaine, chez ses coéquipiers */
 .capStrat{display:flex;flex-wrap:wrap;gap:4px 12px;margin-top:6px;font-size:13px}
 .capStrat b{opacity:.7;font-weight:600;margin-right:4px}
+details.orders{margin:10px 0 4px;color:var(--text);font-size:15px}
+details.orders summary{font-weight:600}
+details.orders summary small{color:var(--muted);font-weight:400}
+.postes{display:grid;gap:10px;margin:8px 0}
+.poste{border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:8px 10px}
+.poste>b{display:block;margin-bottom:4px}
+.poste label{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin:3px 0}
+.poste select{max-width:62%}

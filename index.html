@@ -297,6 +297,17 @@
       <div class="row"><span>Play de défense</span><select class="sel" id="selDPlay"></select></div>
       <div class="desc" id="descDPlay"></div>
     </div>
+    <details id="rowOrders" class="orders"><summary>Consignes d'équipe <small id="ordersSum"></small></summary>
+      <div class="row"><span>Jeu long</span>
+        <button class="opt" data-g="huck" data-v="moins">Moins</button><button class="opt" data-g="huck" data-v="normal">Normal</button><button class="opt" data-g="huck" data-v="plus">Plus</button></div>
+      <div class="row"><span>Passes hautes</span>
+        <button class="opt" data-g="high" data-v="moins">Moins</button><button class="opt" data-g="high" data-v="normal">Normal</button><button class="opt" data-g="high" data-v="plus">Plus</button></div>
+      <div class="row"><span>Prise de risque</span>
+        <button class="opt" data-g="risk" data-v="prudent">Prudent</button><button class="opt" data-g="risk" data-v="normal">Normal</button><button class="opt" data-g="risk" data-v="ose">Osé</button></div>
+      <div class="row"><span>Aide en défense</span>
+        <button class="opt" data-g="help" data-v="jamais">Jamais</button><button class="opt" data-g="help" data-v="parfois">Parfois</button><button class="opt" data-g="help" data-v="toujours">Toujours</button></div>
+      <div class="desc">Pour tes coéquipiers IA. Aide : un défenseur quitte son joueur pour fermer la ligne vers un attaquant libre.</div>
+    </details>
     <div class="row"><span>Coéquipiers IA</span>
       <button class="opt" data-g="allyLevel" data-v="facile">Facile</button>
       <button class="opt" data-g="allyLevel" data-v="normal">Normal</button>

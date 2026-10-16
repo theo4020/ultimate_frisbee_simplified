@@ -36,8 +36,12 @@ export default async function (t) {
       t.ok(ch.n === 2 && ch.last.p === 1, 'glisser depuis le bout d’une flèche enchaîne une course du même joueur', ch);
       await p.click('#edSteps [data-rm="1"]');
       t.ok((await p.evaluate(() => ED.sys.steps.length)) === 1, 'une course se supprime');
+      await p.click('#edModes [data-m="post"]');
+      t.ok((await p.locator('#edSteps .poste').count()) === 4 && (await p.evaluate(() => ED.sys.postes[3].role)) === 'dump', 'mode Consignes : un bloc par poste (départ : vertical avec un relais)');
+      await p.selectOption('select[data-p="1"][data-k="when"]', 'never');
       await p.fill('#edName', 'Mon huck'); await p.click('#edSave');
       t.ok((await p.textContent('#sysItems')).includes('Mon huck'), 'enregistré dans la liste');
+      t.ok(await p.evaluate(() => storeGet('uf-systems', []).some(x => x.name === 'Mon huck' && x.postes[1].when === 'never')), 'les consignes sont enregistrées avec le système');
       await p.click('#sysNewDef'); await p.click('#edModes [data-m="man"]');
       await p.selectOption('select[data-r="0"]', 'double'); await p.fill('#edName', 'Pression'); await p.click('#edSave');
       t.ok((await p.locator('#sysItems li').count()) === 2, 'défense enregistrée aussi');

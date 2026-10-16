@@ -118,6 +118,13 @@ const SERIES = [
     style: { off: ['ho', 'vert'], def: ['zone', 'clam', 'man'], force: ['straight', 'haut', 'bas'], play: ['swing', 'split', 'huck', 'none'], dplay: ['double', 'junk', 'none'], huck: 1.1, high: 2.2, bluff: 0.35 } }
 ];
 const DEFAULT_STYLE = { huck: 1, high: 1, bluff: 0.1 };
+// consignes d'équipe, choisies avant le point (menu de stratégie) : jeu long, passes hautes, prise de risque, aide en défense
+const ORDERS = {
+  huck: { moins: 0.55, normal: 1, plus: 1.7 },                 // goût pour les passes longues (style.huck)
+  high: { moins: 0.4, normal: 1, plus: 1.9 },                  // goût pour les passes hautes (style.high)
+  risk: { prudent: [0.1, -0.08], normal: [0, 0], ose: [-0.1, 0.2] },   // [prudence en plus, goût du risque en plus]
+  help: { jamais: 0, parfois: 1, toujours: 2 }                 // un défenseur ferme la ligne vers un attaquant libre
+};
 
 // Joueurs : prénoms affichés dans les statistiques
 const PLAYER_NAMES = [['Léo', 'Inès', 'Hugo', 'Maya', 'Noah'], ['Sam', 'Lina', 'Tom', 'Zoé', 'Max']];

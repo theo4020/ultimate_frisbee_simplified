@@ -93,7 +93,7 @@ function laneSlack(h, aimX, aimY, tx, ty, curve, opp, kind) {
 function aiThrow(h, release) {
   const t = h.team, dir = dirOf(t), opp = TEAMS[1 - t];
   const press = Math.max(G.stall, G.holdT * 0.8);           // même sans marqueur, l'IA finit par lancer
-  const ST = aiStyle(t), L = aiLvl(t), greed = L.greed || 0;   // greed : un débutant force les passes et juge mal le danger
+  const ST = aiStyle(t), L = aiLvl(t), RK = riskOf(t), greed = clamp((L.greed || 0) + RK[1], 0, 1);   // greed : un débutant force les passes (et la consigne « osé »)
   if (!release && !G.aiPlayTried && !G.oplay) {              // une fois par possession, l'IA appelle parfois un de ses deux plays
     G.aiPlayTried = true;
     if (Math.random() < 0.5 && callPlay(t, Math.random() < 0.6 ? 1 : 2)) { h.think = 0.35; return; }
@@ -137,7 +137,7 @@ function aiThrow(h, release) {
         const v = clamp(slack, -1, 0.6) * 4 * (1 - 0.45 * greed) + gain * 0.3 * (1 + 0.6 * greed) + (long ? 2.2 * ST.huck * (1 + greed) : 0) + (Math.random() - 0.5) * 4 * greed + (inScoreZone(t, cx0) ? 8 : 0)
           + (G.stall > 5 && p.role === 'dump' ? 2.5 : 0) + (p.free ? 4 : 0) + playBonus - Math.abs(curve) * (0.6 + G.wind.kmh * 0.03) - d * (0.02 + G.wind.kmh * 0.003) - kindCost;   // courbe dans le vent : risquée
         // un huck peut être un peu disputé : le disque passe au-dessus de la défense au milieu
-        const minSlack = (playBonus && P.type === 'huck' ? -0.15 : long ? -0.08 - (ST.huck - 1) * 0.25 : p.free ? -0.08 : 0.05) + L.safe - 0.45 * greed + (kind === 'high' ? (release ? -0.15 : 0) : 0);
+        const minSlack = (playBonus && P.type === 'huck' ? -0.15 : long ? -0.08 - (ST.huck - 1) * 0.25 : p.free ? -0.08 : 0.05) + L.safe + RK[0] - 0.45 * greed + (kind === 'high' ? (release ? -0.15 : 0) : 0);
         if (slack < minSlack && press < 8.3) continue;
         if (v > bv) { bv = v; best = { tx: aimX, ty: aimY, curve, kind }; }
       }
