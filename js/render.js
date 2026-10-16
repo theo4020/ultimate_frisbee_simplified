@@ -38,12 +38,12 @@ function drawAim(h, px, py, curve, kind, aiming, ally) {
 }
 function canThrow() { const h = throwerHuman(); return G.phase === 'play' && !!h && h.id === G.myId; }
 function defending() { return G.phase === 'play' && G.off !== G.me; }
-// couleur selon la hauteur : rouge = contrable (même en plongeon), orange = contrable debout,
-// violet = seulement en sautant, bleu = trop haut
-// mode daltonien (palette Okabe-Ito) : vermillon, jaune, rose, bleu ciel
-const HC = { std: ['248,113,113', '251,146,60', '196,181,253', '125,211,252'], cb: ['213,94,0', '240,228,66', '204,121,167', '86,180,233'] };
+// couleur selon la hauteur : rouge = contrable (même en plongeon), jaune = contrable debout,
+// rose = seulement en sautant, bleu = trop haut
+// palette Okabe-Ito, lisible par les daltoniens : vermillon, jaune, rose, bleu ciel
+const HC = ['213,94,0', '240,228,66', '204,121,167', '86,180,233'];
 function heightColor(z, a) {
-  const c = HC[G.form.cb === '1' ? 'cb' : 'std'];
+  const c = HC;
   return `rgba(${z < REACH_DIVE ? c[0] : z < REACH_STAND ? c[1] : z < REACH_STAND + JUMP_H ? c[2] : c[3]},${a})`;
 }
 function drawFlightPath(sx, sy, cx, cy, ex, ey, peak, u0, alpha, width, dash, kind, curve) {
