@@ -7,7 +7,7 @@ function holdDisc(p) {
   disc.mode = 'held'; disc.holder = p; disc.x = p.x; disc.y = p.y; disc.z = 0; G.carryTo = null;
   players.forEach(q => { q.windup = null; q.jumpAt = 0; q.bluffed = false; }); G.tellSeen = false;
   // il garde son élan et freine (sim.js) ; il regarde d'abord dans la direction de sa course (lecture du jeu, throwing.js)
-  p.pivY = 0; p.pivTo = 0; p.pivLock = 0; G.mkShade = 0;                      // il reçoit face au jeu, sans pivot
+  p.pivY = 0; p.pivTo = 0; p.pivLock = 0; G.mkShade = 0; G.pivHolder = null;                    // il reçoit face au jeu, sans pivot
   const sp = Math.hypot(p.vx, p.vy); p.face = sp > 1.5 ? Math.atan2(p.vy, p.vx) : (dirOf(p.team) > 0 ? 0 : Math.PI);
   if (p.dive > 0 || p.down > 0) { p.vx *= 0.5; p.vy *= 0.5; }
   p.dive = p.down = 0; p.jump = p.jprep = p.jrec = 0;           // réception en layout ou en saut : il se relève avec le disque

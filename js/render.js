@@ -189,7 +189,7 @@ function draw() {
   const myAttack = playing && G.off === G.me && !G.practice, ME = G.me, mySel = (meH() || {}).sel || null;
 
   // Ta passe : la zone où la mark peut contrer en se fendant (lancer dedans = risqué) — seulement quand c'est toi qui lances
-  if (canThrow() && !G.tuto) {
+  if (canThrow() && (!G.tuto || G.tuto.mark)) {
     const mk = markOf(disc.holder);
     if (mk) { ctx.fillStyle = 'rgba(239,68,68,.13)'; ctx.strokeStyle = 'rgba(248,113,113,.45)'; ctx.lineWidth = 1.5;
       circle(X(mk.x), Y(mk.y), (ARM_R + MARK_LUNGE) * S); ctx.fill(); ctx.stroke(); }

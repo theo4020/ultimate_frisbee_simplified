@@ -66,6 +66,7 @@ export default async function (t) {
       const pick = async (sel) => { const v = await p.$$eval(sel + ' option', o => o.map(x => x.value).find(v => v.startsWith('sys:'))); await p.selectOption(sel, v); };
       await pick('#selOff'); await pick('#selDef');
       t.ok(await p.evaluate(() => osysOf(0) && osysOf(0).name === 'Ma forme' && dsysOf(0) && dsysOf(0).name === 'Pression'), 'formation et défense perso actives');
+      await p.evaluate(() => { G.dplay = null; });             // le match de fond peut avoir lancé une junk, qui change la défense
       t.ok(!(await p.isVisible('#selForce')) && await p.evaluate(() => forceOf(0) === 'straight'), 'défense avec sa propre force : le menu de force est masqué');
       const p1 = await p.$$eval('#selPlay1 option', o => o.map(x => x.value).find(v => v.startsWith('sys:')));
       await p.selectOption('#selPlay1', p1);

@@ -231,6 +231,27 @@ export default async function (t, { quick }) {
   t.ok(td.msgs.slice(0, 3).join() === 'Passe dans 3…,Passe dans 2…,Passe dans 1…' && td.msgs.some(m => /PLONGE/.test(m)), 'compte à rebours, puis le signal « PLONGE ! »', td.msgs);
   t.ok(td.done && td.lblock, 'plonger au signal contre la passe (layout block)', td);
 
+  t.group('Tutoriel : le pied de pivot');
+  const tpv = R(`(() => {
+    const keepH = G.humans, keepS = G.series; G.series = null; G.humans = [{ id: 0, team: 0, sel: null }]; G.myId = 0; syncMe();
+    const run = piv => { const out = {};
+      for (let k = 0; k < 6; k++) {
+        tutoStart(); tutoGo(TUTO_STEPS.findIndex(s => s.title === 'Le pied de pivot'));
+        for (let f = 0; f < 30; f++) { __tick(); tutoFrame(1 / 60); }
+        if (piv) { pivotBtnDown(); pivotBtnUp(); for (let f = 0; f < 36; f++) { __tick(); tutoFrame(1 / 60); } }   // pivote, attend que le disque soit passé
+        doThrow(TEAMS[0][1].x, TEAMS[0][1].y, 0);
+        for (let f = 0; f < 300 && !G.tuto.after; f++) { __tick(); tutoFrame(1 / 60); }
+        const m = /Bien pivoté/.test(G.msg) ? 'ok' : 'ko'; out[m] = (out[m] || 0) + 1; tutoCleanup();
+      }
+      return out; };
+    const r = { piv: run(true), none: run(false), zone: (() => { tutoStart(); tutoGo(TUTO_STEPS.findIndex(s => s.title === 'Le pied de pivot')); __tick(); const z = !!markOf(disc.holder) && G.tuto.mark; tutoCleanup(); return z; })() };
+    G.humans = keepH; G.series = keepS; syncMe();
+    return r;
+  })()`);
+  t.ok(tpv.zone, 'la mark joue vraiment dans cette étape (zone rouge, elle peut contrer)', tpv);
+  t.ok(tpv.piv.ok === 6, 'changer de pied puis lancer côté fermé : la passe contourne la mark', tpv);
+  t.ok(!tpv.none.ok, 'sans changer de pied : pas validé (contré, ou « change de pied »)', tpv);
+
   t.group('Tutoriel : contrer une passe haute');
   const tj = R(`(() => {
     const keepH = G.humans, keepS = G.series; G.series = null; G.humans = [{ id: 0, team: 0, sel: null }]; G.myId = 0; syncMe();

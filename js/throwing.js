@@ -62,7 +62,7 @@ function throwDisc(h, tx, ty, curve, errScale, kind) {
   const wx = (wx0 * Math.cos(ga) - wy0 * Math.sin(ga)) * gk, wy = (wx0 * Math.sin(ga) + wy0 * Math.cos(ga)) * gk;
   const ex = ax + wx, ey = ay + wy;                                        // le vent déplace l'arrivée
   const [sx, sy] = releasePoint(h, ax, ay), [cx, cy] = ctrlFor(sx, sy, ax, ay, curve);
-  disc.mark = G.tuto || G.practice ? null : markOf(h);           // elle peut se fendre vers le disque au lâcher (sim.js)
+  disc.mark = (G.tuto && !G.tuto.mark) || G.practice ? null : markOf(h);           // elle peut se fendre vers le disque au lâcher (sim.js)
   Object.assign(disc, { mode: 'air', holder: null, sx, sy, ex, ey, cx, cy,
     t: 0, dur, thrower: h, team: h.team, rolled: new Set(), kind, curveV: curve, pull: false,
     rx: tx + wx0, ry: ty + wy0 });                                          // là où la passe devait arriver (sans erreur)

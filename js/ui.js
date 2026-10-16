@@ -358,6 +358,7 @@ function pivotBtnUp() {
 }
 function togglePivot() { if (G.pivHolder !== disc.holder) { G.pivHolder = disc.holder; G.pivSel = -1; } G.pivSel = G.pivSel > 0 ? -1 : 1; sendInput(true); }
 function pivotBtnFrame() {
+  if (disc.mode !== 'held') G.pivHolder = null;             // le même porteur peut recevoir à nouveau : on repart côté open
   if (disc.mode === 'held' && disc.holder !== G.pivHolder) { G.pivHolder = disc.holder; G.pivSel = -1; }   // nouvelle réception : pivot côté open
   if (PB.down && !PB.done && G.time - PB.at >= PIVOT_HOLD) {
     PB.done = true;

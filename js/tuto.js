@@ -53,6 +53,34 @@ const TUTO_STEPS = [
     }
   },
   {
+    title: 'Le pied de pivot',
+    ctx: 'throw',
+    text: {
+      mouse: () => `Ta mark ferme le côté de ton coéquipier (sa zone rouge). <b>${keysOf('high').map(keyName).join(' / ')}</b> (appui court) change de pied : le disque passe de l’autre côté de la mark. Pivote, attends que le disque soit passé de l’autre côté, puis lance.`,
+      touch: 'Ta mark ferme le côté de ton coéquipier (sa zone rouge). <b>Tape ton porteur</b> pour changer de pied : le disque passe de l’autre côté de la mark. Pivote, attends que le disque soit passé de l’autre côté, puis lance.',
+      joy: 'Ta mark ferme le côté de ton coéquipier (sa zone rouge). Un appui sur <b>Pivot</b> (bord droit) change de pied : le disque passe de l’autre côté de la mark. Pivote, attends que le disque soit passé de l’autre côté, puis lance.',
+      pad: 'Ta mark ferme le côté de ton coéquipier (sa zone rouge). Un appui sur <b>Y</b> change de pied : le disque passe de l’autre côté de la mark. Pivote, attends que le disque soit passé de l’autre côté, puis lance avec A.'
+    },
+    setup() {
+      tutoReset(); G.tuto.mark = true; G.tuto.level = 'facile'; G.tuto.piv = -1;
+      Object.assign(G.ai, { off: 'vert', def: 'man', force: 'haut', play: 'none', dplay: 'none' });   // force haut : la mark ferme le bas
+      tutoPut(0, TUTO_PIV);
+      tutoFarDefense();
+      tutoGive(TEAMS[0][0]);
+      const m = TEAMS[1][0]; m.match = TEAMS[0][0]; [m.x, m.y] = markSpot(1, TEAMS[0][0].x, TEAMS[0][0].y); m.tx = m.x; m.ty = m.y;
+    },
+    frame() { const h = disc.holder; if (disc.mode === 'held' && h && h.team === 0) G.tuto.piv = h.pivY || 0; },
+    pin(p) {
+      if (p.team === 1) return p.i === 0 ? null : tutoFar(p);   // la mark joue vraiment : elle suit ton pivot
+      if (p === disc.holder) return null;
+      return TUTO_PIV[p.i];
+    },
+    on(ev, p) {
+      if (ev === 'catch' && p.team === 0) { if (G.tuto.piv > 0.3) tutoSuccess('Bien pivoté !'); else tutoFail('Passé, mais change de pied pour contourner la mark !'); }
+      if (ev === 'turnover') tutoFail(G.tuto.piv > 0.3 ? 'Contré : attends que le disque soit passé de l’autre côté avant de lancer !' : 'Contré par la mark ! Change d’abord de pied.');
+    }
+  },
+  {
     title: 'La passe haute',
     ctx: 'throw',
     text: {
@@ -329,7 +357,7 @@ function tutoReset() {
     match: null, diveTried: false, called: 0, freeAcc: 0, free: false }));
   Object.assign(G, { oplay: null, dplay: null, pendingOPlay: null, pullPending: false, carryTo: null, stall: 0, marker: null, dbl: null,
     pickup: null, throwKind: 'normal', score: [0, 0], celebrate: null, scorer: null, phase: 'play', pull: null });
-  Object.assign(G.tuto, { wall: false, level: null, count: 0, called: false, played: false, jumped: false, blocked: false, lblock: false, thrown: false, holdT: 0, cd: 0, cued: false });
+  Object.assign(G.tuto, { mark: false, piv: 0, wall: false, level: null, count: 0, called: false, played: false, jumped: false, blocked: false, lblock: false, thrown: false, holdT: 0, cd: 0, cued: false });
   G.wind = { x: 0, y: 0, kmh: 0 };                             // pas de vent pendant le tutoriel
   setCurve(0);
   disc.pull = false; disc.kind = 'normal';
@@ -338,6 +366,7 @@ function tutoReset() {
 function tutoPut(t, spots, all) {
   TEAMS[t].forEach((p, k) => { const s = spots[k]; if (s) { p.x = p.tx = s[0]; p.y = p.ty = s[1]; } else if (all) { p.x = p.tx = 95; p.y = p.ty = 4 + k * 7; } });
 }
+const TUTO_PIV = [[35, 18.5], [37, 28], [24, 6], [22, 18.5], [24, 31]];   // pied de pivot : le receveur est côté fermé
 const tutoFar = p => [95, 4 + p.i * 7];
 function tutoFarDefense() { tutoPut(1, TEAMS[1].map(tutoFar)); }
 function tutoGive(p) {
