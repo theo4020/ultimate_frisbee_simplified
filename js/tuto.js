@@ -171,32 +171,6 @@ const TUTO_STEPS = [
     }
   },
   {
-    title: 'Layout en attaque',
-    ctx: 'move',
-    text: {
-      mouse: () => `Ton coéquipier ne bouge pas. Lance à 2–4 m de lui, puis <b>clic</b> (ou ${tutoCmd('dive')}) pendant le vol : il plonge.`,
-      touch: 'Ton coéquipier ne bouge pas. Lance à 2–4 m de lui, puis <b>glisse vite</b> n’importe où pendant le vol : il plonge.',
-      joy: 'Ton coéquipier ne bouge pas. Lance à 2–4 m de lui, puis touche <b>Layout</b> pendant le vol : il plonge au bon moment.',
-      pad: 'Ton coéquipier ne bouge pas. Lance à 2–4 m de lui, puis <b>B</b> pendant le vol : il plonge.'
-    },
-    still: true,                                               // le receveur reste immobile : c'est toi qui le fais plonger
-    setup() {
-      tutoReset(); G.tuto.wall = true;
-      tutoPut(0, [[36, 18.5], [50, 18.5], [28, 5], [28, 32], [24, 18.5]]);
-      tutoFarDefense();
-      tutoGive(TEAMS[0][0]);
-    },
-    pin(p) {
-      if (p.team === 1) return tutoFar(p);
-      if (p === disc.holder && disc.mode === 'held') return null;
-      return [[36, 18.5], [50, 18.5], [28, 5], [28, 32], [24, 18.5]][p.i];
-    },
-    on(ev, p) {
-      if (ev === 'catch' && p.team === 0) { if (p.dive > 0 || p.down > 0) tutoSuccess('Superbe layout ! 🙌'); else tutoFail('Attrapé sans plonger : vise un peu plus loin de lui.'); }
-      if (ev === 'turnover') tutoFail(TEAMS[0].some(q => q.down > 0 || q.dive > 0) ? 'Raté : plonge un peu plus tôt ou vise plus près.' : 'Plonge pendant le vol du disque !');
-    }
-  },
-  {
     title: 'Duel en l’air',
     ctx: 'move',
     text: {
