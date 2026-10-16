@@ -74,7 +74,8 @@ function cutterSlot(p, t, ax, ay, dir, form) {
 
 // un joueur resté loin derrière le jeu remonte en courant au lieu de trottiner
 function hustle(p, base) {
-  return dist(p.x, p.y, p.tx, p.ty) > 7 ? Math.max(base, SPD.cut * 0.92) : base;
+  const far = flowOf(p.team) ? 7 : 3.5;                      // structuré : on se replace vite (dès 3,5 m de sa place)
+  return dist(p.x, p.y, p.tx, p.ty) > far ? Math.max(base, SPD.cut * 0.92) : base;
 }
 
 // =====================================================================
@@ -128,18 +129,21 @@ function launchCut(b) {
   startCut(b.c, b.x, b.y, b.deep);
   G.cutIdle = 0; G.lastCutAt = G.gt;
 }
-// structure : on ne coupe que depuis sa place (la formation a le temps de se remettre en place), et pas deux coupes coup sur coup
-const CUT_GAP = 1.2, CUT_FROM = 4;
+// style d'attaque (menu, à côté de la formation) : « structuré » = on se replace avant de recouper, on n'enchaîne que si
+// un coupeur est déjà lancé ; « enchaîné » = le jeu continue dès la réception (flow)
+const CUT_FROM = 4;
+const flowOf = t => (cfg(t) || {}).flow === 'flow';
 // Juste après une réception : le coupeur le mieux placé propose aussitôt la passe suivante (continuation)
 function continuationCut(t, h) {
   if (G.oplay && G.oplay.team === t) return;
   const dir = dirOf(t), open = -closedOf(1 - t);
   // seulement un coupeur déjà lancé vers l'espace (le jeu continue), ou un poste réglé « juste après une réception » ;
   // sinon tout le monde se replace et la formation réapparaît
+  const flow = flowOf(t);
   const cands = G.order[t].filter(p => !userControls(p) && p.state !== 'jab' && p.state !== 'cut'
-    && (posteOf(p).when === 'catch' || (['auto', 'turn'].includes(posteOf(p).when) && p.state === 'stack' && Math.hypot(p.vx, p.vy) > 4.5)));
-  let b = bestCut(t, h, h.x, h.y, dir, open, cands, 3.2);   // vraiment ouvert : sinon on se replace
-  if (b && posteOf(b.c).when !== 'catch') {                   // la coupe doit prolonger sa course, pas la retourner
+    && (posteOf(p).when === 'catch' || (['auto', 'turn'].includes(posteOf(p).when) && (flow || (p.state === 'stack' && Math.hypot(p.vx, p.vy) > 4.5)))));
+  let b = bestCut(t, h, h.x, h.y, dir, open, cands, flow ? 1.5 : 3.2);   // structuré : vraiment ouvert, sinon on se replace
+  if (b && !flow && posteOf(b.c).when !== 'catch') {          // la coupe doit prolonger sa course, pas la retourner
     const c = b.c, ahead = dist(b.x, b.y, c.x + c.vx * 1.3, c.y + c.vy * 1.3);   // là où sa course l'emmène déjà
     if (ahead > 6.5) b = null;
   }
@@ -158,22 +162,23 @@ function runCutSequencer(t, ax, ay, dir, open, form, dt) {
   G.cutT = 0.25;
   const ord = G.order[t];
   const running = ord.filter(p => p.state === 'jab' || p.state === 'cut').length;
-  if (running >= (G.stall > 5 ? 2 : 1)) return;             // une coupe à la fois ; deux quand le compte presse
+  if (running >= (G.stall > 4 || G.holdT > 2.5 ? 2 : 1)) return;   // le porteur attend : une deuxième coupe part             // une coupe à la fois ; deux quand le compte presse
   // consignes « quand couper » : jamais, juste après une réception (voir continuationCut), quand le stall monte,
   // à son tour (seul le premier poste « à son tour » prêt, dans l'ordre des postes)
   let turn = false;
-  if (G.gt - (G.lastCutAt ?? -9) < CUT_GAP && G.stall < 6) return;
+  const flow = flowOf(t);
   const ready = ord.filter(p => {
     if (!cutReady(p, t)) return false;
     const sl = cutterSlot(p, t, ax, ay, dir, form);
-    if (dist(p.x, p.y, sl.x, sl.y) > CUT_FROM && G.stall < 6) return false;   // encore en train de se replacer
+    // structuré : on se replace d'abord ; mais si le porteur attend déjà depuis un moment, on coupe d'où l'on est
+    if (!flow && dist(p.x, p.y, sl.x, sl.y) > CUT_FROM && G.holdT < 1.2 && G.stall < 3) return false;
     const w = posteOf(p).when;
     if (w === 'never' || w === 'catch' || (w === 'stall' && G.stall < 4.5)) return false;
     if (w === 'turn') { if (turn) return false; turn = true; }
     return true;
   });
   if (!ready.length) return;
-  const need = 4.2 - G.cutIdle * 1.2 - G.stall * 0.25;      // plus on attend, moins on est exigeant
+  const need = 3.4 - G.cutIdle * 1.2 - G.stall * 0.25;      // plus on attend, moins on est exigeant
   const b = bestCut(t, disc.holder, ax, ay, dir, open, ready, need);
   if (b) launchCut(b);
 }

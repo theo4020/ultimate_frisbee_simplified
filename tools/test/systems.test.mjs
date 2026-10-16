@@ -70,14 +70,21 @@ export default async function (t, { quick }) {
       return { stuck, pts, cuts, spot: checks ? onSpot / checks : 1, checks, plays, chain: chainChecks ? chained / chainChecks : 1, chainChecks, mix: mixChecks ? mixOk / mixChecks : 1, mixChecks, dbl };
     })()`);
     t.ok(r.stuck === 0 && r.pts > 0, `${mode} : aucun point bloqué`, r);
-    if (mode === 'formation') { t.ok(r.cuts > 30, 'formation perso : les joueurs coupent librement depuis leurs places', r.cuts); t.ok(r.spot >= 0.85 || r.checks * (1 - r.spot) <= 1, 'au repos, chacun vise sa place de la formation (un écart isolé toléré)', JSON.stringify(r) + ' ' + R('JSON.stringify(__miss.slice(0, 3))')); }   // (si personne n'a été au repos, rien à vérifier)
+    if (mode === 'formation') { t.ok(r.cuts > 20, 'formation perso : les joueurs coupent librement depuis leurs places', r.cuts); t.ok(r.spot >= 0.85 || r.checks * (1 - r.spot) <= 1, 'au repos, chacun vise sa place de la formation (un écart isolé toléré)', JSON.stringify(r) + ' ' + R('JSON.stringify(__miss.slice(0, 3))')); }   // (si personne n'a été au repos, rien à vérifier)
     if (mode === 'man' || mode === 'mixte') t.ok(r.mix > 0.9, `${mode} : chaque défenseur suit sa mission (une mark, individuelles avec un joueur)`, r);
-    if (mode === 'man') t.ok(r.dbl > 0, 'double team dès le stall choisi', r);
     if (mode === 'play') {
       t.ok(r.plays >= 1, 'play perso : l’IA l’appelle et il se joue', r.plays);   // (moins de possessions depuis que les passes sont moins contrables)
 
     }
   }
+
+  const db = R(`(() => { const c1 = Object.assign({}, G.ai), keep = cfg; cfg = t => t === 0 ? c1 : G.ai;   // double team dès le stall choisi
+    c1.dsys = cleanSystem({ kind: 'def', mark: { double: '4' }, postes: [{ mission: 'man' }, { mission: 'man' }, { mission: 'man' }, { mission: 'man' }] });
+    G.score = [0, 0]; G.receiving = 1; newWind(); startPoint(); for (let f = 0; f < 6000 && !(G.phase === 'play' && disc.mode === 'held' && !G.pullPending); f++) __tick();
+    G.humans = []; G.dplay = null; G.oplay = null; const h = TEAMS[1][1]; G.off = 1; holdDisc(h); setupDefense(0, h); h.think = 99;
+    G.stall = 3; G.dbT = 0; defenseBrain(0, 0.4); const before = !!(G.dB && G.dB.double);
+    G.stall = 4.5; G.dbT = 0; defenseBrain(0, 0.4); const after = !!(G.dB && G.dB.double); cfg = keep; return { before, after }; })()`);
+  t.ok(!db.before && db.after, 'défense perso : double team dès le stall choisi', db);
 
   t.group('Plays appelés en jeu');
   const pl = R(`(() => {

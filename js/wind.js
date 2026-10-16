@@ -88,10 +88,17 @@ function closedOf(defT) {
 }
 // où se place la mark : côté fermé, ou pile devant en straight up
 const MARK_K = { serree: 0.75, normale: 1, lache: 1.7 };
+// place de la mark : devant le porteur, côté fermé ; elle se décale avec le pivot du porteur (G.mkShade suit h.pivY avec
+// un temps de réaction, voir sim.js) — pivot côté fermé : elle ferme encore plus ; pivot côté open : elle couvre l'intérieur
 function markSpot(defT, ax, ay) {
+  const h = disc.holder && (disc.mode === 'held' || disc.mode === 'carry') && disc.holder.team !== defT ? disc.holder : null;
+  return markSpotFor(defT, ax, ay, h ? G.mkShade || 0 : 0);
+}
+function markSpotFor(defT, ax, ay, shade) {
   const dir = dirOf(1 - defT), D = defFormOf(defT) === 'mix' && dsysOf(defT), k = D ? MARK_K[D.mark.dist] || 1 : 1;   // défense perso : distance de la mark
-  if (forceOf(defT) === 'straight') return [ax + dir * 1.4 * k, ay];
-  return [ax + dir * 1.0 * k, ay + closedOf(defT) * 1.3 * k];
+  if (forceOf(defT) === 'straight') return [ax + dir * 1.2 * k, ay + 0.9 * shade * k];
+  const c = closedOf(defT), sc = shade * c;                      // > 0 : pivot côté fermé (break) ; < 0 : côté open (concédé)
+  return [ax + dir * 1.0 * k, ay + c * (1.0 + 0.6 * Math.max(0, sc) + 0.25 * Math.min(0, sc)) * k];
 }
 function anchor() {
   if (disc.mode === 'air') return [disc.ex, disc.ey];

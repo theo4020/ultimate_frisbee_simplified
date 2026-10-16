@@ -22,7 +22,7 @@ const aiStyle = t => {
   return { huck: ORDERS.huck[c.huck] || 1, high: ORDERS.high[c.high] || 1, bluff: DEFAULT_STYLE.bluff };
 };
 const riskOf = t => ORDERS.risk[(cfg(t) || {}).risk] || ORDERS.risk.normal;
-const DEFAULT_CFG = { off: 'vert', def: 'man', force: 'haut', play: 'none', play1: 'huck', play2: 'give', dplay: 'none', allyLevel: 'normal', tname: '', tcol: '', puller: 'cap', restart: 'pose', huck: 'normal', high: 'normal', risk: 'normal', help: 'parfois' };
+const DEFAULT_CFG = { off: 'vert', def: 'man', force: 'haut', play: 'none', play1: 'huck', play2: 'give', dplay: 'none', allyLevel: 'normal', tname: '', tcol: '', puller: 'cap', restart: 'pose', huck: 'normal', high: 'normal', risk: 'normal', help: 'parfois', flow: 'struct' };
 G.humans = [{ id: 0, team: 0, sel: null }];
 G.myId = 0;
 

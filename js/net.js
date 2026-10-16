@@ -279,7 +279,7 @@ function snapshot() {
     d: [disc.mode, idx(disc.holder), r1(disc.x), r1(disc.y), r1(disc.sx), r1(disc.sy), r1(disc.cx), r1(disc.cy), r1(disc.ex), r1(disc.ey), r2(disc.t), r2(disc.dur), idx(disc.intended), disc.kind, r2(disc.curveV || 0)],
     g: { score: G.score, off: G.off, phase: G.phase, stall: r1(G.stall), mk: idx(G.marker), msg: G.msg, mid: G.msgId, mt: G.msgTeam, ma: G.msgAlt,
       dbl: idx(G.dbl), gt: r1(G.gt), carry: G.carryTo,
-      pull: G.phase === 'pull' && G.pull ? G.pull.team : -1, pullBy: G.pull ? G.pull.by : null, pready: G.phase === 'pull' && pullReady(), pleft: pullLeft(), tell: highTell(), pz: G.pz || null, aim: netAimOut() }
+      pull: G.phase === 'pull' && G.pull ? G.pull.team : -1, pullBy: G.pull ? G.pull.by : null, pready: G.phase === 'pull' && pullReady(), pleft: pullLeft(), tell: highTell(), pz: G.pz || null, aim: netAimOut(), piv: disc.holder ? r2(disc.holder.pivY || 0) : 0 }
   };
 }
 // envoi aux invités : on n'empile jamais les états chez un invité dont la connexion sature
@@ -429,6 +429,7 @@ function applySnapshot(m) {
     G.order = mt.order.map(o => o.map(i => players[i]));
   }
   G.netTell = !!g.tell; G.pz = g.pz || null;
+  if (disc.holder) disc.holder.pivY = +g.piv || 0;
   G.netAim = Array.isArray(g.aim) ? { x: +g.aim[0], y: +g.aim[1], curve: +g.aim[2] || 0, kind: g.aim[3] === 'high' ? 'high' : 'normal', aiming: !!g.aim[4] } : null;
   if ((g.phase === 'play' || g.phase === 'pull') && G.started && !G.teamsOpen && !cardStack.length && !$('overlay').classList.contains('hidden') && $('stratCard').style.display === 'none') {
     $('overlay').classList.add('hidden'); G.menuShown = false;          // arrivée en cours de point : on montre le terrain

@@ -185,6 +185,28 @@ export default async function (t, { quick }) {
   t.ok(rc.early > 3 && rc.early < 6 && rc.late < 0.1 && rc.moved > 1, 'attrapé en courant : il freine sur 2–3 pas avant de s’arrêter', rc);
   t.ok(!rc.thrownEarly, 'l’IA ne lance pas avant de s’être arrêtée', rc);
 
+  t.group('Duel porteur / mark');
+  R(`function __near(h) { G.dplay = null; for (const d of TEAMS[1]) d.match = null; const m = TEAMS[1][0]; m.match = h; for (const d of TEAMS[1]) { if (d === m) { [d.x, d.y] = markSpot(1, h.x, h.y); } else { d.x = h.x + dirOf(0) * 20; } d.vx = d.vy = 0; } G.marker = m; }`);
+  const du2 = R(`(() => { G.score = [0, 0]; G.receiving = 0; newWind(); startPoint(); for (let f = 0; f < 6000 && !(G.phase === 'play' && disc.mode === 'held' && !G.pullPending); f++) __tick();
+    G.dplay = null; G.oplay = null; const keepAi = Object.assign({}, G.ai); Object.assign(G.ai, { dplay: 'none', def: 'man', force: 'bas', dsys: null });
+    const h = TEAMS[0][0]; G.off = 0; Object.assign(h, { x: 50, y: 18, vx: 0, vy: 0 }); holdDisc(h); h.think = 99; setupDefense(1, h); __near(h);
+    const c = closedOf(1), mkOk = () => { const m = TEAMS[1][0]; return +((m.y - h.y) * c).toFixed(2); };
+    for (let f = 0; f < 90; f++) { h.think = 99; __tick(); } const rest = mkOk();
+    h.pivTo = c; for (let f = 0; f < 45; f++) { h.think = 99; __tick(); } const followBreak = mkOk(), rel = [h.y + (h.pivY || 0) * PIVOT_R];
+    h.pivTo = -c; for (let f = 0; f < 45; f++) { h.think = 99; __tick(); } const followOpen = mkOk();
+    // une passe côté break lâchée juste à côté de la mark : souvent contrée ; la même côté open : jamais par la mark
+    let blkB = 0, blkO = 0;
+    for (let k = 0; k < 40; k++) for (const side of [c, -c]) {
+      G.phase = 'play'; G.off = 0; Object.assign(h, { x: 50, y: 18, vx: 0, vy: 0 }); holdDisc(h); h.think = 99; setupDefense(1, h); __near(h);
+      for (let f = 0; f < 70; f++) { h.think = 99; h.pivTo = side; __tick(); }
+      const m = markOf(h); if (!m) continue; const keep = G.stats.blocks + G.stats.ints;
+      throwDisc(h, h.x + dirOf(0) * 6, h.y + side * 6, 0, 0, 'normal');
+      for (let f = 0; f < 30 && disc.mode === 'air'; f++) __tick();
+      if (G.stats.blocks + G.stats.ints > keep) { if (side === c) blkB++; else blkO++; } }
+    Object.assign(G.ai, keepAi); return { rest, followBreak, followOpen, relSide: +((rel[0] - h.y) * c).toFixed(2), blkB, blkO }; })()`);
+  t.ok(du2.followBreak > du2.followOpen + 0.3 && du2.followBreak > du2.rest + 0.2, 'la mark suit le pivot du porteur (côté break : elle ferme ; côté open : elle concède)', du2);
+  t.ok(du2.blkB >= 10 && du2.blkO <= 3, 'passe côté break dans la mark : souvent contrée ; côté open : libre', du2);
+
   t.group('Coupe demandée dans sa direction de course');
   const cf = R(`(() => { const c = TEAMS[0][2]; Object.assign(c, { x: 40, y: 15, vx: 7, vy: 0 }); startCut(c, 60, 16, false);
     const st = c.state; Object.assign(c, { x: 40, y: 15, vx: -6, vy: 0 }); startCut(c, 60, 16, false); return { same: st, back: c.state }; })()`);

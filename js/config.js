@@ -36,7 +36,10 @@ const DRIFT = 0.5;                                          // dérive du disque
 const STALL_R = 3;                                          // rayon du stall count (3 m, règle WFDF)
 const STALL_RATE = 1;                                       // stall count : 1 compte par seconde
 const REACH_STAND = 2.2, REACH_DIVE = 1.9;                  // hauteur max du disque atteignable debout (bras levé) / en plongeon
-const ARM_R = 1.0, DIVE_R = 1.1;                            // portée des bras autour du corps : debout / en plongeon (en plus du vol)
+const ARM_R = 1.0, DIVE_R = 1.1;
+// duel porteur / mark : le porteur pivote (lâcher jusqu'à PIVOT_R m sur le côté, PIVOT_T s pour passer du centre au côté),
+// la mark suit son pivot avec un temps de réaction, et se fend vers le disque au lâcher (MARK_LUNGE m pendant MARK_LUNGE_T s)
+const PIVOT_R = 1.1, PIVOT_T = 0.25, MARK_LUNGE = 0.4, MARK_LUNGE_T = 0.35;                            // portée des bras autour du corps : debout / en plongeon (en plus du vol)
 const CANCEL_R = 2.5;                                       // relâcher à moins de 2,5 m du handler annule le lancer
 const PEER_PREFIX = 'ultimate-frisbee-proto-v1-';
 // ---------------------------------------------------------------------

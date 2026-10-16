@@ -264,7 +264,13 @@ function draw() {
     drawBody(p, X(p.x), Y(p.y) - hop, r * 1.06, face, { lying, scale: (1 + jl * 0.22) * (crouch ? 0.84 : 1),
       throwing: p.throwT > 0, jumping: jl > 0.05, swing: Math.hypot(p.vx, p.vy) > 1 ? Math.sin(p.stride) : 0 });
     ctx.globalAlpha = 1;
-    if (p === disc.holder && (disc.mode === 'held' || disc.mode === 'carry')) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; circle(X(p.x), Y(p.y), r + 4); ctx.stroke(); }
+    if (p === disc.holder && (disc.mode === 'held' || disc.mode === 'carry')) {
+      ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; circle(X(p.x), Y(p.y), r + 4); ctx.stroke();
+      if (disc.mode === 'held' && Math.abs(p.pivY || 0) > 0.15) {   // pivot : le bras tendu du côté où il va lâcher le disque
+        const [rx, ry] = releasePoint(p, p.x, p.y); ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.moveTo(X(p.x), Y(p.y)); ctx.lineTo(X(rx), Y(ry)); ctx.stroke(); circle(X(rx), Y(ry), 3); ctx.fillStyle = '#fff'; ctx.fill();
+      }
+    }
     if (myAttack && disc.mode === 'held' && p.team === ME && p !== disc.holder && nearestD(TEAMS[1 - ME], p.x, p.y)[1] > 2.8) {
       ctx.strokeStyle = 'rgba(74,222,128,.95)'; ctx.lineWidth = 2.5; circle(X(p.x), Y(p.y), r + 3); ctx.stroke();
     }

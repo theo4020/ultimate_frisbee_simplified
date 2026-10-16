@@ -34,7 +34,7 @@ function steer(p, dt) {
   if (p.avoid && l > 0.8) [ux, uy] = avoidDir(p, ux, uy, l);  // pas d'écran : il contourne les autres joueurs
   // accélération réaliste : on accélère doucement (RUN.acc), on freine et on tourne plus vite (RUN.dec, RUN.lat)
   let dvx = ux * want - p.vx, dvy = uy * want - p.vy;
-  const sp = Math.hypot(p.vx, p.vy), kT = p.team === G.off ? 1 : RUN.defK;
+  const sp = Math.hypot(p.vx, p.vy), kT = (p.team === G.off ? 1 : RUN.defK) * (p === G.marker && disc.mode === 'held' ? 2.5 : 1);   // la mark se déplace en pas chassés, très vite sur 1 m
   if (sp < 0.5) {
     const dl = Math.hypot(dvx, dvy), maxd = RUN.acc * kT * dt;
     if (dl > maxd) { dvx *= maxd / dl; dvy *= maxd / dl; }
@@ -67,8 +67,8 @@ function avoidDir(p, ux, uy, l) {
 }
 
 // chance de contrer un disque à portée : ~90 % en plein dans les bras, ~50 % du bout des doigts
-function blockOdds(p, diving) {
-  const reach = diving ? DIVE_R : ARM_R, r = clamp(dist(p.x, p.y, disc.x, disc.y) / reach, 0, 1);
+function blockOdds(p, diving, reachOver) {
+  const reach = reachOver || (diving ? DIVE_R : ARM_R), r = clamp(dist(p.x, p.y, disc.x, disc.y) / reach, 0, 1);
   return 0.92 - 0.42 * r * r;
 }
 function update(dt) {
@@ -157,6 +157,15 @@ function update(dt) {
     G.dbl = G.marker ? dbl : null;
     if (G.marker && !G.dbl) G.stall += dt * STALL_RATE;
     if (G.stall >= 10) { G.stats.stalls++; msTurnover(h, 'stall'); turnover(h.x, h.y, 'Stall 10 ! Turnover', 'stall'); return; }
+    // pivot du porteur : humain, vers le côté où il vise ; IA, choisi dans aiThrow (passe ou feinte)
+    const th = throwerHuman();
+    if (th) { const inp = inputOf(th); if (th.id === G.myId ? G.pointer.active : inp.aim) h.pivTo = pivotFor(h, inp.x, inp.y); }
+    const pt = h.pivTo ?? 0, pv = h.pivY || 0;
+    const pT = PIVOT_T * (th ? 1 : aiLvl(h.team).react);       // un bon lanceur IA pivote plus vite (un humain : vitesse normale)
+    h.pivY = pv + clamp(pt - pv, -dt / pT, dt / pT);
+    // la mark suit le pivot avec son temps de réaction (une feinte la décale du mauvais côté)
+    const mk = G.marker;
+    if (mk && !userControls(mk)) { const tau = 0.22 * aiLvl(mk.team).react; G.mkShade = (G.mkShade || 0) + (h.pivY - (G.mkShade || 0)) * Math.min(1, dt / tau); }
     if (!throwerHuman()) {                                  // porteur sans humain : l'IA lance
       if (G.tuto && tutoHold(h, dt)) { /* tutoriel : lanceur scénarisé */ }
       else if (h.windup) {                                       // passe haute armée : il choisit son moment
@@ -182,7 +191,8 @@ function update(dt) {
       if (p.team !== disc.team) {
         if (disc.pull) continue;                           // on ne contre pas un pull
         const diving = p.dive > 0;
-        const reach = diving ? DIVE_R : ARM_R, high = diving ? REACH_DIVE : REACH_STAND + lift;
+        const lunge = p === disc.mark && disc.t < MARK_LUNGE_T ? MARK_LUNGE : 0;   // la mark se fend vers le disque au lâcher
+        const reach = diving ? DIVE_R : ARM_R + lunge, high = diving ? REACH_DIVE : REACH_STAND + lift;
         if (u > 0.03 && d < reach && disc.z < high && !disc.rolled.has(p)) blockers.push(p);
       } else if (inField(disc.x, disc.y) && (p.dive > 0 ? (u > 0.3 && d < DIVE_R + 0.2 && disc.z < REACH_DIVE + 0.3) : (u > 0.45 && d < ARM_R + 0.2 && disc.z < REACH_STAND + 0.1 + lift))) {   // pas de réception tant que le disque est dehors
         if (d < cd) { cd = d; catcher = p; }
@@ -219,7 +229,7 @@ function update(dt) {
         if (G.tuto) G.tuto.blocked = true;
         defStop(p, 'Block en l’air !'); return;
       }
-      if (r < (G.tuto && (G.tuto.wall || diving) ? 1 : (diving ? 0.95 : L.block) * blockOdds(p, diving))) {   // tutoriel : bien placé = contré
+      if (r < (G.tuto && (G.tuto.wall || diving) ? 1 : (diving ? 0.95 : L.block) * blockOdds(p, diving, p === disc.mark && disc.t < MARK_LUNGE_T ? ARM_R + MARK_LUNGE : 0))) {   // tutoriel : bien placé = contré
         if (diving) { achEvent('layoutblock', p.team); if (G.tuto) G.tuto.lblock = true; } defStop(p, diving ? 'Layout block !' : p.jump > 0 ? 'Block en l’air !' : 'Block !'); return; }
     }
     if (catcher) {

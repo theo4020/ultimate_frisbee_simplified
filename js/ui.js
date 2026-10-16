@@ -81,6 +81,8 @@ function refreshOptions() {
   const os = pickedSys('osys'), ds = pickedSys('dsys');
   $('descOff').textContent = os ? `Ta formation « ${os.name} » : chacun prend sa place et attaque l’espace libre depuis là.` : DESCS[G.form.off];
   $('descRestart').textContent = DESCS['restart_' + G.form.restart];
+  $('descFlow').textContent = G.form.flow === 'flow' ? 'Le jeu continue dès la réception : un coupeur propose tout de suite la passe suivante.'
+    : 'Après chaque passe, chacun se replace dans la formation ; on n’enchaîne que si un coupeur est déjà lancé.';
   $('descDef').textContent = ds ? `Ta défense « ${ds.name} » : ${sysInfo(ds)}, chaque défenseur suit ses consignes.` + (ds.mark.force !== 'menu' ? ` ${MARK_OPTS.force[ds.mark.force]} (choisie dans la défense).` : '') : DESCS[G.form.def];
   $('descForce').textContent = DESCS[G.form.force];
   $('rowForce').style.display = (ds ? ds.mark.force === 'menu' : G.form.def !== 'zone') ? '' : 'none';
@@ -221,6 +223,7 @@ function stratSummary(c) {
   if (!zone) rows.push(['Force', lbl('force', c.force)]);
   rows.push(['Play 1', c.play1 === 'sys' ? sn(c.p1sys) || '—' : lbl('play1', c.play1)], ['Play 2', c.play2 === 'sys' ? sn(c.p2sys) || '—' : lbl('play2', c.play2)],
     ['Play de défense', lbl('dplay', c.dplay)], ['Reprise', c.restart === 'rapide' ? 'Rapide' : 'Posée'], ['Coéquipiers IA', esc(LVL_NAME[c.allyLevel] || 'Normal')]);
+  rows.splice(1, 0, ['Style', c.flow === 'flow' ? 'Enchaîné' : 'Structuré']);
   if (ordersText(c)) rows.push(['Consignes', esc(ordersText(c))]);
   return rows.map(([a, b]) => `<span><b>${a}</b> ${b}</span>`).join('');
 }
@@ -296,7 +299,7 @@ document.querySelectorAll('.swatches').forEach(box => {
 for (const id of ['tname', 'oname']) $(id).addEventListener('input', e => { G.form[id] = e.target.value.slice(0, 16); hudKey = ''; computeTeams(); saveSettings(); });
 
 const myCfg = () => ({ off: G.form.off, def: G.form.def, force: G.form.force, play: G.form.play, dplay: G.form.dplay, allyLevel: G.form.allyLevel,
-  tname: G.form.tname, tcol: G.form.tcol, puller: G.form.puller, restart: G.form.restart, huck: G.form.huck, high: G.form.high, risk: G.form.risk, help: G.form.help,
+  tname: G.form.tname, tcol: G.form.tcol, puller: G.form.puller, restart: G.form.restart, flow: G.form.flow, huck: G.form.huck, high: G.form.high, risk: G.form.risk, help: G.form.help,
   osys: pickedSys('osys'), dsys: pickedSys('dsys'), play1: G.form.play1, play2: G.form.play2,
   p1sys: G.form.play1 === 'sys' ? playOut(pickedSys('p1sys')) : null, p2sys: G.form.play2 === 'sys' ? playOut(pickedSys('p2sys')) : null });   // en ligne, les systèmes entiers partent chez l'hôte
 $('replayB').addEventListener('click', startReplay);
