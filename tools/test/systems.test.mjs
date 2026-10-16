@@ -110,7 +110,8 @@ export default async function (t, { quick }) {
     const _st = startCut; startCut = function (p, x, y, d) { if (p === q) starts.push({ x: p.x, y: p.y, st: p.state, by: (new Error().stack.split(String.fromCharCode(10))[2] || '').trim().split(' ')[1] }); return _st(p, x, y, d); };
     for (let f = 0; f < 2400 && G.oplay === P; f++) { if (disc.holder) { disc.holder.think = 99; disc.holder.windup = null; } G.stall = 0; __tick(); }
     startCut = _st;
-    return { n: starts.length, second: starts[1] && starts[1].st, ended: G.oplay !== P, by: starts.map(s => s.by).join() };
+    const pl = starts.filter(s => s.by === 'sysPlayTick');                 // ses courses du play (l'IA peut le relancer une fois les siennes finies)
+    return { n: pl.length, second: pl[1] && pl[1].st, ended: G.oplay !== P, by: starts.map(s => s.by).join() };
   })()`);
   const su = R(`(() => {                                          // option « se mettre en place » : chacun file d'abord à sa place
     G.humans = []; G.score = [0, 0]; G.receiving = 0; newWind(); startPoint();

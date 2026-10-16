@@ -244,7 +244,7 @@ const TUTO_STEPS = [
         const [x, y] = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u), d = dist(x, y, me.x, me.y);
         if (d < bd && discZ(u) < REACH_DIVE) { bd = d; bu = u; }
       }
-      if (bu >= 0 && (bu - u0) * disc.dur <= DIVE_T + 0.05) { T.cued = true; flash('PLONGE ! 🥏', true); }   // le disque y arrive à la fin du plongeon
+      if (bu >= 0 && (bu - u0) * disc.dur <= DIVE_T + 0.03) { T.cued = true; flash('PLONGE ! 🥏', true); }   // le disque y arrive à la fin du plongeon
     },
     pin(p) { return p === disc.holder && disc.mode === 'held' ? null : [[64, 18.5], [48, 18.5], [80, 5], [80, 32], [76, 18.5]][p.i]; },
     pinD(d) { return d.i === 0 ? [50.5, 20.9] : tutoFar(d); },
