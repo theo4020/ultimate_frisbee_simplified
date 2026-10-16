@@ -72,7 +72,12 @@ function aimFor(h, tx, ty, kind) {
   return [ax, ay];
 }
 // côté « break » (bloqué par la mark) : -1 = haut du terrain (y petit), +1 = bas
-function forceOf(defT) { return defFormOf(defT) === 'zone' ? 'middle' : (cfg(defT).force || 'haut'); }
+function forceOf(defT) {
+  const f = defFormOf(defT);
+  if (f === 'zone') return 'middle';
+  const D = f === 'mix' && dsysOf(defT);                   // défense perso : sa propre force, ou celle du menu
+  return D && D.mark.force !== 'menu' ? D.mark.force : (cfg(defT).force || 'haut');
+}
 function closedOf(defT) {
   const f = forceOf(defT);
   if (f === 'haut') return 1;                               // force haut : on bloque le bas
@@ -82,10 +87,11 @@ function closedOf(defT) {
   return y < H / 2 ? -1 : 1;
 }
 // où se place la mark : côté fermé, ou pile devant en straight up
+const MARK_K = { serree: 0.75, normale: 1, lache: 1.7 };
 function markSpot(defT, ax, ay) {
-  const dir = dirOf(1 - defT);
-  if (forceOf(defT) === 'straight') return [ax + dir * 1.4, ay];
-  return [ax + dir * 1.0, ay + closedOf(defT) * 1.3];
+  const dir = dirOf(1 - defT), D = defFormOf(defT) === 'mix' && dsysOf(defT), k = D ? MARK_K[D.mark.dist] || 1 : 1;   // défense perso : distance de la mark
+  if (forceOf(defT) === 'straight') return [ax + dir * 1.4 * k, ay];
+  return [ax + dir * 1.0 * k, ay + closedOf(defT) * 1.3 * k];
 }
 function anchor() {
   if (disc.mode === 'air') return [disc.ex, disc.ey];

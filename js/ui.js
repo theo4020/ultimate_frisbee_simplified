@@ -81,9 +81,9 @@ function refreshOptions() {
   const os = pickedSys('osys'), ds = pickedSys('dsys');
   $('descOff').textContent = os ? `Ta formation « ${os.name} » : chacun prend sa place et attaque l’espace libre depuis là.` : DESCS[G.form.off];
   $('descRestart').textContent = DESCS['restart_' + G.form.restart];
-  $('descDef').textContent = ds ? `Ton système « ${ds.name} » : ` + (ds.mode === 'zone' ? 'zone dessinée, la mark reste sur le porteur.' : 'individuelle, chacun avec son rôle.') : DESCS[G.form.def];
+  $('descDef').textContent = ds ? `Ta défense « ${ds.name} » : ${sysInfo(ds)}, chaque défenseur suit ses consignes.` + (ds.mark.force !== 'menu' ? ` ${MARK_OPTS.force[ds.mark.force]} (choisie dans la défense).` : '') : DESCS[G.form.def];
   $('descForce').textContent = DESCS[G.form.force];
-  $('rowForce').style.display = (ds ? ds.mode !== 'zone' : G.form.def !== 'zone') ? '' : 'none';
+  $('rowForce').style.display = (ds ? ds.mark.force === 'menu' : G.form.def !== 'zone') ? '' : 'none';
   const pd = n => { const ty = G.form['play' + n], ps = ty === 'sys' && pickedSys('p' + n + 'sys');
     return ty === 'none' ? '' : ps ? `★ ${ps.name} : tes courses, jouées depuis où sont les joueurs.` : PLAYS[ty]; };
   $('descPlay').innerHTML = [1, 2].map(n => pd(n) && `<b>Play ${n}</b> : ${esc(pd(n))}`).filter(Boolean).join('<br>')
@@ -216,7 +216,7 @@ function stratSummary(c) {
   c = c || DEFAULT_CFG;
   const lbl = (g, v) => esc((SEL_LISTS[g].find(o => o[0] === v) || [0, v || '—'])[1]);
   const sn = s => (s && typeof s === 'object' && s.name ? '★ ' + esc(s.name) : '');
-  const zone = c.dsys && typeof c.dsys === 'object' ? c.dsys.mode === 'zone' : c.def === 'zone';
+  const zone = c.dsys && typeof c.dsys === 'object' ? c.dsys.mark && c.dsys.mark.force !== 'menu' : c.def === 'zone';
   const rows = [['Formation', sn(c.osys) || lbl('off', c.off)], ['Défense', sn(c.dsys) || lbl('def', c.def)]];
   if (!zone) rows.push(['Force', lbl('force', c.force)]);
   rows.push(['Play 1', c.play1 === 'sys' ? sn(c.p1sys) || '—' : lbl('play1', c.play1)], ['Play 2', c.play2 === 'sys' ? sn(c.p2sys) || '—' : lbl('play2', c.play2)],
@@ -238,7 +238,7 @@ const SEL_LISTS = {
 SEL_LISTS.play2 = SEL_LISTS.play1;
 const SEL_IDS = { off: 'selOff', def: 'selDef', force: 'selForce', play1: 'selPlay1', play2: 'selPlay2', dplay: 'selDPlay' };
 // clé du système perso associé à chaque menu ('osys' formation, 'dsys' défense, 'p1sys'/'p2sys' plays) et genre de système
-const SEL_SYS = { off: ['osys', 'off'], def: ['dsys', 'def'], play1: ['p1sys', 'off'], play2: ['p2sys', 'off'] };
+const SEL_SYS = { off: ['osys', 'off'], def: ['dsys', 'def'], play1: ['p1sys', 'play'], play2: ['p2sys', 'play'] };
 function renderSelects() {
   for (const g in SEL_IDS) {
     const el = $(SEL_IDS[g]), [sk, kind] = SEL_SYS[g] || [null, null];
@@ -298,7 +298,7 @@ for (const id of ['tname', 'oname']) $(id).addEventListener('input', e => { G.fo
 const myCfg = () => ({ off: G.form.off, def: G.form.def, force: G.form.force, play: G.form.play, dplay: G.form.dplay, allyLevel: G.form.allyLevel,
   tname: G.form.tname, tcol: G.form.tcol, puller: G.form.puller, restart: G.form.restart, huck: G.form.huck, high: G.form.high, risk: G.form.risk, help: G.form.help,
   osys: pickedSys('osys'), dsys: pickedSys('dsys'), play1: G.form.play1, play2: G.form.play2,
-  p1sys: G.form.play1 === 'sys' ? pickedSys('p1sys') : null, p2sys: G.form.play2 === 'sys' ? pickedSys('p2sys') : null });   // en ligne, les systèmes entiers partent chez l'hôte
+  p1sys: G.form.play1 === 'sys' ? playOut(pickedSys('p1sys')) : null, p2sys: G.form.play2 === 'sys' ? playOut(pickedSys('p2sys')) : null });   // en ligne, les systèmes entiers partent chez l'hôte
 $('replayB').addEventListener('click', startReplay);
 $('go').addEventListener('click', () => {
   saveSettings();

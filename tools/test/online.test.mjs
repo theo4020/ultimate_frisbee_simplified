@@ -41,14 +41,14 @@ export default async function (t) {
     await host.click('#startOnline');
     await guest.waitForFunction(() => document.getElementById('stratCard').style.display !== 'none', null, { timeout: 5000 });
     // l'invité (capitaine des Rouges) choisit un système perso : il doit partir chez l'hôte avec sa stratégie
-    await guest.evaluate(() => { const s = cleanSystem(Object.assign(SYS_NEW.off(), { id: 'abc123', name: 'Mon huck', steps: [{ p: 0, to: [6, 10], wait: 0.6 }, { p: 2, to: [32, 6], wait: 1 }, { p: 1, to: [9, -8], wait: 1 }] })); sysSave([s]); G.form.osys = s.id; });
+    await guest.evaluate(() => { const s = cleanSystem(Object.assign(SYS_NEW.off(), { id: 'abc123', name: 'Mon huck' })); s.postes[0].zone = 'break'; sysSave([s]); G.form.osys = s.id; });
     await guest.evaluate(() => setOpt('force', 'bas'));
     await host.waitForFunction(() => cfg(1).force === 'bas', null, { timeout: 3000 }).catch(() => {});
     t.ok(await host.evaluate(() => cfg(1).force === 'bas'), 'un choix du capitaine invité part tout de suite chez l’hôte (avant « Prêt »)');
     await host.click('#go'); await guest.click('#go');
     await host.waitForFunction(() => G.phase === 'pull' || G.phase === 'play', null, { timeout: 8000 });
     t.ok(true, 'les deux capitaines prêts : le point démarre');
-    t.ok(await host.evaluate(() => { const s = osysOf(1); return !!s && s.name === 'Mon huck' && s.steps.length === 3; }), 'l’hôte joue le système perso de l’invité');
+    t.ok(await host.evaluate(() => { const s = osysOf(1); return !!s && s.name === 'Mon huck' && s.postes[0].zone === 'break'; }), 'l’hôte joue la formation perso de l’invité (avec ses consignes)');
     // le pull : si c'est l'invité (capitaine des Rouges) qui pulle, il clique deux fois (direction puis puissance)
     for (let k = 0; k < 40 && await host.evaluate(() => G.phase === 'pull'); k++) {
       for (const p of [host, guest]) {
@@ -184,9 +184,9 @@ export default async function (t) {
     await h2.evaluate(() => setOpt('off', 'ho'));
     await g2.waitForFunction(() => /Horizontal/.test(document.getElementById('captainNote').textContent), null, { timeout: 3000 }).catch(() => {});
     t.ok(!(await g2.isVisible('#stratRows')) && (await g2.textContent('#captainNote')).includes('Horizontal stack'), 'le coéquipier voit la stratégie choisie par son capitaine, en direct', await g2.textContent('#captainNote'));
-    await h2.evaluate(() => { const s = cleanSystem(Object.assign(SYS_NEW.off(), { id: 'cap123', name: 'Plan du cap', steps: [{ p: 0, to: [8, 6], wait: 0.3 }] })); sysSave([s]); G.form.p1sys = s.id; setOpt('play1', 'sys'); });
+    await h2.evaluate(() => { const f = cleanSystem(Object.assign(SYS_NEW.off(), { id: 'frm123', name: 'Forme du cap' })); const s = cleanSystem({ kind: 'play', id: 'cap123', name: 'Plan du cap', base: 'sys:frm123', steps: [{ p: 0, to: [8, 6], wait: 0.3 }] }); sysSave([f, s]); G.form.p1sys = s.id; setOpt('play1', 'sys'); });
     await g2.waitForFunction(() => playOf(0, 1) === 'sys' && playSys(0, 1) && playSys(0, 1).name === 'Plan du cap', null, { timeout: 3000 }).catch(() => {});
-    t.ok(await g2.evaluate(() => !sysList().some(x => x.id === 'cap123') && playSys(0, 1) && playSys(0, 1).name === 'Plan du cap'),
+    t.ok(await g2.evaluate(() => !sysList().some(x => x.id === 'cap123') && playSys(0, 1) && playSys(0, 1).name === 'Plan du cap' && playSys(0, 1).pos.length === 4),
       'le coéquipier peut appeler le play perso du capitaine, même sans l’avoir dans ses systèmes');
     t.ok(await h2.evaluate(() => G.series && G.series.coop && G.form.first === '0' && G.form.allyLevel === 'difficile' && aiLvl(1).react === AI_LEVELS.facile.react),
       'chez l’hôte : série lancée, l’IA pulle, coéquipiers IA difficiles, adversaire au niveau du 1er match');

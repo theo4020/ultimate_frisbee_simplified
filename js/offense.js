@@ -63,12 +63,12 @@ function cutterSlot(p, t, ax, ay, dir, form) {
   let idx = ord.indexOf(p); if (idx < 0) idx = n - 1;
   const avail = depthLeft(ax, dir);
   if (isColumn(form)) {
-    const start = Math.min(9, Math.max(3, avail * 0.3));
-    const sp = clamp((avail - start) / Math.max(1, n - 0.5), 1.6, 4.5);
+    const start = Math.min(13, Math.max(5, avail * 0.35));          // le stack se tient loin du disque : de l'espace pour couper
+    const sp = clamp((avail - start) / Math.max(1, n - 0.5), 2.5, 5);
     return { x: clamp(ax + dir * (start + sp * idx), 1.5, W - 1.5), y: lineY(t, ay, form) };
   }
   const lanes = n >= 3 ? [6, H / 2, H - 6] : n === 2 ? [10, H - 10] : [H / 2];
-  const depth = Math.min(14, Math.max(4, avail * 0.55));
+  const depth = Math.min(17, Math.max(6, avail * 0.6));
   return { x: clamp(ax + dir * depth, 1.5, W - 1.5), y: lanes[Math.min(idx, lanes.length - 1)] };
 }
 
@@ -126,8 +126,10 @@ function bestCut(t, h, ax, ay, dir, open, cands, need) {
 const cutReady = (p, t) => p.role === 'cutter' && !userControls(p) && (p.state === 'stack' || (p.state === 'clear' && p.wDone)) && G.gt - (p.cutEnd || -9) > 0.6;
 function launchCut(b) {
   startCut(b.c, b.x, b.y, b.deep);
-  G.cutIdle = 0;
+  G.cutIdle = 0; G.lastCutAt = G.gt;
 }
+// structure : on ne coupe que depuis sa place (la formation a le temps de se remettre en place), et pas deux coupes coup sur coup
+const CUT_GAP = 1.2, CUT_FROM = 4;
 // Juste après une réception : le coupeur le mieux placé propose aussitôt la passe suivante (continuation)
 function continuationCut(t, h) {
   if (G.oplay && G.oplay.team === t) return;
@@ -153,8 +155,11 @@ function runCutSequencer(t, ax, ay, dir, open, form, dt) {
   // consignes « quand couper » : jamais, juste après une réception (voir continuationCut), quand le stall monte,
   // à son tour (seul le premier poste « à son tour » prêt, dans l'ordre des postes)
   let turn = false;
+  if (G.gt - (G.lastCutAt ?? -9) < CUT_GAP && G.stall < 6) return;
   const ready = ord.filter(p => {
     if (!cutReady(p, t)) return false;
+    const sl = cutterSlot(p, t, ax, ay, dir, form);
+    if (dist(p.x, p.y, sl.x, sl.y) > CUT_FROM && G.stall < 6) return false;   // encore en train de se replacer
     const w = posteOf(p).when;
     if (w === 'never' || w === 'catch' || (w === 'stall' && G.stall < 4.5)) return false;
     if (w === 'turn') { if (turn) return false; turn = true; }
@@ -183,8 +188,10 @@ function leaveSpace(p, t, x, y) {
 // de préférence côté open et vers l'avant : laisser son joueur doit coûter cher.
 const FREE_R = 6;
 function isAbandoned(p, t) {
-  if (defFormOf(1 - t) !== 'man' || p === disc.holder) return false;
+  const df = defFormOf(1 - t);
+  if ((df !== 'man' && df !== 'mix') || p === disc.holder) return false;
   const dfn = TEAMS[1 - t], g = dfn.find(d => d.match === p);
+  if (df === 'mix' && !g) return false;                      // défense perso : il est dans une zone, personne ne l'a lâché
   return (!g || dist(g.x, g.y, p.x, p.y) > FREE_R + 2) && nearestD(dfn, p.x, p.y)[1] > 5;
 }
 function freeSpace(p, t, ax, ay, dir, open) {

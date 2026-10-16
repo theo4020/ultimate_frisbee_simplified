@@ -18,7 +18,7 @@ function startCut(c, x, y, deep) {
 // ---------- plays d'attaque : appelés en jeu par le porteur (touches, boutons, ou l'IA), joués depuis là où sont les joueurs ----------
 // Chaque équipe choisit Play 1 et Play 2 avant le point (cfg.play1 / cfg.play2 ; 'sys' = système perso, voir systems.js).
 const playOf = (t, n) => { const c = cfg(t); return c ? c['play' + n] || 'none' : 'none'; };
-function playSys(t, n) { const s = sysOf(t, 'p' + n + 'sys'); return s && s.kind === 'off' ? s : null; }
+function playSys(t, n) { const s = sysOf(t, 'p' + n + 'sys'); return s && (s.kind === 'play' || (s.kind === 'off' && s.steps)) ? s : null; }
 // peut-on appeler un play maintenant ? (l'équipe a le disque en main et aucun play n'est en cours)
 function canCallPlay(t, n) {
   const ty = playOf(t, n);
@@ -75,7 +75,7 @@ function startOPlay() {
     P.t0 = 0.5;                                              // le temps que l'espace s'ouvre, puis l'iso coupe
     P.targets = [P.a];
   } else if (P.type === 'sys') {                             // système perso : chaque rôle ①–④ au joueur le plus proche de sa place
-    const S = P.sys, spots = sysWorld(S.pos, h.x, h.y, dir, open), pool = free.slice();
+    const S = P.sys, spots = sysWorld(playPos(S), h.x, h.y, dir, open), pool = free.slice();
     P.map = [];
     for (let k = 0; k < 4; k++) { const q = closestTo(pool, spots[k][0], spots[k][1]); P.map[k] = q; if (q) { pool.splice(pool.indexOf(q), 1); q.tag = String(k + 1); } }
     P.i = 0; P.timer = S.steps.length ? Math.min(0.4, S.steps[0].wait) : 0; P.dur = 1e9; P.ax = h.x; P.ay = h.y;
@@ -185,8 +185,9 @@ function startDPlay() {
   const atkT = 1 - D.team, atkDump = TEAMS[atkT].find(p => p.role === 'dump')
     || (G.order[atkT] || []).slice().sort((a, b) => dirOf(atkT) * (a.x - b.x))[0];
   const dfn = TEAMS[D.team], form = defFormOf(D.team);
-  if (D.type === 'safety') D.d = form === 'man' ? dfn.find(d => d.match === atkDump) : dfn.find(d => d.zslot === 4);
-  else if (D.type === 'double') D.d = form === 'man' ? dfn.find(d => d.match === atkDump) : dfn.find(d => d.zslot === 3);
+  const by = k => (form !== 'zone' && form !== 'clam' && dfn.find(d => d.match === atkDump)) || dfn.find(d => d.zslot === k);
+  if (D.type === 'safety') D.d = by(4);
+  else if (D.type === 'double') D.d = by(3);
   if (D.d) D.d.tag = D.type === 'safety' ? 'S' : '2d';
 }
 

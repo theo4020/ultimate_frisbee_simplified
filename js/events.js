@@ -12,7 +12,8 @@ function holdDisc(p) {
   players.forEach(q => { q.inT = 0; }); p.think = rand(0.6, 1.4);
   assignRoles(p.team, p);
   if (!G.pullPending) continuationCut(p.team, p);
-  if (defFormOf(1 - p.team) !== 'man') assignZone(1 - p.team, p.x, p.y);
+  const df = defFormOf(1 - p.team);
+  if (df === 'mix') assignMix(1 - p.team, p); else if (df !== 'man') assignZone(1 - p.team, p.x, p.y);
   playOnCatch(p);
   for (const d of TEAMS[1 - p.team]) d.react = Math.min(d.react, rand(0.04, 0.1));   // la défense réagit tout de suite à la réception
   if (G.pullPending) { G.pullPending = false; afterPull(p); }   // première possession après le pull

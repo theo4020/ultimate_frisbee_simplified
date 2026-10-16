@@ -231,7 +231,7 @@ function draw() {
   }
 
   // Lien vers ton vis-à-vis en individuelle
-  if (defending() && mySel && defFormOf(ME) === 'man' && mySel.match) {
+  if (defending() && mySel && ['man', 'mix'].includes(defFormOf(ME)) && mySel.match) {
     const a = mySel, b = a.match;
     ctx.save(); ctx.setLineDash([2, 5]); ctx.strokeStyle = 'rgba(250,204,21,.5)'; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(X(a.x), Y(a.y)); ctx.lineTo(X(b.x), Y(b.y)); ctx.stroke(); ctx.restore();

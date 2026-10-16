@@ -137,7 +137,7 @@ function update(dt) {
     // règle WFDF : si la mark sort des 3 m (ici STALL_R) ou si un autre défenseur devient la mark, le compte repart à 1
     if (!(G.marker && G.marker.team !== h.team && dist(G.marker.x, G.marker.y, h.x, h.y) < STALL_R)) {
       const form = defFormOf(def);
-      const desig = dfn.find(d => (form === 'man' ? d.match === h : d.zslot === 0) && dist(d.x, d.y, h.x, h.y) < STALL_R);
+      const desig = dfn.find(d => (form === 'man' ? d.match === h : form === 'mix' ? d.mission && d.mission.type === 'mark' : d.zslot === 0) && dist(d.x, d.y, h.x, h.y) < STALL_R);
       const [mk, md] = nearestD(dfn, h.x, h.y);
       G.marker = desig || (md < STALL_R ? mk : null);
       G.stall = 0;

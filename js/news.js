@@ -8,13 +8,16 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
-  { id: 21, date: '2026-10-16', tag: 'Systèmes', title: 'Consignes pour tes formations 🎯',
-    body: `Dans <b>Mes systèmes</b>, une attaque a maintenant un mode <b>🎯 Consignes</b> : pour chaque poste, choisis son rôle
-      (coupeur, relais, profond), sa zone de coupe (côté open, côté break, profondeur, vers le disque), quand il coupe (dès que
-      l'espace s'ouvre, à son tour, après une réception, quand le stall monte, jamais) et ce qu'il fait ensuite. Laisse « au choix
-      de l'IA » pour qu'elle lise l'espace comme avant. Après chaque passe, le joueur le plus proche de chaque place prend le poste.<br>
-      Nouveau aussi dans le menu d'avant-point : les <b>consignes d'équipe</b> pour tes coéquipiers IA (jeu long, passes hautes,
-      prise de risque, aide en défense).` },
+  { id: 21, date: '2026-10-16', tag: 'Systèmes', title: 'Formations, plays et défenses perso 🎯',
+    body: `<b>Mes systèmes</b> sépare maintenant trois choses :<br>
+      • <b>Formation</b> : tu places tes 4 joueurs, puis tu donnes à chaque poste ses <b>consignes</b> : rôle (coupeur, relais,
+      profond), zone de coupe, quand couper, ce qu'il fait ensuite. « Au choix de l'IA » la laisse lire l'espace.<br>
+      • <b>Play</b> : tu pars d'une formation (du jeu ou une des tiennes) et tu n'ajoutes que les courses.<br>
+      • <b>Défense</b> : la mark (force, distance, double team) et 4 défenseurs, chacun en <b>zone</b> ou en <b>individuelle</b>,
+      avec son placement, son comportement, s'il peut aider ou échanger son joueur. Tu peux tout mélanger (junk).<br>
+      Tes anciennes attaques avec des courses sont devenues une formation + un play.<br>
+      Nouveau aussi : les <b>consignes d'équipe</b> du menu d'avant-point (jeu long, passes hautes, prise de risque, aide en
+      défense), et des stacks plus loin du disque, qui se remettent en place avant de recouper.` },
   { id: 20, date: '2026-10-15', tag: 'Gameplay', title: 'Nouvelle physique, plus réaliste 🏃',
     body: `Le jeu repose maintenant sur une vraie physique :<br>
       • <b>Les joueurs accélèrent</b> en un peu plus d'une seconde au lieu de démarrer à fond : un bon changement de direction

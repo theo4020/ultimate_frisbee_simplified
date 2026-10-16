@@ -30,7 +30,7 @@ function galLoad() {
 function galRender() {
   const me = (accGet() || {}).name || '';
   $('galItems').innerHTML = GAL.items.map(e => `<li>
-    <span class="kind ${e.kind}">${e.kind === 'off' ? 'Attaque' : 'Défense'}</span>
+    <span class="kind ${e.kind}">${KIND_LABEL[e.kind] || 'Système'}</span>
     <div class="gi"><b>${esc(e.name)}</b><small>par ${esc(e.by)} · ${esc(e.info || '')}</small></div>
     <button data-a="like" data-id="${e.id}" class="like${e.liked ? ' on' : ''}" title="J’aime">❤ ${e.likes}</button>
     <button data-a="view" data-id="${e.id}">Voir</button>
@@ -74,7 +74,7 @@ function galAdd(it) {
 // publier (ou mettre à jour) un de ses systèmes
 function galPublish(s) {
   if (!accGet()) { toast('Crée un compte (👤 à côté de ton pseudo) pour publier dans la galerie.'); return; }
-  galApi('publish', { sys: s }).then(j => {
+  galApi('publish', { sys: playOut(s) }).then(j => {
     if (j.error) { toast('⚠️ ' + j.error); return; }
     const L = sysList().map(x => (x.id === s.id ? Object.assign({}, x, { pub: j.id }) : x));
     sysSave(L); showSystems();

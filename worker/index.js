@@ -243,26 +243,41 @@ const GAL_MAX = 2000, GAL_PER_USER = 20, GAL_LIST = 60;
 const num = (v, a, b) => (typeof v === 'number' && isFinite(v) ? Math.round(Math.min(b, Math.max(a, v)) * 10) / 10 : null);
 const pt = p => (Array.isArray(p) && num(p[0], -12, 40) !== null && num(p[1], -18, 18) !== null ? [num(p[0], -12, 40), num(p[1], -18, 18)] : null);
 const ROLES = ['normal', 'serre', 'profond', 'double'];
+const cleanSteps = st => (Array.isArray(st) ? st : []).slice(0, 12).map(s => s && Number.isInteger(s.p) && s.p >= 0 && s.p < 4 && pt(s.to)
+  ? { p: s.p, to: pt(s.to), wait: num(s.wait, 0, 3) ?? 0.6 } : null).filter(Boolean);
 function validSys(o) {                                           // même règles que cleanSystem (js/systems.js), côté serveur
-  if (!o || typeof o !== 'object' || (o.kind !== 'off' && o.kind !== 'def')) return null;
+  if (!o || typeof o !== 'object' || !['off', 'play', 'def'].includes(o.kind)) return null;
   const name = String(o.name || '').replace(/[<>&"'`\u0000-\u001f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 24);
   if (!name) return null;
   const id = typeof o.id === 'string' && /^[a-z0-9]{3,12}$/.test(o.id) ? o.id : null;
   if (o.kind === 'off') {
     const pos = Array.isArray(o.pos) ? o.pos.slice(0, 4).map(pt) : [];
     if (pos.length !== 4 || pos.includes(null)) return null;
-    const steps = (Array.isArray(o.steps) ? o.steps : []).slice(0, 12).map(s => s && Number.isInteger(s.p) && s.p >= 0 && s.p < 4 && pt(s.to)
-      ? { p: s.p, to: pt(s.to), wait: num(s.wait, 0, 3) ?? 0.6 } : null).filter(Boolean);
+    const steps = cleanSteps(o.steps);
     const P = { role: ['cutter', 'dump', 'deep'], zone: ['auto', 'open', 'break', 'deep', 'under'], when: ['auto', 'turn', 'catch', 'stall', 'never'], after: ['auto', 'back', 'clear', 'chain'], fake: ['yes', 'no'] };
     const postes = Array.from({ length: 4 }, (_, i) => { const q = Array.isArray(o.postes) && o.postes[i] || {}, r = {}; for (const k in P) r[k] = P[k].includes(q[k]) ? q[k] : P[k][0]; return r; });
-    return { id, kind: 'off', name, pos, postes, steps, setup: !!o.setup };
+    return steps.length ? { id, kind: 'off', name, pos, postes, steps, setup: !!o.setup } : { id, kind: 'off', name, pos, postes };
+  }
+  if (o.kind === 'play') {
+    const base = typeof o.base === 'string' && /^(vert|ho|side|sys:[a-z0-9]{3,12})$/.test(o.base) ? o.base : 'vert';
+    const pos = Array.isArray(o.pos) ? o.pos.slice(0, 4).map(pt) : [];
+    return Object.assign({ id, kind: 'play', name, base, steps: cleanSteps(o.steps), setup: !!o.setup }, pos.length === 4 && !pos.includes(null) ? { pos } : {});
+  }
+  if (Array.isArray(o.postes)) {                                  // défense : la mark + 4 défenseurs (zone ou individuelle)
+    const one = (v, list) => (list.includes(String(v)) ? String(v) : list[0]);
+    const m = o.mark || {}, mark = { force: one(m.force, ['menu', 'haut', 'bas', 'middle', 'straight']), dist: one(m.dist, ['normale', 'serree', 'lache']), double: one(m.double, ['0', '4', '6', '8']) };
+    const postes = Array.from({ length: 4 }, (_, i) => { const q = o.postes[i] || {};
+      return { mission: one(q.mission, ['zone', 'man']), pos: pt(q.pos) || [10, 0], side: one(q.side, ['auto', 'deep', 'open', 'break']), gap: one(q.gap, ['normal', 'serre', 'lache']),
+        behave: one(q.behave, ['shift', 'place', 'deep', 'press']), help: one(q.help, ['oui', 'non']), swap: one(q.swap, ['oui', 'non']) }; });
+    return { id, kind: 'def', name, mark, postes };
   }
   const zone = Array.isArray(o.zone) ? o.zone.slice(0, 4).map(pt) : [];
   if (zone.length !== 4 || zone.includes(null)) return null;
   const roles = Array.from({ length: 5 }, (_, i) => (Array.isArray(o.roles) && ROLES.includes(o.roles[i]) ? o.roles[i] : 'normal'));
   return { id, kind: 'def', name, mode: o.mode === 'man' ? 'man' : 'zone', zone, roles };
 }
-const sysInfo = s => (s.kind === 'off' ? s.steps.length + ' course' + (s.steps.length > 1 ? 's' : '') : s.mode === 'zone' ? 'zone' : 'individuelle');
+const sysInfo = s => (s.kind === 'play' ? s.steps.length + ' course' + (s.steps.length > 1 ? 's' : '') : s.kind === 'off' ? 'formation'
+  : s.postes ? (n => (n === 4 ? 'zone' : n ? 'mixte' : 'individuelle'))(s.postes.filter(q => q.mission === 'zone').length) : s.mode === 'zone' ? 'zone' : 'individuelle');
 export class Gallery {
   constructor(state) {
     this.state = state; this.db = sql(state);
@@ -291,7 +306,7 @@ export class Gallery {
     const COLS = 'id, src, author AS "by", kind, name, info, likes, at, up';
     if (b.op === 'list') {
       const where = [], args = [];
-      if (b.kind === 'off' || b.kind === 'def') { where.push('kind = ?'); args.push(b.kind); }
+      if (['off', 'play', 'def'].includes(b.kind)) { where.push('kind = ?'); args.push(b.kind); }
       if (b.mine && b.user) { where.push('bykey = ?'); args.push(lc(b.user)); }
       let L = db.all(`SELECT ${COLS} FROM items ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY ${b.sort === 'new' ? 'at DESC' : 'likes DESC, at DESC'}`, ...args);
       if (b.q) { const q = lc(b.q).slice(0, 30); L = L.filter(e => lc(e.name).includes(q) || lc(e.by).includes(q)); }   // en JS : minuscules avec accents

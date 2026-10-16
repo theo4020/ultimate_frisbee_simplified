@@ -404,3 +404,5 @@ details.orders summary small{color:var(--muted);font-weight:400}
 .poste>b{display:block;margin-bottom:4px}
 .poste label{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin:3px 0}
 .poste select{max-width:62%}
+#sysItems .kind.play,#galItems .kind.play{background:rgba(250,204,21,.22);color:#fde68a}
+.edBase{display:flex;align-items:center;gap:8px;font-size:14px}

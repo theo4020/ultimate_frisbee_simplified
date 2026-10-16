@@ -7,14 +7,20 @@ export default async function (t, { quick }) {
   t.group('Validation');
   const v = R(`(() => {
     const bad = [null, 3, {}, { kind: 'x' }].map(cleanSystem);
-    const o = cleanSystem({ kind: 'off', name: '<b>Huck</b>', pos: [[999, -999]], steps: Array.from({ length: 30 }, () => ({ p: 1, to: [10, 2], wait: 99 })).concat([{ p: 7, to: [1, 1] }]) });
-    const d = cleanSystem({ kind: 'def', mode: 'man', roles: ['serre', 'hack', 'double'] });
-    return { bad, o, d };
+    const o = cleanSystem({ kind: 'play', name: '<b>Huck</b>', base: 'hack', pos: [[999, -999]], steps: Array.from({ length: 30 }, () => ({ p: 1, to: [10, 2], wait: 99 })).concat([{ p: 7, to: [1, 1] }]) });
+    const f = cleanSystem({ kind: 'off', pos: [[999, -999]], postes: [{ role: 'dump', zone: 'nope' }] });
+    const d = cleanSystem({ kind: 'def', mode: 'man', roles: ['serre', 'serre', 'double'] });
+    const nd = cleanSystem({ kind: 'def', mark: { force: 'x', double: 4 }, postes: [{ mission: 'man', side: 'deep', gap: '??' }, { mission: 'zone', behave: 'press' }] });
+    const mig = migrateSystems([cleanSystem({ kind: 'off', id: 'old123', name: 'Vieux', pos: [[5, 5], [8, 0], [12, 0], [16, 0]], steps: [{ p: 1, to: [20, 5], wait: 0.5 }] })]);
+    return { bad, o, f, d, nd, mig };
   })()`);
   t.ok(v.bad.every(x => x === null), 'les données invalides sont rejetées');
-  t.ok(v.o.name === 'bHuck/b' && v.o.pos.length === 4 && v.o.pos[0][0] === 40 && v.o.pos[0][1] === -18, 'nom nettoyé, positions ramenées sur le terrain', v.o.pos[0]);
+  t.ok(v.o.name === 'bHuck/b' && v.o.base === 'vert' && v.o.pos[0][0] === 40 && v.o.pos[0][1] === -18, 'play : nom nettoyé, formation inconnue → vertical, positions ramenées sur le terrain', v.o);
   t.ok(v.o.steps.length === 12 && v.o.steps.every(s => s.wait <= 3 && s.p === 1), '12 courses au plus, délais bornés, joueurs inconnus retirés');
-  t.ok(v.d.mode === 'man' && v.d.roles.join() === 'serre,normal,double,normal,normal', 'rôles inconnus remplacés par « normal »', v.d.roles);
+  t.ok(v.f.postes[0].role === 'dump' && v.f.postes[0].zone === 'auto' && v.f.postes.length === 4 && !v.f.steps, 'formation : consignes inconnues remplacées par « au choix »', v.f.postes[0]);
+  t.ok(v.d.postes.every(p => p.mission === 'man') && v.d.postes[0].gap === 'serre' && v.d.mark.double === '6', 'ancienne défense individuelle convertie en missions', v.d);
+  t.ok(v.nd.mark.force === 'menu' && v.nd.mark.double === '4' && v.nd.postes[0].side === 'deep' && v.nd.postes[0].gap === 'normal' && v.nd.postes[1].behave === 'press' && v.nd.postes[2].mission === 'zone', 'défense perso : valeurs inconnues remplacées', v.nd);
+  t.ok(v.mig.length === 2 && v.mig[0].kind === 'off' && !v.mig[0].steps && v.mig[1].kind === 'play' && v.mig[1].base === 'sys:old123' && v.mig[1].steps.length === 1, 'ancienne attaque avec courses → une formation + un play', v.mig);
 
   t.group('Placement autour du disque');
   const w = R(`(() => { const mid = sysWorld([[10, 5]], 50, H / 2, 1, 1)[0], flip = sysWorld([[10, 5]], 50, H / 2, -1, -1)[0];
@@ -25,26 +31,33 @@ export default async function (t, { quick }) {
 
   t.group('Matchs avec des systèmes perso');
   const games = quick ? 2 : 5;
-  const SYS = `cleanSystem(Object.assign(SYS_NEW.off(), { steps: [{ p: 0, to: [6, 10], wait: 0.3 }, { p: 0, to: [18, 12], wait: 0.5 }, { p: 2, to: [30, 6], wait: 0.5 }, { p: 1, to: [9, -8], wait: 0.6 }] }))`;
+  const FORM = `cleanSystem(SYS_NEW.off())`;
+  const SYS = `cleanSystem({ kind: 'play', name: 'P', base: 'vert', steps: [{ p: 1, to: [6, 10], wait: 0.3 }, { p: 1, to: [18, 12], wait: 0.5 }, { p: 2, to: [30, 6], wait: 0.5 }, { p: 3, to: [9, -8], wait: 0.6 }] })`;
   R('globalThis.__miss = []');                                  // places manquées (détail affiché en cas d'échec)
-  for (const mode of ['formation', 'play', 'zone', 'man']) {
+  for (const mode of ['formation', 'play', 'zone', 'man', 'mixte']) {
     const r = R(`(() => {
       const c0 = Object.assign({}, G.ai), c1 = Object.assign({}, G.ai), keep = cfg;
       cfg = t => t === 0 ? c0 : c1;
-      if ('${mode}' === 'formation') { c0.osys = ${SYS}; c0.play1 = c0.play2 = 'none'; }
+      if ('${mode}' === 'formation') { c0.osys = ${FORM}; c0.play1 = c0.play2 = 'none'; }
       if ('${mode}' === 'play') { c0.play1 = c0.play2 = 'sys'; c0.p1sys = c0.p2sys = ${SYS}; }
       if ('${mode}' === 'zone') c0.dsys = cleanSystem(SYS_NEW.def());
-      if ('${mode}' === 'man') c0.dsys = cleanSystem(Object.assign(SYS_NEW.def(), { mode: 'man', roles: ['serre', 'profond', 'double', 'normal', 'normal'] }));
-      let stuck = 0, pts = 0, cuts = 0, onSpot = 0, checks = 0, plays = 0, chained = 0, chainChecks = 0;
+      if ('${mode}' === 'man') c0.dsys = cleanSystem({ kind: 'def', mark: { double: '4' }, postes: [{ mission: 'man', gap: 'serre' }, { mission: 'man', side: 'deep' }, { mission: 'man', side: 'open' }, { mission: 'man' }] });
+      if ('${mode}' === 'mixte') c0.dsys = cleanSystem({ kind: 'def', mark: { dist: 'lache', force: 'straight' }, postes: [{ mission: 'man' }, { mission: 'man', gap: 'lache' }, { mission: 'zone', pos: [12, 0], behave: 'press' }, { mission: 'zone', pos: [25, 0], behave: 'deep' }] });
+      let stuck = 0, pts = 0, cuts = 0, onSpot = 0, checks = 0, plays = 0, chained = 0, chainChecks = 0, mixOk = 0, mixChecks = 0, dbl = 0;
       const _st = startCut; startCut = function (c, x, y, d) {
         const P = G.oplay, before = c.state, r = _st(c, x, y, d);
         if (c.team === 0) cuts++;
-        if (P && P.type === 'sys' && P.team === 0 && P.i === 2 && P.map[0] === c) { chainChecks++; if (before === 'park') chained++; }
+        if (P && P.type === 'sys' && P.team === 0 && P.i === 2 && P.map[1] === c) { chainChecks++; if (before === 'park') chained++; }
         return r; };
       const _cp = callPlay; callPlay = function (t, n) { const r = _cp(t, n); if (r && t === 0 && G.oplay.type === 'sys') plays++; return r; };
       for (let k = 0; k < ${games}; k++) { G.score = [0, 0]; G.receiving = k % 2;
         for (;;) { newWind(); startPoint(); let f = 0;
           while ((G.phase === 'play' || G.phase === 'pull') && f < 36000) { __tick(); f++;
+            if (f % 15 === 0 && dsysOf(0) && G.phase === 'play' && G.off === 1 && disc.mode === 'held' && !G.dplay) { mixChecks++;   // défense perso : une mark, ses individuelles ont un joueur, ses zones une place
+              const D = dsysOf(0), ms = TEAMS[0].filter(d => d.mission);
+              if (ms.filter(d => d.mission.type === 'mark').length === 1 && ms.filter(d => d.mission.type === 'man').every(d => d.match && d.match !== disc.holder || G.dB && G.dB.double === d)
+                && ms.filter(d => d.mission.type === 'man').length === D.postes.filter(p => p.mission === 'man').length) mixOk++;
+              if (G.dB && G.dB.double) dbl++; }
             if (f % 8 === 0 && osysOf(0) && G.off === 0 && disc.mode === 'held' && G.stall > 1 && !G.pullPending && !G.oplay
                 && !TEAMS[0].some(q => ['jab', 'cut', 'park'].includes(q.state))) {           // personne ne coupe : chacun vise sa place
               for (const p of TEAMS[0]) if (p.state === 'stack' && p.role === 'cutter' && p.sysIdx >= 0 && p !== disc.holder) { checks++; if (dist(p.tx, p.ty, ...sysWorld(osysOf(0).pos, disc.x, disc.y, dirOf(0), -closedOf(1))[p.sysIdx]) < 0.5
@@ -54,10 +67,12 @@ export default async function (t, { quick }) {
             } }
           if (f >= 36000) { stuck++; break; } pts++; if (G.phase === 'over') break; } }
       startCut = _st; callPlay = _cp; cfg = keep;
-      return { stuck, pts, cuts, spot: checks ? onSpot / checks : 1, checks, plays, chain: chainChecks ? chained / chainChecks : 1, chainChecks };
+      return { stuck, pts, cuts, spot: checks ? onSpot / checks : 1, checks, plays, chain: chainChecks ? chained / chainChecks : 1, chainChecks, mix: mixChecks ? mixOk / mixChecks : 1, mixChecks, dbl };
     })()`);
     t.ok(r.stuck === 0 && r.pts > 0, `${mode} : aucun point bloqué`, r);
     if (mode === 'formation') { t.ok(r.cuts > 30, 'formation perso : les joueurs coupent librement depuis leurs places', r.cuts); t.ok(r.spot >= 0.85 || r.checks * (1 - r.spot) <= 1, 'au repos, chacun vise sa place de la formation (un écart isolé toléré)', JSON.stringify(r) + ' ' + R('JSON.stringify(__miss.slice(0, 3))')); }   // (si personne n'a été au repos, rien à vérifier)
+    if (mode === 'man' || mode === 'mixte') t.ok(r.mix > 0.9, `${mode} : chaque défenseur suit sa mission (une mark, individuelles avec un joueur)`, r);
+    if (mode === 'man') t.ok(r.dbl > 0, 'double team dès le stall choisi', r);
     if (mode === 'play') {
       t.ok(r.plays >= 1, 'play perso : l’IA l’appelle et il se joue', r.plays);   // (moins de possessions depuis que les passes sont moins contrables)
 
@@ -84,7 +99,7 @@ export default async function (t, { quick }) {
     for (let f = 0; f < 6000 && !(G.phase === 'play' && disc.mode === 'held' && G.stall > 1); f++) __tick();
     if (!(G.phase === 'play' && disc.mode === 'held' && disc.holder)) { G.off = 0; G.phase = 'play'; G.pickup = null; holdDisc(TEAMS[0][0]); }
     const t = G.off, c = cfg(t); c.play1 = 'sys'; c.p1sys = ${SYS}; G.oplay = null;
-    callPlay(t, 1); const P = G.oplay, q = P.map[0], starts = [];
+    callPlay(t, 1); const P = G.oplay, q = P.map[1], starts = [];
     const _st = startCut; startCut = function (p, x, y, d) { if (p === q) starts.push({ x: p.x, y: p.y, st: p.state, by: (new Error().stack.split(String.fromCharCode(10))[2] || '').trim().split(' ')[1] }); return _st(p, x, y, d); };
     for (let f = 0; f < 2400 && G.oplay === P; f++) { if (disc.holder) { disc.holder.think = 99; disc.holder.windup = null; } G.stall = 0; __tick(); }
     startCut = _st;

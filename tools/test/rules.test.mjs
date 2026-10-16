@@ -147,7 +147,7 @@ export default async function (t, { quick }) {
     const _st = startCut; startCut = function (p, x, y, d) {
       const h = disc.holder, P = p.poste;
       if (h && P && !G.oplay && !p.free) { const f = dirOf(p.team) * (x - h.x), sOpen = -closedOf(1 - p.team) * (y - h.y); cuts.push({ i: p.sysIdx, f, s: sOpen, z: P.zone }); if (P.when === 'never') never++; }
-      const r = _st(p, x, y, d); if (P && P.fake === 'no' && !G.oplay) cuts[cuts.length - 1].st = p.state; return r; };
+      const r = _st(p, x, y, d); if (P && P.fake === 'no' && !G.oplay && !p.free && cuts.length) cuts[cuts.length - 1].st = p.state; return r; };
     for (let k = 0; k < 6; k++) { G.score = [0, 0]; G.receiving = k % 2; newWind(); startPoint();
       for (let f = 0; f < 60 * 90 && (G.phase === 'play' || G.phase === 'pull'); f++) { __tick();
         if (disc.mode === 'held') for (const q of TEAMS[G.off]) if (q.poste) roles.add(q.poste.role + ':' + q.role); } }

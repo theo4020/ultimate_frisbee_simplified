@@ -4,13 +4,18 @@
 //   f = mètres vers l'avant (vers l'en-but attaqué), s = mètres vers le côté OPEN (négatif = côté break).
 // Le système suit donc le disque partout sur le terrain et se retourne tout seul selon le côté forcé.
 //
-// Attaque : { kind:'off', name, pos:[[f,s]×4] (joueurs ① à ④), postes:[{ role, zone, when, after, fake }×4], steps:[{ p:0..3, to:[f,s], wait:s }] }
-//   Choisie comme FORMATION : après chaque passe, le joueur le plus proche de chaque place prend ce poste, et suit ses
-//   consignes (POSTE_OPTS) ; « au choix » = l'IA lit l'espace comme dans les formations du jeu (offense.js). Choisie comme PLAY 1 / PLAY 2 : quand on l'appelle, chaque rôle ①–④ va au joueur le plus
-//   proche de sa place et les courses partent dans l'ordre, chacune « wait » secondes après la précédente (plays.js).
-// Défense : { kind:'def', name, mode:'zone', zone:[[f,s]×4] } — la mark reste sur le porteur, 4 défenseurs aux places dessinées
-//           { kind:'def', name, mode:'man', roles:[×5] } — individuelle, un rôle par défenseur (numéros 1 à 5) :
-//             'normal' · 'serre' (colle à son joueur) · 'profond' (reste entre son joueur et l'en-but) · 'double' (double team dès 5 de stall)
+// Trois sortes de systèmes :
+//  • FORMATION { kind:'off', name, pos:[[f,s]×4] (joueurs ① à ④), postes:[{ role, zone, when, after, fake }×4] }
+//    Après chaque passe, le joueur le plus proche de chaque place prend ce poste et suit ses consignes (POSTE_OPTS) ;
+//    « au choix de l'IA » = elle lit l'espace comme dans les formations du jeu (offense.js).
+//  • PLAY { kind:'play', name, base:'vert'|'ho'|'side'|'sys:<id>', steps:[{ p:0..3, to:[f,s], wait:s }], setup, pos? }
+//    Part d'une formation (du jeu ou perso) et n'ajoute que des courses : quand on l'appelle, chaque rôle ①–④ va au joueur
+//    le plus proche de sa place et les courses partent dans l'ordre (plays.js). pos = places de la formation au moment de
+//    l'enregistrement (sert si la formation n'existe pas chez celui qui le joue : galerie, en ligne).
+//  • DÉFENSE { kind:'def', name, mark:{ force, dist, double }, postes:[{ mission, pos, side, gap, behave, help, swap }×4] }
+//    La mark + 4 défenseurs, chacun en individuelle (il garde l'attaquant le plus proche de sa place) ou en zone (il garde
+//    sa place) : on peut tout mélanger (junk). Voir DEF_OPTS et defense.js.
+// Ancien format (avant les plays séparés) : une attaque avec des courses devient une formation + un play (sysList).
 
 const SYS_MAX = 12, SYS_STEPS = 12;
 // consignes d'un poste d'attaque (formation perso) ; la première valeur est celle par défaut
@@ -37,40 +42,116 @@ function sysMeta(o) {
   if (typeof o.by === 'string' && o.by) m.by = o.by.replace(/[<>&"'`]/g, '').slice(0, 12);
   return m;
 }
+// consignes d'une défense perso : la mark, puis chaque défenseur
+const MARK_OPTS = {
+  force: { menu: 'Celle du menu', haut: 'Force haut', bas: 'Force bas', middle: 'Force middle', straight: 'Straight up' },
+  dist: { normale: 'Normale', serree: 'Serrée', lache: 'Lâche' },
+  double: { '0': 'Jamais', '4': 'Dès 4 de stall', '6': 'Dès 6 de stall', '8': 'Dès 8 de stall' }
+};
+const MARK_LBL = { force: 'Force', dist: 'Distance de la mark', double: 'Double team' };
+const DEF_OPTS = {
+  mission: { zone: 'Zone', man: 'Individuelle' },
+  side: { auto: 'Entre lui et le disque', deep: 'Côté profondeur', open: 'Côté open', break: 'Côté break' },
+  gap: { normal: 'Normal', serre: 'Serré', lache: 'Lâche' },
+  behave: { shift: 'Suit l’attaquant proche', place: 'Garde sa place', deep: 'Suit le plus profond', press: 'Presse le porteur' },
+  help: { oui: 'Peut aider', non: 'N’aide jamais' },
+  swap: { oui: 'Peut échanger', non: 'Garde son joueur' }
+};
+const DEF_LBL = { mission: 'Mission', side: 'Placement', gap: 'Distance', behave: 'Comportement', help: 'Aide', swap: 'Changements' };
+const DEF_SHOW = { man: ['mission', 'side', 'gap', 'help', 'swap'], zone: ['mission', 'behave', 'help'] };
+const pick = (opts, v) => (Object.prototype.hasOwnProperty.call(opts, v) ? v : Object.keys(opts)[0]);
+const cleanMark = o => ({ force: pick(MARK_OPTS.force, o && o.force), dist: pick(MARK_OPTS.dist, o && o.dist), double: pick(MARK_OPTS.double, o && String(o.double)) });
+const cleanDefPoste = (o, i) => ({ mission: pick(DEF_OPTS.mission, o && o.mission), pos: sysPt(o && o.pos || SYS_DEF_POS[i]),
+  side: pick(DEF_OPTS.side, o && o.side), gap: pick(DEF_OPTS.gap, o && o.gap), behave: pick(DEF_OPTS.behave, o && o.behave),
+  help: pick(DEF_OPTS.help, o && o.help), swap: pick(DEF_OPTS.swap, o && o.swap) });
+const SYS_DEF_POS = [[5, 6], [5, -5], [13, 0], [25, 0]];
+// places de départ des formations du jeu (pour l'éditeur de plays) : ① relais, ②–④ coupeurs
+const FORM_TEMPLATES = {
+  vert: [[-3.5, -5], [10, 0], [14, 0], [18, 0]],
+  ho: [[-3.5, -5], [13, 11], [13, 0], [13, -11]],
+  side: [[-3.5, -5], [10, -11], [14, -11], [18, -11]]
+};
+const FORM_NAMES = { vert: 'Vertical stack', ho: 'Horizontal stack', side: 'Side stack' };
+const validBase = b => (typeof b === 'string' && (FORM_TEMPLATES[b] || /^sys:[a-z0-9]{3,12}$/.test(b)) ? b : 'vert');
+const cleanSteps = st => (Array.isArray(st) ? st : []).slice(0, SYS_STEPS)
+  .filter(x => x && Number.isInteger(x.p) && x.p >= 0 && x.p < 4).map(x => ({ p: x.p, to: sysPt(x.to), wait: sysNum(x.wait, 0, 3) }));
+// ancienne défense (mode zone : 4 places ; mode man : un rôle par défenseur) → missions
+function oldDefense(o) {
+  const roles = Array.isArray(o.roles) ? o.roles : [];
+  if (o.mode !== 'man') return { mark: cleanMark(null), postes: Array.from({ length: 4 }, (_, i) => cleanDefPoste({ mission: 'zone', pos: o.zone && o.zone[i] }, i)) };
+  return { mark: cleanMark({ double: roles.includes('double') ? '6' : '0' }),
+    postes: Array.from({ length: 4 }, (_, i) => { const r = roles[i + 1];
+      return cleanDefPoste({ mission: 'man', pos: o.zone && o.zone[i], gap: r === 'serre' ? 'serre' : 'normal', side: r === 'profond' ? 'deep' : 'auto' }, i); }) };
+}
 // nettoie un système (venant du navigateur, du compte ou d'un autre joueur en ligne) ; null s'il est invalide
 function cleanSystem(o) {
-  if (!o || typeof o !== 'object' || (o.kind !== 'off' && o.kind !== 'def')) return null;
-  const name = String(o.name || '').replace(/[<>&"'`]/g, '').replace(/\s+/g, ' ').trim().slice(0, 24) || (o.kind === 'off' ? 'Mon attaque' : 'Ma défense');
+  if (!o || typeof o !== 'object' || !['off', 'play', 'def'].includes(o.kind)) return null;
+  const name = String(o.name || '').replace(/[<>&"'`]/g, '').replace(/\s+/g, ' ').trim().slice(0, 24) || SYS_KIND_NAME[o.kind];
   const id = typeof o.id === 'string' && /^[a-z0-9]{3,12}$/.test(o.id) ? o.id : sysId();
   if (o.kind === 'off') {
     const pos = Array.from({ length: 4 }, (_, i) => sysPt(o.pos && o.pos[i]));
-    const steps = (Array.isArray(o.steps) ? o.steps : []).slice(0, SYS_STEPS)
-      .filter(st => st && Number.isInteger(st.p) && st.p >= 0 && st.p < 4)
-      .map(st => ({ p: st.p, to: sysPt(st.to), wait: sysNum(st.wait, 0, 3) }));
     const postes = Array.from({ length: 4 }, (_, i) => cleanPoste(o.postes && o.postes[i]));
-    return Object.assign({ id, kind: 'off', name, pos, postes, steps, setup: !!o.setup }, sysMeta(o));
+    const r = Object.assign({ id, kind: 'off', name, pos, postes }, sysMeta(o));
+    if (Array.isArray(o.steps) && o.steps.length) { r.steps = cleanSteps(o.steps); r.setup = !!o.setup; }   // ancien format (voir sysList)
+    return r;
   }
-  const mode = o.mode === 'man' ? 'man' : 'zone';
-  return Object.assign({ id, kind: 'def', name, mode, zone: Array.from({ length: 4 }, (_, i) => sysPt(o.zone && o.zone[i])),
-    roles: Array.from({ length: 5 }, (_, i) => (o.roles && SYS_ROLES[o.roles[i]] ? o.roles[i] : 'normal')) }, sysMeta(o));
+  if (o.kind === 'play') {
+    const r = Object.assign({ id, kind: 'play', name, base: validBase(o.base), steps: cleanSteps(o.steps), setup: !!o.setup }, sysMeta(o));
+    if (Array.isArray(o.pos)) r.pos = Array.from({ length: 4 }, (_, i) => sysPt(o.pos[i]));
+    return r;
+  }
+  const d = o.postes ? { mark: cleanMark(o.mark), postes: Array.from({ length: 4 }, (_, i) => cleanDefPoste(o.postes[i], i)) } : oldDefense(o);
+  return Object.assign({ id, kind: 'def', name }, d, sysMeta(o));
 }
+const SYS_KIND_NAME = { off: 'Ma formation', play: 'Mon play', def: 'Ma défense' };
 // systèmes de départ proposés dans l'éditeur
 const SYS_NEW = {
   // départ : un vertical stack (deux coupeurs à tour de rôle côté open, un profond, un relais derrière côté break)
-  off: () => ({ kind: 'off', name: 'Mon attaque', pos: [[8, 1], [13, 1], [19, 0], [-3.5, -5]],
+  off: () => ({ kind: 'off', name: 'Ma formation', pos: [[10, 1], [14, 1], [20, 0], [-3.5, -5]],
     postes: [{ role: 'cutter', zone: 'open', when: 'turn', after: 'clear' }, { role: 'cutter', zone: 'auto', when: 'turn', after: 'clear' },
-      { role: 'deep', zone: 'deep', when: 'auto', after: 'back' }, { role: 'dump', zone: 'under', when: 'stall', after: 'back' }].map(cleanPoste),
-    steps: [] }),
-  def: () => ({ kind: 'def', name: 'Ma défense', mode: 'zone', zone: [[5, 6], [5, -5], [13, 0], [25, 0]], roles: ['normal', 'normal', 'normal', 'normal', 'normal'] })
+      { role: 'deep', zone: 'deep', when: 'auto', after: 'back' }, { role: 'dump', zone: 'under', when: 'stall', after: 'back' }].map(cleanPoste) }),
+  play: () => ({ kind: 'play', name: 'Mon play', base: 'vert', steps: [], setup: false }),
+  // départ : une zone (cup à deux, un milieu, un deep qui suit le plus profond)
+  def: () => ({ kind: 'def', name: 'Ma défense', mark: cleanMark(null),
+    postes: [{ mission: 'zone', pos: [5, 6] }, { mission: 'zone', pos: [5, -5] }, { mission: 'zone', pos: [13, 0] }, { mission: 'zone', pos: [25, 0], behave: 'deep' }].map(cleanDefPoste) })
 };
+// places ①–④ d'un play : celles de sa formation de départ (perso si elle existe ici, sinon celles enregistrées avec le play)
+function playPos(S) {
+  if (S.kind === 'off') return S.pos;                            // ancien format
+  if (FORM_TEMPLATES[S.base]) return FORM_TEMPLATES[S.base];
+  const F = sysById(S.base.slice(4));
+  return F && F.kind === 'off' ? F.pos : S.pos || FORM_TEMPLATES.vert;
+}
+const baseName = b => (FORM_TEMPLATES[b] ? FORM_NAMES[b] : (sysById(String(b).slice(4)) || {}).name || 'Formation supprimée');
+// un play envoyé ailleurs (en ligne, galerie) emporte les places de sa formation
+const playOut = S => (S && S.kind === 'play' ? Object.assign({}, S, { pos: playPos(S) }) : S);
 
 // ---------- stockage (gardé avec le compte, voir account.js) ----------
 const SYS = { list: null };
 function sysList() {
-  if (!SYS.list) { const a = storeGet('uf-systems', []); SYS.list = (Array.isArray(a) ? a : []).map(cleanSystem).filter(Boolean).slice(0, SYS_MAX); }
+  if (!SYS.list) {
+    const a = storeGet('uf-systems', []), L = (Array.isArray(a) ? a : []).map(cleanSystem).filter(Boolean);
+    const out = migrateSystems(L);
+    SYS.list = out.slice(0, SYS_MAX + 6);                         // la séparation des plays peut dépasser un peu la limite
+    if (out.length !== L.length) storeSet('uf-systems', SYS.list);
+  }
   return SYS.list;
 }
-function sysSave(list) { SYS.list = list.map(cleanSystem).filter(Boolean).slice(0, SYS_MAX); storeSet('uf-systems', SYS.list); }
+// ancien format : une attaque avec des courses → la formation (mêmes places) + un play qui part de cette formation
+function migrateSystems(L) {
+  const out = [];
+  for (const s of L) {
+    if (s.kind !== 'off' || !s.steps) { out.push(s); continue; }
+    const steps = s.steps, setup = s.setup; delete s.steps; delete s.setup;
+    out.push(s);
+    if (!steps.length) continue;
+    const pl = cleanSystem({ kind: 'play', name: s.name, base: 'sys:' + s.id, steps, setup, pos: s.pos });
+    out.push(pl);
+    for (const n of [1, 2]) if (G.form['p' + n + 'sys'] === s.id) G.form['p' + n + 'sys'] = pl.id;   // ses plays choisis suivent
+  }
+  return out;
+}
+function sysSave(list) { SYS.list = migrateSystems(list.map(cleanSystem).filter(Boolean)).slice(0, SYS_MAX + 6); storeSet('uf-systems', SYS.list); }
 const sysById = id => sysList().find(s => s.id === id) || null;
 
 // système joué par l'équipe t (kind = 'osys' attaque, 'dsys' défense) ; aucun dans le tutoriel et l'entraînement
@@ -114,30 +195,3 @@ function sysSpot(S, p, ax, ay, dir, open) {
   return { x, y };
 }
 const SYS_BUSY = ['jab', 'cut', 'hold'];
-// ---------- défense ----------
-function sysZoneSlots(D, defT, ax, ay, dir, closed) {
-  const open = -closed, [mx, my] = markSpot(defT, ax, ay), atk = TEAMS[1 - defT].filter(a => a !== disc.holder);
-  const w = sysWorld(D.zone, ax, ay, dir, open);
-  const s = [{ x: mx, y: my }];
-  // ordre des places attendu par assignZone : 0 mark, 1 et 4 au fond, 2 et 3 devant → on range par profondeur
-  const byDepth = w.map((p, i) => [p, D.zone[i][0]]).sort((a, b) => b[1] - a[1]).map(a => a[0]);
-  const put = (k, [x, y]) => {                                 // chaque place se décale un peu vers l'attaquant le plus proche
-    const [a, d] = nearestD(atk, x, y);
-    s[k] = a && d < 7 ? { x: x + (a.x - x) * 0.3, y: y + (a.y - y) * 0.3 } : { x, y };
-  };
-  put(1, byDepth[0]); put(4, byDepth[1]); put(2, byDepth[2]); put(3, byDepth[3]);
-  return keepOutOfCircle(s, ax, ay, defT);
-}
-// individuelle : où se place un défenseur selon son rôle (null = comportement normal)
-function sysManSpot(D, d, a, ax, ay, dir, open) {
-  const role = D.roles[TEAMS[d.team].indexOf(d)] || 'normal';
-  const ant = aiLvl(d.team).anticip;
-  if (role === 'double' && disc.mode === 'held' && disc.holder && disc.holder !== a && G.stall > 5) {
-    const k = (STALL_R + 0.7) / Math.hypot(0.6, 1);                // juste hors du cercle, côté open : il presse le porteur
-    d.react = 0.1;
-    return [disc.x + dir * 0.6 * k, disc.y + open * k];
-  }
-  if (role === 'serre') { const px = a.x + a.vx * ant * 1.5, py = a.y + a.vy * ant * 1.5; d.react = Math.min(d.react, 0.08); return [px + dir * 0.2, py + open * 0.5]; }
-  if (role === 'profond') { const px = a.x + a.vx * ant, py = a.y + a.vy * ant; return [px + dir * 5, py * 0.65 + (H / 2) * 0.35]; }
-  return null;
-}

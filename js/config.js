@@ -71,7 +71,7 @@ const DPLAYS = {
 const PLAY_NAMES = { none: 'aucun', huck: 'Huck', split: 'Double cut', give: 'Give and go', flood: 'Iso', swing: 'Dump-swing',
   safety: 'Deep safety', double: 'Poach', junk: 'Junk' };
 
-const NAMES = { vert: 'Vertical stack', ho: 'Horizontal stack', side: 'Side stack', man: 'Man', zone: 'Zone', clam: 'Clam',
+const NAMES = { vert: 'Vertical stack', ho: 'Horizontal stack', side: 'Side stack', man: 'Man', zone: 'Zone', clam: 'Clam', mix: 'Défense perso',
   haut: 'force haut', bas: 'force bas', middle: 'force middle', straight: 'straight up' };
 const DESCS = {
   vert: 'Les coupeurs s’alignent au centre et attaquent l’espace libre (vers toi ou en profondeur), un à la fois, puis retournent au bout du stack.',

@@ -24,6 +24,12 @@ export default async function (t) {
   t.ok((await G_('publish', { sys: { ...sys, pos: [[1, 1]] } }, theo)).s === 400, 'système invalide refusé');
   t.ok((await G_('publish', { sys: { kind: 'def', id: 'zzz111', name: 'Zone', mode: 'zone', zone: [[5, 6], [5, -5], [13, 0], [25, 0]], roles: ['hack'] } }, lea)).s === 200, 'une défense se publie aussi');
   t.ok((await post('/api/gallery', { op: 'list' }, { 'Sec-Fetch-Site': 'cross-site' })).s === 403, 'un autre site ne peut pas utiliser la galerie');
+  const pl = await G_('publish', { sys: { kind: 'play', id: 'ply111', name: 'Mon play', base: 'sys:abc123', steps: [{ p: 1, to: [20, 5], wait: 0.3 }], pos: [[8, 2], [14, 1], [20, 0], [-3, -5]] } }, lea);
+  const nd = await G_('publish', { sys: { kind: 'def', id: 'dfn111', name: 'Junk', mark: { force: 'straight', double: '6' }, postes: [{ mission: 'man', side: 'deep' }, { mission: 'zone', pos: [25, 0], behave: 'deep' }, { mission: 'hack' }, {}] } }, lea);
+  const ndi = (await G_('get', { id: nd.j.id })).j.item;
+  t.ok(pl.s === 200 && nd.s === 200 && ndi.sys.mark.force === 'straight' && ndi.sys.postes[0].side === 'deep' && ndi.sys.postes[2].mission === 'zone' && ndi.info === 'mixte', 'plays et défenses mixtes se publient (valeurs inconnues remplacées)', ndi);
+  t.ok((await G_('list', { kind: 'play' })).j.items.length === 1, 'filtre plays');
+  for (const id of [pl.j.id, nd.j.id]) await G_('unpublish', { id }, lea);
 
   t.group('Lister et voir');
   const all = await G_('list', {});
