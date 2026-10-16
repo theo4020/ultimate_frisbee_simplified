@@ -33,7 +33,7 @@ const JUMP_PREP = 0.12, JUMP_T = 0.5, JUMP_H = 0.6, JUMP_REC = 0.15, JUMP_CD = 0
 const HIGH_WINDUP = [0.3, 1.2];                            // l'IA arme sa passe haute plus ou moins longtemps avant de lancer
 const SPEEDS = { lent: 0.78, normal: 1, rapide: 1.2 };
 const DRIFT = 0.5;                                          // dérive du disque : vent (m/s) × temps de vol × DRIFT
-const STALL_R = 3;                                          // rayon du stall count (3 m, règle WFDF)
+const STALL_R = 4;                                          // distance max de la mark pour le stall count (4 m)
 const STALL_RATE = 1;                                       // stall count : 1 compte par seconde
 const REACH_STAND = 2.2, REACH_DIVE = 1.9;                  // hauteur max du disque atteignable debout (bras levé) / en plongeon
 const ARM_R = 1.0, DIVE_R = 1.1;

@@ -96,8 +96,8 @@ function markSpot(defT, ax, ay) {
 }
 function markSpotFor(defT, ax, ay, shade) {
   const dir = dirOf(1 - defT), D = defFormOf(defT) === 'mix' && dsysOf(defT), k = D ? MARK_K[D.mark.dist] || 1 : 1;   // défense perso : distance de la mark
-  if (forceOf(defT) === 'straight') return [ax + dir * 1.2 * k, ay + 0.9 * shade * k];
-  const c = closedOf(defT), sc = shade * c;                      // > 0 : pivot côté fermé (break) ; < 0 : côté open (concédé)
+  const c = closedOf(defT), sc = shade;                          // > 0 : pivot côté fermé (break) ; < 0 : côté open (concédé)
+  if (forceOf(defT) === 'straight') return [ax + dir * 1.2 * k, ay + 0.9 * shade * c * k];
   return [ax + dir * 1.0 * k, ay + c * (1.0 + 0.6 * Math.max(0, sc) + 0.25 * Math.min(0, sc)) * k];
 }
 function anchor() {

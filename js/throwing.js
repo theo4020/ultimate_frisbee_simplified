@@ -12,19 +12,27 @@ function throwErr(d, curve, kind) {
   if (kind === 'high') return (0.07 * d + 0.005 * d * d + c * 1.2) * (1 + w * 0.012);
   return (d * 0.03 + c * 0.8) * (1 + w * 0.022 * (1 + 3 * c));
 }
-// Pivot : le porteur lâche le disque sur le côté où il a pivoté (h.pivY : -1 = vers le haut du terrain, +1 = vers le bas),
-// jusqu'à PIVOT_R m de son corps. side = pivot supposé (sinon son pivot actuel).
-function releasePoint(h, tx, ty, side) {
-  const s = side === undefined ? (h.pivY || 0) : side;
-  const back = (tx - h.x) * dirOf(h.team) < -1 ? -1 : 1;           // passe vers l'arrière (relais) : lâchée derrière lui, loin de la mark
-  return [h.x + dirOf(h.team) * 0.3 * Math.abs(s) * back, h.y + s * PIVOT_R];
+// Pivot : le porteur pivote de part et d'autre de la mark (h.pivY : +1 = côté fermé, un peu vers l'arrière, pour la
+// contourner ; -1 = côté open, un peu vers l'avant), et lâche le disque jusqu'à PIVOT_R m de son corps.
+// L'axe du pivot est perpendiculaire à la direction porteur → mark (sans mark : là où elle se placerait).
+function pivotAxis(h) {
+  const m = markOf(h), c = closedOf(1 - h.team), d = dirOf(h.team);
+  let ux = m ? m.x - h.x : d * 1.0, uy = m ? m.y - h.y : c * 1.3;
+  const l = Math.hypot(ux, uy) || 1; ux /= l; uy /= l;
+  let bx = -uy, by = ux;                                           // perpendiculaire…
+  if (by * c < 0 || (Math.abs(by) < 0.05 && bx * d > 0)) { bx = -bx; by = -by; }   // …du côté fermé (et vers l'arrière)
+  return [bx, by];
 }
-// côté où il faut pivoter pour lancer vers (tx, ty) : du côté de la passe si elle part sur le côté, sinon à l'opposé de la mark
+// side = pivot supposé (sinon son pivot actuel)
+function releasePoint(h, tx, ty, side) {
+  const s = side === undefined ? (h.pivY || 0) : side, [bx, by] = pivotAxis(h);
+  return [h.x + bx * s * PIVOT_R, h.y + by * s * PIVOT_R];
+}
+// pivot pour lancer vers (tx, ty) : côté fermé si la passe part de ce côté-là de l'axe (break, relais derrière côté fermé),
+// sinon côté open (passes vers l'avant et côté open)
 function pivotFor(h, tx, ty) {
-  const lat = ty - h.y;
-  if (Math.abs(lat) > 3) return Math.sign(lat);
-  const m = markOf(h);
-  return m ? (m.y > h.y ? -1 : 1) : (lat >= 0 ? 1 : -1);
+  const [bx, by] = pivotAxis(h);
+  return (tx - h.x) * bx + (ty - h.y) * by > 0 ? 1 : -1;
 }
 // la mark du porteur (défenseur à moins de 3 m qui le marque), sinon null
 const markOf = h => { const m = G.marker; return m && h && m.team !== h.team && dist(m.x, m.y, h.x, h.y) < STALL_R ? m : null; };
