@@ -351,6 +351,15 @@ const TUTO_STEPS = [
     }
   }
 ];
+// deux parcours : débutant (de quoi jouer un premier match) puis avancé ; les étapes sont rangées dans cet ordre
+const TUTO_COURSES = {
+  base: { name: 'Débutant', steps: ['Se déplacer', 'Lancer', 'La courbe', 'Appeler un cut', 'Changer de joueur', 'Plonger en défense'] },
+  adv: { name: 'Avancé', steps: ['Le pied de pivot', 'La passe haute', 'Appeler un play', 'Duel en l’air', 'Contrer une passe haute', 'Le pull'] }
+};
+{ const order = TUTO_COURSES.base.steps.concat(TUTO_COURSES.adv.steps); TUTO_STEPS.sort((a, b) => order.indexOf(a.title) - order.indexOf(b.title)); }
+const TUTO_BASE_N = TUTO_COURSES.base.steps.length;
+const tutoCourseOf = k => (k >= TUTO_BASE_N ? 'adv' : 'base');
+const tutoRange = c => (c === 'adv' ? [TUTO_BASE_N, TUTO_STEPS.length] : [0, TUTO_BASE_N]);
 const TUTO_WALL = [[43.5, 18.5], [43.5, 16.3], [43.5, 20.7], [43.5, 14.1], [43.5, 22.9]];
 const TUTO_STACK = [[46, 18.5], [50, 18.5], [54, 18.5], [58, 18.5]];
 
@@ -391,18 +400,20 @@ function tutoPin(p) {
 }
 
 // ---------- déroulé ----------
-function tutoStart() {
+function tutoStart(course) {
+  if (typeof course !== 'string') course = 'base';
   backToSolo();
   G.series = null; G.ms = null;
-  G.tuto = { step: 0, t: 0, wait: 0, after: null, saved: { def: G.form.def, force: G.form.force, play: G.form.play, play1: G.form.play1, dplay: G.form.dplay }, inp: '' };
+  G.tuto = { course, step: 0, t: 0, wait: 0, after: null, saved: { def: G.form.def, force: G.form.force, play: G.form.play, play1: G.form.play1, dplay: G.form.dplay }, inp: '' };
   $('lobbyCard').style.display = 'none';
   $('tutoBox').style.display = '';
-  tutoGo(0);
+  tutoGo(tutoRange(course)[0]);
 }
 function tutoGo(k) {
   const T = G.tuto; if (!T) return;
-  T.step = k; T.t = 0; T.wait = 0; T.after = null; T.done = false;
+  T.step = k; T.t = 0; T.wait = 0; T.after = null; T.done = false; T.finished = false;
   if (k >= TUTO_STEPS.length) { tutoFinish(); return; }
+  T.course = tutoCourseOf(k);
   TUTO_STEPS[k].setup();
   tutoText(true);
 }
@@ -427,9 +438,10 @@ function tutoText(force) {
   if (!S || (!force && sig === T.inp)) return;               // on réaffiche si la façon de jouer ou les réglages changent
   T.inp = sig;
   $('tutoTitle').textContent = S.title;
-  $('tutoStep').textContent = `Étape ${T.step + 1} / ${TUTO_STEPS.length}`;
+  const [a, b] = tutoRange(T.course);
+  $('tutoStep').textContent = `${TUTO_COURSES[T.course].name} · étape ${T.step - a + 1} / ${b - a}`;
   const tx = S.text[inp] || S.text.touch; $('tutoText').innerHTML = typeof tx === 'function' ? tx() : tx;
-  $('tutoSkip').style.display = ''; $('tutoSkip').textContent = 'Passer l’étape ▸';
+  $('tutoSkip').style.display = ''; $('tutoSkip').textContent = 'Passer l’étape ▸'; $('tutoMatch').style.display = 'none';
   $('tutoQuit').textContent = 'Quitter ✕';
   resize();
 }
@@ -443,7 +455,7 @@ function tutoSuccess(msg, delay) {
   const T = G.tuto; T.done = true;
   flash(msg, true);
   try { SOUNDS.score(); } catch (e) { }
-  T.wait = delay || 1.6; T.after = () => tutoGo(T.step + 1);
+  T.wait = delay || 1.6; T.after = tutoNext;
 }
 function tutoFail(msg) {
   const T = G.tuto; T.done = true;
@@ -457,17 +469,24 @@ function tutoFrame(dt) {
   const S = TUTO_STEPS[T.step]; if (S && S.frame && !T.done) S.frame(dt);
   if (T.wait > 0) { T.wait -= dt; if (T.wait <= 0 && T.after) { const f = T.after; T.after = null; f(); } }
 }
+// étape suivante du parcours, ou la fin du parcours
+function tutoNext() { const T = G.tuto; if (!T) return; if (T.step + 1 >= tutoRange(T.course)[1]) tutoFinish(); else tutoGo(T.step + 1); }
 function tutoFinish() {
-  storeSet('uf-tuto', true);
-  achEvent('tuto');
-  const T = G.tuto; T.done = true; T.step = TUTO_STEPS.length;
+  const T = G.tuto, adv = T.course === 'adv';
+  storeSet(adv ? 'uf-tuto2' : 'uf-tuto', true);
+  achEvent(adv ? 'tuto2' : 'tuto');
+  T.done = true; T.finished = true; T.step = TUTO_STEPS.length;   // plus d'étape en cours : jeu libre derrière le message
   $('tutoTitle').textContent = 'Bravo ! 🎉';
-  $('tutoStep').textContent = '';
-  $('tutoText').innerHTML = 'Tu connais toutes les commandes : te déplacer, lancer, courber, changer de pied de pivot, passe haute, appeler un cut et un play, duel en l’air, changer de joueur, layout block, contre en saut et pull. Dans le menu d’avant-point, tu choisis ta formation, ta défense et deux plays, que tu appelles en jeu quand tu as le disque (boutons ▶). À toi de jouer !';
-  $('tutoSkip').textContent = 'Jouer un match ▶';
+  $('tutoStep').textContent = TUTO_COURSES[T.course].name + ' terminé';
+  $('tutoText').innerHTML = adv
+    ? 'Tu maîtrises les gestes avancés : pied de pivot contre la mark, passe haute, plays, duel en l’air, contre au lâcher et pull. Dans le menu d’avant-point, choisis ta formation, ta défense, tes consignes et deux plays à appeler en jeu (boutons ▶). À toi de jouer !'
+    : 'Tu sais te déplacer, lancer, courber, appeler un cut, changer de joueur et plonger en défense : de quoi jouer ton premier match. Le tutoriel avancé t’apprend ensuite à battre la mark (pied de pivot, passe haute), les plays, les duels en l’air et le pull.';
+  $('tutoSkip').textContent = adv ? 'Jouer un match ▶' : 'Continuer avec l’avancé ▶';
+  $('tutoMatch').style.display = adv ? 'none' : '';
   $('tutoQuit').textContent = 'Menu';
   resize();
 }
+function tutoPlay() { tutoCleanup(); G.series = null; newMatch(); showMenu('first'); }
 function tutoCleanup() {
   const T = G.tuto; if (!T) return;
   Object.assign(G.form, T.saved);
@@ -478,12 +497,16 @@ function tutoCleanup() {
 }
 function tutoQuit() { tutoCleanup(); showLobby(); }
 if (typeof document !== 'undefined' && document.getElementById('tutoB')) {
-  $('tutoB').addEventListener('click', tutoStart);
+  $('tutoB').addEventListener('click', () => showLobby('', 'tuto'));
+  $('tutoBaseB').addEventListener('click', () => tutoStart('base'));
+  $('tutoAdvB').addEventListener('click', () => tutoStart('adv'));
+  $('tutoBack').addEventListener('click', () => showLobby());
   $('tutoQuit').addEventListener('click', tutoQuit);
+  $('tutoMatch').addEventListener('click', tutoPlay);
   $('tutoSkip').addEventListener('click', () => {
     const T = G.tuto; if (!T) return;
-    if (T.step >= TUTO_STEPS.length) { tutoCleanup(); G.series = null; newMatch(); showMenu('first'); return; }
-    tutoGo(T.step + 1);
+    if (T.finished) { if (T.course === 'base') tutoStart('adv'); else tutoPlay(); return; }
+    tutoNext();
   });
 }
 

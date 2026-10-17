@@ -1,7 +1,8 @@
 // achievements.js — Profil du joueur : statistiques de carrière et succès (gardés dans le navigateur)
 
 const ACH = [
-  { id: 'tuto', icon: '🎓', name: 'Diplômé', desc: 'Terminer le tutoriel' },
+  { id: 'tuto', icon: '🎓', name: 'Diplômé', desc: 'Terminer le tutoriel débutant' },
+  { id: 'tuto2', icon: '🥇', name: 'Maître du disque', desc: 'Terminer le tutoriel avancé' },
   { id: 'goal', icon: '🥏', name: 'Premier point', desc: 'Marquer un point' },
   { id: 'win', icon: '🏅', name: 'Première victoire', desc: 'Gagner un match' },
   { id: 'shutout', icon: '🧱', name: 'Blanchissage', desc: 'Gagner un match sans encaisser de point' },
@@ -43,6 +44,7 @@ const mineT = t => !G.attract && !G.spectator && t === G.me && !!meH();
 // événements de jeu (appelés depuis events.js, sim.js, pull.js, practice.js, tuto.js)
 function achEvent(type, a, b) {
   if (type === 'tuto') { unlock('tuto'); return; }
+  if (type === 'tuto2') { unlock('tuto2'); return; }
   if (type === 'practice') { careerMax('practiceBest', a); if (a >= 10) unlock('practice10'); return; }
   if (G.attract) return;
   if (G.tuto || G.practice) return;

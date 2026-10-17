@@ -172,10 +172,18 @@ export default async function (t) {
 
     t.group('Tutoriel');
     await p.click('#tutoB');
+    t.ok(await vis(p, '#tutoBaseB') && await vis(p, '#tutoAdvB'), 'deux tutoriels : débutant et avancé');
+    await p.click('#tutoBaseB');
     await p.waitForFunction(() => G.tuto);
     t.ok(await vis(p, '#tutoBox'), 'consignes du tutoriel affichées');
-    const k = await p.evaluate(() => TUTO_STEPS.findIndex(s => s.plays));
-    t.ok(k > 0, 'une étape « Appeler un play »');
+    t.ok(/Débutant · étape 1 \/ 6/.test(await p.textContent('#tutoStep')) && (await p.textContent('#tutoTitle')) === 'Se déplacer', 'le débutant commence par se déplacer (6 étapes)', await p.textContent('#tutoStep'));
+    for (let i = 0; i < 6; i++) { await p.click('#tutoSkip'); await p.waitForTimeout(120); }
+    const fin = await p.evaluate(() => ({ t: document.getElementById('tutoTitle').textContent, skip: document.getElementById('tutoSkip').textContent, match: document.getElementById('tutoMatch').style.display !== 'none', saved: storeGet('uf-tuto', false), ach: !!(storeGet('uf-ach', {}) || {}).tuto }));
+    t.ok(/Bravo/.test(fin.t) && /avancé/.test(fin.skip) && fin.match && fin.saved, 'fin du débutant : continuer avec l’avancé, ou jouer un match', fin);
+    await p.click('#tutoSkip'); await p.waitForTimeout(150);
+    t.ok(/Avancé · étape 1 \/ 6/.test(await p.textContent('#tutoStep')) && (await p.textContent('#tutoTitle')) === 'Le pied de pivot', '« continuer » lance l’avancé', await p.textContent('#tutoStep'));
+    const k = await p.evaluate(() => TUTO_STEPS.findIndex(s => s.plays) - TUTO_BASE_N);
+    t.ok(k > 0, 'une étape « Appeler un play » dans l’avancé');
     for (let i = 0; i < k; i++) { await p.click('#tutoSkip'); await p.waitForTimeout(150); }
     t.ok((await p.textContent('#tutoBox')).includes('Play 1'), 'consigne : appeler son Play 1', await p.textContent('#tutoBox'));
     await p.waitForFunction(() => document.getElementById('play1B').style.display !== 'none', null, { timeout: 5000 });

@@ -30,7 +30,7 @@
   <div id="tutoBox" style="display:none">
     <div class="tutoHead"><b id="tutoTitle"></b><span id="tutoStep"></span></div>
     <div id="tutoText"></div>
-    <div class="tutoBtns"><button id="tutoSkip">Passer l'étape ▸</button><button id="tutoQuit">Quitter ✕</button></div>
+    <div class="tutoBtns"><button id="tutoSkip">Passer l'étape ▸</button><button id="tutoMatch" style="display:none">Jouer un match ▶</button><button id="tutoQuit">Quitter ✕</button></div>
   </div>
   <div id="pracBox" style="display:none">
     <div class="tutoHead"><b>Entraînement</b><span id="pracStats"></span></div>
@@ -70,7 +70,7 @@
     <div id="lobbyHome">
       <button id="moveAlert" style="display:none">🚚 <b>Le jeu change d'adresse ! Cette adresse va bientôt s'arrêter.</b><br>Touche ici pour passer sur la nouvelle en gardant ton profil ›</button>
       <p>Ultimate en 5 contre 5, en quelques minutes.</p>
-      <button class="bigbtn" id="tutoB">🎓 Tutoriel<small id="tutoTxt">Apprends toutes les commandes en 5 minutes</small></button>
+      <button class="bigbtn" id="tutoB">🎓 Tutoriel<small id="tutoTxt">Débutant ou avancé : apprends les commandes en quelques minutes</small></button>
       <button class="bigbtn" id="soloMenuB">🤖 Solo<small>Match, mode infini, mini-tournoi, entraînement</small></button>
       <button class="bigbtn" id="onlineMenuB">🌐 En ligne<small>Mode infini à plusieurs, parties entre amis, rejoindre avec un code</small></button>
       <button class="bigbtn" id="sysB">📋 Mes systèmes<small>Crée tes propres attaques et défenses</small></button>
@@ -79,6 +79,12 @@
       <button class="bigbtn" id="newsB">📰 Nouveautés <span id="newsBadge" class="badge" style="display:none"></span><small>Ce qui a changé dans le jeu</small></button>
       <button class="bigbtn" id="installB" style="display:none">📲 Installer le jeu<small>Sur l'écran d'accueil, en plein écran, jouable hors connexion en solo</small></button>
       <p class="net" id="iosHint" style="display:none">📲 Pour installer le jeu sur iPhone : bouton Partager, puis « Sur l'écran d'accueil ».</p>
+    </div>
+    <div id="lobbyTuto" style="display:none">
+      <h2>🎓 Tutoriel</h2>
+      <button class="bigbtn" id="tutoBaseB">🌱 Débutant<small id="tutoBaseTxt">Se déplacer, lancer, courber, appeler un cut, défendre : de quoi jouer ton premier match (2 minutes)</small></button>
+      <button class="bigbtn" id="tutoAdvB">🔥 Avancé<small id="tutoAdvTxt">Pied de pivot contre la mark, passe haute, plays, duels en l'air, contre au lâcher, pull (3 minutes)</small></button>
+      <button id="tutoBack">← Retour</button>
     </div>
     <div id="lobbySolo" style="display:none">
       <h2>🤖 Solo</h2>

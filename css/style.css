@@ -307,12 +307,12 @@ body.touch #tutoBox{font-size:13.5px;line-height:1.3;padding:4px 10px}
 .post p{margin:0;color:var(--muted);font-size:14px;line-height:1.45}
 .post p b{color:var(--text)}
 /* section Solo, mode infini */
-#lobbySolo{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-#lobbySolo h2,#soloBack{grid-column:1 / -1;margin:0}
-#lobbySolo h2{font-size:18px}
-#lobbySolo .bigbtn{margin:0}
+#lobbySolo,#lobbyTuto{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#lobbySolo h2,#soloBack,#lobbyTuto h2,#tutoBack{grid-column:1 / -1;margin:0}
+#lobbySolo h2,#lobbyTuto h2{font-size:18px}
+#lobbySolo .bigbtn,#lobbyTuto .bigbtn{margin:0}
 #endlessB{grid-column:1 / -1;border:1px solid var(--accent)}
-@media (max-width:480px){#lobbySolo{grid-template-columns:1fr}}
+@media (max-width:480px){#lobbySolo,#lobbyTuto{grid-template-columns:1fr}}
 #endlessCard h2{font-size:17px;margin:14px 0 4px}
 #endlessCard #endGo{text-align:center}
 #endBoard{list-style:none;padding:0;margin:6px 0;display:flex;flex-direction:column;gap:4px;max-height:42vh;overflow:auto}

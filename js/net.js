@@ -468,7 +468,7 @@ function showRoom() {
   G.menuShown = true;
   for (const id of ['stratCard', 'seriesCard', 'profileCard', 'endlessCard']) $(id).style.display = 'none';
   $('lobbyCard').style.display = '';
-  for (const id of ['lobbyHome', 'lobbyJoin', 'lobbySolo', 'lobbyOnline']) $(id).style.display = 'none';
+  for (const id of ['lobbyHome', 'lobbyJoin', 'lobbySolo', 'lobbyTuto', 'lobbyOnline']) $(id).style.display = 'none';
   $('lobbyRoom').style.display = '';
   const host = G.net === 'host' || !G.net;
   $('roomCodeBox').style.display = host || G.roomCode ? '' : 'none';   // l'invité voit aussi le code, pour inviter d'autres joueurs

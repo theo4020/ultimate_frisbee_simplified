@@ -126,13 +126,18 @@ function showLobby(err, view) {
   if (typeof endlessCfgOut === 'function') endlessCfgOut();
   G.menuShown = true; G.teamsOpen = null; G.series = null;
   $('lobbyCard').style.display = ''; for (const id of ['stratCard', 'seriesCard', 'profileCard', 'endlessCard']) $(id).style.display = 'none';
-  const tutoDone = storeGet('uf-tuto', false), s = seriesState();
-  $('tutoTxt').textContent = tutoDone ? 'Revoir les commandes (5 minutes)' : 'Nouveau ? Commence ici : toutes les commandes en 5 minutes';
+  const tutoDone = storeGet('uf-tuto', false), tuto2 = storeGet('uf-tuto2', false), s = seriesState();
+  $('tutoTxt').textContent = !tutoDone ? 'Nouveau ? Commence ici : les commandes en 2 minutes'
+    : tuto2 ? 'Revoir les commandes, débutant ou avancé' : 'Débutant fait : passe à l’avancé (mark, passe haute, plays…)';
   $('tutoB').classList.toggle('primary', !tutoDone);
+  $('tutoBaseB').classList.toggle('primary', !tutoDone); $('tutoAdvB').classList.toggle('primary', tutoDone && !tuto2);
+  $('tutoBaseTxt').textContent = (tutoDone ? '✓ Fait · ' : '') + 'Se déplacer, lancer, courber, appeler un cut, défendre : de quoi jouer ton premier match (2 minutes)';
+  $('tutoAdvTxt').textContent = (tuto2 ? '✓ Fait · ' : '') + 'Pied de pivot contre la mark, passe haute, plays, duels en l’air, contre au lâcher, pull (3 minutes)';
   $('seriesTxt').textContent = s.round >= SERIES.length ? 'Champion ! 🏆 Rejoue quand tu veux'
     : s.round > 0 || s.tries[0] ? `En cours : tour ${s.round + 1} sur 3 contre les ${SERIES[s.round].name}` : 'Trois matchs contre des équipes de plus en plus fortes';
   if (!G.net && !G.attract) startAttract();                     // un vrai match se joue derrière le menu
   $('lobbyHome').style.display = view ? 'none' : ''; $('lobbySolo').style.display = view === 'solo' ? '' : 'none';
+  $('lobbyTuto').style.display = view === 'tuto' ? '' : 'none';
   $('lobbyOnline').style.display = view === 'online' ? '' : 'none';
   const last = storeGet('uf-last-room', null), lastOk = last && /^[A-Z0-9]{4}$/.test(last.code) && Date.now() - last.at < 3 * 3600e3;
   $('rejoinB').style.display = lastOk ? '' : 'none';                     // revenir dans la dernière partie rejointe (3 h)
