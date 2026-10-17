@@ -117,7 +117,8 @@ export default async function (t, { quick }) {
   const zn = R(`(() => { const z = (L, s, c) => +heightAt(s / L, 0, 'normal', L, c || 0).toFixed(2);
     return { short: [z(8, 1), z(8, 4), z(8, 7)], mid: z(16, 8), long: [z(30, 1), z(30, 15), z(30, 29)], curved: [z(20, 2, 1), z(20, 10, 1)], flat: [z(20, 2), z(20, 10)] }; })()`);
   t.ok(zn.short.every(v => v >= 1 && v <= 1.6), 'passe courte : à hauteur de poitrine, contestable', zn);
-  t.ok(zn.mid < 2.2 && zn.long[1] > 2.8, 'passe moyenne atteignable debout, passe longue hors de portée au milieu', zn);
+  t.ok(zn.mid < 2.2 && zn.long[1] > 2.2 && zn.long[1] < 2.8, 'passe moyenne atteignable debout, passe longue à plat : au milieu, seulement en sautant', zn);
+  t.ok(zn.curved[1] > zn.flat[1] + 0.8, 'la courbe fait monter la passe', zn);
   t.ok(zn.long[0] < 2 && zn.long[2] < 2, 'lâchée et rattrapée à hauteur de main', zn);
   t.ok(zn.curved.every((v, i) => v > zn.flat[i]), 'une passe courbée monte plus vite et plus haut', zn);
 
@@ -230,6 +231,23 @@ export default async function (t, { quick }) {
   })()`);
   t.ok(td.msgs.slice(0, 3).join() === 'Passe dans 3…,Passe dans 2…,Passe dans 1…' && td.msgs.some(m => /PLONGE/.test(m)), 'compte à rebours, puis le signal « PLONGE ! »', td.msgs);
   t.ok(td.done && td.lblock, 'plonger au signal contre la passe (layout block)', td);
+
+  t.group('Tutoriel : se déplacer');
+  const tmv = R(`(() => {
+    const keepH = G.humans, keepS = G.series; G.series = null; G.humans = [{ id: 0, team: 0, sel: null }]; G.myId = 0; syncMe();
+    tutoStart(); tutoGo(TUTO_STEPS.findIndex(s => s.title === 'Se déplacer'));
+    const msgs = [], step = G.tuto.step; let last = G.msg, f = 0;
+    for (; f < 60 * 20 && G.tuto.step === step; f++) {
+      const sp = (G.tuto.spots && G.tuto.spots[0]) || [50, 18];
+      Object.assign(G.pointer, { x: sp[0], y: sp[1], last: G.time, active: true });   // le joueur va vers le cercle allumé
+      __tick(); tutoFrame(1 / 60);
+      if (G.msg !== last) { last = G.msg; msgs.push(last); }
+    }
+    const r = { msgs, s: f / 60, next: TUTO_STEPS[G.tuto.step] && TUTO_STEPS[G.tuto.step].title };
+    tutoCleanup(); G.humans = keepH; G.series = keepS; syncMe();
+    return r;
+  })()`);
+  t.ok(tmv.msgs.join() === '1 / 3,2 / 3,Bien couru !' && tmv.next === 'Lancer' && tmv.s < 18, 'les 3 cercles l’un après l’autre, puis l’étape suivante', tmv);
 
   t.group('Tutoriel : le pied de pivot');
   const tpv = R(`(() => {

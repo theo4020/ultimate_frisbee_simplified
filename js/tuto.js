@@ -4,6 +4,35 @@
 
 const TUTO_STEPS = [
   {
+    title: 'Se déplacer',
+    ctx: 'move',
+    text: {
+      mouse: 'Ton joueur (anneau jaune) <b>suit la souris</b>. Amène-le dans les 3 cercles, l’un après l’autre.',
+      touch: () => CTRL.move === 'follow' ? 'Garde le doigt sur l’écran : ton joueur (anneau jaune) <b>suit ton doigt</b>. Amène-le dans les 3 cercles, l’un après l’autre.'
+        : '<b>Tape</b> (ou glisse) là où tu veux aller : ton joueur (anneau jaune) y court. Amène-le dans les 3 cercles, l’un après l’autre.',
+      joy: 'Pose le doigt n’importe où et <b>glisse</b> : ton joueur (anneau jaune) court dans cette direction. Amène-le dans les 3 cercles, l’un après l’autre.',
+      pad: 'Le <b>stick gauche</b> déplace ton joueur (anneau jaune). Amène-le dans les 3 cercles, l’un après l’autre.'
+    },
+    setup() {
+      tutoReset(); G.tuto.spots = TUTO_SPOTS.slice();
+      tutoPut(1, [[70, 18.5], [80, 8], [80, 29], [90, 6], [90, 31]]);
+      tutoPut(0, [[40, 18.5], [72, 8], [72, 29], [86, 6], [86, 31]]);
+      tutoGive(TEAMS[1][0]);
+      const h = meH(); if (h) h.sel = TEAMS[0][0];
+    },
+    frame() {                                                    // un cercle atteint : le suivant s'allume
+      const T = G.tuto, sp = T.spots, me = (meH() || {}).sel;
+      if (T.done || !sp || !sp.length || !me) return;
+      if (dist(me.x, me.y, sp[0][0], sp[0][1]) < TUTO_SPOT_R) {
+        sp.shift(); try { SOUNDS.catch(); } catch (e) { }
+        if (sp.length) flash((TUTO_SPOTS.length - sp.length) + ' / ' + TUTO_SPOTS.length, true); else tutoSuccess('Bien couru !');
+      }
+    },
+    pin(p) { return [[70, 18.5], [80, 8], [80, 29], [90, 6], [90, 31]][p.i]; },
+    pinD(d) { return d === (meH() || {}).sel ? null : [[40, 18.5], [72, 8], [72, 29], [86, 6], [86, 31]][d.i]; },
+    hold() { return true; }                                    // le porteur adverse garde le disque
+  },
+  {
     title: 'Lancer',
     text: {
       mouse: 'Vise un coéquipier libre (anneau vert) : <b>maintiens le clic</b>, puis relâche. Réussis 2 passes.',
@@ -331,7 +360,7 @@ function tutoReset() {
     match: null, diveTried: false, called: 0, freeAcc: 0, free: false }));
   Object.assign(G, { oplay: null, dplay: null, pendingOPlay: null, pullPending: false, carryTo: null, stall: 0, marker: null, dbl: null,
     pickup: null, throwKind: 'normal', score: [0, 0], celebrate: null, scorer: null, phase: 'play', pull: null });
-  Object.assign(G.tuto, { mark: false, piv: 0, wall: false, level: null, count: 0, called: false, played: false, jumped: false, blocked: false, lblock: false, thrown: false, holdT: 0, cd: 0, cued: false });
+  Object.assign(G.tuto, { spots: null, mark: false, piv: 0, wall: false, level: null, count: 0, called: false, played: false, jumped: false, blocked: false, lblock: false, thrown: false, holdT: 0, cd: 0, cued: false });
   G.wind = { x: 0, y: 0, kmh: 0 };                             // pas de vent pendant le tutoriel
   setCurve(0);
   disc.pull = false; disc.kind = 'normal';
@@ -340,6 +369,7 @@ function tutoReset() {
 function tutoPut(t, spots, all) {
   TEAMS[t].forEach((p, k) => { const s = spots[k]; if (s) { p.x = p.tx = s[0]; p.y = p.ty = s[1]; } else if (all) { p.x = p.tx = 95; p.y = p.ty = 4 + k * 7; } });
 }
+const TUTO_SPOTS = [[52, 11], [30, 28], [56, 26]], TUTO_SPOT_R = 1.6;   // se déplacer : les cercles à atteindre
 const TUTO_PIV = [[35, 18.5], [37, 28], [24, 6], [22, 18.5], [24, 31]];   // pied de pivot : le receveur est côté fermé
 const tutoFar = p => [95, 4 + p.i * 7];
 function tutoFarDefense() { tutoPut(1, TEAMS[1].map(tutoFar)); }
@@ -433,7 +463,7 @@ function tutoFinish() {
   const T = G.tuto; T.done = true; T.step = TUTO_STEPS.length;
   $('tutoTitle').textContent = 'Bravo ! 🎉';
   $('tutoStep').textContent = '';
-  $('tutoText').innerHTML = 'Tu connais toutes les commandes : lancer, courber, passe haute, appeler un cut, layout, duel en l’air, changer de joueur, layout block, contre en saut et pull. Dans le menu d’avant-point, tu choisis ta formation, ta défense et deux plays, que tu appelles en jeu quand tu as le disque (boutons ▶). À toi de jouer !';
+  $('tutoText').innerHTML = 'Tu connais toutes les commandes : te déplacer, lancer, courber, changer de pied de pivot, passe haute, appeler un cut et un play, duel en l’air, changer de joueur, layout block, contre en saut et pull. Dans le menu d’avant-point, tu choisis ta formation, ta défense et deux plays, que tu appelles en jeu quand tu as le disque (boutons ▶). À toi de jouer !';
   $('tutoSkip').textContent = 'Jouer un match ▶';
   $('tutoQuit').textContent = 'Menu';
   resize();
@@ -463,4 +493,17 @@ const JUMP_CUE = 0.4;
 function tutoHold(h, dt) {
   const S = G.tuto && TUTO_STEPS[G.tuto.step];
   return !!(S && S.hold && S.hold(h, dt));
+}
+
+// cercles de l'étape « Se déplacer » : le prochain en jaune, les suivants en pointillés
+function drawTuto() {
+  const sp = G.tuto && G.tuto.spots; if (!sp || !sp.length) return;
+  ctx.save();
+  sp.forEach(([x, y], k) => {
+    const r = TUTO_SPOT_R * S * (k ? 1 : 1 + Math.sin(G.time * 5) * 0.06);
+    ctx.lineWidth = 2.5; ctx.setLineDash(k ? [5, 5] : []);
+    ctx.strokeStyle = k ? 'rgba(255,255,255,.45)' : '#facc15'; ctx.fillStyle = k ? 'rgba(255,255,255,.06)' : 'rgba(250,204,21,.22)';
+    circle(X(x), Y(y), r); ctx.fill(); ctx.stroke();
+  });
+  ctx.restore();
 }

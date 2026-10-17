@@ -80,7 +80,9 @@ const discPeak = () => peakOf(disc.dur, disc.kind);
 //  • passe haute : lâchée au-dessus de la tête, à hauteur de saut, puis elle monte haut et ne redescend qu'à l'arrivée
 //  • pull : une grande cloche
 const PASS_Z0 = 1.0, PASS_ZEND = 1.3, CURVE_RISE = 0.8;
-const cruiseZ = (L, curve) => clamp(1.4 + Math.max(0, L - 10) * 0.08, 1.4, 4) + CURVE_RISE * Math.min(1, Math.abs(curve || 0));
+// sans courbe, une passe reste plus à plat (20 m : ~1,95 m, 30 m : ~2,5 m) ; la courbe la fait monter (comme avant à pleine courbe)
+const cruiseZ = (L, curve) => { const c = Math.min(1, Math.abs(curve || 0));
+  return clamp(1.4 + Math.max(0, L - 10) * (0.055 + 0.025 * c), 1.4, 3 + c) + CURVE_RISE * c; };
 const smooth = x => x * x * (3 - 2 * x);                   // montée progressive : le disque reste longtemps à portée près du lanceur
 function heightAt(u, peak, kind, len, curve) {
   if (kind === 'high') {

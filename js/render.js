@@ -185,6 +185,7 @@ function draw() {
 
   drawStreaks();
   drawPractice();
+  drawTuto();
   const playing = G.phase === 'play';
   const myAttack = playing && G.off === G.me && !G.practice, ME = G.me, mySel = (meH() || {}).sel || null;
 
