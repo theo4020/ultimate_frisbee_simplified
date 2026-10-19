@@ -406,3 +406,4 @@ details.orders summary small{color:var(--muted);font-weight:400}
 .poste select{max-width:62%}
 #sysItems .kind.play,#galItems .kind.play{background:rgba(250,204,21,.22);color:#fde68a}
 .edBase{display:flex;align-items:center;gap:8px;font-size:14px}
+.accAdmin{margin-top:12px;border-top:1px solid rgba(148,163,184,.25);padding-top:8px}.accAdmin summary{cursor:pointer;font-weight:600}

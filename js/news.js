@@ -8,6 +8,19 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
+  { id: 22, date: '2026-10-19', tag: 'Gameplay', title: 'Le pied de pivot : duel avec la mark 🦶',
+    body: `Le porteur lâche maintenant le disque <b>du côté de son pied de pivot</b> : le joueur se penche et le disque est
+      dessiné dans sa main, de ce côté. La mark suit ton pivot et <b>se fend vers le disque</b> au lâcher (sa zone rouge
+      montre jusqu'où elle peut contrer) : lancer dans la mark, c'est souvent contré.<br>
+      Le bouton de passe haute devient le bouton <b>Pivot</b> (même touche, Y à la manette, ou ton doigt sur ton porteur) :<br>
+      • <b>un appui</b> : tu changes de pied, pour passer de l'autre côté de la mark (tu repars côté open à chaque réception) ;<br>
+      • <b>maintenu</b> : tu armes la passe haute, sans la ralentir.<br>
+      Feinte d'un côté, la mark suit… puis pivote et lance de l'autre pour la prendre à contre-pied.<br>
+      <b>Tutoriel en deux parcours</b> : <b>débutant</b> (se déplacer, lancer, courbe, appeler un cut, changer de joueur,
+      plonger en défense) puis <b>avancé</b> (pied de pivot, passe haute, plays, duel en l'air, contre au lâcher, pull),
+      avec un nouveau succès pour l'avancé.<br>
+      Et l'<b>IA attaque mieux</b> : elle ne lance plus là où son receveur ne peut pas arriver, et elle tient compte des
+      plongeons de la défense avant de lancer.` },
   { id: 21, date: '2026-10-16', tag: 'Systèmes', title: 'Formations, plays et défenses perso 🎯',
     body: `<b>Mes systèmes</b> sépare maintenant trois choses :<br>
       • <b>Formation</b> : tu places tes 4 joueurs, puis tu donnes à chaque poste ses <b>consignes</b> : rôle (coupeur, relais,
@@ -18,12 +31,7 @@ const NEWS = [
       Tes anciennes attaques avec des courses sont devenues une formation + un play.<br>
       Nouveau aussi : les <b>consignes d'équipe</b> du menu d'avant-point (jeu long, passes hautes, prise de risque, aide en
       défense), et un jeu plus structuré : stacks plus loin du disque, un receveur rattrapé en pleine course freine avant
-      de lancer, et un <b>style d'attaque</b> à choisir à côté de la formation : structuré (on se replace) ou enchaîné (flow).<br>
-      <b>Duel avec la mark</b> : le porteur lâche le disque du côté de son pied de pivot (le disque est dessiné dans sa main),
-      la mark suit son pivot et se fend vers le disque au lâcher (sa zone rouge le montre). Lancer dans la mark, c'est
-      souvent contré : pivote de l'autre côté, ou feinte d'un côté puis lance de l'autre pour la prendre à contre-pied.<br>
-      Le bouton de passe haute devient le bouton <b>Pivot</b> : un appui change de pied (côté open à chaque réception),
-      le maintenir arme la passe haute, sans la ralentir.` },
+      de lancer, et un <b>style d'attaque</b> à choisir à côté de la formation : structuré (on se replace) ou enchaîné (flow).` },
   { id: 20, date: '2026-10-15', tag: 'Gameplay', title: 'Nouvelle physique, plus réaliste 🏃',
     body: `Le jeu repose maintenant sur une vraie physique :<br>
       • <b>Les joueurs accélèrent</b> en un peu plus d'une seconde au lieu de démarrer à fond : un bon changement de direction

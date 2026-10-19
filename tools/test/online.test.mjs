@@ -122,6 +122,17 @@ export default async function (t) {
     await host.waitForFunction(() => !G.pz, null, { timeout: 5000 });
     t.ok(true, 'celui qui a mis en pause relance');
 
+    t.group('Hôte qui change d’onglet');
+    await host.evaluate(() => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => true }); document.dispatchEvent(new Event('visibilitychange')); });
+    const hb = await host.evaluate(() => ({ bg: bgActive(), t: G.time }));
+    await host.waitForTimeout(1500);
+    const ha = await host.evaluate(() => ({ bg: bgActive(), t: G.time }));
+    t.ok(hb.bg && ha.t - hb.t > 1, 'onglet caché : le jeu de l’hôte continue (au rythme d’un Worker)', { hb, ha });
+    t.ok(await guest.evaluate(() => G.time - lastRecv < 1 && !hostWaitMsg()), 'l’invité reçoit toujours le jeu');
+    await host.evaluate(() => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => false }); document.dispatchEvent(new Event('visibilitychange')); });
+    t.ok(await host.evaluate(() => !bgActive()), 'onglet revenu : retour à l’affichage normal');
+    t.ok(await guest.evaluate(() => { lastRecv = G.time - 5; return /En attente de l’hôte/.test(hostWaitMsg()); }), 'hôte muet depuis quelques secondes : l’invité voit « En attente de l’hôte »');
+
     t.group('Réactions');
     await guest.bringToFront();
     t.ok(await guest.isVisible('#emoToggle') && !(await guest.isVisible('#emoList')), 'un seul petit bouton 😀 sur le terrain');

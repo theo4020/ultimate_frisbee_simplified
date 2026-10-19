@@ -49,7 +49,7 @@ function accSave() {
   return accApi('save', { name: a.name, token: a.token, data: accData() }).then(j => {
     if (j.status === 401) return accRelogin().then(ok => (ok ? accSave() : null));
     accState = j.error ? '⚠️ Non sauvegardé : ' + j.error : '✅ Sauvegardé';
-    if (!j.error) accSet(Object.assign(accGet() || a, { synced: j.updated }));
+    if (!j.error) accSet(Object.assign(accGet() || a, { synced: j.updated, admin: !!j.admin }));
     accRender();
     return j;
   });
@@ -59,7 +59,7 @@ function accRelogin() {
   const a = storeGet('uf-acc', null); if (!a || !a.password) return Promise.resolve(false);
   return accApi('login', { name: a.name, password: a.password }).then(j => {
     if (j.error) { accState = '⚠️ ' + j.error; accRender(); return false; }
-    accSet(Object.assign(a, { token: j.token })); return true;
+    accSet(Object.assign(a, { token: j.token, admin: !!j.admin })); return true;
   });
 }
 // au lancement : si le compte a été modifié sur un autre appareil, on reprend ses données
@@ -72,7 +72,7 @@ function accStartup() {
       accApply(j.data); accSet(Object.assign(a, { synced: j.updated }));
       try { sessionStorage.setItem('uf-acc-reload', '1'); } catch (e) { }
       location.reload();
-    } else { accState = '✅ À jour'; accRender(); }
+    } else { accSet(Object.assign(accGet() || a, { admin: !!j.admin })); accState = '✅ À jour'; accRender(); }
   });
 }
 
@@ -80,7 +80,7 @@ function accStartup() {
 function accDone(j, name, password, msg) {
   $('accMsg').textContent = '';
   storeSet('uf-name', j.name);
-  accSet({ name: j.name, password, token: j.token, synced: j.updated || 0 });
+  accSet({ name: j.name, password, token: j.token, synced: j.updated || 0, admin: !!j.admin });
   if (j.data) {                                               // compte existant : ses données remplacent celles de cet appareil
     accApply(j.data); accSet(Object.assign(accGet(), { synced: j.updated }));
     try { sessionStorage.setItem('uf-acc-reload', msg); } catch (e) { }
@@ -129,6 +129,18 @@ function accRename() {
     toast('✅ Tu t’appelles maintenant ' + j.name + ' (classement et galerie mis à jour)');
   });
 }
+// admin : un joueur a oublié son mot de passe → on lui en donne un temporaire (il garde profil, pseudo, classement, galerie)
+let accResetMsg = '';
+function accReset() {
+  const a = accGet(), target = cleanName(($('accResetIn') || {}).value || '');
+  if (!a || target.length < 3) { accResetMsg = '⚠️ Écris le pseudo du compte.'; accRender(); return; }
+  accResetMsg = 'Changement…'; accRender();
+  accApi('reset', { name: a.name, token: a.token, target }).then(j => {
+    if (j.status === 401) { accRelogin().then(ok => (ok ? accReset() : null)); return; }
+    accResetMsg = j.error ? '⚠️ ' + j.error : `Nouveau mot de passe de <b>${esc(j.name)}</b> : <b class="pw">${esc(j.password)}</b><br>Donne-le-lui : il se connecte avec, puis le retrouve dans Compte. Ses appareils ont été déconnectés.`;
+    accRender();
+  });
+}
 function accDelete() {
   const a = accGet(); if (!a) return;
   askConfirm(`Supprimer le compte ${a.name} ? Ses données en ligne seront effacées (ton profil reste sur cet appareil) et le pseudo redeviendra libre.`, 'Supprimer', () => {
@@ -163,13 +175,21 @@ function accRender() {
       <div class="accRow"><span>Mot de passe</span><b class="pw">${accShowPw ? esc(pw) : '•'.repeat(Math.max(6, pw.length))}</b>
         <button id="accEye" class="ghost">${accShowPw ? 'Masquer' : 'Afficher'}</button></div>
       <p class="net">${esc(accState)}</p>
-      <div class="accBtns"><button id="accSaveB">Sauvegarder maintenant</button><button id="accOut">Se déconnecter</button><button id="accDel" class="ghost">Supprimer le compte</button></div>`;
+      <div class="accBtns"><button id="accSaveB">Sauvegarder maintenant</button><button id="accOut">Se déconnecter</button><button id="accDel" class="ghost">Supprimer le compte</button></div>
+      ${a.admin ? `<details class="accAdmin"><summary>🔑 Admin : mot de passe oublié</summary>
+        <p class="net">Donne un mot de passe temporaire à un joueur qui a oublié le sien. Il garde son profil, son pseudo, sa place au classement et ses publications.</p>
+        <div class="accRow"><span>Pseudo</span><input id="accResetIn" class="tname" maxlength="12" autocomplete="off" spellcheck="false"><button id="accResetGo">Nouveau mot de passe</button></div>
+        <p class="net" id="accResetMsg">${accResetMsg}</p></details>` : ''}`;
     $('accEye').onclick = () => { accShowPw = !accShowPw; accRender(); };
     if (accRenaming) {
       $('accRenameGo').onclick = accRename; $('accRenameNo').onclick = () => { accRenaming = false; $('accMsg').textContent = ''; accRender(); };
       $('accRenameIn').addEventListener('keydown', e => { if (e.key === 'Enter') accRename(); });
     } else $('accRenameB').onclick = () => { accRenaming = true; accRender(); setTimeout(() => { const el = $('accRenameIn'); if (el) { el.focus(); el.select(); } }, 0); };
     $('accSaveB').onclick = accSave; $('accOut').onclick = accLogout; $('accDel').onclick = accDelete;
+    if (a.admin) {
+      const d = $('accBody').querySelector('.accAdmin'); if (accResetMsg) d.open = true;
+      $('accResetGo').onclick = accReset; $('accResetIn').addEventListener('keydown', e => { if (e.key === 'Enter') accReset(); });
+    }
   } else {
     $('accBody').innerHTML = `
       <p>Un compte réserve ton pseudo (personne d'autre ne peut l'utiliser, au classement non plus) et garde ton profil

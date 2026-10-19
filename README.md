@@ -85,6 +85,12 @@ Le classement du mode infini à plusieurs est un second objet `Board`, d'identif
 **Modérer la galerie** : dans *Settings → Variables and Secrets* du worker, ajoute une variable `GALLERY_ADMINS` (texte)
 avec ton pseudo de compte (plusieurs pseudos séparés par des virgules). Ces comptes voient ✕ sur toutes les publications.
 
+**Mot de passe oublié** : les mêmes comptes admins (variable `GALLERY_ADMINS`, ou `ADMINS` si tu veux une liste à part)
+voient dans *Compte* une section « 🔑 Admin : mot de passe oublié ». Écris le pseudo du joueur, touche « Nouveau mot de
+passe » : un mot de passe temporaire s'affiche, à lui donner. Il garde son profil, son pseudo, sa place au classement et
+ses publications ; ses appareils sont déconnectés. Après un changement de la variable, reconnecte-toi (ou attends la
+prochaine sauvegarde) pour voir la section.
+
 **Recevoir les rapports de bug** (bouton 🐞 du jeu) : ils sont toujours gardés dans l'objet `Reports` (table `reports`,
 les 300 derniers, visibles dans Data Studio). Pour les recevoir aussi sur ton téléphone, crée un webhook Discord
 (salon → Modifier → Intégrations → Webhooks → Nouveau webhook → Copier l'URL), puis ajoute dans *Settings → Variables

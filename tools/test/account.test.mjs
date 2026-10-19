@@ -72,6 +72,27 @@ export default async function (t) {
   t.ok((await A('register', { name: 'Théo', password: 'abcd' })).s === 200, 'l’ancien pseudo redevient libre');
   t.ok((await A('rename', { name: 'Théodore', token: nt, newName: 'THÉODORE' })).s === 200 && acc('théodore').name === 'THÉODORE', 'changer seulement les majuscules marche aussi');
 
+  t.group('Mot de passe oublié (admin)');
+  const envA = Object.assign({}, env, { ADMINS: 'Chef, autre' });
+  const chef = (await A('register', { name: 'Chef', password: 'chef-0001' })).j.token;
+  const lost = await A('register', { name: 'Perdu', password: 'oublie-99', data: { 'uf-ach': '{"win":1}' } });
+  await call('/api/scores', { name: 'Perdu', wins: 4, diff: 2, token: lost.j.token }, { ip: '40.0.0.1' });
+  t.ok((await A('reset', { name: 'Théo', token: (await A('login', { name: 'Théo', password: 'abcd' })).j.token, target: 'Perdu' }, { e: envA })).s === 403, 'un joueur qui n’est pas admin : refusé');
+  t.ok((await A('reset', { name: 'Chef', token: 'faux', target: 'Perdu' }, { e: envA })).s === 401, 'admin sans bon jeton : refusé');
+  t.ok((await A('reset', { name: 'Chef', token: chef, target: 'Perdu' })).s === 403, 'sans liste d’admins : personne');
+  t.ok((await A('reset', { name: 'Chef', token: chef, target: 'Personne' }, { e: envA })).s === 404, 'compte inconnu : 404');
+  const lgA = await A('login', { name: 'chef', password: 'chef-0001' }, { e: envA });
+  t.ok(lgA.j.admin === true && (await A('login', { name: 'Perdu', password: 'oublie-99' }, { e: envA })).j.admin === false, 'la connexion dit si le compte est admin', lgA.j);
+  const rs = await A('reset', { name: 'Chef', token: chef, target: 'perdu' }, { e: envA });
+  t.ok(rs.s === 200 && rs.j.name === 'Perdu' && /^[a-z]+-\d{4}$/.test(rs.j.password), 'admin : nouveau mot de passe temporaire', rs.j);
+  t.ok((await A('load', { name: 'Perdu', token: lost.j.token })).s === 401, 'ses appareils sont déconnectés');
+  t.ok((await A('login', { name: 'Perdu', password: 'oublie-99' })).s === 401, 'l’ancien mot de passe ne marche plus');
+  const back = await A('login', { name: 'Perdu', password: rs.j.password });
+  t.ok(back.s === 200 && back.j.data['uf-ach'] === '{"win":1}', 'avec le nouveau : il retrouve son profil', back.j);
+  t.ok(bs.db.prepare("SELECT wins FROM scores WHERE k = 'perdu'").get()?.wins === 4, 'et sa place au classement');
+  const sp = await worker.fetch(new Request('https://jeu.example/api/account/setpw', { method: 'POST', headers: { 'Sec-Fetch-Site': 'same-origin' }, body: JSON.stringify({ name: 'Perdu', password: 'pirate-1' }) }), envA);
+  t.ok((await sp.text()) === 'page' && (await A('login', { name: 'Perdu', password: 'pirate-1' })).s === 401, 'l’opération interne n’est pas accessible directement');
+
   t.group('Recopie de l’ancien stockage (une seule fois)');
   const old = new Map([['u:ancien', { name: 'Ancien', salt: 's', hash: 'h', tokens: ['tok1'], data: { 'uf-ach': '{"a":1}' }, created: 5, updated: 6 }]]);
   const st = fakeState(old), A2 = await makeDO(Accounts, st);

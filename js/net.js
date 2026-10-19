@@ -390,6 +390,12 @@ function guestOnData(m) {
   }
 }
 // battement de cœur : un joueur muet pendant 30 s est considéré comme parti
+// invité : plus rien ne vient de l'hôte depuis 2 s (onglet ou appli quittée, réseau coupé) → on le dit au lieu de figer en silence
+function hostWaitMsg() {
+  if (G.net !== 'guest' || !hostConn || !G.started) return '';
+  const s = G.time - lastRecv;
+  return s > 2 ? '⏳ En attente de l’hôte… (' + Math.floor(s) + ' s)' : '';
+}
 function netHeartbeat(dt) {
   if (!G.net) return;
   pingT += dt;

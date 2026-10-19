@@ -2,7 +2,7 @@
 // /api/gallery (galerie de systèmes : list, get, publish, unpublish, like — voir plus bas)
 // /api/scores (classement du mode infini : GET → { top }, POST { name, wins, diff, token? } → { rank, id, top } ;
 //              ?mode=coop : classement à part du mode infini à plusieurs, avec un nom d'équipe)
-// et /api/account/* (comptes joueurs : register, login, save, logout, delete, rename — voir plus bas).
+// et /api/account/* (comptes joueurs : register, login, save, logout, delete, rename, reset (admin) — voir plus bas).
 // /api/turn donne des identifiants TURN (relais Cloudflare) TEMPORAIRES. Le jeton reste ici, côté serveur : il n'apparaît
 // jamais dans le site. Réglages (Workers → ultimate-frisbee → Settings → Variables and Secrets) :
 //   TURN_KEY_ID         identifiant de la clé TURN (Realtime → TURN)
@@ -178,6 +178,12 @@ export class Accounts {
       this.put(k, acc);
       return json({ name: acc.name, token: t, data: acc.data, updated: acc.updated });
     }
+    if (op === 'setpw') {                                        // mot de passe oublié (demandé par un admin, vérifié par le worker)
+      if (!acc) return json({ error: 'aucun compte à ce nom' }, 404);
+      acc.salt = randHex(16); acc.hash = await pwHash(password, acc.salt); acc.tokens = []; acc.updated = acc.updated || now;
+      this.put(k, acc);                                          // ses appareils sont déconnectés ; profil et pseudo ne changent pas
+      return json({ name: acc.name });
+    }
     if (!authed()) return json({ error: 'session expirée, reconnecte-toi' }, 401);
     if (op === 'save') { acc.data = data; acc.updated = now; this.put(k, acc); return json({ updated: now }); }
     if (op === 'load') return json({ name: acc.name, data: acc.data, updated: acc.updated });
@@ -218,7 +224,26 @@ async function account(request, env, op) {
   }
   const body = { op, name, password, token: typeof b.token === 'string' ? b.token : '', data, ip: request.headers.get('CF-Connecting-IP') || '?' };
   if (op === 'rename') return renameAccount(env, body, cleanName(b.newName));
-  return accStub(env).fetch('https://acc/', { method: 'POST', body: JSON.stringify(body) });
+  if (op === 'reset') return resetPassword(env, body, cleanName(b.target));
+  const r = await accStub(env).fetch('https://acc/', { method: 'POST', body: JSON.stringify(body) });
+  if (!r.ok || !['login', 'load', 'save'].includes(op)) return r;
+  const j = await r.json();                                    // l'appareil apprend si ce compte est admin (outils réservés)
+  return json(Object.assign(j, { admin: isAdmin(env, j.name || name) }));
+}
+// admins : pseudos listés dans la variable ADMINS (ou GALLERY_ADMINS), séparés par des virgules
+const isAdmin = (env, name) => String(env.ADMINS || env.GALLERY_ADMINS || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean).includes(String(name || '').toLowerCase());
+// mot de passe oublié : un admin connecté donne un mot de passe temporaire à un compte (profil, pseudo, classement et galerie gardés)
+async function resetPassword(env, body, target) {
+  if (target.length < 3) return json({ error: 'pseudo du compte manquant' }, 400);
+  const st = accStub(env), post = o => st.fetch('https://acc/', { method: 'POST', body: JSON.stringify(o) });
+  const c = await (await post({ op: 'check', name: body.name, token: body.token })).json();
+  if (!c.ok) return json({ error: 'session expirée, reconnecte-toi' }, 401);
+  if (!isAdmin(env, c.name)) return json({ error: 'réservé aux admins' }, 403);
+  const W = ['disque', 'huck', 'layout', 'stack', 'force', 'pull', 'flick', 'cut', 'zone', 'mark'], rnd = crypto.getRandomValues(new Uint32Array(2));
+  const password = W[rnd[0] % W.length] + '-' + String(1000 + (rnd[1] % 9000));
+  const r = await post({ op: 'setpw', name: target, password });
+  const j = await r.json();
+  return r.ok ? json({ name: j.name, password }) : json(j, r.status);
 }
 // changer de pseudo : le compte, sa ligne du classement et ses publications de la galerie prennent le nouveau nom
 async function renameAccount(env, body, to) {
@@ -452,7 +477,7 @@ export default {
     if (path === '/api/turn') return request.method === 'GET' ? turn(request, env) : json({ error: 'GET seulement' }, 405);
     if (path === '/api/scores') return scores(request, env);
     if (path === '/api/gallery') return gallery(request, env);
-    const m = /^\/api\/account\/(register|login|save|load|logout|delete|rename)$/.exec(path);
+    const m = /^\/api\/account\/(register|login|save|load|logout|delete|rename|reset)$/.exec(path);
     if (m) return account(request, env, m[1]);
     return env.ASSETS.fetch(request);
   }

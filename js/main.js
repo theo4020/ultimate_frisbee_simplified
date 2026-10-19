@@ -4,7 +4,27 @@
 //  Lancement
 // =====================================================================
 let last = performance.now();
+// Onglet caché : le navigateur arrête requestAnimationFrame. L'hôte d'une partie en ligne continue alors à faire tourner
+// le jeu (sans dessiner) au rythme d'un petit Worker, que le navigateur ne ralentit pas : les invités ne sont plus figés.
+let bgWorker = null;
+const bgActive = () => !!bgWorker;
+function bgSync() {
+  const want = G.net === 'host' && typeof document !== 'undefined' && document.hidden;
+  if (want && !bgWorker) {
+    try {
+      const src = 'let t=setInterval(()=>postMessage(0),33);onmessage=()=>{clearInterval(t);close();};';
+      bgWorker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+      bgWorker.onmessage = () => { if (document.hidden && G.net === 'host') frame(performance.now(), false); else bgSync(); };
+    } catch (e) { bgWorker = null; }
+  } else if (!want && bgWorker) { try { bgWorker.postMessage(0); bgWorker.terminate(); } catch (e) { } bgWorker = null; last = performance.now(); }
+}
+if (typeof document !== 'undefined') document.addEventListener('visibilitychange', bgSync);
 function loop(now) {
+  if (!(bgActive() && document.hidden)) frame(now, true);    // caché : c'est le Worker qui fait avancer le jeu
+  else bgSync();
+  requestAnimationFrame(loop);
+}
+function frame(now, visible) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   G.time += dt;
   computeTeams();
@@ -47,9 +67,9 @@ function loop(now) {
   $('overlay').classList.toggle('attract', !!G.attract && $('lobbyCard').style.display !== 'none');
   $('teamsB').style.display = G.net && G.started ? '' : 'none';
   $('menuB').style.visibility = G.attract || ($('lobbyCard').style.display !== 'none' && !$('overlay').classList.contains('hidden') && !G.net) ? 'hidden' : 'visible';
+  if (!visible) return;
   if (G.replay) drawReplay(); else draw();
   updateHud();
-  requestAnimationFrame(loop);
 }
 loadSettings();
 newWind();

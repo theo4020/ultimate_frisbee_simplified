@@ -86,6 +86,23 @@ export default async function (t) {
     await a.click('#accB'); await a.click('#accOut');
     t.ok(!(await a.evaluate(() => document.getElementById('pname').readOnly)) && (await a.textContent('#accB')).includes('Créer'), 'déconnecté : pseudo de nouveau modifiable');
     t.ok(await a.evaluate(() => storeGet('uf-endless', {}).best === 3), 'le profil reste sur l’appareil');
+
+    t.group('Admin : mot de passe oublié');
+    t.ok(!(await b.$('#accResetIn')), 'un joueur normal ne voit pas l’outil admin');
+    const ad = await device('admin');
+    await ad.fill('#pname', 'Admin'); await ad.click('#accB'); await ad.fill('#accNewPw', 'admin-pw-1'); await ad.click('#accGo');
+    await ad.waitForFunction(() => storeGet('uf-acc', {}).admin === true, null, { timeout: 8000 }).catch(() => {});
+    await ad.evaluate(() => accRender());
+    t.ok(!!(await ad.$('#accResetIn')), 'un admin voit « mot de passe oublié » dans Compte');
+    await ad.click('.accAdmin summary'); await ad.fill('#accResetIn', 'joueur9'); await ad.click('#accResetGo');
+    await ad.waitForFunction(() => /Nouveau mot de passe de/.test(document.getElementById('accResetMsg').textContent), null, { timeout: 8000 }).catch(() => {});
+    const tmp = await ad.evaluate(() => (document.querySelector('#accResetMsg b.pw') || {}).textContent || '');
+    t.ok(/^[a-z]+-\d{4}$/.test(tmp), 'il obtient un mot de passe temporaire à donner', await ad.textContent('#accResetMsg'));
+    const nd = await device('nouvel appareil');
+    await nd.click('#accB'); await nd.click('.accTabs button[data-t="log"]'); await nd.fill('#accLogName', 'Joueur9'); await nd.fill('#accLogPw', tmp); await nd.click('#accGo');
+    await nd.waitForEvent('load', { timeout: 8000 }).catch(() => {});          // connexion : ses données remplacent celles de l'appareil, puis la page se recharge
+    await nd.waitForFunction(() => typeof storeGet === 'function' && typeof G !== 'undefined' && G.attract && storeGet('uf-acc', {}).name === 'Joueur9', null, { timeout: 8000 }).catch(() => {});
+    t.ok(await nd.evaluate(() => storeGet('uf-acc', {}).name === 'Joueur9' && storeGet('uf-endless', {}).best === 3), 'le joueur se reconnecte avec et retrouve son profil');
   } finally { await browser.close(); await srv.close(); }
   t.group('Erreurs JavaScript');
   t.ok(errs.length === 0, 'aucune erreur dans les pages', errs.slice(0, 5));

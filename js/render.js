@@ -116,6 +116,12 @@ function roundRectPath(x, y, w, h, rr) {
   if (ctx.roundRect) ctx.roundRect(x, y, w, h, rr); else ctx.rect(x, y, w, h);
 }
 // lying = plongeon / au sol ; scale = saut (plus gros) ou accroupi (plus petit)
+// le porteur se penche (corps décalé) du côté de son pied de pivot, comme le disque dans sa main
+function pivLean(p) {
+  if (p !== disc.holder || disc.mode !== 'held' || !p.pivY) return [0, 0];
+  const [bx, by] = pivotAxis(p), k = p.pivY * PIVOT_R * 0.38;
+  return [bx * k, by * k];
+}
 function drawBody(p, x, y, r, face, o) {
   const k = (p.team * 5 + p.i) % 5, light = (G.teams[p.team] || {}).color === 'blanc' || (G.teams[p.team] || {}).color === 'jaune';
   ctx.save(); ctx.translate(x, y); ctx.rotate(face); ctx.scale(o.scale || 1, o.scale || 1);
@@ -259,8 +265,8 @@ function draw() {
   // Joueurs
   const r = 0.95 * S, swT = switchTarget(meH());
   for (const p of players) {
-    const jl = Math.max(0, jumpVis(p));
-    ctx.fillStyle = `rgba(0,0,0,${0.25 - jl * 0.08})`; circle(X(p.x) + 2 + jl * 3, Y(p.y) + 3 + jl * 3, r * (1 - jl * 0.15)); ctx.fill();
+    const jl = Math.max(0, jumpVis(p)), [lx, ly] = pivLean(p);
+    ctx.fillStyle = `rgba(0,0,0,${0.25 - jl * 0.08})`; circle(X(p.x + lx) + 2 + jl * 3, Y(p.y + ly) + 3 + jl * 3, r * (1 - jl * 0.15)); ctx.fill();
   }
   for (const p of players) {
     ctx.globalAlpha = p.down > 0 ? 0.6 : 1;
@@ -269,7 +275,8 @@ function draw() {
     const lying = p.dive > 0 || p.down > 0, face = lying ? (Math.atan2(p.vy, p.vx) || faceOf(p)) : faceOf(p);
     if (lying) p.face = face;
     p.stride = (p.stride || 0) + Math.hypot(p.vx, p.vy) * (FX.dt || 0.016) * 1.6;
-    drawBody(p, X(p.x), Y(p.y) - hop, r * 1.06, face, { lying, scale: (1 + jl * 0.22) * (crouch ? 0.84 : 1),
+    const [lx, ly] = pivLean(p);                                // porteur : le corps se penche du côté de son pied de pivot
+    drawBody(p, X(p.x + lx), Y(p.y + ly) - hop, r * 1.06, face, { lying, scale: (1 + jl * 0.22) * (crouch ? 0.84 : 1),
       throwing: p.throwT > 0, jumping: jl > 0.05, swing: Math.hypot(p.vx, p.vy) > 1 ? Math.sin(p.stride) : 0 });
     ctx.globalAlpha = 1;
     if (p === disc.holder && (disc.mode === 'held' || disc.mode === 'carry')) {
@@ -370,6 +377,13 @@ function draw() {
 
   drawParticles();
   drawPullUI();
+  const hw = typeof hostWaitMsg === 'function' ? hostWaitMsg() : '';
+  if (hw) {                                                   // en ligne : l'hôte ne répond plus pour l'instant
+    ctx.save(); ctx.font = `700 ${Math.max(13, S * 1.9)}px system-ui`; ctx.textAlign = 'center';
+    const w = ctx.measureText(hw).width + S * 3, y = ch * 0.3;
+    ctx.fillStyle = 'rgba(15,23,42,.85)'; ctx.fillRect(cw / 2 - w / 2, y - S * 2.2, w, S * 3.4);
+    ctx.fillStyle = '#fde68a'; ctx.fillText(hw, cw / 2, y); ctx.restore();
+  }
   if (G.msgT > 0) {                                         // message central, avec un petit effet de « pop »
     const sc = 1 + FX.pop * 0.5 + Math.max(0, G.msgT - 1.5) * 0.6;
     ctx.save(); ctx.translate(cw / 2, G.tuto ? ch * 0.86 : ch / 2); ctx.scale(sc, sc);   // tutoriel : en bas, hors de l'action (au milieu du terrain)
