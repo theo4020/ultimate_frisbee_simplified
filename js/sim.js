@@ -3,6 +3,13 @@
 // =====================================================================
 //  Boucle de simulation
 // =====================================================================
+// freinage demandé (joystick lâché) : cible juste devant lui, à sa distance de freinage → il freine à fond, sans revenir
+function brakeTarget(p) {
+  const sp = Math.hypot(p.vx || 0, p.vy || 0);
+  if (sp < 0.3) return [p.x, p.y];
+  const d = sp / (2 * RUN.dec * 0.95);
+  return [p.x + p.vx * d, p.y + p.vy * d];
+}
 function steer(p, dt) {
   if (p.jumpCd > 0) p.jumpCd -= dt;
   if (p.jprep > 0) {                                        // préparation du saut : il s'accroupit et freine
@@ -85,7 +92,7 @@ function update(dt) {
     if (disc.mode === 'held' && disc.holder === p) { p.tx = p.x; p.ty = p.y; p.sp = 0; continue; }   // il freine (voir plus bas)
     if (disc.mode === 'ground' && G.pickup === p) { p.tx = disc.x; p.ty = disc.y; p.sp = pickupSpeed(p); continue; }
     if (disc.mode === 'carry' && disc.holder === p) { p.tx = G.carryTo.x; p.ty = G.carryTo.y; p.sp = 5.5; continue; }
-    if (userControls(p)) { const inp = inputOf(controllerOf(p)); p.tx = inp.x; p.ty = inp.y; p.sp = SPD.user; continue; }   // humain (à plusieurs par équipe)
+    if (userControls(p)) { const inp = inputOf(controllerOf(p)); [p.tx, p.ty] = braking(inp) ? brakeTarget(p) : [inp.x, inp.y]; p.sp = SPD.user; continue; }   // humain (à plusieurs par équipe)
     if (p.diveArmed) armedDive(p);                         // layout demandé par le joueur : il plonge au bon moment
     if (G.tuto && TUTO_STEPS[G.tuto.step] && TUTO_STEPS[G.tuto.step].still && tutoPin(p)) continue;   // tutoriel : receveur immobile
     if (disc.mode === 'air' && disc.intended === p) {
@@ -108,7 +115,7 @@ function update(dt) {
     d.avoid = false;
     if (G.tuto && tutoPin(d)) continue;
     if (G.practice && practicePin(d)) continue;
-    if (userControls(d)) { const inp = inputOf(controllerOf(d)); d.tx = inp.x; d.ty = inp.y; d.sp = SPD.user; continue; }
+    if (userControls(d)) { const inp = inputOf(controllerOf(d)); [d.tx, d.ty] = braking(inp) ? brakeTarget(d) : [inp.x, inp.y]; d.sp = SPD.user; continue; }
     d.react -= dt;
     if (d.react > 0) continue;                             // temps de réaction : c'est ce qui crée des démarquages
     d.react = (dform !== 'man' ? rand(...DEF_TUNE.reactZone) : rand(...DEF_TUNE.reactMan)) * aiLvl(def).react;

@@ -232,6 +232,19 @@ export default async function (t, { quick }) {
   t.ok(td.msgs.slice(0, 3).join() === 'Passe dans 3…,Passe dans 2…,Passe dans 1…' && td.msgs.some(m => /PLONGE/.test(m)), 'compte à rebours, puis le signal « PLONGE ! »', td.msgs);
   t.ok(td.done && td.lblock, 'plonger au signal contre la passe (layout block)', td);
 
+  t.group('Joystick : lâcher pour s’arrêter');
+  const js = R(`(() => {
+    const keepH = G.humans; G.humans = [{ id: 0, team: 0, sel: null }]; G.myId = 0; syncMe();
+    G.off = 1; G.phase = 'play'; G.pickup = null; holdDisc(TEAMS[1][0]); TEAMS[1][0].think = 99;
+    const me = TEAMS[0][2]; meH().sel = me; Object.assign(me, { x: 30, y: 18, vx: 0, vy: 0 });
+    for (let f = 0; f < 60; f++) { Object.assign(G.pointer, { x: me.x + 3.2, y: me.y, active: true, last: G.time }); __tick(); }   // il court vers la droite
+    const v0 = me.vx, x0 = me.x; joyBrake(me);                                                   // doigt levé
+    let back = false, maxX = x0;
+    for (let f = 0; f < 120; f++) { G.pointer.last = G.time; __tick(); if (me.vx < -0.2) back = true; maxX = Math.max(maxX, me.x); }
+    const r = { v0, slide: maxX - x0, back, left: Math.hypot(me.vx, me.vy) }; G.humans = keepH; syncMe(); return r;
+  })()`);
+  t.ok(js.v0 > 4 && !js.back && js.slide < 2.6 && js.left < 0.3, 'il freine et s’arrête, sans revenir sur ses pas', js);
+
   t.group('Tutoriel : se déplacer');
   const tmv = R(`(() => {
     const keepH = G.humans, keepS = G.series; G.series = null; G.humans = [{ id: 0, team: 0, sel: null }]; G.myId = 0; syncMe();

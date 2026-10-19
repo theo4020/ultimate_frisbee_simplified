@@ -152,10 +152,14 @@ function joyMove(x, y) {
   joy.dx = dx; joy.dy = dy;
   $('knob').style.transform = `translate(${dx * R}px, ${dy * R}px)`;
 }
+// joystick lâché (ou au centre) : « freine » — le joueur s'arrête là où son élan le porte, sans revenir sur ses pas.
+// Le point visé avance avec lui (sim.js, brakeTarget) ; le freinage cesse dès que la cible bouge (autre commande).
+function joyBrake(sel) { G.pointer.x = G.pointer.bx = sel.x; G.pointer.y = G.pointer.by = sel.y; }
+const braking = inp => !!inp && inp.bx !== undefined && inp.x === inp.bx && inp.y === inp.by;
 function joyEnd() {
   if (!joy.active) return;
   const sel = (meH() || {}).sel;
-  if (sel) { G.pointer.x = sel.x; G.pointer.y = sel.y; }        // il s'arrête là où il est
+  if (sel) joyBrake(sel);                                       // il freine et s'arrête, sans revenir sur ses pas
   G.pointer.down = false; G.pointer.last = G.time; sendInput(true);
   joy.active = false; joy.id = null; joy.dx = joy.dy = 0; joy.mode = null; $('knob').style.transform = '';
   document.body.classList.remove('joyheld');
@@ -172,8 +176,9 @@ function joyFrame() {
   joy.mode = mode;
   const m = Math.hypot(joy.dx, joy.dy);
   if (mode === 'move') {                                      // déplacement : la vitesse suit l'inclinaison
-    const sel = meH().sel, k = m < 0.15 ? 0 : 3.2;
-    G.pointer.x = sel.x + joy.dx * k; G.pointer.y = sel.y + joy.dy * k;
+    const sel = meH().sel;
+    if (m < 0.15) { if (!braking(G.pointer)) joyBrake(sel); }   // joystick au centre : il freine, sans se réajuster
+    else { G.pointer.x = sel.x + joy.dx * 3.2; G.pointer.y = sel.y + joy.dy * 3.2; }
     G.pointer.down = true; G.pointer.active = true; G.pointer.last = G.time;
     sendInput();
   }
