@@ -83,9 +83,9 @@ const flightTime = d => 0.45 + d / 19;                    // 10 m : ~1 s · 30 m
 const peakOf = (dur, kind) => (0.8 + dur / (THROWS[kind] || THROWS.normal).dur * 1.1) * (THROWS[kind] || THROWS.normal).peak;
 const discPeak = () => peakOf(disc.dur, disc.kind);
 // Vol du disque (voir la fiche « Fondations physiques ») : hauteur à l'instant u (0 → 1) du vol
-//  • passe normale : lâchée vers 1 m, elle monte vers sa hauteur de croisière, plane, puis redescend vers 1,3 m
-//    chez le receveur. Courte, elle reste à hauteur de poitrine (contestable : c'est le timing qui la protège) ;
-//    longue, elle croise plus haut. Une passe courbée est lâchée plus inclinée : elle monte plus vite et plus haut.
+//  • passe normale : lâchée vers 1 m, elle décrit une courbe jusqu'à son sommet, puis redescend vers 1,3 m chez le
+//    receveur. Courte, elle reste à hauteur de poitrine (contestable : c'est le timing qui la protège) ;
+//    longue, elle monte plus haut. Une passe courbée est lâchée plus inclinée : elle monte plus vite et plus haut.
 //  • passe haute : lâchée au-dessus de la tête, à hauteur de saut, puis elle monte haut et ne redescend qu'à l'arrivée
 //  • pull : une grande cloche
 const PASS_Z0 = 1.0, PASS_ZEND = 1.3, CURVE_RISE = 0.8;
@@ -94,16 +94,16 @@ const cruiseZ = (L, curve) => { const c = Math.min(1, Math.abs(curve || 0));
   return clamp(1.4 + Math.max(0, L - 10) * (0.055 + 0.025 * c), 1.4, 3 + c) + CURVE_RISE * c; };
 const smooth = x => x * x * (3 - 2 * x);                   // montée progressive : le disque reste longtemps à portée près du lanceur
 function heightAt(u, peak, kind, len, curve) {
-  if (kind === 'high') {                                   // une cloche douce : elle monte en ralentissant, puis redescend vers les mains
-    const A = 0.45, z0 = 2.3, z1 = 1.5;
-    return u < A ? z0 + (peak - z0) * Math.sin(Math.PI / 2 * u / A) : z1 + (peak - z1) * Math.cos(Math.PI / 2 * Math.min(1, (u - A) / (1 - A)));
+  if (kind === 'high') {                                   // une cloche douce : elle quitte la main en montant doucement (contrable
+    const A = 0.45, z0 = 2.3, z1 = 1.5;                      // au lâcher par une mark qui saute), passe le sommet sans à-coup, redescend vers les mains
+    return u < A ? z0 + (peak - z0) * smooth(u / A) : z1 + (peak - z1) * Math.cos(Math.PI / 2 * Math.min(1, (u - A) / (1 - A)));
   }
   if (kind === 'pull') return PASS_Z0 + (Math.max(peak, 3) - PASS_Z0) * Math.sin(Math.PI * u);
-  const L = len || 15, c = Math.min(1, Math.abs(curve || 0)), top = cruiseZ(L, c), s = u * L;
-  const rise = clamp(0.4 * L, 2, 12) * (1 - 0.4 * c), fall = clamp(0.4 * L, 2, 12);
-  const up = s < rise ? PASS_Z0 + (top - PASS_Z0) * smooth(s / rise) : top;
-  const down = L - s < fall ? PASS_ZEND + (top - PASS_ZEND) * smooth((L - s) / fall) : top;
-  return Math.min(up, down);
+  // une vraie courbe (pas de palier) : elle monte en ralentissant jusqu'au sommet, puis redescend vers le receveur ;
+  // courbée, elle monte plus vite et culmine plus tôt
+  const L = len || 15, c = Math.min(1, Math.abs(curve || 0)), top = cruiseZ(L, c), up = 0.5 - 0.15 * c;
+  if (u < up) { const k = 1 - u / up; return top - (top - PASS_Z0) * k * k; }
+  const k = Math.min(1, (u - up) / (1 - up)); return top - (top - PASS_ZEND) * k * k;
 }
 const discLen = () => dist(disc.sx, disc.sy, disc.ex, disc.ey);
 const discKind = () => (disc.pull ? 'pull' : disc.kind);

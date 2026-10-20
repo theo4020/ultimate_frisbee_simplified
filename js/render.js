@@ -219,6 +219,8 @@ function arrow(x1, y1, x2, y2, color) {
   ctx.restore();
 }
 
+// inclinaison du disque en vol (rad) : une passe courbée part penchée, et se redresse un peu en fin de vol
+const discBank = () => (disc.mode === 'air' && !disc.pull ? clamp(disc.curveV || 0, -1, 1) * 0.55 * (1 - 0.35 * disc.t / disc.dur) : 0);
 // vue inclinée : le disque à sa hauteur (en main, en l'air, levé pour une passe haute), son ombre au sol
 function drawIsoDisc(dx, dy, tell) {
   const z = disc.mode === 'air' ? disc.z : tell ? 2.6 : disc.mode === 'held' || disc.mode === 'carry' ? 0.7 : 0.05;   // en main : à hauteur des mains du personnage
@@ -242,7 +244,7 @@ function drawIsoDisc(dx, dy, tell) {
       ctx.fillText('↑ passe haute', sx, sy - S * 1.6);
     }
     const rd = 0.6 * S * (1 + Math.min(z, 6) * 0.05);
-    ctx.beginPath(); ctx.ellipse(sx, sy, rd * 1.3, rd * 0.65, 0, 0, Math.PI * 2);    // un disque vu de biais, bien contrasté
+    ctx.beginPath(); ctx.ellipse(sx, sy, rd * 1.3, rd * 0.65, discBank() * Math.sign((disc.ex - disc.sx) || 1), 0, Math.PI * 2);   // vu de biais, penché selon sa courbe
     ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 2; ctx.stroke();
   });
 }
@@ -485,7 +487,8 @@ function draw() {
       ctx.strokeStyle = heightColor(disc.z, 0.7); ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.moveTo(X(dx), Y(dy)); ctx.lineTo(X(dx), Y(dy) - lift); ctx.stroke();
     }
-    circle(X(dx), Y(dy) - lift, 0.5 * S * (1 + disc.z * 0.12));
+    const dr = 0.5 * S * (1 + disc.z * 0.12), ta = Math.atan2(disc.ey - disc.sy, disc.ex - disc.sx);
+    ctx.beginPath(); ctx.ellipse(X(dx), Y(dy) - lift, dr, dr * Math.cos(discBank()), ta, 0, Math.PI * 2);   // penché selon sa courbe : vu d'en haut, il s'amincit
     ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5; ctx.stroke();
     }
   }
