@@ -49,9 +49,12 @@ function heightColor(z, a) {
 function drawFlightPath(sx, sy, cx, cy, ex, ey, peak, u0, alpha, width, dash, kind, curve) {
   const step = 0.025, len = dist(sx, sy, ex, ey), iso = isoView(), keep = isoText;
   if (iso) {                                                 // vue inclinée : l'ombre de la trajectoire au sol…
-    ctx.save(); ctx.strokeStyle = `rgba(0,0,0,${0.22 * alpha})`; ctx.lineWidth = width; ctx.setLineDash([3, 4]); ctx.beginPath();
+    ctx.save(); ctx.strokeStyle = `rgba(10,30,18,${0.55 * alpha})`; ctx.lineWidth = width + 1; ctx.lineCap = 'round'; ctx.beginPath();
     for (let u = u0; u <= 1.0001; u += step) { const [x, y] = bez(sx, sy, cx, cy, ex, ey, Math.min(1, u)); if (u === u0) ctx.moveTo(X(x), Y(y)); else ctx.lineTo(X(x), Y(y)); }
-    ctx.stroke(); ctx.restore();
+    ctx.stroke();
+    ctx.strokeStyle = `rgba(255,255,255,${0.75 * alpha})`; ctx.lineWidth = 2;   // point d'arrivée au sol : une croix
+    const q = 0.7 * S; ctx.beginPath(); ctx.moveTo(X(ex) - q, Y(ey) - q); ctx.lineTo(X(ex) + q, Y(ey) + q); ctx.moveTo(X(ex) + q, Y(ey) - q); ctx.lineTo(X(ex) - q, Y(ey) + q); ctx.stroke();
+    ctx.restore();
   }
   ctx.save(); if (iso) screenT();                             // … et la trajectoire elle-même, à sa vraie hauteur
   ctx.lineWidth = width; ctx.lineCap = 'round'; if (dash) ctx.setLineDash(dash);
@@ -219,24 +222,28 @@ function arrow(x1, y1, x2, y2, color) {
 // vue inclinée : le disque à sa hauteur (en main, en l'air, levé pour une passe haute), son ombre au sol
 function drawIsoDisc(dx, dy, tell) {
   const z = disc.mode === 'air' ? disc.z : tell ? 2.6 : disc.mode === 'held' || disc.mode === 'carry' ? 0.7 : 0.05;   // en main : à hauteur des mains du personnage
-  if (disc.mode === 'air') {                                 // au sol : ombre et anneau coloré selon la hauteur
-    ctx.fillStyle = 'rgba(0,0,0,.35)'; circle(X(dx), Y(dy), 0.5 * S); ctx.fill();
-    ctx.strokeStyle = heightColor(disc.z, 0.95); ctx.lineWidth = 2.5; circle(X(dx), Y(dy), 1.05 * S); ctx.stroke();
+  if (disc.mode === 'air') {                                 // au sol : ombre nette (plus petite et plus pâle quand il est haut) et anneau de hauteur
+    const hz = Math.min(1, disc.z / 6);
+    ctx.fillStyle = `rgba(0,0,0,${0.6 - 0.3 * hz})`; circle(X(dx), Y(dy), (0.75 - 0.25 * hz) * S); ctx.fill();
+    ctx.strokeStyle = '#0b1d12'; ctx.lineWidth = 4.5; circle(X(dx), Y(dy), 1.15 * S); ctx.stroke();
+    ctx.strokeStyle = heightColor(disc.z, 1); ctx.lineWidth = 2.5; circle(X(dx), Y(dy), 1.15 * S); ctx.stroke();
   }
   inScreen(() => {
     const sx = X(dx), sy = IY(dy, z);
-    if (disc.mode === 'air' || tell) {                       // trait vertical jusqu'au sol : on lit la hauteur
-      ctx.strokeStyle = disc.mode === 'air' ? heightColor(disc.z, 0.6) : 'rgba(196,181,253,.8)'; ctx.lineWidth = 1.5; ctx.setLineDash([2, 3]);
-      ctx.beginPath(); ctx.moveTo(sx, IY(dy, 0)); ctx.lineTo(sx, sy); ctx.stroke(); ctx.setLineDash([]);
+    if (disc.mode === 'air' || tell) {                       // trait vertical plein jusqu'au sol : on lit la hauteur et l'endroit
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = 'rgba(11,29,18,.7)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(sx, IY(dy, 0)); ctx.lineTo(sx, sy); ctx.stroke();
+      ctx.strokeStyle = disc.mode === 'air' ? heightColor(disc.z, 1) : 'rgba(196,181,253,.95)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(sx, IY(dy, 0)); ctx.lineTo(sx, sy); ctx.stroke();
     }
     if (tell) {
       ctx.strokeStyle = 'rgba(196,181,253,.95)'; ctx.lineWidth = 2.5; circle(sx, sy, 0.95 * S + Math.sin(G.time * 14) * 2); ctx.stroke();
       ctx.font = `800 ${Math.max(10, S * 1.25)}px system-ui`; ctx.textAlign = 'center'; ctx.fillStyle = '#ddd6fe';
       ctx.fillText('↑ passe haute', sx, sy - S * 1.6);
     }
-    const rd = 0.5 * S * (1 + Math.min(z, 6) * 0.06);
-    ctx.beginPath(); ctx.ellipse(sx, sy, rd * 1.25, rd * 0.62, 0, 0, Math.PI * 2);   // un disque vu de biais
-    ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5; ctx.stroke();
+    const rd = 0.6 * S * (1 + Math.min(z, 6) * 0.05);
+    ctx.beginPath(); ctx.ellipse(sx, sy, rd * 1.3, rd * 0.65, 0, 0, Math.PI * 2);    // un disque vu de biais, bien contrasté
+    ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 2; ctx.stroke();
   });
 }
 function drawField() {
