@@ -183,7 +183,10 @@ function defenseBrain(defT, dt) {
       if (d1 === d2 || !d1.match || !d2.match || d1.match === h || d2.match === h || !canSwap(d1) || !canSwap(d2) || dist(d1.x, d1.y, d2.x, d2.y) > 6) continue;
       const now = dist(d1.x, d1.y, d1.match.x, d1.match.y) + dist(d2.x, d2.y, d2.match.x, d2.match.y);
       const sw = dist(d1.x, d1.y, d2.match.x, d2.match.y) + dist(d2.x, d2.y, d1.match.x, d1.match.y);
-      if (sw < now - (4 + (1 - k) * 4)) { const a = d1.match; d1.match = d2.match; d2.match = a; }
+      // la profondeur d'abord : après l'échange, le plus profond des deux attaquants ne doit pas se retrouver plus « dans le dos »
+      const deepA = dir * (d1.match.x - d2.match.x) > 0 ? d1.match : d2.match, behind = (d, a) => Math.max(0, dir * (a.x - d.x));
+      const behindNow = behind(deepA === d1.match ? d1 : d2, deepA), behindSw = behind(deepA === d1.match ? d2 : d1, deepA);
+      if (sw < now - (4 + (1 - k) * 4) && behindSw <= behindNow + 0.5) { const a = d1.match; d1.match = d2.match; d2.match = a; }
     }
   }
   // 2) passe probable : l'attaquant le plus dangereux (ligne de passe ouverte, terrain gagné, défenseur loin)
@@ -201,12 +204,14 @@ function defenseBrain(defT, dt) {
   // 3) aide : si cet attaquant est vraiment libre, le défenseur le mieux placé (et dont le joueur est moins dangereux) ferme la ligne
   //    (consigne d'équipe : jamais · parfois = attaquant vraiment libre · toujours = dès qu'il se démarque un peu)
   const help = ORDERS.help[(cfg(defT) || {}).help] ?? 1;
-  if (help && (help === 2 ? best.sep > 3 && best.lane > -0.15 : best.sep > 4 && best.lane > 0)) {
+  const threat = dir * (best.x - h.x);                                   // terrain que cette passe ferait gagner
+  if (help && threat > 3 && (help === 2 ? best.sep > 3 && best.lane > -0.15 : best.sep > 4 && best.lane > 0)) {
     const px = h.x + (best.x - h.x) * 0.65, py = h.y + (best.y - h.y) * 0.65;
     let hb = null, hv = 1e9;
     for (const d of dfn) {
       if (d === G.marker || d === B.double || ((man || mix) && (d.match === best.a || d.match === h)) || (P(d) && P(d).help === 'non')) continue;
-      const own = man && d.match ? dir * (d.match.x - h.x) : 0;          // son propre joueur : derrière le disque = peu dangereux
+      const own = (man || mix) && d.match ? dir * (d.match.x - h.x) : 0;   // son propre joueur : derrière le disque = peu dangereux
+      if (own > threat + 4) continue;                                    // la profondeur d'abord : on ne lâche pas un joueur plus profond pour aider devant
       const v = dist(d.x, d.y, px, py) + clamp(own, -10, 25) * 0.3;
       if (v < hv) { hv = v; hb = d; }
     }

@@ -4,7 +4,7 @@
 //  Constantes (unités : mètres, secondes)
 // =====================================================================
 const W = 100, H = 37, EZ = 18, M = 2, N = 5, WIN = 5;   // WIN : points pour gagner par défaut (réglable, voir winPts)
-const SPD = { jog: 4.6, cut: 7.6, def: 7.4, user: 7.5, sprint: 7.8, dive: 8 };
+const SPD = { jog: 4.6, cut: 7.6, def: 7.4, user: 7.5, sprint: 7.8, dive: 8.5 };
 // course (voir la fiche « Fondations physiques ») : accélération réaliste (~1,3 s jusqu'à la pointe), freinage et virages
 // plus vifs mais pas instantanés — un changement de direction coûte vraiment du temps, c'est ce qui crée les démarquages
 const RUN = { acc: 6, dec: 12, lat: 9, defK: 0.95 };
@@ -38,7 +38,7 @@ const DEF_TUNE = {
   anticip: 0.3,             // anticipation de la course de l'attaquant (s)
   block: 0.6                // chance de contrer quand le disque passe à portée (debout)
 };
-const DIVE_T = 0.28, DOWN_T = 1.2;                         // plongeon : ~2,25 m en vol, puis 1,2 s au sol
+const DIVE_T = 0.28, DOWN_T = 1.2;                         // plongeon : ~2,4 m en vol, puis 1,2 s au sol
 // saut : préparation (le joueur s'accroupit et ralentit), temps en l'air, gain de hauteur au sommet,
 // récupération à la réception (ralenti) et délai avant de pouvoir ressauter
 const JUMP_PREP = 0.12, JUMP_T = 0.5, JUMP_H = 0.6, JUMP_REC = 0.15, JUMP_CD = 0.35;

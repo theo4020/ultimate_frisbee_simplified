@@ -219,16 +219,10 @@ function arrow(x1, y1, x2, y2, color) {
   ctx.restore();
 }
 
-// inclinaison du disque en vol (rad) : une passe courbée part penchée, et se redresse un peu en fin de vol
-const discBank = () => (disc.mode === 'air' && !disc.pull ? clamp(disc.curveV || 0, -1, 1) * 0.55 * (1 - 0.35 * disc.t / disc.dur) : 0);
-// vue inclinée : le disque suit la pente de sa trajectoire (nez vers le haut quand il monte, vers le bas quand il descend)
-function discTilt() {
-  if (disc.mode !== 'air') return 0;
-  const u = Math.min(0.995, disc.t / disc.dur), du = 0.02, a = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u), b = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u + du);
-  const dxs = X(b[0]) - X(a[0]), gl = Math.hypot(dxs, (Y(b[1]) - Y(a[1])) * isoK) || 1, dzs = (discZ(u + du) - discZ(u)) * S * ISO_Z;
-  const pitch = Math.atan2(dzs, gl) * (dxs < 0 ? 1 : -1);    // à l'écran, « vers le haut » = y négatif
-  return clamp(pitch, -1, 1) + discBank() * 0.4 * Math.sign(dxs || 1);
-}
+// inclinaison du disque en vol (rad) : donnée au lâcher par la courbe, la même du début à la fin du vol
+const discBank = () => (disc.mode === 'air' && !disc.pull ? clamp(disc.curveV || 0, -1, 1) * 0.6 : 0);
+// vue inclinée : le disque reste penché du même angle pendant tout le vol (celui donné par la courbe au lâcher)
+const discTilt = () => discBank() * Math.sign((disc.ex - disc.sx) || 1);
 // vue inclinée : le disque à sa hauteur (en main, en l'air, levé pour une passe haute), son ombre au sol
 function drawIsoDisc(dx, dy, tell) {
   const z = disc.mode === 'air' ? disc.z : tell ? 2.6 : disc.mode === 'held' || disc.mode === 'carry' ? 0.7 : 0.05;   // en main : à hauteur des mains du personnage
