@@ -8,6 +8,15 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
+  { id: 24, date: '2026-10-20', tag: 'Affichage', title: 'Nouvelle vue inclinée 🏟️',
+    body: `Dans <b>Commandes → Affichage</b>, choisis la vue <b>Inclinée (tribune)</b> : le terrain vu depuis le bord, avec
+      des joueurs debout qui sautent et plongent vraiment, et le disque qui monte et redescend (son ombre et un trait montrent
+      où il passe au sol, une croix où il arrive). La vue de dessus reste celle par défaut.<br>
+      Le vol du disque est aussi plus juste, dans les deux vues : une vraie courbe sans palier, une passe haute en cloche,
+      et un disque penché selon la courbe donnée au lancer. Sauter dans la zone violette attrape enfin le disque,
+      même tôt dans sa course.<br>
+      Après une perte en reprise posée, ce n'est plus le joueur collé au disque qui le ramasse mais un handler qui arrive
+      de derrière : chacun a le temps de se placer.` },
   { id: 23, date: '2026-10-20', tag: 'IA', title: 'Des IA repensées 🧠',
     body: `Les joueurs IA ont été revus de fond en comble :<br>
       • <b>plus de rôle attitré</b> : le joueur le plus en arrière devient naturellement handler, les autres coupent ; un

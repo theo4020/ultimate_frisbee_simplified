@@ -287,11 +287,21 @@ function crossPoint() {
 //  • posée : le ramasseur marche et règle son allure pour arriver quand tout le monde est en place (au moins 1,5 s, au plus ~6 s) ;
 //  • rapide : il fonce et ramasse tout de suite.
 const restartMode = () => (G.pickup ? cfg(G.pickup.team).restart : 'rapide');
+// qui va chercher le disque après une perte : en reprise rapide, le plus proche (on surprend la défense) ; en reprise posée,
+// un joueur qui arrive de derrière le disque (un futur handler), pas celui qui est collé dessus — les autres ont le temps
+// de se placer
+function pickupFor(t, x, y) {
+  const L = TEAMS[t].filter(p => !userControls(p));
+  if (!L.length) return nearest(TEAMS[t], x, y);
+  if (cfg(t).restart !== 'pose') return nearest(L, x, y);
+  const dir = dirOf(t), score = p => { const d = dist(p.x, p.y, x, y); return Math.abs(d - 8) + Math.max(0, dir * (p.x - x)) * 1.5 + (d < 3 ? 6 : 0); };
+  return L.slice().sort((a, b) => score(a) - score(b))[0];
+}
 function pickupSpeed(p) {
   if (restartMode() !== 'pose') return SPD.cut;
   const t = G.gt - (G.groundAt || 0), left = Math.max(0, dist(p.x, p.y, disc.x, disc.y) - 1);
   if (t > 6) return SPD.cut;
-  let need = Math.max(0, 1.5 - t);                             // temps qu'il faut encore aux autres pour se placer
+  let need = Math.max(0, (flowOf(p.team) ? 1.5 : 3) - t);    // temps qu'il faut encore aux autres pour se placer (structuré : on prend le temps)
   for (const q of players) if (q !== p) need = Math.max(need, Math.max(0, dist(q.x, q.y, q.tx, q.ty) - 1.5) / (SPD.cut * 0.9));
   return clamp(left / Math.max(need, 0.05), 2.5, SPD.cut);
 }

@@ -94,7 +94,7 @@ function turnover(x, y, msg, kind) {
   G.carryTo = lineSpot(disc.x, disc.y);                        // repris dans un en-but : ramené à la ligne
   G.groundAt = G.gt;
   G.stall = 0; G.marker = null;
-  G.pickup = nearest(TEAMS[G.off], disc.x, disc.y);
+  G.pickup = pickupFor(G.off, disc.x, disc.y);
   assignRoles(G.off, G.pickup);
   setupDefense(1 - G.off, G.pickup);
   updateSelected(); flash(msg);
