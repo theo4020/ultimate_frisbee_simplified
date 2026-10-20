@@ -8,6 +8,15 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
+  { id: 23, date: '2026-10-20', tag: 'IA', title: 'Des IA repensées 🧠',
+    body: `Les joueurs IA ont été revus de fond en comble :<br>
+      • <b>plus de rôle attitré</b> : le joueur le plus en arrière devient naturellement handler, les autres coupent ; un
+      coupeur qui revient derrière le disque devient handler, et ainsi de suite, comme sur un vrai terrain ;<br>
+      • tous lisent le jeu de la même façon (qui arrive où, à temps, en courant, en sautant ou en plongeant) ;<br>
+      • <b>plus de hasard ni de temps mort</b> : l'IA lance dès qu'elle a lu le jeu, plonge et saute quand il le faut,
+      appelle un play quand rien n'est ouvert ;<br>
+      • les <b>niveaux</b> se règlent avec la réaction, la vitesse, la précision et la lecture du jeu : un joueur facile
+      se trompe (il croit des passes ouvertes qui ne le sont pas), il ne joue plus au hasard.` },
   { id: 22, date: '2026-10-19', tag: 'Gameplay', title: 'Le pied de pivot : duel avec la mark 🦶',
     body: `Le porteur lâche maintenant le disque <b>du côté de son pied de pivot</b> : le joueur se penche et le disque est
       dessiné dans sa main, de ce côté. La mark suit ton pivot et <b>se fend vers le disque</b> au lâcher (sa zone rouge
