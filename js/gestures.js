@@ -24,7 +24,7 @@ window.addEventListener('pointerdown', e => {
   if (!gsReady(e)) return;
   if (G.phase === 'pull' && !fdPull()) return;                // pendant la jauge, le tap l'arrête (controls.js)
   const F = { id: e.pointerId, x0: e.clientX, y0: e.clientY, t: G.time, len: 0, role: null };
-  if (G.phase === 'play' && canThrow()) { const w = toWorld(e), h = disc.holder; if (h && dist(w.x, w.y, h.x, h.y) < 2.5) { F.pb = true; pivotBtnDown(); } }   // doigt sur ton porteur : pivot / passe haute
+  if (G.phase === 'play' && canThrow()) { const w = toWorld(e), h = disc.holder; if (h && pickDist(w, h) < 2.5) { F.pb = true; pivotBtnDown(); } }   // doigt sur ton porteur : pivot / passe haute
   GS.ptr.set(e.pointerId, F);
 }, true);
 
@@ -103,14 +103,14 @@ function gsCanMove() {
 // tap avec le disque : sur ton porteur = pivot (géré à l'appui, voir pivotBtnDown), ailleurs = appel de cut
 function gsTapWithDisc(w) {
   const h = disc.holder; if (!h) return;
-  if (dist(w.x, w.y, h.x, h.y) >= 2.5 && attacking()) doCall(w.x, w.y);
+  if (pickDist(w, h) >= 2.5 && attacking()) doCall(w.x, w.y);
 }
 // tap sans le disque : prendre un coéquipier, sauter, se déplacer, ou appeler un cut
 function gsTap(w) {
   const h = meH(); if (!h || h.team < 0 || G.phase !== 'play') return;
-  const sel = h.sel, jt = jumpTarget(h), dj = jt ? dist(w.x, w.y, jt.x, jt.y) : 1e9;
+  const sel = h.sel, jt = jumpTarget(h), dj = jt ? pickDist(w, jt) : 1e9;
   if (canSwitchNow(h)) {
-    const [q, dq] = nearestD(TEAMS[G.me].filter(p => p !== sel && !takenByOther(p, h)), w.x, w.y);
+    const [q, dq] = nearestPick(TEAMS[G.me].filter(p => p !== sel && !takenByOther(p, h)), w);
     if (q && dq < 1.5 && dq < dj) { doSelect(q); return; }
   }
   if (CTRL.move === 'joystick') { if (attacking() && !gsCanMove()) doCall(w.x, w.y); return; }   // joystick : saut et course par les boutons

@@ -32,6 +32,7 @@ const FILES = [
   'js/pull.js',
   'js/replay.js',
   'js/render.js',
+  'js/render-iso.js',
   'js/ui.js',
   'js/series.js',
   'js/endless.js', 'js/coop.js',

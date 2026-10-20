@@ -48,6 +48,8 @@ if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) documen
 const X = x => (x + M) * S, Y = y => (y + M) * S;
 // vue inclinée : point du terrain (x, y) à la hauteur z (m) → ordonnée à l'écran (px)
 const IY = (y, z) => Y(y) * isoK + ISO_HEAD * S - (z || 0) * S * ISO_Z;
+// ordonnée à l'écran d'un repère dessiné « à l'écran » (étiquettes, bulles, bandeaux), dans les deux vues
+const SY = (y, z) => (isoView() ? IY(y, z) : Y(y) - (z || 0) * S);
 const rand = (a, b) => a + Math.random() * (b - a);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const dist = (a, b, c, d) => Math.hypot(c - a, d - b);

@@ -34,12 +34,20 @@ function toWorld(e) {
   const r = canvas.getBoundingClientRect(), sy = e.clientY - r.top;
   return { x: (e.clientX - r.left) / S - M, y: (isoView() ? (sy - ISO_HEAD * S) / isoK : sy) / S - M };   // vue inclinée : on « redresse » le sol
 }
+// distance (m) entre un point touché du terrain et un joueur : vu de dessus, jusqu'à ses pieds ; en vue inclinée, jusqu'à
+// son corps dressé (on touche le personnage, pas le sol sous lui)
+function pickDist(w, p) {
+  if (!isoView()) return dist(w.x, w.y, p.x, p.y);
+  const sx = X(w.x), sy = IY(w.y, 0), px = X(p.x), feet = IY(p.y, 0), head = feet - 2.0 * S;
+  return Math.hypot(sx - px, sy - clamp(sy, head, feet)) / S;
+}
+function nearestPick(list, w) { let b = null, bd = 1e9; for (const p of list) { const d = pickDist(w, p); if (d < bd) { bd = d; b = p; } } return [b, bd]; }
 function setPointer(e) { const w = toWorld(e); G.pointer.x = w.x; G.pointer.y = w.y; G.pointer.active = true; G.pointer.last = G.time; sendInput(); }
 const attacking = () => G.phase === 'play' && G.off === G.me;
 // taper / cliquer sur un de ses joueurs pour le prendre (s'il est géré par l'IA)
 function trySelectAt(w, r = 2.2) {
   const h = meH(); if (!canSwitchNow(h)) return false;
-  const [p, d] = nearestD(TEAMS[G.me].filter(q => !takenByOther(q, h)), w.x, w.y);
+  const [p, d] = nearestPick(TEAMS[G.me].filter(q => !takenByOther(q, h)), w);
   if (p && d < r && p !== h.sel) { doSelect(p); return true; }
   return false;
 }
@@ -90,7 +98,7 @@ function pointerEnd(e) {
   G.pointer.down = false;
   if (G.aiming && canThrow()) {
     const h = disc.holder;
-    if (dist(G.pointer.x, G.pointer.y, h.x, h.y) >= CANCEL_R) doThrow(G.pointer.x, G.pointer.y, G.curve);
+    if (pickDist(G.pointer, h) >= CANCEL_R) doThrow(G.pointer.x, G.pointer.y, G.curve);
   }
   G.aiming = false;
   sendInput(true);

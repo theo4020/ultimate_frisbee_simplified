@@ -49,23 +49,33 @@ function drawReplay() {
   groundT();                                                // vue inclinée : le ralenti se joue au sol (vu de biais)
   drawField();
   const lerp = (a, b) => a + (b - a) * u;
+  const iso = isoView(), stand = [];
   players.forEach((p, j) => {
     const a = A.p[j], b = B.p[j], x = lerp(a[0], b[0]), y = lerp(a[1], b[1]);
     ctx.fillStyle = 'rgba(0,0,0,.25)'; circle(X(x) + 2, Y(y) + 3, r); ctx.fill();
-    ctx.globalAlpha = a[2] === 2 ? 0.6 : 1;
     const sp = Math.hypot(a[3], a[4]), face = sp > 0.8 ? Math.atan2(a[4], a[3]) : (p.rface !== undefined ? p.rface : 0);
     p.rface = face;
-    drawBody(p, X(x), Y(y), r * 1.06, face, { lying: !!a[2], swing: sp > 1 ? Math.sin(G.time * 9 + j) : 0 });
+    const o = { lying: !!a[2], swing: sp > 1 ? Math.sin(G.time * 9 + j) : 0 };
+    if (iso && !o.lying) { stand.push([p, x, y, face, o]); return; }   // vue inclinée : debout, dessinés ensuite
+    ctx.globalAlpha = a[2] === 2 ? 0.6 : 1;
+    drawBody(p, X(x), Y(y), r * 1.06, face, o);
     ctx.globalAlpha = 1;
   });
+  if (iso) inScreen(() => { for (const [p, x, y, face, o] of stand.sort((u, v) => u[2] - v[2])) drawChibi(p, X(x), IY(y, 0), r * 0.95, face, o); });
   const d = A.d, e = B.d;
   if (d[0] !== 'dead') {
     let x = lerp(d[1], e[1]), y = lerp(d[2], e[2]);
-    const z = d[0] === 'air' ? lerp(d[3], e[3]) : 0;
+    const z = d[0] === 'air' ? lerp(d[3], e[3]) : d[0] === 'held' || d[0] === 'carry' ? (iso ? 0.7 : 0) : 0;
     if ((d[0] === 'held' || d[0] === 'carry') && d[4] >= 0) x += 0.8 * dirOf(players[d[4]].team);
-    if (z > 0) { ctx.fillStyle = 'rgba(0,0,0,.3)'; circle(X(x), Y(y), 0.45 * S); ctx.fill(); }
-    circle(X(x), Y(y) - z * S * 1.2, 0.5 * S * (1 + z * 0.12));
-    ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5; ctx.stroke();
+    if (d[0] === 'air') { ctx.fillStyle = 'rgba(0,0,0,.3)'; circle(X(x), Y(y), 0.45 * S); ctx.fill(); }
+    if (iso) inScreen(() => {
+      ctx.beginPath(); ctx.ellipse(X(x), IY(y, z), 0.6 * S * 1.3, 0.6 * S * 0.65, 0, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 2; ctx.stroke();
+    });
+    else {
+      circle(X(x), Y(y) - z * S * 1.2, 0.5 * S * (1 + z * 0.12));
+      ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5; ctx.stroke();
+    }
   }
   // bandeau « ralenti »
   screenT();

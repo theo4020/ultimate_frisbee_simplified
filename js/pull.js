@@ -250,25 +250,25 @@ function drawPullUI() {
   if (G.phase !== 'pull' || !disc.holder) return;
   const h = disc.holder, fs = Math.max(11, S * 1.5);
   ctx.save(); ctx.textAlign = 'center';
-  const label = (txt, y) => {
-    ctx.font = `700 ${fs}px system-ui`;
+  const label = (txt, y) => inScreen(() => {                 // bandeau à l'écran (redressé en vue inclinée)
+    ctx.font = `700 ${fs}px system-ui`; ctx.textAlign = 'center';
     const w = ctx.measureText(txt).width + fs * 1.4;
     ctx.fillStyle = 'rgba(15,23,42,.72)'; ctx.fillRect(X(W / 2) - w / 2, y - fs * 1.1, w, fs * 1.6);
     ctx.fillStyle = '#f8fafc'; ctx.fillText(txt, X(W / 2), y);
-  };
+  });
   if (!pullReady()) {
-    label(G.pull && G.pull.team === G.me && !G.spectator ? 'Mise en place pour le pull…' : 'L’autre équipe se met en place…', Y(2.5) + fs);
+    label(G.pull && G.pull.team === G.me && !G.spectator ? 'Mise en place pour le pull…' : 'L’autre équipe se met en place…', SY(2.5) + fs);
     ctx.restore(); return;
   }
   const left = pullLeft();                                     // pulleur humain : temps avant le pull automatique
-  if (left != null) {
-    ctx.font = `600 ${fs * 0.8}px system-ui`; ctx.fillStyle = left <= 10 ? '#fbbf24' : 'rgba(248,250,252,.8)';
-    ctx.fillText(`Pull automatique dans ${left} s`, X(W / 2), Y(2.5) + fs * 2.4);
-  }
+  if (left != null) inScreen(() => {
+    ctx.font = `600 ${fs * 0.8}px system-ui`; ctx.textAlign = 'center'; ctx.fillStyle = left <= 10 ? '#fbbf24' : 'rgba(248,250,252,.8)';
+    ctx.fillText(`Pull automatique dans ${left} s`, X(W / 2), SY(2.5) + fs * 2.4);
+  });
   if (!localPuller()) {
     const by = G.pull && G.pull.by != null && humanById(G.pull.by);
     label(G.pull && G.pull.team === G.me && !G.spectator ? (by ? `${humanLabel(by)} prépare le pull…` : 'Ton équipe prépare le pull…')
-      : by ? `${humanLabel(by)} prépare son pull…` : 'L’adversaire prépare son pull…', Y(2.5) + fs);
+      : by ? `${humanLabel(by)} prépare son pull…` : 'L’adversaire prépare son pull…', SY(2.5) + fs);
     ctx.restore(); return;
   }
   const ui = G.pullUI;
@@ -289,10 +289,10 @@ function drawPullUI() {
     ctx.beginPath(); ctx.moveTo(X(ax) - k, Y(ay) - k); ctx.lineTo(X(ax) + k, Y(ay) + k); ctx.moveTo(X(ax) + k, Y(ay) - k); ctx.lineTo(X(ax) - k, Y(ay) + k); ctx.stroke();
   }
   if (ui.stage === 'aim') {
-    label(isTouchUI() ? 'Pull : pose le doigt n’importe où et glisse pour viser (courbe : bord droit)' : 'Pull : clique sur la zone visée (courbe : A/E ou molette)', Y(2.5) + fs);
-  } else {
-    // jauge QTE
-    const bw = Math.min(W * 0.45 * S, 420), bh = Math.max(14, S * 1.6), bx = X(W / 2) - bw / 2, by = Y(H - 3.5);
+    label(isTouchUI() ? 'Pull : pose le doigt n’importe où et glisse pour viser (courbe : bord droit)' : 'Pull : clique sur la zone visée (courbe : A/E ou molette)', SY(2.5) + fs);
+  } else inScreen(() => {
+    // jauge QTE (à l'écran)
+    const bw = Math.min(W * 0.45 * S, 420), bh = Math.max(14, S * 1.6), bx = X(W / 2) - bw / 2, by = SY(H - 3.5);
     const [p0, p1] = PULL.PERFECT, g = gaugePos();
     ctx.fillStyle = 'rgba(15,23,42,.8)'; ctx.fillRect(bx - 6, by - 6, bw + 12, bh + 12);
     const grad = ctx.createLinearGradient(bx, 0, bx + bw * p0, 0);
@@ -303,7 +303,7 @@ function drawPullUI() {
     ctx.fillStyle = '#fff'; ctx.fillRect(bx + bw * g - 3, by - 5, 6, bh + 10);
     label(ui.stage === 'sent' ? (g >= p0 && g <= p1 ? 'Parfait !' : g > p1 ? 'Trop fort !' : 'Trop tôt…')
       : (isTouchUI() ? 'Tape pour arrêter la jauge dans le vert !' : 'Clique ou Espace pour arrêter la jauge dans le vert !'), by - fs * 0.9);
-  }
+  });
   ctx.restore();
 }
 const isTouchUI = () => typeof document !== 'undefined' && document.body && document.body.classList && document.body.classList.contains('touch');
