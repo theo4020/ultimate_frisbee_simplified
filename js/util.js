@@ -94,9 +94,9 @@ const cruiseZ = (L, curve) => { const c = Math.min(1, Math.abs(curve || 0));
   return clamp(1.4 + Math.max(0, L - 10) * (0.055 + 0.025 * c), 1.4, 3 + c) + CURVE_RISE * c; };
 const smooth = x => x * x * (3 - 2 * x);                   // montée progressive : le disque reste longtemps à portée près du lanceur
 function heightAt(u, peak, kind, len, curve) {
-  if (kind === 'high') {
-    if (u < 0.45) return 2.3 + (peak - 2.3) * (u / 0.45) * (u / 0.45);
-    return peak * Math.sin(Math.PI / 2 * Math.min(1, (1 - u) / 0.55));
+  if (kind === 'high') {                                   // une cloche douce : elle monte en ralentissant, puis redescend vers les mains
+    const A = 0.45, z0 = 2.3, z1 = 1.5;
+    return u < A ? z0 + (peak - z0) * Math.sin(Math.PI / 2 * u / A) : z1 + (peak - z1) * Math.cos(Math.PI / 2 * Math.min(1, (u - A) / (1 - A)));
   }
   if (kind === 'pull') return PASS_Z0 + (Math.max(peak, 3) - PASS_Z0) * Math.sin(Math.PI * u);
   const L = len || 15, c = Math.min(1, Math.abs(curve || 0)), top = cruiseZ(L, c), s = u * L;

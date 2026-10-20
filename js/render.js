@@ -175,30 +175,9 @@ function groundT() {
 }
 function screenT() { ctx.setTransform(dpr, 0, 0, dpr, 0, 0); isoText = false; }
 function inScreen(fn) { const t = isoText; ctx.save(); screenT(); try { fn(); } finally { ctx.restore(); isoText = t; } }
-const ISO_BODY = 1.35;                                       // les joueurs debout, un peu plus grands que nature (lisibilité)
-const isoU = (o) => S * ISO_Z * ISO_BODY * ((o && o.scale) || 1);
-// joueur debout vu de côté : jambes, bras, maillot (numéro), tête ; (x, y) au sol, z = hauteur des pieds (saut)
-function drawStanding(p, x, y, z, o) {
-  const u = isoU(o), sx = X(x), sy = IY(y, z), k = (p.team * 5 + p.i) % 5, sw = o.swing || 0, fx = Math.cos(o.face || 0) >= 0 ? 1 : -1;
-  const light = (G.teams[p.team] || {}).color === 'blanc' || (G.teams[p.team] || {}).color === 'jaune';
-  ctx.save(); ctx.lineCap = 'round';
-  ctx.strokeStyle = '#1f2937'; ctx.lineWidth = Math.max(1.5, u * 0.13);
-  ctx.beginPath(); ctx.moveTo(sx - u * 0.1, sy - u * 0.85); ctx.lineTo(sx - u * 0.13 - sw * u * 0.18, sy);
-  ctx.moveTo(sx + u * 0.1, sy - u * 0.85); ctx.lineTo(sx + u * 0.13 + sw * u * 0.18, sy); ctx.stroke();
-  const arm = (ax, ay, bx, by) => { ctx.strokeStyle = SKIN[k]; ctx.lineWidth = Math.max(1.5, u * 0.11); ctx.beginPath(); ctx.moveTo(sx + ax * u, sy - ay * u); ctx.lineTo(sx + bx * u, sy - by * u); ctx.stroke(); };
-  if (o.jumping) { arm(-0.25, 1.38, -0.35, 2.05); arm(0.25, 1.38, 0.35, 2.05); }
-  else if (o.throwing) { arm(-0.25 * fx, 1.38, -0.32 * fx, 0.95); arm(0.25 * fx, 1.38, 0.8 * fx, 1.25); }
-  else { arm(-0.25, 1.38, -0.33 - sw * 0.16, 0.92); arm(0.25, 1.38, 0.33 + sw * 0.16, 0.92); }
-  ctx.fillStyle = tcol(p.team); ctx.strokeStyle = tdark(p.team); ctx.lineWidth = 1.5;
-  roundRectPath(sx - u * 0.27, sy - u * 1.47, u * 0.54, u * 0.66, u * 0.14); ctx.fill(); ctx.stroke();
-  if (u >= 10) {
-    ctx.fillStyle = light ? 'rgba(15,23,42,.75)' : 'rgba(255,255,255,.9)'; ctx.font = `800 ${Math.round(u * 0.36)}px system-ui`;
-    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(p.i + 1), sx, sy - u * 1.13); ctx.textBaseline = 'alphabetic';
-  }
-  ctx.fillStyle = SKIN[k]; circle(sx, sy - u * 1.66, u * 0.17); ctx.fill();
-  ctx.fillStyle = HAIR[k]; ctx.beginPath(); ctx.arc(sx, sy - u * 1.69, u * 0.175, Math.PI, 0); ctx.fill();
-  ctx.restore();
-}
+// joueurs en vue inclinée : le même petit personnage (style chibi) que vu de dessus, dressé au-dessus de son ombre
+const isoU = () => S * 0.95;
+const isoFace = f => Math.atan2(Math.sin(f) * isoK, Math.cos(f));   // direction du regard, vue de biais
 function arrow(x1, y1, x2, y2, color) {
   ctx.save(); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 2; ctx.setLineDash([5, 5]);
   ctx.beginPath(); ctx.moveTo(X(x1), Y(y1)); ctx.lineTo(X(x2), Y(y2)); ctx.stroke(); ctx.setLineDash([]);
@@ -389,7 +368,7 @@ function draw() {
       for (const p of players.slice().sort((a, b) => a.y - b.y)) {   // du fond vers le devant
         const o = O.get(p); if (o.lying) continue;
         const [lx, ly] = pivLean(p), z = o.jl + celebrateHop(p) * 0.6;
-        drawStanding(p, p.x + lx, p.y + ly, z, o);
+        drawBody(p, X(p.x + lx), IY(p.y + ly, z) - r * 0.7, r * 1.06, isoFace(o.face), o);
       }
     });
   }
@@ -416,7 +395,7 @@ function draw() {
 
   // Repères des plays
   ctx.font = `800 ${Math.max(11, S * 1.6)}px system-ui`; ctx.textAlign = 'center';
-  const headY = p => (iso ? IY(p.y, Math.max(0, jumpVis(p))) - isoU() * 2 : Y(p.y) - r);   // au-dessus de la tête
+  const headY = p => (iso ? IY(p.y, Math.max(0, jumpVis(p))) - r * 1.7 : Y(p.y) - r);   // au-dessus de la tête
   const overHead = fn => (iso ? inScreen(fn) : fn());
   overHead(() => { for (const p of players) {
     if (!p.tag || hiddenFromMe(p.team)) continue;           // en ligne : on ne voit pas qui joue le play adverse
