@@ -9,16 +9,28 @@ const SPD = { jog: 4.6, cut: 7.6, def: 7.4, user: 7.5, sprint: 7.8, dive: 8 };
 // plus vifs mais pas instantanés — un changement de direction coûte vraiment du temps, c'est ce qui crée les démarquages
 const RUN = { acc: 6, dec: 12, lat: 9, defK: 0.95 };
 // Réglages de la défense IA (plus les temps de réaction sont courts et l'anticipation forte, plus elle est dure)
-// Niveaux de l'IA (« IA adverse » pour les équipes sans humain, « Coéquipiers IA » pour les autres, voir humans.js)
-// Tous les niveaux jouent avec la même intelligence (placements, coupes, défense collective) ; ce qui change :
-//   react : multiplie les temps de réaction · anticip : anticipation des courses (s) · block : réussite d'un contre à portée
-//   speed : vitesse des joueurs · jump : hauteur gagnée en sautant (m) · tspd : durée de vol de ses passes (< 1 = disque plus rapide)
-//   err : imprécision des lancers · hands : chance de drop en plus à la réception
-//   safe : prudence dans le choix des passes · greed : goût du risque (0 = joue sûr, 1 = débutant qui force les passes)
+// Niveaux de l'IA (« IA adverse » pour les équipes sans humain, « Coéquipiers IA » pour les autres, voir humans.js).
+// Tous les niveaux jouent avec la même intelligence (rôles selon la position, coupes, défense collective) ; un niveau se
+// règle avec 4 qualités de joueur :
+//   react : temps de réaction (× ; 1 = normal, plus petit = plus vif)
+//   speed : vitesse de course (×), et donc détente
+//   prec  : précision (0 à 1) : lancers, vitesse du disque, mains, contres
+//   read  : lecture du jeu (0 à 1) : un joueur qui lit mal croit des passes ouvertes qui ne le sont pas, anticipe moins,
+//           feinte rarement — il ne joue pas au hasard, il se trompe
+// skill() en déduit les réglages utilisés par le jeu (mêmes noms partout) :
+//   anticip (s), block, jump (m), tspd (durée de vol, < 1 = disque plus rapide), err, hands, safe, greed,
+//   fake (chance de feinter la mark), misread (s : défenseurs vus plus lents qu'ils ne sont)
+function skill(k) {
+  const prec = Math.max(0, Math.min(1, k.prec)), read = Math.max(0, Math.min(1, k.read));   // (clamp n'existe pas encore : util.js vient après)
+  return { k: { react: k.react, speed: k.speed, prec, read }, react: k.react, speed: k.speed,
+    jump: Math.min(1.1, 0.4 + (k.speed - 0.9) * 1.6),
+    block: Math.min(0.99, 0.8 + 0.2 * prec), err: 0.35 + 1.55 * (1 - prec) ** 1.3, tspd: 1.12 - 0.27 * prec, hands: 0.004 * (1 - prec) ** 2,
+    anticip: 0.22 + 0.2 * read, safe: -0.05 + 0.16 * read ** 1.3, greed: 0.6 * (1 - read) ** 2.5, fake: 0.12 + 0.4 * read, misread: 0.25 * (1 - read) };
+}
 const AI_LEVELS = {
-  facile:    { react: 1.3, anticip: 0.22, block: 0.8,  speed: 0.9,  jump: 0.4,  tspd: 1.12, err: 1.9,  safe: -0.05, hands: 0.004,  greed: 0.6 },
-  normal:    { react: 1,   anticip: 0.3,  block: 0.9,  speed: 1,    jump: 0.55, tspd: 1,    err: 1,    safe: 0,     hands: 0.001,  greed: 0.1 },
-  difficile: { react: 0.8, anticip: 0.4,  block: 0.95, speed: 1.09, jump: 0.7,  tspd: 0.92, err: 0.65, safe: 0.08,  hands: 0.0004, greed: 0.03 }
+  facile:    skill({ react: 1.3, speed: 0.9,  prec: 0,    read: 0 }),
+  normal:    skill({ react: 1,   speed: 1,    prec: 0.5,  read: 0.5 }),
+  difficile: skill({ react: 0.8, speed: 1.09, prec: 0.75, read: 0.8 })
 };
 const DEF_TUNE = {
   reactMan: [0.2, 0.3],     // temps de réaction en individuelle (s)

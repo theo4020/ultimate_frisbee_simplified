@@ -232,6 +232,23 @@ export default async function (t, { quick }) {
   t.ok(td.msgs.slice(0, 3).join() === 'Passe dans 3…,Passe dans 2…,Passe dans 1…' && td.msgs.some(m => /PLONGE/.test(m)), 'compte à rebours, puis le signal « PLONGE ! »', td.msgs);
   t.ok(td.done && td.lblock, 'plonger au signal contre la passe (layout block)', td);
 
+  t.group('Rôles selon la position (pas de rôle attitré)');
+  const rl = R(`(() => {
+    const keepH = G.humans; G.humans = []; G.form.osys = ''; G.ai.osys = '';
+    G.off = 0; G.phase = 'play'; G.pickup = null; G.oplay = null;
+    const h = TEAMS[0][0]; Object.assign(h, { x: 50, y: 18, vx: 0, vy: 0 });
+    [[44, 22], [62, 18], [68, 18], [74, 18]].forEach(([x, y], k) => Object.assign(TEAMS[0][k + 1], { x, y, vx: 0, vy: 0 }));
+    holdDisc(h); h.think = 99;
+    const first = TEAMS[0].filter(p => p.role === 'dump').map(p => p.i);
+    const c = TEAMS[0][3]; Object.assign(c, { x: 40, y: 10, state: 'stack' });             // un coupeur revient loin derrière le disque
+    const d0 = TEAMS[0][1]; Object.assign(d0, { x: 58, y: 24, state: 'set' });             // l'ancien relais est remonté
+    G.cutT = 0; for (let f = 0; f < 3; f++) { h.think = 99; G.stall = 0; __tick(); }
+    const r = { first, cRole: c.role, cIdx: c.hIdx, oldRole: d0.role, order: G.order[0].map(p => p.i) };
+    G.humans = keepH; return r;
+  })()`);
+  t.ok(rl.first.length === 1 && rl.first[0] === 1, 'à la réception : le plus en arrière devient handler', rl);
+  t.ok(rl.cRole === 'dump' && rl.oldRole === 'cutter', 'un coupeur revenu derrière le disque devient handler, le handler remonté devient coupeur', rl);
+
   t.group('Lecture du jeu commune (predict.js)');
   const pr = R(`(() => { const d = TEAMS[1][0]; Object.assign(d, { x: 50, y: 18, vx: 0, vy: 0 }); const r = {
     arms: touchTime(d, 50.5, 18, 1.5, 0.2), high: touchTime(d, 52, 18, 4, 0.2), jumpOnly: touchTime(d, 54, 18, 2.5, 0.2), stand: touchTime(d, 54, 18, 2, 0.2),

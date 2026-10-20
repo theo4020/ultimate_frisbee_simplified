@@ -40,21 +40,52 @@ function lineY(t, ay, form) {
   return clamp(H / 2 - open * 11, 5, H - 5);
 }
 
+// =====================================================================
+//  Rôles selon la position : personne n'a de rôle attitré
+// =====================================================================
+// Le plus en arrière par rapport au disque devient handler (le relais, « dump ») ; un autre joueur resté derrière
+// le disque devient le second handler (swing, côté open). Les autres sont coupeurs, rangés selon leur position
+// (profondeur en colonne, largeur en horizontal). Revu 4 fois par seconde : un coupeur qui revient derrière le disque
+// devient handler, un handler qui remonte devient coupeur. Un joueur en pleine course la finit avant de changer de rôle.
+const ROLE_SWAP = 2;                                         // m : il faut être nettement plus en arrière pour prendre la place
+const runBusy = p => p.state === 'jab' || p.state === 'cut' || p.state === 'hold' || p.state === 'reset';
+function sortCutters(t, list, ax) {
+  const dir = dirOf(t);
+  return isColumn(formOf(t)) ? list.sort((a, b) => dir * (a.x - b.x)) : list.sort((a, b) => a.y - b.y);
+}
+function pickHandlers(t, h, mates) {
+  const dir = dirOf(t), depth = p => dir * (p.x - h.x), free = mates.filter(p => !runBusy(p) && !userControls(p));
+  const byBack = free.slice().sort((a, b) => depth(a) - depth(b));
+  let dump = mates.find(p => p.role === 'dump' && p.hIdx !== 1) || null;
+  const back = byBack[0] || null;
+  if (!dump || (!runBusy(dump) && back && back !== dump && (depth(back) < depth(dump) - ROLE_SWAP || depth(dump) > 8))) dump = back || dump;
+  const swing = byBack.find(p => p !== dump && depth(p) < -1) || null;
+  return [dump, swing];
+}
+function setRole(p, role, hIdx) {
+  const was = p.role; p.role = role; p.hIdx = hIdx;
+  if (was === role || runBusy(p)) return;
+  if (role === 'dump') { p.state = 'set'; p.timer = 1; } else if (p.state !== 'clear') { p.state = 'stack'; p.timer = 0; }
+}
+function refreshRoles(t, h) {
+  if (osysOf(t)) { sysRefresh(t, h); return; }
+  const mates = TEAMS[t].filter(p => p !== h), [dump, swing] = pickHandlers(t, h, mates);
+  for (const p of mates) {
+    if (p === dump) setRole(p, 'dump', 0);
+    else if (p === swing) setRole(p, 'dump', 1);
+    else if (!(runBusy(p) && p.role === 'dump')) setRole(p, 'cutter', 0);
+  }
+  G.order[t] = sortCutters(t, mates.filter(p => p.role === 'cutter'), h.x);
+}
 function assignRoles(t, h) {
   if (osysOf(t)) { sysAssign(t, h); return; }                 // système perso (systems.js)
-  const dir = dirOf(t), open = -closedOf(1 - t);
   const others = TEAMS[t].filter(p => p !== h);
-  others.forEach(p => { p.poste = null; });                  // formation du jeu : consignes « au choix de l'IA »
-  const ds = dumpSlot(h.x, h.y, dir, open);
-  const dump = nearest(others, ds.x, ds.y);
-  const cutters = others.filter(p => p !== dump);
-  if (isColumn(formOf(t))) cutters.sort((a, b) => dir * (a.x - b.x));
-  else cutters.sort((a, b) => a.y - b.y);
-  G.order[t] = cutters;
-  cutters.forEach(p => { p.role = 'cutter'; p.state = 'stack'; p.timer = 0; });
-  dump.role = 'dump'; dump.state = 'set'; dump.timer = rand(1, 2);
+  others.forEach(p => { p.poste = null; p.role = null; p.state = 'stack'; p.timer = 0; });   // formation du jeu : consignes « au choix de l'IA »
+  const [dump, swing] = pickHandlers(t, h, others);
+  for (const p of others) { p.role = p === dump || p === swing ? 'dump' : 'cutter'; p.hIdx = p === swing ? 1 : 0; if (p.role === 'dump') { p.state = 'set'; p.timer = 1; } }
+  G.order[t] = sortCutters(t, others.filter(p => p.role === 'cutter'), h.x);
   h.role = 'holder';
-  G.cutT = rand(0.3, 0.8);
+  G.cutT = 0.4;
 }
 
 function cutterSlot(p, t, ax, ay, dir, form) {
@@ -108,7 +139,7 @@ function bestCut(t, h, ax, ay, dir, open, cands, need) {
     if (x < 1.5 || x > W - 1.5) continue;
     for (let y = 2.5; y <= H - 2.5; y += 3.2) {
       if (busy.some(([cx, cy]) => dist(cx, cy, x, y) < 7)) continue;            // l'espace d'une autre coupe
-      const lane = clamp(laneSlack(h, x, y, x, y, 0, opp), -1, 0.6);
+      const lane = clamp(laneSlack(h, x, y, x, y, 0, opp, 'normal', undefined, aiLvl(t).misread), -1, 0.6);
       if (lane < -0.4) continue;
       let td = 1e9;
       for (const d of opp) { if (d === G.marker) continue; td = Math.min(td, guardTime(d, x, y)); }
@@ -160,6 +191,7 @@ function runCutSequencer(t, ax, ay, dir, open, form, dt) {
   G.cutT -= dt;
   if (G.cutT > 0) return;
   G.cutT = 0.25;
+  refreshRoles(t, disc.holder);                             // rôles selon la position du moment
   const ord = G.order[t];
   const running = ord.filter(p => p.state === 'jab' || p.state === 'cut').length;
   if (running >= (G.stall > 4 || G.holdT > 2.5 ? 2 : 1)) return;   // le porteur attend : une deuxième coupe part             // une coupe à la fois ; deux quand le compte presse
@@ -238,14 +270,15 @@ function attackerAI(p, t, ax, ay, dir, open, form, dt) {
     p.tx = s.x - dir * 2; p.ty = clamp(s.y + open * 7, 2, H - 2); p.sp = hustle(p, SPD.jog); roomAroundHolder(p); return;
   }
   if (p.role === 'dump') {
-    const S = p.poste && osysOf(t), s = S ? sysSpot(S, p, ax, ay, dir, open) : dumpSlot(ax, ay, dir, open);   // relais d'une formation perso : sa place
+    const S = p.poste && osysOf(t), s = S ? sysSpot(S, p, ax, ay, dir, open) : dumpSlot(ax, ay, dir, p.hIdx === 1 ? -open : open);   // relais (côté fermé) ou swing (côté open) ; formation perso : sa place
     if (p.state === 'set') {
       p.tx = s.x; p.ty = s.y; p.sp = SPD.jog + 1;
-      if (disc.mode === 'held' && G.stall > 4.5 && p.timer <= 0 && posteOf(p).when !== 'never') {   // compte élevé : le relais vient chercher le disque
+      if (disc.mode === 'held' && G.stall > 4.5 && p.timer <= 0 && p.hIdx !== 1 && posteOf(p).when !== 'never') {   // compte élevé : le relais vient chercher le disque
         p.state = 'reset'; p.timer = 1.8;
-        if (Math.random() < 0.5) { p.cx = ax - dir * 3; p.cy = ay + open * 5.5; }      // reset côté open, un peu derrière
-        else { p.cx = ax + dir * 4.5; p.cy = ay - open * 5; }                            // ou devant, côté fermé
-        clampPt(p);
+        // reset côté open un peu derrière, ou devant côté fermé : celui où la passe est la plus sûre
+        const A = { cx: ax - dir * 3, cy: ay + open * 5.5 }, B = { cx: ax + dir * 4.5, cy: ay - open * 5 };
+        [A, B].forEach(o => { clampPt(o); o.s = disc.holder ? laneSlack(disc.holder, o.cx, o.cy, o.cx, o.cy, 0, TEAMS[1 - t]) : 0; });
+        const R = A.s >= B.s ? A : B; p.cx = R.cx; p.cy = R.cy;
       }
     } else {
       p.tx = p.cx; p.ty = p.cy; p.sp = SPD.cut;

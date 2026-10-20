@@ -25,8 +25,9 @@ function touchTime(d, x, y, z, react) {
   return t;
 }
 // marge d'une trajectoire : pour chaque point du vol, le défenseur le plus rapide comparé au disque (s ; > 0 : passe sûre).
-// path = { sx, sy, cx, cy, ex, ey, dur, z(u) } ; mark = { p, x, y } : la mark, à sa place au lâcher, se fend vers le disque
-function pathSlack(path, opp, mark, react) {
+// path = { sx, sy, cx, cy, ex, ey, dur, z(u) } ; mark = { p, x, y } : la mark, à sa place au lâcher, se fend vers le disque ;
+// misread (s) : erreur de lecture de celui qui juge (il croit les défenseurs plus lents qu'ils ne sont)
+function pathSlack(path, opp, mark, misread) {
   let min = 9;
   for (let u = 0.04; u <= 1.001; u += 0.06) {
     const z = path.z(u), [x, y] = bez(path.sx, path.sy, path.cx, path.cy, path.ex, path.ey, u), tA = u * path.dur;
@@ -36,7 +37,7 @@ function pathSlack(path, opp, mark, react) {
         if (z > REACH_STAND + (aiLvl(o.team).jump || JUMP_H)) continue;
         s = dist(mark.x, mark.y, x, y) < ARM_R + (tA < MARK_LUNGE_T ? MARK_LUNGE : 0) ? -0.6 : 9;
         if (s < 0 && z > REACH_STAND) s += JUMP_RISK;
-      } else s = touchTime(o, x, y, z, react === undefined ? seeT(o) : react) - tA;
+      } else s = touchTime(o, x, y, z, seeT(o) + (misread || 0)) - tA;
       if (s < min) min = s;
     }
   }

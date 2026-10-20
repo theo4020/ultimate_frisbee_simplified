@@ -39,8 +39,6 @@ function pivotFor(h, tx, ty) {
 const markOf = h => { const m = G.marker; return m && h && m.team !== h.team && dist(m.x, m.y, h.x, h.y) < STALL_R ? m : null; };
 // vitesse des passes d'un joueur IA selon son niveau (un humain lance à la vitesse normale)
 // chance de feinter (par décision) quand la mark ferme la passe voulue
-const FAKE_P = { facile: 0.12, normal: 0.3, difficile: 0.45 };
-const aiLvlName = t => { const L = aiLvl(t); return L.react >= 1.2 ? 'facile' : L.react <= 0.85 ? 'difficile' : 'normal'; };
 const throwSpd = h => (controllerOf(h) ? 1 : aiLvl(h.team).tspd || 1);
 // kind : 'normal' ou 'high' (passe haute, par-dessus la défense), voir THROWS
 function throwDisc(h, tx, ty, curve, errScale, kind) {
@@ -94,14 +92,14 @@ function preCatch() {
 
 // Marge de sécurité d'une trajectoire (positive = aucun défenseur ne peut l'atteindre à temps, en secondes) :
 // pour chaque point du vol à portée, temps de réaction + course du défenseur, comparé au temps du disque
-function laneSlack(h, aimX, aimY, tx, ty, curve, opp, kind, side) {
+function laneSlack(h, aimX, aimY, tx, ty, curve, opp, kind, side, misread) {
   if (side === undefined && kind !== 'high') side = pivotFor(h, aimX, aimY);   // comme le ferait le lanceur : il pivotera du bon côté
   const dur = throwDur(h.x, h.y, aimX, aimY, kind) * throwSpd(h), peak = peakOf(dur, kind);
   const [sx, sy] = releasePoint(h, aimX, aimY, side), [cx, cy] = ctrlFor(sx, sy, aimX, aimY, curve), len = dist(sx, sy, tx, ty);
   // la mark : là où elle est, ou là où elle sera si le porteur doit encore pivoter (elle suit son pivot)
   const mk = disc.holder === h ? markOf(h) : null, piv = side !== undefined && Math.abs((h.pivY || 0) - side) > 0.35;
   const mark = mk ? { p: mk, ...(([x, y]) => ({ x, y }))(piv ? markSpotFor(mk.team, h.x, h.y, side) : [mk.x, mk.y]) } : null;
-  return pathSlack({ sx, sy, cx, cy, ex: tx, ey: ty, dur, z: u => heightAt(u, peak, kind, len, curve) }, opp, mark);
+  return pathSlack({ sx, sy, cx, cy, ex: tx, ey: ty, dur, z: u => heightAt(u, peak, kind, len, curve) }, opp, mark, misread || 0);
 }
 
 // release = fin de l'armement d'une passe haute : on choisit la meilleure passe haute à cet instant
@@ -109,10 +107,6 @@ function aiThrow(h, release) {
   const t = h.team, dir = dirOf(t), opp = TEAMS[1 - t];
   const press = Math.max(G.stall, G.holdT * 0.8);           // même sans marqueur, l'IA finit par lancer
   const ST = aiStyle(t), L = aiLvl(t), RK = riskOf(t), greed = clamp((L.greed || 0) + RK[1], 0, 1);   // greed : un débutant force les passes (et la consigne « osé »)
-  if (!release && !G.aiPlayTried && !G.oplay) {              // une fois par possession, l'IA appelle parfois un de ses deux plays
-    G.aiPlayTried = true;
-    if (Math.random() < 0.5 && callPlay(t, Math.random() < 0.6 ? 1 : 2)) { h.think = 0.35; return; }
-  }
   let best = null, bv = -1e9, rawV = -1e9, want = 0;
   const mkH = markOf(h), oppNoMk = mkH ? opp.filter(o => o !== mkH) : opp;
   for (const p of TEAMS[t]) {
@@ -152,16 +146,16 @@ function aiThrow(h, release) {
         if (dist(h.x, h.y, aimX, aimY) > THROWS[kind].max) continue;
         const side = kind === 'high' ? (h.pivY || 0) : pivotFor(h, aimX, aimY);   // passe haute : par-dessus la mark, pas de pivot
         if (kind !== 'high' && G.holdT < (h.pivLock || 0) && side !== h.pivTo) continue;   // il vient de pivoter : il regarde de ce côté
-        const slack = laneSlack(h, aimX, aimY, cx0, cy0, curve, opp, kind, side);
+        const slack = laneSlack(h, aimX, aimY, cx0, cy0, curve, opp, kind, side, L.misread);   // un joueur qui lit mal voit des passes ouvertes qui ne le sont pas
         const kindCost = kind === 'high' ? (release ? 0 : (0.1 + G.wind.kmh * 0.04 + throwErr(d, 0, kind) * 0.2) / ST.high + (ST.high < 1 ? 1.5 : 0)) : 0;
         // les passes qui font avancer le jeu valent plus, les longues encore plus (huck)
-        const v = clamp(slack, -1, 0.6) * 4 * (1 - 0.45 * greed) + gain * 0.3 * (1 + 0.6 * greed) + (long ? 2.2 * ST.huck * (1 + greed) : 0) + (Math.random() - 0.5) * 4 * greed + (inScoreZone(t, cx0) ? 8 : 0)
+        const v = clamp(slack, -1, 0.6) * 4 * (1 - 0.45 * greed) + gain * 0.3 * (1 + 0.6 * greed) + (long ? 2.2 * ST.huck * (1 + greed) : 0) + (inScoreZone(t, cx0) ? 8 : 0)
           + (G.stall > 5 && p.role === 'dump' ? 2.5 : 0) + (p.free ? 4 : 0) + playBonus - Math.abs(curve) * (0.6 + G.wind.kmh * 0.03) - d * (0.02 + G.wind.kmh * 0.003) - kindCost;   // courbe dans le vent : risquée
         // un huck peut être un peu disputé : le disque passe au-dessus de la défense au milieu
         const minSlack = (playBonus && P.type === 'huck' ? -0.15 : long ? -0.08 - (ST.huck - 1) * 0.25 : p.free ? -0.08 : 0.05) + L.safe + RK[0] - 0.45 * greed + (kind === 'high' ? (release ? -0.15 : 0) : 0);
         if (slack < minSlack && press < 8.3) {
           // fermée seulement par la mark ? c'est une passe à aller chercher par une feinte
-          if (mkH && kind !== 'high' && v > rawV && laneSlack(h, aimX, aimY, cx0, cy0, curve, oppNoMk, kind, side) >= minSlack) { rawV = v; want = side; }
+          if (mkH && kind !== 'high' && v > rawV && laneSlack(h, aimX, aimY, cx0, cy0, curve, oppNoMk, kind, side, L.misread) >= minSlack) { rawV = v; want = side; }
           continue;
         }
         if (v > bv) { bv = v; best = { tx: aimX, ty: aimY, curve, kind, side }; }
@@ -178,9 +172,11 @@ function aiThrow(h, release) {
     if (p) { const [ax2, ay2] = aimFor(h, clamp(p.x, 1, W - 1), clamp(p.y, 1, H - 1)); best = { tx: ax2, ty: ay2, curve: 0, kind: 'normal', side: pivotFor(h, ax2, ay2) }; bv = 9; }
   }
   if (!best || (bv < 3.2 - 1.2 * greed - press * 0.35 && press < 6)) {
+    // rien de bon : une fois par possession, l'IA appelle un de ses plays pour créer l'option qui manque
+    if (!G.aiPlayTried && !G.oplay && G.holdT > 0.6) { G.aiPlayTried = true; if (callPlay(t, 1) || callPlay(t, 2)) { h.think = 0.35; return; } }
     // feinte : la passe qu'il veut est fermée par la mark → il pivote de l'autre côté pour l'attirer, puis reviendra
     const mk = markOf(h);
-    if (mk && want && G.holdT > 0.6 && G.stall < 6 && Math.random() < FAKE_P[aiLvlName(t)]) { h.pivTo = -want; h.pivLock = 0; h.think = rand(0.3, 0.45); return; }
+    if (mk && want && G.holdT > 0.6 && G.stall < 6 && Math.random() < (L.fake || 0.3)) { h.pivTo = -want; h.pivLock = 0; h.think = rand(0.3, 0.45); return; }
     h.think = 0.25; return;
   }
   if (best.kind !== 'high' && Math.abs((h.pivY || 0) - best.side) > 0.35 && G.stall < 9.4) {   // il doit d'abord pivoter (la mark va suivre)

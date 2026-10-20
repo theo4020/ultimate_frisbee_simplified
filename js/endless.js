@@ -7,35 +7,24 @@ const ENDLESS_PTS = 2;
 // niveaux de référence (d = numéro du match à partir de 0, plus la montée pendant le match) :
 //   facile au 1er match, normal au 2e, difficile (Titans) au 5e, légende au 10e, surhumain au 15e,
 //   puis ça ne s'arrête jamais : chaque match rend l'adversaire encore un peu plus fort (voir endlessLevel)
-const LEGEND = { react: 0.7, anticip: 0.55, block: 0.97, speed: 1.13, jump: 0.8, tspd: 0.86, err: 0.45, safe: 0.14, hands: 0.0002, greed: 0.03 };
-const SUPER = { react: 0.62, anticip: 0.65, block: 0.98, speed: 1.17, jump: 0.9, tspd: 0.8, err: 0.35, safe: 0.18, hands: 0.0001, greed: 0 };
+const LEGEND = skill({ react: 0.7, speed: 1.13, prec: 0.88, read: 0.92 });
+const SUPER = skill({ react: 0.62, speed: 1.17, prec: 0.94, read: 1 });
 const ENDLESS_STEPS = [[0, AI_LEVELS.facile], [1, AI_LEVELS.normal], [4, AI_LEVELS.difficile], [9, LEGEND], [14, SUPER]];
-// au-delà du dernier palier : plus vif, plus précis, plus rapide à chaque match, sans jamais dépasser des limites humaines
-const BEYOND = { react: [0.95, 0.4], anticip: [0.05, 1], block: [0.88, 0.99], speed: [0.02, 1.3], jump: [0.03, 1.1], tspd: [0.98, 0.65], err: [0.9, 0.1], safe: [0.01, 0.3], hands: [0.88, 0.00003] };
+// au-delà du dernier palier : plus vif, plus rapide et plus précis à chaque match, sans jamais dépasser des limites humaines
 function endlessLevel(d) {
   const S = ENDLESS_STEPS;
   if (d <= S[0][0]) return S[0][1];
   const [dl, L] = S[S.length - 1];
   if (d > dl) {
-    const k = d - dl, B = BEYOND;
-    return {
-      react: Math.max(B.react[1], L.react * B.react[0] ** k),                     // temps de réaction : -5 % par match
-      anticip: Math.min(B.anticip[1], L.anticip + B.anticip[0] * k),
-      block: Math.min(B.block[1], 1 - (1 - L.block) * B.block[0] ** k),           // contres manqués : -12 % par match
-      speed: Math.min(B.speed[1], L.speed + B.speed[0] * k),
-      jump: Math.min(B.jump[1], L.jump + B.jump[0] * k),
-      tspd: Math.max(B.tspd[1], L.tspd * B.tspd[0] ** k),           // disque plus rapide : -2 % de temps de vol par match
-      err: Math.max(B.err[1], L.err * B.err[0] ** k),                             // imprécision : -10 % par match
-      safe: Math.min(B.safe[1], L.safe + B.safe[0] * k),
-      hands: Math.max(B.hands[1], L.hands * B.hands[0] ** k),                     // drops : -12 % par match
-      greed: 0
-    };
+    const n = d - dl, K = L.k;
+    return skill({ react: Math.max(0.4, K.react * 0.95 ** n), speed: Math.min(1.3, K.speed + 0.02 * n),   // réaction : -5 % par match
+      prec: 1 - (1 - K.prec) * 0.85 ** n, read: 1 });
   }
   for (let i = 1; i < S.length; i++) {
     if (d <= S[i][0]) {
       const [d0, a] = S[i - 1], [d1, b] = S[i], k = (d - d0) / (d1 - d0), o = {};
-      for (const key in a) o[key] = a[key] + (b[key] - a[key]) * k;
-      return o;
+      for (const key in a.k) o[key] = a.k[key] + (b.k[key] - a.k[key]) * k;   // on mélange les qualités, puis on en déduit le reste
+      return skill(o);
     }
   }
   return S[S.length - 1][1];

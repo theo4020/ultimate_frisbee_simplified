@@ -222,7 +222,7 @@ function defenderAI(d, ax, ay, dir, closed, form, slots) {
     const bi = bestIntercept(d);
     if (bi) {
       d.tx = bi.x; d.ty = bi.y; d.sp = SPD.sprint; d.react = 0.1;
-      if (!d.diveTried && bi.tA < 0.32 && bi.r > 1 && bi.r < SPD.dive * DIVE_T + DIVE_R) { d.diveTried = true; if (Math.random() < 0.55) diveTo(d, bi.x, bi.y); }
+      if (!d.diveTried && bi.tA < 0.32 && bi.r > ARM_R + 0.3 && bi.r < diveReach()) { d.diveTried = true; diveTo(d, bi.x, bi.y); }   // trop loin pour les bras : layout
       return;
     }
     if ((form === 'man' || (form === 'mix' && d.mission && d.mission.type === 'man')) && d.match === disc.intended) { d.tx = disc.ex; d.ty = disc.ey; d.sp = SPD.sprint; return; }

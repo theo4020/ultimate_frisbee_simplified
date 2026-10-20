@@ -189,6 +189,21 @@ function sysAssign(t, h) {                                     // remplace assig
   h.role = 'holder'; h.sysIdx = -1;
   G.cutT = 0.4;
 }
+// rôles selon la position, formation perso : deux joueurs échangent leurs places (et leurs consignes, qui restent
+// attachées à la place) si c'est nettement plus court pour eux ; un joueur en pleine course garde la sienne
+function sysRefresh(t, h) {
+  const S = osysOf(t), dir = dirOf(t), open = -closedOf(1 - t), spots = sysWorld(S.pos, h.x, h.y, dir, open);
+  const L = TEAMS[t].filter(p => p !== h && p.sysIdx >= 0 && p.sysIdx < 4 && !runBusy(p) && !userControls(p));
+  const d = (p, k) => dist(p.x, p.y, spots[k][0], spots[k][1]);
+  for (const a of L) for (const b of L) {
+    if (a === b) continue;
+    if (d(a, b.sysIdx) + d(b, a.sysIdx) < d(a, a.sysIdx) + d(b, b.sysIdx) - 3) {
+      const k = a.sysIdx; a.sysIdx = b.sysIdx; b.sysIdx = k;
+      for (const p of [a, b]) { p.poste = S.postes ? S.postes[p.sysIdx] : POSTE_DEF; setRole(p, p.poste.role === 'dump' ? 'dump' : 'cutter', 0); }
+    }
+  }
+  G.order[t] = TEAMS[t].filter(p => p !== h && p.role === 'cutter').sort((a, b) => a.sysIdx - b.sysIdx);
+}
 function sysSpot(S, p, ax, ay, dir, open) {
   const k = p.sysIdx >= 0 && p.sysIdx < 4 ? p.sysIdx : 3;
   const [x, y] = sysWorld(S.pos, ax, ay, dir, open)[k];
