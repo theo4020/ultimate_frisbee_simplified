@@ -114,7 +114,10 @@ function updatePlays(dt, ax, ay, dir, open) {
   const P = G.oplay;
   if (P) {
     P.t += dt;
-    if (P.team !== G.off || P.t > P.dur) endOPlay();
+    // un play dont les coupeurs ont fini leur course sans recevoir s'arrête : on ne reste pas planté jusqu'à la fin du temps
+    const done = P.type !== 'sys' && disc.mode === 'held' && P.targets.length && P.targets.every(q => !(q.state === 'jab' || q.state === 'cut' || (q.state === 'park' && dist(q.x, q.y, q.cx, q.cy) > 1.5)));
+    P.idle = done ? (P.idle || 0) + dt : 0;
+    if (P.team !== G.off || P.t > P.dur || (P.idle > 1 && P.t > 1.5)) endOPlay();
     else if (P.type === 'sys') { if (disc.mode === 'held' || disc.mode === 'air') sysPlayTick(P, dt, dir, open); }
     else if (disc.mode === 'held' && P.type === 'flood') {
       if (P.phase === 0 && P.t > P.t0) {

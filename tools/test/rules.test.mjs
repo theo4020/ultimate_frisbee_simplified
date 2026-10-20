@@ -98,13 +98,13 @@ export default async function (t, { quick }) {
     for (let k = 0; k < 10; k++) {
       G.score = [0, 0]; G.receiving = k % 2; newWind(); startPoint();
       for (let f = 0; f < 20000 && (G.phase === 'play' || G.phase === 'pull'); f++) { __tick();
-        if (G.phase !== 'play' || disc.mode !== 'held' || !disc.holder || G.holdT < 2) continue;   // 2 s après la réception (le temps de s'écarter)
+        if (G.phase !== 'play' || disc.mode !== 'held' || !disc.holder || G.holdT < 1.5) continue;   // 1,5 s après la réception (le temps de s'écarter)
         const h = disc.holder, d = TEAMS[h.team].find(p => p.role === 'dump'); if (!d) continue;
         n++; if (dist(d.x, d.y, h.x, h.y) < 3) close++; }
     }
     return { n, close };
   })()`);
-  t.ok(dp.n > 30 && dp.close / dp.n < 0.04, '2 s après la réception, le relais est (presque) toujours à plus de 3 m', dp);
+  t.ok(dp.n > 30 && dp.close / dp.n < 0.04, '1,5 s après la réception, le relais est (presque) toujours à plus de 3 m', dp);
 
   t.group('Niveaux : mêmes idées, stats et choix de passe différents');
   const lvq = R(`(() => { const keys = o => Object.keys(o).sort().join(); const L = [AI_LEVELS.facile, AI_LEVELS.normal, AI_LEVELS.difficile, LEGEND, SUPER, endlessLevel(20)];

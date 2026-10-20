@@ -23,7 +23,11 @@ function roomAroundHolder(p) {
     if (u <= 0 || u >= 1 || dc >= HOLDER_ROOM - 0.5) return;
     let ox = cx - h.x, oy = cy - h.y; if (dc < 0.01) { ox = -vy; oy = vx; }
     const lo = Math.hypot(ox, oy) || 1;
-    p.tx = clamp(h.x + ox / lo * HOLDER_ROOM, 1, W - 1); p.ty = clamp(h.y + oy / lo * HOLDER_ROOM, 1.5, H - 1.5);
+    let wx = clamp(h.x + ox / lo * HOLDER_ROOM, 1, W - 1), wy = clamp(h.y + oy / lo * HOLDER_ROOM, 1.5, H - 1.5);
+    if (dist(wx, wy, h.x, h.y) < HOLDER_ROOM - 0.5) {        // porteur collé à la ligne : on passe de l'autre côté (dans le terrain)
+      wx = clamp(h.x - ox / lo * HOLDER_ROOM, 1, W - 1); wy = clamp(h.y - oy / lo * HOLDER_ROOM, 1.5, H - 1.5);
+    }
+    p.tx = wx; p.ty = wy;
     return;
   }
   let ux = p.tx - h.x, uy = p.ty - h.y;
@@ -186,7 +190,8 @@ function clampPt(o) { o.cx = clamp(o.cx, 1.5, W - 1.5); o.cy = clamp(o.cy, 1.5, 
 // Le « chef d'orchestre » des coupes : 4 fois par seconde, une coupe part si l'espace le mérite
 function runCutSequencer(t, ax, ay, dir, open, form, dt) {
   if (disc.mode !== 'held' || !disc.holder) return;
-  if (G.oplay && G.oplay.team === t) return;                // le play dirige les courses
+  const P = G.oplay && G.oplay.team === t ? G.oplay : null;
+  if (P && (P.type === 'sys' || P.type === 'flood')) return;  // ces plays dirigent toutes les courses ; les autres ne gèlent que leurs coupeurs
   G.cutIdle = (G.cutIdle || 0) + dt;
   G.cutT -= dt;
   if (G.cutT > 0) return;
@@ -202,7 +207,7 @@ function runCutSequencer(t, ax, ay, dir, open, form, dt) {
   let turn = false;
   const flow = flowOf(t);
   const ready = ord.filter(p => {
-    if (!cutReady(p, t, restless)) return false;
+    if (!cutReady(p, t, restless) || (P && P.targets.includes(p))) return false;
     const sl = cutterSlot(p, t, ax, ay, dir, form);
     // structuré : on se replace d'abord ; mais si le porteur attend déjà depuis un moment, on coupe d'où l'on est
     if (!flow && !restless && dist(p.x, p.y, sl.x, sl.y) > CUT_FROM && G.holdT < 1.2 && G.stall < 3) return false;
@@ -276,11 +281,14 @@ function attackerAI(p, t, ax, ay, dir, open, form, dt) {
     const big = ay < H / 2 ? 1 : -1, S = p.poste && osysOf(t), s = S ? sysSpot(S, p, ax, ay, dir, open) : dumpSlot(ax, ay, dir, p.hIdx === 1 ? big : -big);
     if (p.state === 'set') {
       p.tx = s.x; p.ty = s.y; p.sp = SPD.jog + 1;
-      if (disc.mode === 'held' && G.stall > 4.5 && p.timer <= 0 && p.hIdx !== 1 && posteOf(p).when !== 'never') {   // compte élevé : le relais vient chercher le disque
+      // compte élevé, ou relais couvert dès 2,5 : il vient chercher le disque
+      const covered = () => disc.holder && G.stall > 2.5 && laneSlack(disc.holder, p.x, p.y, p.x, p.y, 0, TEAMS[1 - t]) < 0;
+      if (disc.mode === 'held' && p.timer <= 0 && p.hIdx !== 1 && posteOf(p).when !== 'never' && (G.stall > 4.5 || covered())) {   // compte élevé : le relais vient chercher le disque
         p.state = 'reset'; p.timer = 1.8;
         // reset côté open un peu derrière, ou devant côté fermé : celui où la passe est la plus sûre
         const A = { cx: ax - dir * 3, cy: ay + open * 5.5 }, B = { cx: ax + dir * 4.5, cy: ay - open * 5 };
         [A, B].forEach(o => { clampPt(o); o.s = disc.holder ? laneSlack(disc.holder, o.cx, o.cy, o.cx, o.cy, 0, TEAMS[1 - t]) : 0; });
+        [A, B].forEach(o => { if (dist(p.x, p.y, o.cx, o.cy) < 2.5) o.s -= 9; });   // déjà là : il va chercher l'autre
         const R = A.s >= B.s ? A : B; p.cx = R.cx; p.cy = R.cy;
       }
     } else {

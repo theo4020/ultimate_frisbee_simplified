@@ -152,7 +152,8 @@ function aiThrow(h, release) {
         const v = clamp(slack, -1, 0.6) * 4 * (1 - 0.45 * greed) + gain * 0.3 * (1 + 0.6 * greed) + (long ? 2.2 * ST.huck * (1 + greed) : 0) + (inScoreZone(t, cx0) ? 8 : 0)
           + (G.stall > 5 && p.role === 'dump' ? 2.5 : 0) + (p.free ? 4 : 0) + playBonus - Math.abs(curve) * (0.6 + G.wind.kmh * 0.03) - d * (0.02 + G.wind.kmh * 0.003) - kindCost;   // courbe dans le vent : risquée
         // un huck peut être un peu disputé : le disque passe au-dessus de la défense au milieu
-        const minSlack = (playBonus && P.type === 'huck' ? -0.15 : long ? -0.08 - (ST.huck - 1) * 0.25 : p.free ? -0.08 : 0.05) + L.safe + RK[0] - 0.45 * greed + (kind === 'high' ? (release ? -0.15 : 0) : 0);
+        const minSlack = (playBonus && P.type === 'huck' ? -0.15 : long ? -0.08 - (ST.huck - 1) * 0.25 : p.free ? -0.08 : 0.05) + L.safe + RK[0] - 0.45 * greed + (kind === 'high' ? (release ? -0.15 : 0) : 0)
+          - Math.max(0, press - 3) * 0.07;                    // le compte monte : il accepte peu à peu une passe un peu disputée
         if (slack < minSlack && press < 8.3) {
           // fermée seulement par la mark ? c'est une passe à aller chercher par une feinte
           if (mkH && kind !== 'high' && v > rawV && laneSlack(h, aimX, aimY, cx0, cy0, curve, oppNoMk, kind, side, L.misread) >= minSlack) { rawV = v; want = side; }
