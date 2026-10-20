@@ -211,18 +211,8 @@ function defenseBrain(defT, dt) {
   }
 }
 
-// Où un défenseur peut-il couper la trajectoire avant le disque ?
-function bestIntercept(d) {
-  const u0 = disc.t / disc.dur, sp = SPD.sprint * aiLvl(d.team).speed;
-  for (let u = u0 + 0.03; u <= 1.001; u += 0.04) {
-    const [x, y] = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u);
-    if (discZ(u) > REACH_STAND - 0.1) continue;
-    const tA = (u - u0) * disc.dur;
-    const r = dist(d.x, d.y, x, y);
-    if (reachTime(d, x, y, sp, ARM_R * 0.9) + 0.05 <= tA) return { x, y, tA, r };
-  }
-  return null;
-}
+// Où un défenseur peut-il couper la trajectoire avant le disque ? (lecture du jeu commune, predict.js)
+const bestIntercept = firstTouch;
 
 function defenderAI(d, ax, ay, dir, closed, form, slots) {
   const open = -closed;

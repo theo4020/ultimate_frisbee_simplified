@@ -97,31 +97,11 @@ function preCatch() {
 function laneSlack(h, aimX, aimY, tx, ty, curve, opp, kind, side) {
   if (side === undefined && kind !== 'high') side = pivotFor(h, aimX, aimY);   // comme le ferait le lanceur : il pivotera du bon côté
   const dur = throwDur(h.x, h.y, aimX, aimY, kind) * throwSpd(h), peak = peakOf(dur, kind);
-  const [sx, sy] = releasePoint(h, aimX, aimY, side), [cx, cy] = ctrlFor(sx, sy, aimX, aimY, curve);
+  const [sx, sy] = releasePoint(h, aimX, aimY, side), [cx, cy] = ctrlFor(sx, sy, aimX, aimY, curve), len = dist(sx, sy, tx, ty);
   // la mark : là où elle est, ou là où elle sera si le porteur doit encore pivoter (elle suit son pivot)
   const mk = disc.holder === h ? markOf(h) : null, piv = side !== undefined && Math.abs((h.pivY || 0) - side) > 0.35;
-  const mkPos = mk && piv ? markSpotFor(mk.team, h.x, h.y, side) : mk ? [mk.x, mk.y] : null;
-  // les défenseurs sprintent vers le disque et plongent (layout) quand il passe à portée d'un plongeon
-  const L = opp.length ? aiLvl(opp[0].team) : AI_LEVELS.normal, react = 0.25 * L.react, vmax = SPD.sprint * L.speed;
-  const jumpMax = REACH_STAND + (L.jump || JUMP_H), len = dist(sx, sy, tx, ty), diveR = SPD.dive * DIVE_T + DIVE_R;
-  let min = 9;
-  for (let u = 0.04; u <= 1.001; u += 0.06) {
-    const z = heightAt(u, peak, kind, len, curve);
-    if (z > jumpMax) continue;
-    const jumpOnly = z > REACH_STAND;                         // à portée seulement en sautant : moins risqué
-    const [x, y] = bez(sx, sy, cx, cy, tx, ty, u), tA = u * dur;
-    for (const o of opp) {
-      let s;
-      if (o === mk) s = dist(mkPos[0], mkPos[1], x, y) < ARM_R + (tA < MARK_LUNGE_T ? MARK_LUNGE : 0) ? -0.6 : 9;   // la mark se fend au lâcher
-      else {
-        s = dist(o.x, o.y, x, y) < ARM_R ? -0.6 : reachTime(o, x, y, vmax, ARM_R) + react - tA;
-        if (z < REACH_DIVE && tA > 0.3) s = Math.min(s, reachTime(o, x, y, vmax, diveR) + DIVE_T + react - tA + 0.12);   // layout : un peu moins sûr
-      }
-      s += jumpOnly ? 0.45 : 0;
-      if (s < min) min = s;
-    }
-  }
-  return min;
+  const mark = mk ? { p: mk, ...(([x, y]) => ({ x, y }))(piv ? markSpotFor(mk.team, h.x, h.y, side) : [mk.x, mk.y]) } : null;
+  return pathSlack({ sx, sy, cx, cy, ex: tx, ey: ty, dur, z: u => heightAt(u, peak, kind, len, curve) }, opp, mark);
 }
 
 // release = fin de l'armement d'une passe haute : on choisit la meilleure passe haute à cet instant
@@ -155,12 +135,12 @@ function aiThrow(h, release) {
         if (dist(p.x, p.y, sx, sy) / SPD.cut <= ft + 0.25) cands.push([sx, sy]);   // il peut y arriver à temps
       }
     }
-    const pSpeed = Math.hypot(p.vx, p.vy), pv = SPD.cut * aiLvl(t).speed;
+    const pSpeed = Math.hypot(p.vx, p.vy);
     for (const [cx0, cy0] of cands) {
       const d = dist(h.x, h.y, cx0, cy0);
       if (d < 4 || d > 48 || cx0 < 0.8 || cx0 > W - 0.8 || cy0 < 0.8 || cy0 > H - 0.8) continue;
       // le receveur doit pouvoir y être à temps (avec sa vraie accélération), avec une petite marge pour l'imprécision du lancer
-      const early = flightTime(d) * throwSpd(h) - reachTime(p, cx0, cy0, pv, 0.9);
+      const early = throwDur(h.x, h.y, cx0, cy0, 'normal') * throwSpd(h) - recvTime(p, cx0, cy0);
       if (early < 0.1 && !controllerOf(p)) continue;
       const gain = dir * (cx0 - h.x), long = gain > 20;
       // lancers essayés : normal avec 3 courbes ; passe haute par-dessus la défense (receveur peu mobile, pas trop loin)

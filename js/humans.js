@@ -171,15 +171,7 @@ const inSpot = (x, y) => [clamp(x, 0.3, W - 0.3), clamp(y, 0.3, H - 0.3)];
 // receveur IA : il attaque le disque — il court vers le premier point de la trajectoire qu'il peut atteindre avant le disque
 // (au lieu d'attendre au point d'arrivée, où le défenseur a le temps de revenir)
 function runPoint(p) {
-  const u0 = disc.t / disc.dur, sp = SPD.cut * aiLvl(p.team).speed;
-  for (let u = Math.max(u0 + 0.02, 0.5); u <= 1.001; u += 0.025) {
-    if (discZ(u) > REACH_STAND) continue;
-    const [x, y] = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u);
-    if (!inField(x, y)) continue;                              // il ne va pas chercher le disque hors du terrain
-    const need = reachTime(p, x, y, sp, 0.9), tA = (u - u0) * disc.dur;
-    if (need <= Math.max(0, tA - 0.06)) return [x, y, true];
-  }
-  return [...inSpot(disc.ex, disc.ey), false];               // sinon il attend au bord du terrain, au plus près du disque
+  return catchPoint(p) || [...inSpot(disc.ex, disc.ey), false];   // sinon il attend au bord du terrain, au plus près du disque
 }
 // « attaque cet espace » : le coéquipier IA le plus proche coupe vers le point demandé
 function callFor(h, x, y) {

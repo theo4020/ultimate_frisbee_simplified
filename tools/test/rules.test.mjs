@@ -232,6 +232,17 @@ export default async function (t, { quick }) {
   t.ok(td.msgs.slice(0, 3).join() === 'Passe dans 3…,Passe dans 2…,Passe dans 1…' && td.msgs.some(m => /PLONGE/.test(m)), 'compte à rebours, puis le signal « PLONGE ! »', td.msgs);
   t.ok(td.done && td.lblock, 'plonger au signal contre la passe (layout block)', td);
 
+  t.group('Lecture du jeu commune (predict.js)');
+  const pr = R(`(() => { const d = TEAMS[1][0]; Object.assign(d, { x: 50, y: 18, vx: 0, vy: 0 }); const r = {
+    arms: touchTime(d, 50.5, 18, 1.5, 0.2), high: touchTime(d, 52, 18, 4, 0.2), jumpOnly: touchTime(d, 54, 18, 2.5, 0.2), stand: touchTime(d, 54, 18, 2, 0.2),
+    dive: touchTime(d, 53, 18, 1.2, 0), run: reachTime(d, 53, 18, SPD.sprint * aiLvl(1).speed, ARM_R) };
+    const a = TEAMS[0][1]; Object.assign(a, { x: 40, y: 18, vx: 0, vy: 0 }); r.recv = recvTime(a, 50, 18); r.guard = guardTime(d, 40, 18);
+    return r; })()`);
+  t.ok(pr.arms < 0 && pr.high === Infinity, 'disque dans les bras : déjà touché ; trop haut : impossible', pr);
+  t.ok(pr.jumpOnly > pr.stand + 0.3, 'seulement en sautant : moins sûr que debout', pr);
+  t.ok(pr.dive < pr.run, 'disque bas : le plongeon arrive avant la course', pr);
+  t.ok(pr.recv > 1 && pr.recv < 3 && pr.guard > 1, 'courses réalistes (accélération comprise)', pr);
+
   t.group('Joystick : lâcher pour s’arrêter');
   const js = R(`(() => {
     const keepH = G.humans; G.humans = [{ id: 0, team: 0, sel: null }]; G.myId = 0; syncMe();

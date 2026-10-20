@@ -18,6 +18,7 @@ const FILES = [
   'js/humans.js',
   'js/teams.js',
   'js/wind.js',
+  'js/predict.js',
   'js/offense.js',
   'js/defense.js',
   'js/systems.js',
