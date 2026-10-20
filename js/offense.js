@@ -140,7 +140,7 @@ function bestCut(t, h, ax, ay, dir, open, cands, need) {
     for (let y = 2.5; y <= H - 2.5; y += 3.2) {
       if (busy.some(([cx, cy]) => dist(cx, cy, x, y) < 7)) continue;            // l'espace d'une autre coupe
       const lane = clamp(laneSlack(h, x, y, x, y, 0, opp, 'normal', undefined, aiLvl(t).misread), -1, 0.6);
-      if (lane < -0.4) continue;
+      if (lane < -0.4 && need > -50) continue;                 // (personne ne bouge : on coupe quand même, pour faire bouger la défense)
       let td = 1e9;
       for (const d of opp) { if (d === G.marker) continue; td = Math.min(td, guardTime(d, x, y)); }
       const gain = f * 0.14 - (f > 18 ? (1.7 - huckK) * 2 : 0) + (inScoreZone(t, x) ? 4 : 0) - (open * (y - ay) < -4 ? 0.8 : 0);   // deep : risqué (sauf équipes de hucks) ; côté break : passe plus dure
@@ -155,7 +155,7 @@ function bestCut(t, h, ax, ay, dir, open, cands, need) {
   }
   return best;
 }
-const cutReady = (p, t) => p.role === 'cutter' && !userControls(p) && (p.state === 'stack' || (p.state === 'clear' && p.wDone)) && G.gt - (p.cutEnd || -9) > 0.6;
+const cutReady = (p, t, restless) => p.role === 'cutter' && !userControls(p) && (p.state === 'stack' || (p.state === 'clear' && (p.wDone || restless))) && G.gt - (p.cutEnd || -9) > (restless ? 0.3 : 0.6);
 function launchCut(b) {
   startCut(b.c, b.x, b.y, b.deep);
   G.cutIdle = 0; G.lastCutAt = G.gt;
@@ -194,23 +194,25 @@ function runCutSequencer(t, ax, ay, dir, open, form, dt) {
   refreshRoles(t, disc.holder);                             // rôles selon la position du moment
   const ord = G.order[t];
   const running = ord.filter(p => p.state === 'jab' || p.state === 'cut').length;
-  if (running >= (G.stall > 4 || G.holdT > 2.5 ? 2 : 1)) return;   // le porteur attend : une deuxième coupe part             // une coupe à la fois ; deux quand le compte presse
+  G.noRun = running ? 0 : (G.noRun || 0) + 0.25;            // depuis combien de temps personne ne coupe
+  if (running >= (G.stall > 4 || G.holdT > 2.5 ? 2 : 1)) return;
+  const restless = G.noRun >= 0.25;                          // personne ne bouge depuis un moment : quelqu'un repart, même vers une option moyenne   // le porteur attend : une deuxième coupe part             // une coupe à la fois ; deux quand le compte presse
   // consignes « quand couper » : jamais, juste après une réception (voir continuationCut), quand le stall monte,
   // à son tour (seul le premier poste « à son tour » prêt, dans l'ordre des postes)
   let turn = false;
   const flow = flowOf(t);
   const ready = ord.filter(p => {
-    if (!cutReady(p, t)) return false;
+    if (!cutReady(p, t, restless)) return false;
     const sl = cutterSlot(p, t, ax, ay, dir, form);
     // structuré : on se replace d'abord ; mais si le porteur attend déjà depuis un moment, on coupe d'où l'on est
-    if (!flow && dist(p.x, p.y, sl.x, sl.y) > CUT_FROM && G.holdT < 1.2 && G.stall < 3) return false;
+    if (!flow && !restless && dist(p.x, p.y, sl.x, sl.y) > CUT_FROM && G.holdT < 1.2 && G.stall < 3) return false;
     const w = posteOf(p).when;
     if (w === 'never' || w === 'catch' || (w === 'stall' && G.stall < 4.5)) return false;
     if (w === 'turn') { if (turn) return false; turn = true; }
     return true;
   });
   if (!ready.length) return;
-  const need = 3.4 - G.cutIdle * 1.2 - G.stall * 0.25;      // plus on attend, moins on est exigeant
+  const need = restless ? -99 : 3.4 - G.cutIdle * 1.2 - G.stall * 0.25;   // plus on attend, moins on est exigeant
   const b = bestCut(t, disc.holder, ax, ay, dir, open, ready, need);
   if (b) launchCut(b);
 }
@@ -299,7 +301,7 @@ function attackerAI(p, t, ax, ay, dir, open, form, dt) {
       break;
     case 'cut':
       p.tx = p.cx; p.ty = p.cy; p.sp = p.tag === '★' ? 8.4 : SPD.cut;      // le coupeur du huck a un départ lancé
-      if (p.timer <= 0 || dist(p.x, p.y, p.cx, p.cy) < 0.8) { p.state = 'hold'; p.timer = 0.6; p.cutEnd = G.gt; }
+      if (p.timer <= 0 || dist(p.x, p.y, p.cx, p.cy) < 0.8) { p.state = 'hold'; p.timer = 0.45; p.cutEnd = G.gt; }
       break;
     case 'hold':                                                    // arrivé : il se montre un instant, puis laisse la place
       p.tx = p.cx; p.ty = p.cy; p.sp = 1.5;
