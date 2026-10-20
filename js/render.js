@@ -221,8 +221,24 @@ function arrow(x1, y1, x2, y2, color) {
 
 // inclinaison du disque en vol (rad) : donnée au lâcher par la courbe, la même du début à la fin du vol
 const discBank = () => (disc.mode === 'air' && !disc.pull ? clamp(disc.curveV || 0, -1, 1) * 0.6 : 0);
-// vue inclinée : le disque reste penché du même angle pendant tout le vol (celui donné par la courbe au lâcher)
-const discTilt = () => discBank() * Math.sign((disc.ex - disc.sx) || 1);
+// le disque (rayon R, centré en sx, sy) vu de la caméra : un cercle penché autour de sa direction de vol, du côté
+// intérieur de la courbe (celui vers lequel il tourne), du même angle tout le vol. Vu de la tribune, une courbe qui
+// s'éloigne puis revient montre le dessus du disque (il paraît plus à plat) ; dans l'autre sens, sa tranche (plus penché).
+function discShape(sx, sy, R, iso) {
+  let tx = disc.ex - disc.sx, ty = disc.ey - disc.sy; const tl = Math.hypot(tx, ty) || 1; tx /= tl; ty /= tl;
+  let qx = disc.cx - (disc.sx + disc.ex) / 2, qy = disc.cy - (disc.sy + disc.ey) / 2; const ql = Math.hypot(qx, qy);
+  const b = disc.mode === 'air' ? discBank() : 0, ix = ql > 0.01 ? -qx / ql : 0, iy = ql > 0.01 ? -qy / ql : 0;   // vers l'intérieur de la courbe
+  const sb = Math.abs(Math.sin(b)), cb = Math.cos(b);
+  const n = [ix * sb, iy * sb, cb], a = [tx, ty, 0];            // normale du disque, et sa direction de vol (dans son plan)
+  const c = [n[1] * a[2] - n[2] * a[1], n[2] * a[0] - n[0] * a[2], n[0] * a[1] - n[1] * a[0]];   // 2e axe du plan du disque
+  const P = v => (iso ? [v[0], v[1] * isoK - v[2] * ISO_Z] : [v[0], v[1]]);
+  ctx.beginPath();
+  for (let k = 0; k <= 24; k++) {
+    const th = k / 24 * Math.PI * 2, v = [0, 1, 2].map(i => (Math.cos(th) * a[i] + Math.sin(th) * c[i]) * R), [px, py] = P(v);
+    if (k) ctx.lineTo(sx + px, sy + py); else ctx.moveTo(sx + px, sy + py);
+  }
+  ctx.closePath();
+}
 // vue inclinée : le disque à sa hauteur (en main, en l'air, levé pour une passe haute), son ombre au sol
 function drawIsoDisc(dx, dy, tell) {
   const z = disc.mode === 'air' ? disc.z : tell ? 2.6 : disc.mode === 'held' || disc.mode === 'carry' ? 0.7 : 0.05;   // en main : à hauteur des mains du personnage
@@ -246,7 +262,7 @@ function drawIsoDisc(dx, dy, tell) {
       ctx.fillText('↑ passe haute', sx, sy - S * 1.6);
     }
     const rd = 0.6 * S * (1 + Math.min(z, 6) * 0.05);
-    ctx.beginPath(); ctx.ellipse(sx, sy, rd * 1.3, rd * 0.65, discTilt(), 0, Math.PI * 2);   // vu de biais, penché comme sa trajectoire
+    discShape(sx, sy, rd * 1.3, true);                       // vu de biais, penché selon sa courbe
     ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 2; ctx.stroke();
   });
 }
@@ -495,8 +511,7 @@ function draw() {
       ctx.strokeStyle = heightColor(disc.z, 0.7); ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.moveTo(X(dx), Y(dy)); ctx.lineTo(X(dx), Y(dy) - lift); ctx.stroke();
     }
-    const dr = 0.5 * S * (1 + disc.z * 0.12), ta = Math.atan2(disc.ey - disc.sy, disc.ex - disc.sx);
-    ctx.beginPath(); ctx.ellipse(X(dx), Y(dy) - lift, dr, dr * Math.cos(discBank()), ta, 0, Math.PI * 2);   // penché selon sa courbe : vu d'en haut, il s'amincit
+    discShape(X(dx), Y(dy) - lift, 0.5 * S * (1 + disc.z * 0.12), false);   // penché selon sa courbe : vu d'en haut, il s'amincit
     ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5; ctx.stroke();
     }
   }

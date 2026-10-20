@@ -202,7 +202,7 @@ function update(dt) {
         const lunge = p === disc.mark && disc.t < MARK_LUNGE_T ? MARK_LUNGE : 0;   // la mark se fend vers le disque au lâcher
         const reach = diving ? DIVE_R : ARM_R + lunge, high = diving ? REACH_DIVE : REACH_STAND + lift;
         if (u > 0.03 && d < reach && disc.z < high && !disc.rolled.has(p)) blockers.push(p);
-      } else if (inField(disc.x, disc.y) && (p.dive > 0 ? (u > 0.3 && d < DIVE_R + 0.2 && disc.z < REACH_DIVE + 0.3) : (u > 0.45 && d < ARM_R + 0.2 && disc.z < REACH_STAND + 0.1 + lift))) {   // pas de réception tant que le disque est dehors
+      } else if (inField(disc.x, disc.y) && (u > 0.45 || dist(disc.x, disc.y, disc.sx, disc.sy) > 3) && (p.dive > 0 ? (d < DIVE_R + 0.2 && disc.z < REACH_DIVE + 0.3) : (d < ARM_R + 0.2 && disc.z < REACH_STAND + 0.1 + lift))) {   // pas de réception tant que le disque est dehors (ni dans les 3 premiers mètres)
         if (d < cd) { cd = d; catcher = p; }
       }
     }
