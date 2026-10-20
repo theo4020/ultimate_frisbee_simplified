@@ -221,6 +221,14 @@ function arrow(x1, y1, x2, y2, color) {
 
 // inclinaison du disque en vol (rad) : une passe courbée part penchée, et se redresse un peu en fin de vol
 const discBank = () => (disc.mode === 'air' && !disc.pull ? clamp(disc.curveV || 0, -1, 1) * 0.55 * (1 - 0.35 * disc.t / disc.dur) : 0);
+// vue inclinée : le disque suit la pente de sa trajectoire (nez vers le haut quand il monte, vers le bas quand il descend)
+function discTilt() {
+  if (disc.mode !== 'air') return 0;
+  const u = Math.min(0.995, disc.t / disc.dur), du = 0.02, a = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u), b = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u + du);
+  const dxs = X(b[0]) - X(a[0]), gl = Math.hypot(dxs, (Y(b[1]) - Y(a[1])) * isoK) || 1, dzs = (discZ(u + du) - discZ(u)) * S * ISO_Z;
+  const pitch = Math.atan2(dzs, gl) * (dxs < 0 ? 1 : -1);    // à l'écran, « vers le haut » = y négatif
+  return clamp(pitch, -1, 1) + discBank() * 0.4 * Math.sign(dxs || 1);
+}
 // vue inclinée : le disque à sa hauteur (en main, en l'air, levé pour une passe haute), son ombre au sol
 function drawIsoDisc(dx, dy, tell) {
   const z = disc.mode === 'air' ? disc.z : tell ? 2.6 : disc.mode === 'held' || disc.mode === 'carry' ? 0.7 : 0.05;   // en main : à hauteur des mains du personnage
@@ -244,7 +252,7 @@ function drawIsoDisc(dx, dy, tell) {
       ctx.fillText('↑ passe haute', sx, sy - S * 1.6);
     }
     const rd = 0.6 * S * (1 + Math.min(z, 6) * 0.05);
-    ctx.beginPath(); ctx.ellipse(sx, sy, rd * 1.3, rd * 0.65, discBank() * Math.sign((disc.ex - disc.sx) || 1), 0, Math.PI * 2);   // vu de biais, penché selon sa courbe
+    ctx.beginPath(); ctx.ellipse(sx, sy, rd * 1.3, rd * 0.65, discTilt(), 0, Math.PI * 2);   // vu de biais, penché comme sa trajectoire
     ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 2; ctx.stroke();
   });
 }
@@ -399,11 +407,17 @@ function draw() {
     for (const p of players) {
       rings(p);
       const o = O.get(p);
-      if (o.lying) { ctx.globalAlpha = p.down > 0 ? 0.6 : 1; drawBody(p, X(p.x), Y(p.y), r * 1.06, o.face, o); ctx.globalAlpha = 1; }
+      if (o.lying && !(p.dive > 0)) { ctx.globalAlpha = p.down > 0 ? 0.6 : 1; drawBody(p, X(p.x), Y(p.y), r * 1.06, o.face, o); ctx.globalAlpha = 1; }   // au sol
     }
     inScreen(() => {
       for (const p of players.slice().sort((a, b) => a.y - b.y)) {   // du fond vers le devant
-        const o = O.get(p); if (o.lying) continue;
+        const o = O.get(p);
+        if (o.lying) {                                       // en plein plongeon : il part à hauteur de taille et tombe vers le sol
+          if (!(p.dive > 0)) continue;
+          const z = 0.95 * Math.pow(Math.max(0, p.dive / DIVE_T), 0.7);
+          ctx.save(); ctx.translate(X(p.x), IY(p.y, z)); ctx.scale(1, isoK); drawBody(p, 0, 0, r * 1.06, o.face, o); ctx.restore();
+          continue;
+        }
         const [lx, ly] = pivLean(p), z = o.jl + celebrateHop(p) * 0.6;
         drawChibi(p, X(p.x + lx), IY(p.y + ly, z), r * 0.95, o.face, o);
       }
