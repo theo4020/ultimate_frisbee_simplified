@@ -12,6 +12,8 @@ function assignMan(defT, h) {
   }
 }
 
+// zone (cup) : places relatives au disque, en m (f = vers la profondeur, s = côté open ; négatif = côté fermé)
+const ZONE = { cupF: 4, cupOpen: 4.5, cupClosed: 3.5, cupPull: 0.45, cupReach: 13, deepMin: 16, deepBehind: 3, midF: [6, 21], midIdle: 12 };
 function zoneSlots(defT, ax, ay, dir, closed) {
   if (defFormOf(defT) === 'mix') return mixSlots(dsysOf(defT), defT, ax, ay, dir, closed);
   if (defFormOf(defT) === 'clam') return clamSlots(defT, ax, ay, dir, closed);
@@ -19,28 +21,28 @@ function zoneSlots(defT, ax, ay, dir, closed) {
   s[0] = { x: ax + dir * 1.0, y: ay + closed * 1.3 };                       // marqueur
   let deepA = null, dd = -1e9;
   for (const a of atk) { const dep = dir * (a.x - ax); if (dep > dd) { dd = dep; deepA = a; } }
-  const deepDepth = Math.max(16, dd + 3);                                   // 3 m derrière l'attaquant le plus profond
+  const deepDepth = Math.max(ZONE.deepMin, dd + ZONE.deepBehind);           // derrière l'attaquant le plus profond
   s[1] = { x: ax + dir * deepDepth, y: H / 2 * 0.4 + (deepA ? deepA.y : H / 2) * 0.6 };   // arrière
-  s[2] = { x: ax + dir * 4, y: ay + open * 4.5 };                          // cup côté ouvert
-  s[3] = { x: ax + dir * 4, y: ay - open * 3.5 };                          // cup côté fermé
+  s[2] = { x: ax + dir * ZONE.cupF, y: ay + open * ZONE.cupOpen };         // cup côté ouvert
+  s[3] = { x: ax + dir * ZONE.cupF, y: ay - open * ZONE.cupClosed };       // cup côté fermé
   for (const k of [2, 3]) {                                                 // le cup se décale vers la passe courte la plus proche
     const side = k === 2 ? open : -open;
-    let tgt = null, bd = 13;
+    let tgt = null, bd = ZONE.cupReach;
     for (const a of atk) {
       if (a === disc.holder) continue;
       const dep = dir * (a.x - ax), lat = (a.y - ay) * side;
       const dd = Math.hypot(dep, a.y - ay);
       if (dep > -3 && lat > -1 && dd < bd) { bd = dd; tgt = a; }
     }
-    if (tgt) { s[k].x = ax + (tgt.x - ax) * 0.45; s[k].y = ay + (tgt.y - ay) * 0.45; }
+    if (tgt) { s[k].x = ax + (tgt.x - ax) * ZONE.cupPull; s[k].y = ay + (tgt.y - ay) * ZONE.cupPull; }
   }
   let midA = null, best = 1e9;                                              // milieu : l'attaquant le plus dangereux au centre
   for (const a of atk) {
     if (a === disc.holder) continue;
     const dep = dir * (a.x - ax);
-    if (dep > 6 && dep < 21) { const sc = Math.abs(a.y - H / 2) + Math.abs(dep - 12) * 0.5; if (sc < best) { best = sc; midA = a; } }
+    if (dep > ZONE.midF[0] && dep < ZONE.midF[1]) { const sc = Math.abs(a.y - H / 2) + Math.abs(dep - ZONE.midIdle) * 0.5; if (sc < best) { best = sc; midA = a; } }
   }
-  s[4] = midA ? { x: midA.x - dir * 1, y: midA.y * 0.7 + ay * 0.3 } : { x: ax + dir * 12, y: H / 2 * 0.5 + ay * 0.5 };
+  s[4] = midA ? { x: midA.x - dir * 1, y: midA.y * 0.7 + ay * 0.3 } : { x: ax + dir * ZONE.midIdle, y: H / 2 * 0.5 + ay * 0.5 };
   return keepOutOfCircle(s, ax, ay, defT);
 }
 // Clam : la mark, deux « pinces » devant le disque (under cuts côté open et au centre), deux deep qui se partagent la largeur
@@ -175,12 +177,13 @@ function defenseBrain(defT, dt) {
   const dir = dirOf(1 - defT);
   // 1) changement : deux défenseurs qui se croisent échangent leurs attaquants si c'est nettement plus court
   const canSwap = d => !mix || (d.mission && d.mission.type === 'man' && d.mission.P.swap === 'oui');
-  if ((man || mix) && Math.random() < k) {
+  //    (une bonne lecture voit l'échange plus tôt : il suffit qu'il fasse gagner moins de terrain)
+  if (man || mix) {
     for (const d1 of dfn) for (const d2 of dfn) {
       if (d1 === d2 || !d1.match || !d2.match || d1.match === h || d2.match === h || !canSwap(d1) || !canSwap(d2) || dist(d1.x, d1.y, d2.x, d2.y) > 6) continue;
       const now = dist(d1.x, d1.y, d1.match.x, d1.match.y) + dist(d2.x, d2.y, d2.match.x, d2.match.y);
       const sw = dist(d1.x, d1.y, d2.match.x, d2.match.y) + dist(d2.x, d2.y, d1.match.x, d1.match.y);
-      if (sw < now - 5) { const a = d1.match; d1.match = d2.match; d2.match = a; }
+      if (sw < now - (4 + (1 - k) * 4)) { const a = d1.match; d1.match = d2.match; d2.match = a; }
     }
   }
   // 2) passe probable : l'attaquant le plus dangereux (ligne de passe ouverte, terrain gagné, défenseur loin)
@@ -214,6 +217,22 @@ function defenseBrain(defT, dt) {
 // Où un défenseur peut-il couper la trajectoire avant le disque ? (lecture du jeu commune, predict.js)
 const bestIntercept = firstTouch;
 
+// ---------- gestes de base, communs à l'individuelle, à la zone et à la défense perso ----------
+// double team : juste hors du cercle de stall, côté open (un 2e défenseur dans le cercle serait sanctionné)
+function doubleSpot(dir, open) { const k = (STALL_R + 0.7) / Math.hypot(0.6, 1); return [disc.x + dir * 0.6 * k, disc.y + open * k]; }
+// aide : il quitte un peu son joueur pour fermer la ligne vers l'attaquant libre (B = lecture collective)
+function helpSpot(d, B, dir, lean, k) {
+  const a = d.match, ant = aiLvl(d.team).anticip;
+  const ox = a ? a.x + a.vx * ant + dir * 0.4 : d.tx, oy = a ? a.y + a.vy * ant + lean : d.ty, w = B.help.w * (k || 1);
+  return [ox + (B.help.x - ox) * w, oy + (B.help.y - oy) * w];
+}
+// passe probable vers son joueur : il se glisse dans la ligne de passe (individuelle) / vers le receveur (zone)
+function lineShift(d, R, k) {
+  if (disc.holder) { const lx = disc.holder.x - d.tx, ly = disc.holder.y - d.ty, l = Math.hypot(lx, ly) || 1; d.tx += lx / l * 1.4 * k; d.ty += ly / l * 1.4 * k; }
+}
+function zoneShift(d, R, k) { d.tx += (R.x - d.tx) * k; d.ty += (R.y - d.ty) * k; }
+const brainOf = d => (G.dB && G.dB.team === d.team ? G.dB : null);
+
 function defenderAI(d, ax, ay, dir, closed, form, slots) {
   const open = -closed;
   const lean = forceOf(d.team) === 'straight' ? 0 : open;     // straight up : la mark ne ferme aucun côté, personne ne penche d'un côté
@@ -234,8 +253,7 @@ function defenderAI(d, ax, ay, dir, closed, form, slots) {
       d.tx = s.x; d.ty = clamp(s.y + (form !== 'man' ? (s.y > H / 2 ? -7 : 7) : 0), 1, H - 1); return;
     }
     if (DP.type === 'double' && disc.mode === 'held') {            // juste hors du cercle, côté open
-      const k = (STALL_R + 0.7) / Math.hypot(0.6, 1);
-      d.tx = clamp(disc.x + dir * 0.6 * k, 0.5, W - 0.5); d.ty = clamp(disc.y + open * k, 0.5, H - 0.5); d.react = 0.1; return;
+      const [x, y] = doubleSpot(dir, open); d.tx = clamp(x, 0.5, W - 0.5); d.ty = clamp(y, 0.5, H - 0.5); d.react = 0.1; return;
     }
   }
   if (form === 'mix') mixDefender(d, ax, ay, dir, open, slots);
@@ -245,26 +263,19 @@ function defenderAI(d, ax, ay, dir, closed, form, slots) {
     const marking = ((disc.mode === 'held' || disc.mode === 'carry') && disc.holder === a) || (disc.mode === 'ground' && G.pickup === a);
     if (marking) {                                          // marquage : côté fermé (ou devant en straight up)
       [d.tx, d.ty] = markSpot(d.team, disc.x, disc.y); d.react = 0.08;
-    } else if (G.dB && G.dB.team === d.team && G.dB.help && G.dB.help.d === d) {   // aide : il ferme la ligne vers l'attaquant libre
-      const H_ = G.dB.help, ant = aiLvl(d.team).anticip;
-      const ox = a.x + a.vx * ant + dir * 0.4, oy = a.y + a.vy * ant + lean;
-      d.tx = ox + (H_.x - ox) * H_.w; d.ty = oy + (H_.y - oy) * H_.w; d.react = Math.min(d.react, 0.1);
+    } else if (brainOf(d) && brainOf(d).help && brainOf(d).help.d === d) {   // aide : il ferme la ligne vers l'attaquant libre
+      [d.tx, d.ty] = helpSpot(d, brainOf(d), dir, lean); d.react = Math.min(d.react, 0.1);
     } else {                                                // on anticipe la course et on se place entre lui et l'espace qu'il veut
       const ant = aiLvl(d.team).anticip, px = a.x + a.vx * ant, py = a.y + a.vy * ant;
       [d.tx, d.ty] = manSpot(px, py, ax, ay, dir, lean);
-      const R = G.dB && G.dB.team === d.team && G.dB.read;
-      if (R && R.a === a && disc.holder) {                  // c'est lui que le porteur regarde : il se glisse dans la ligne de passe
-        const k = readK(d.team), lx = disc.holder.x - d.tx, ly = disc.holder.y - d.ty, l = Math.hypot(lx, ly) || 1;
-        d.tx += lx / l * 1.4 * k; d.ty += ly / l * 1.4 * k; d.react = Math.min(d.react, 0.12);
-      }
+      const R = brainOf(d) && brainOf(d).read;
+      if (R && R.a === a) { lineShift(d, R, readK(d.team)); d.react = Math.min(d.react, 0.12); }   // c'est lui que le porteur regarde
     }
   } else {
     const s = slots[d.zslot]; d.tx = s.x; d.ty = s.y;
     if (d.zslot === 0) d.react = 0.08;
-    const R = G.dB && G.dB.team === d.team && G.dB.read;   // zone : le plus proche de la passe probable se décale vers elle
-    if (R && d.zslot !== 0 && nearest(TEAMS[d.team].filter(q => q.zslot !== 0), R.x, R.y) === d) {
-      const k = readK(d.team) * 0.35; d.tx += (R.x - d.tx) * k; d.ty += (R.y - d.ty) * k;
-    }
+    const R = brainOf(d) && brainOf(d).read;               // zone : le plus proche de la passe probable se décale vers elle
+    if (R && d.zslot !== 0 && nearest(TEAMS[d.team].filter(q => q.zslot !== 0), R.x, R.y) === d) zoneShift(d, R, readK(d.team) * 0.35);
   }
   avoidDoubleTeam(d, form);
   d.tx = clamp(d.tx, 0.5, W - 0.5); d.ty = clamp(d.ty, 0.5, H - 0.5);
@@ -272,33 +283,22 @@ function defenderAI(d, ax, ay, dir, closed, form, slots) {
 
 // défense perso : la mission du défenseur (mark, individuelle, zone), la double team et l'aide
 function mixDefender(d, ax, ay, dir, open, slots) {
-  const M = d.mission || { type: 'zone', P: null }, B = G.dB && G.dB.team === d.team ? G.dB : null;
-  if (B && B.double === d && disc.mode === 'held') {        // double team : juste hors du cercle, côté open
-    const k = (STALL_R + 0.7) / Math.hypot(0.6, 1);
-    d.tx = disc.x + dir * 0.6 * k; d.ty = disc.y + open * k; d.react = 0.1; return;
-  }
+  const M = d.mission || { type: 'zone', P: null }, B = brainOf(d);
+  if (B && B.double === d && disc.mode === 'held') { [d.tx, d.ty] = doubleSpot(dir, open); d.react = 0.1; return; }   // double team
   if (M.type === 'mark') { [d.tx, d.ty] = markSpot(d.team, disc.x, disc.y); d.react = 0.08; return; }
   if (M.type === 'man' && d.match) {
     const a = d.match, ant = aiLvl(d.team).anticip;
-    if (B && B.help && B.help.d === d) {                      // aide : il ferme la ligne vers l'attaquant libre
-      const ox = a.x + a.vx * ant + dir * 0.4, oy = a.y + a.vy * ant;
-      d.tx = ox + (B.help.x - ox) * B.help.w; d.ty = oy + (B.help.y - oy) * B.help.w; d.react = Math.min(d.react, 0.1); return;
-    }
+    if (B && B.help && B.help.d === d) { [d.tx, d.ty] = helpSpot(d, B, dir, 0); d.react = Math.min(d.react, 0.1); return; }   // aide
     if (M.P.gap === 'serre') d.react = Math.min(d.react, 0.1);
     [d.tx, d.ty] = mixManSpot(M.P, a.x + a.vx * ant, a.y + a.vy * ant, ax, ay, dir, M.P.side === 'auto' && forceOf(d.team) === 'straight' ? 0 : open);
     const R = B && B.read;
-    if (R && R.a === a && disc.holder && M.P.side === 'auto') {   // c'est lui que le porteur regarde : il se glisse dans la ligne de passe
-      const k = readK(d.team), lx = disc.holder.x - d.tx, ly = disc.holder.y - d.ty, l = Math.hypot(lx, ly) || 1;
-      d.tx += lx / l * 1.4 * k; d.ty += ly / l * 1.4 * k;
-    }
+    if (R && R.a === a && M.P.side === 'auto') lineShift(d, R, readK(d.team));   // c'est lui que le porteur regarde
     return;
   }
   const s = slots[d.zslot] || slots[1]; d.tx = s.x; d.ty = s.y;   // zone
-  if (B && B.help && B.help.d === d) { d.tx += (B.help.x - d.tx) * B.help.w * 0.6; d.ty += (B.help.y - d.ty) * B.help.w * 0.6; return; }
+  if (B && B.help && B.help.d === d) { const a = d.match; d.match = null; [d.tx, d.ty] = helpSpot(d, B, dir, 0, 0.6); d.match = a; return; }   // zone : aide depuis sa place
   const R = B && B.read;
-  if (R && M.P && M.P.behave === 'shift' && nearest(TEAMS[d.team].filter(q => q.mission && q.mission.type === 'zone'), R.x, R.y) === d) {
-    const k = readK(d.team) * 0.35; d.tx += (R.x - d.tx) * k; d.ty += (R.y - d.ty) * k;
-  }
+  if (R && M.P && M.P.behave === 'shift' && nearest(TEAMS[d.team].filter(q => q.mission && q.mission.type === 'zone'), R.x, R.y) === d) zoneShift(d, R, readK(d.team) * 0.35);
 }
 // Placement en individuelle : toujours entre son joueur et le disque (sur la ligne de passe), à 1 à 2 m de lui,
 // en anticipant sa course, un peu côté open ; s'il est très loin devant, un peu plus en retrait pour ne pas se faire passer dans le dos.

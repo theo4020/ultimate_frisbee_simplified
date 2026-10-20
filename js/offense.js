@@ -291,16 +291,19 @@ function attackerAI(p, t, ax, ay, dir, open, form, dt) {
   switch (p.state) {
     case 'stack': [p.tx, p.ty] = leaveSpace(p, t, slot.x, slot.y); p.sp = hustle(p, SPD.jog); break;
     case 'park': p.tx = p.cx; p.ty = p.cy; p.sp = p.sprintPark ? SPD.cut : SPD.jog + 1; break;
-    case 'jab':
+    // une coupe se termine sur des événements (feinte faite, arrivée, disque parti ailleurs) ; les minuteries ne sont que
+    // des plafonds de sécurité
+    case 'jab':                                                     // feinte : un pas dans l'autre sens
       p.tx = p.wx; p.ty = p.wy; p.sp = SPD.cut * 0.8;
-      if (p.timer <= 0) { p.state = 'cut'; p.timer = Math.max(2.4, dist(p.x, p.y, p.cx, p.cy) / SPD.cut + 0.6); }
+      if (p.timer <= 0 || dist(p.x, p.y, p.wx, p.wy) < 0.6) { p.state = 'cut'; p.timer = dist(p.x, p.y, p.cx, p.cy) / SPD.cut + 1.2; }
       break;
     case 'cut':
       p.tx = p.cx; p.ty = p.cy; p.sp = p.tag === '★' ? 8.4 : SPD.cut;      // le coupeur du huck a un départ lancé
-      if (p.timer <= 0 || dist(p.x, p.y, p.cx, p.cy) < 0.8) { p.state = 'hold'; p.timer = 0.7; p.cutEnd = G.gt; }
+      if (p.timer <= 0 || dist(p.x, p.y, p.cx, p.cy) < 0.8) { p.state = 'hold'; p.timer = 0.6; p.cutEnd = G.gt; }
       break;
-    case 'hold':
+    case 'hold':                                                    // arrivé : il se montre un instant, puis laisse la place
       p.tx = p.cx; p.ty = p.cy; p.sp = 1.5;
+      if (disc.mode === 'held' && disc.holder && disc.holder.team === t && G.holdT < 0.3) p.timer = 0;   // le disque a changé de main : il libère l'espace
       if (p.timer <= 0) {
         const after = posteOf(p).after;
         if (p.sysStay || after === 'chain') { p.state = 'park'; p.cx = p.x; p.cy = p.y; p.sysStay = false; p.sysCut = false; break; }   // il enchaîne depuis ici
@@ -315,11 +318,11 @@ function attackerAI(p, t, ax, ay, dir, open, form, dt) {
         } else p.wDone = true;
       }
       break;
-    case 'clear':
+    case 'clear':                                                   // il dégage, puis rejoint sa place (le stack le reprend à l'arrivée)
       p.sp = hustle(p, SPD.jog + 1.5);
       if (!p.wDone) { p.tx = p.wx; p.ty = p.wy; if (dist(p.x, p.y, p.wx, p.wy) < 1.5) p.wDone = true; }
       else { [p.tx, p.ty] = leaveSpace(p, t, slot.x, slot.y); if (dist(p.x, p.y, slot.x, slot.y) < 1.5) p.state = 'stack'; }
-      if (p.timer <= 0) p.state = 'stack';
+      if (p.timer <= 0) p.state = 'stack';                          // plafond
       break;
   }
   if (p.state !== 'cut' && p.state !== 'jab') roomAroundHolder(p);

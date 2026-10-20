@@ -326,8 +326,7 @@ function aiJumps(u) {
       if (p === disc.thrower || p.jumpTried || controllerOf(p) && userControls(p)) continue;
       if (dist(p.x, p.y, disc.ex, disc.ey) > 1.8) continue;
       if (nearestD(TEAMS[1 - p.team], disc.ex, disc.ey)[1] > 2.2) continue;
-      p.jumpTried = true;
-      if (Math.random() < (p.team === disc.team ? 0.6 : aiLvl(p.team).block)) jumpTo(p);
+      p.jumpTried = true; jumpTo(p);                         // duel à l'arrivée : il saute (sa détente dépend de son niveau)
     }
   }
   const t2 = disc.t + JUMP_PREP + JUMP_T * 0.5, u2 = t2 / disc.dur;
@@ -341,9 +340,7 @@ function aiJumps(u) {
     const mine = p.team === disc.team;
     if (!mine && disc.t < 0.2 * aiLvl(p.team).react) continue;       // un défenseur ne saute pas avant d'avoir vu le lancer
     if (dist(p.x, p.y, x2, y2) > (mine ? ARM_R + 0.2 : ARM_R) + 0.4) continue;
-    p.jumpTried = true;
-    const L = aiLvl(p.team);
-    if (Math.random() < (mine ? 0.75 : L.block + 0.15)) jumpTo(p);
+    p.jumpTried = true; jumpTo(p);                           // le disque passe juste au-dessus de lui : il saute
   }
 }
 
@@ -367,7 +364,8 @@ function markReads(dt) {
     if (!G.nextGuess) G.nextGuess = G.time + rand(0.1, 0.5);
     if (G.time >= G.nextGuess) {
       G.nextGuess = G.time + rand(0.7, 1.6);
-      if (Math.random() < aiLvl(mk.team).block * 0.8) mk.jumpAt = G.time + rand(0, 0.5);
+      const L = aiLvl(mk.team);                              // duel de devinette : une mark qui lit bien tente plus souvent sa chance
+      if (Math.random() < (L.k ? 0.3 + 0.5 * L.k.read : 0.6)) mk.jumpAt = G.time + rand(0, 0.5);
     }
   }
   G.tellSeen = tell;
