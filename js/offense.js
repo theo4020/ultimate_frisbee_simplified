@@ -272,7 +272,8 @@ function attackerAI(p, t, ax, ay, dir, open, form, dt) {
     p.tx = s.x - dir * 2; p.ty = clamp(s.y + open * 7, 2, H - 2); p.sp = hustle(p, SPD.jog); roomAroundHolder(p); return;
   }
   if (p.role === 'dump') {
-    const S = p.poste && osysOf(t), s = S ? sysSpot(S, p, ax, ay, dir, open) : dumpSlot(ax, ay, dir, p.hIdx === 1 ? -open : open);   // relais (côté fermé) ou swing (côté open) ; formation perso : sa place
+    // relais : du côté où il y a le plus de terrain (le second handler prend l'autre côté) ; formation perso : sa place
+    const big = ay < H / 2 ? 1 : -1, S = p.poste && osysOf(t), s = S ? sysSpot(S, p, ax, ay, dir, open) : dumpSlot(ax, ay, dir, p.hIdx === 1 ? big : -big);
     if (p.state === 'set') {
       p.tx = s.x; p.ty = s.y; p.sp = SPD.jog + 1;
       if (disc.mode === 'held' && G.stall > 4.5 && p.timer <= 0 && p.hIdx !== 1 && posteOf(p).when !== 'never') {   // compte élevé : le relais vient chercher le disque
