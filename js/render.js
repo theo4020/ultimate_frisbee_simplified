@@ -175,9 +175,37 @@ function groundT() {
 }
 function screenT() { ctx.setTransform(dpr, 0, 0, dpr, 0, 0); isoText = false; }
 function inScreen(fn) { const t = isoText; ctx.save(); screenT(); try { fn(); } finally { ctx.restore(); isoText = t; } }
-// joueurs en vue inclinée : le même petit personnage (style chibi) que vu de dessus, dressé au-dessus de son ombre
-const isoU = () => S * 0.95;
-const isoFace = f => Math.atan2(Math.sin(f) * isoK, Math.cos(f));   // direction du regard, vue de biais
+// joueurs en vue inclinée : le même personnage chibi que vu de dessus (maillot arrondi aux couleurs de l'équipe,
+// grosse tête, cheveux, bras courts), vu de face ou de dos selon où il regarde ; (sx, sy) = ses pieds à l'écran
+function drawChibi(p, sx, sy, r, face, o) {
+  const k = (p.team * 5 + p.i) % 5, u = r * (o.scale || 1), sw = o.swing || 0;
+  const fx = Math.cos(face), back = Math.sin(face) < -0.25;   // il regarde vers le fond : on le voit de dos
+  const light = (G.teams[p.team] || {}).color === 'blanc' || (G.teams[p.team] || {}).color === 'jaune';
+  ctx.save(); ctx.lineCap = 'round';
+  ctx.strokeStyle = '#1e293b'; ctx.lineWidth = Math.max(2, u * 0.26);                 // jambes courtes
+  ctx.beginPath(); ctx.moveTo(sx - u * 0.22, sy - u * 0.35); ctx.lineTo(sx - u * 0.24 - sw * u * 0.14, sy - u * 0.05);
+  ctx.moveTo(sx + u * 0.22, sy - u * 0.35); ctx.lineTo(sx + u * 0.24 + sw * u * 0.14, sy - u * 0.05); ctx.stroke();
+  const arm = (ax, ay, bx, by) => { ctx.strokeStyle = SKIN[k]; ctx.lineWidth = Math.max(2, u * 0.26); ctx.beginPath(); ctx.moveTo(sx + ax * u, sy - ay * u); ctx.lineTo(sx + bx * u, sy - by * u); ctx.stroke(); };
+  if (o.jumping) { arm(-0.45, 0.95, -0.6, 1.75); arm(0.45, 0.95, 0.6, 1.75); }      // bras levés
+  else if (o.throwing) { arm(-0.45 * fx, 0.9, -0.62 * fx, 0.55); arm(0.45 * fx, 0.9, 1.05 * fx, 0.85); }
+  else { arm(-0.48, 0.9, -0.62 - sw * 0.2, 0.5); arm(0.48, 0.9, 0.62 + sw * 0.2, 0.5); }
+  ctx.fillStyle = tcol(p.team); ctx.strokeStyle = tdark(p.team); ctx.lineWidth = 2;   // maillot arrondi
+  roundRectPath(sx - u * 0.52, sy - u * 1.18, u * 1.04, u * 0.86, u * 0.4); ctx.fill(); ctx.stroke();
+  if (u >= 8) {                                              // numéro (dans le dos, ou sur le ventre)
+    ctx.fillStyle = light ? 'rgba(15,23,42,.75)' : 'rgba(255,255,255,.9)'; ctx.font = `800 ${Math.round(u * 0.5)}px system-ui`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(p.i + 1), sx, sy - u * 0.74); ctx.textBaseline = 'alphabetic';
+  }
+  const hy = sy - u * 1.62, hr = u * 0.56;                   // grosse tête
+  ctx.fillStyle = SKIN[k]; circle(sx, hy, hr); ctx.fill();
+  ctx.fillStyle = HAIR[k];
+  if (back) { circle(sx, hy - u * 0.04, hr * 0.98); ctx.fill(); }                    // de dos : les cheveux
+  else {
+    ctx.beginPath(); ctx.arc(sx, hy - u * 0.05, hr * 1.0, Math.PI * 1.05, Math.PI * 1.95); ctx.closePath(); ctx.fill();
+    const ex = sx + fx * hr * 0.32, ey = hy + hr * 0.12;     // les yeux, tournés vers où il regarde
+    ctx.fillStyle = '#0f172a'; circle(ex - hr * 0.25, ey, Math.max(1, hr * 0.11)); ctx.fill(); circle(ex + hr * 0.25, ey, Math.max(1, hr * 0.11)); ctx.fill();
+  }
+  ctx.restore();
+}
 function arrow(x1, y1, x2, y2, color) {
   ctx.save(); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 2; ctx.setLineDash([5, 5]);
   ctx.beginPath(); ctx.moveTo(X(x1), Y(y1)); ctx.lineTo(X(x2), Y(y2)); ctx.stroke(); ctx.setLineDash([]);
@@ -190,7 +218,7 @@ function arrow(x1, y1, x2, y2, color) {
 
 // vue inclinée : le disque à sa hauteur (en main, en l'air, levé pour une passe haute), son ombre au sol
 function drawIsoDisc(dx, dy, tell) {
-  const z = disc.mode === 'air' ? disc.z : tell ? 2.3 : disc.mode === 'held' || disc.mode === 'carry' ? 1.05 : 0.05;
+  const z = disc.mode === 'air' ? disc.z : tell ? 2.6 : disc.mode === 'held' || disc.mode === 'carry' ? 0.7 : 0.05;   // en main : à hauteur des mains du personnage
   if (disc.mode === 'air') {                                 // au sol : ombre et anneau coloré selon la hauteur
     ctx.fillStyle = 'rgba(0,0,0,.35)'; circle(X(dx), Y(dy), 0.5 * S); ctx.fill();
     ctx.strokeStyle = heightColor(disc.z, 0.95); ctx.lineWidth = 2.5; circle(X(dx), Y(dy), 1.05 * S); ctx.stroke();
@@ -368,7 +396,7 @@ function draw() {
       for (const p of players.slice().sort((a, b) => a.y - b.y)) {   // du fond vers le devant
         const o = O.get(p); if (o.lying) continue;
         const [lx, ly] = pivLean(p), z = o.jl + celebrateHop(p) * 0.6;
-        drawBody(p, X(p.x + lx), IY(p.y + ly, z) - r * 0.7, r * 1.06, isoFace(o.face), o);
+        drawChibi(p, X(p.x + lx), IY(p.y + ly, z), r * 0.95, o.face, o);
       }
     });
   }
@@ -395,7 +423,7 @@ function draw() {
 
   // Repères des plays
   ctx.font = `800 ${Math.max(11, S * 1.6)}px system-ui`; ctx.textAlign = 'center';
-  const headY = p => (iso ? IY(p.y, Math.max(0, jumpVis(p))) - r * 1.7 : Y(p.y) - r);   // au-dessus de la tête
+  const headY = p => (iso ? IY(p.y, Math.max(0, jumpVis(p))) - r * 2.2 : Y(p.y) - r);   // au-dessus de la tête
   const overHead = fn => (iso ? inScreen(fn) : fn());
   overHead(() => { for (const p of players) {
     if (!p.tag || hiddenFromMe(p.team)) continue;           // en ligne : on ne voit pas qui joue le play adverse
