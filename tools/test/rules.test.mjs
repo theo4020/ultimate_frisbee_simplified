@@ -220,7 +220,7 @@ export default async function (t, { quick }) {
     tutoStart(); tutoGo(TUTO_STEPS.findIndex(s => s.title === 'Plonger en défense'));
     const msgs = []; let last = '', cue = -1;
     for (let f = 0; f < 60 * 8 && !G.tuto.done; f++) {
-      Object.assign(G.pointer, { x: 50.5, y: 20.9, last: G.time, active: true });     // le joueur attend à sa place…
+      Object.assign(G.pointer, { x: 50.5, y: 20.5, last: G.time, active: true });     // le joueur attend à sa place…
       __tick(); tutoFrame(1 / 60);
       if (G.msg !== last) { last = G.msg; msgs.push(last); }
       if (cue < 0 && /PLONGE/.test(G.msg)) { cue = f; doDive(50, 18.5); }          // …et plonge au signal

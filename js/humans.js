@@ -135,10 +135,9 @@ function armedDive(p) {
 // plongeon simulé vers (x, y) en partant maintenant : plus petit écart au disque attrapable pendant le plongeon
 // (négatif = il l'attrape ; mêmes règles que sim.js : 2 m en plongeon, disque assez bas, dans le terrain)
 function diveMiss(p, x, y) {
-  let dx = x - p.x, dy = y - p.y; const l = Math.hypot(dx, dy) || 1; dx /= l; dy /= l;
-  const step = 1 / 60; let miss = 99;
+  const [vx, vy] = diveVel(p, x, y), step = 1 / 60; let miss = 99;
   for (let t = step; t <= DIVE_T + 1e-6; t += step) {
-    const u = (disc.t + t) / disc.dur, px = p.x + dx * SPD.dive * t, py = p.y + dy * SPD.dive * t;
+    const u = (disc.t + t) / disc.dur, px = p.x + vx * t, py = p.y + vy * t;
     if (u >= 1) { if (inField(disc.ex, disc.ey)) miss = Math.min(miss, dist(px, py, disc.ex, disc.ey) - 2.4); break; }   // il touche le sol en plongeant
     if (u <= 0.3 || discZ(u) >= REACH_DIVE + 0.3) continue;
     const [bx, by] = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u);

@@ -246,7 +246,7 @@ function defenderAI(d, ax, ay, dir, closed, form, slots) {
     const bi = bestIntercept(d);
     if (bi) {
       d.tx = bi.x; d.ty = bi.y; d.sp = SPD.sprint; d.react = 0.1;
-      if (!d.diveTried && bi.tA < 0.32 && bi.r > ARM_R + 0.3 && bi.r < diveReach()) { d.diveTried = true; diveTo(d, bi.x, bi.y); }   // trop loin pour les bras : layout
+      if (!d.diveTried && bi.tA < 0.32 && bi.r > ARM_R + 0.3 && bi.r < diveReach(Math.hypot(d.vx, d.vy))) { d.diveTried = true; diveTo(d, bi.x, bi.y); }   // trop loin pour les bras : layout
       return;
     }
     if ((form === 'man' || (form === 'mix' && d.mission && d.mission.type === 'man')) && d.match === disc.intended) { d.tx = disc.ex; d.ty = disc.ey; d.sp = SPD.sprint; return; }
@@ -341,10 +341,7 @@ function avoidDoubleTeam(d, form) {
 }
 function diveTo(p, x, y) {
   if (p.dive > 0 || p.down > 0 || p.jump > 0 || p.jprep > 0) return;
-  let dx = x - p.x, dy = y - p.y, l = Math.hypot(dx, dy);
-  if (l < 0.3) { dx = p.vx; dy = p.vy; l = Math.hypot(dx, dy); }
-  if (l < 0.01) { dx = 1; dy = 0; l = 1; }
-  p.vx = dx / l * SPD.dive; p.vy = dy / l * SPD.dive;
+  [p.vx, p.vy] = diveVel(p, x, y);
   p.dive = DIVE_T; G.stats.dives++;
   fxEvent('layout', p.x, p.y, p.team);
 }

@@ -6,7 +6,16 @@
 
 const SEE_T = 0.25;                                          // temps pour voir un lancer et réagir (s, × réaction du niveau)
 const JUMP_RISK = 0.45, DIVE_RISK = 0.12;                    // un contre en sautant ou en plongeon est moins sûr (s de marge)
-const diveReach = () => SPD.dive * DIVE_T + DIVE_R;          // distance couverte par un plongeon, bras compris
+// plongeon : il s'ajoute à l'élan — vitesse dans sa direction = élan dans cette direction + boost (au moins DIVE.min),
+// l'élan sur le côté est gardé
+function diveVel(p, x, y) {
+  let dx = x - p.x, dy = y - p.y, l = Math.hypot(dx, dy);
+  if (l < 0.3) { dx = p.vx || 0; dy = p.vy || 0; l = Math.hypot(dx, dy); }
+  if (l < 0.01) { dx = dirOf(p.team); dy = 0; l = 1; }
+  const ux = dx / l, uy = dy / l, along = (p.vx || 0) * ux + (p.vy || 0) * uy, sp = Math.max(DIVE.min, along + DIVE.boost);
+  return [(p.vx || 0) - along * ux + ux * sp, (p.vy || 0) - along * uy + uy * sp];
+}
+const diveReach = v => Math.max(DIVE.min, (v || 0) + DIVE.boost) * DIVE_T + DIVE_R;   // distance couverte par un plongeon lancé à v m/s, bras compris
 const seeT = p => SEE_T * aiLvl(p.team).react;
 
 // attaquant : temps pour être en position de recevoir en (x, y)
@@ -21,7 +30,7 @@ function touchTime(d, x, y, z, react) {
   if (dist(d.x, d.y, x, y) < ARM_R) return -0.6;
   let t = reachTime(d, x, y, v, ARM_R) + react;
   if (z > REACH_STAND) t += JUMP_RISK;                       // seulement en sautant
-  else if (z < REACH_DIVE) t = Math.min(t, reachTime(d, x, y, v, diveReach()) + DIVE_T + react + DIVE_RISK);   // layout
+  else if (z < REACH_DIVE) t = Math.min(t, reachTime(d, x, y, v, diveReach(v)) + DIVE_T + react + DIVE_RISK);   // layout
   return t;
 }
 // marge d'une trajectoire : pour chaque point du vol, le défenseur le plus rapide comparé au disque (s ; > 0 : passe sûre).
