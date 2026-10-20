@@ -7,6 +7,12 @@ const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 let S = 10, dpr = 1;
 const TOUCH_HUD = 26;                                      // hauteur du bandeau du haut sur écran tactile (px)
+// Vue inclinée (réglage « Vue », côté tribune) : le sol est vu en biais (aplati par isoK), les joueurs et le disque
+// se dressent au-dessus ; ISO_HEAD m de place en haut pour la hauteur des passes. La logique du jeu reste en 2D (mètres).
+let isoK = 0.62;                                           // aplatissement du sol : ajusté à l'écran (resize)
+const ISO_HEAD = 7, ISO_Z = 0.9;
+const isoView = () => typeof CTRL !== 'undefined' && CTRL.view === 'iso';
+const fieldH = () => (isoView() ? (H + 2 * M) * isoK + ISO_HEAD : H + 2 * M);   // hauteur du dessin, en m
 // Le terrain occupe toute la place disponible, en largeur comme en hauteur (utile sur téléphone en paysage)
 function resize() {
   const stage = canvas.parentElement, wrap = stage.parentElement;
@@ -19,8 +25,9 @@ function resize() {
     const others = [...wrap.children].filter(e => e !== stage && e.id !== 'hint').reduce((h, e) => h + e.offsetHeight, 0);
     availW = wrap.clientWidth; availH = window.innerHeight - others - 24;
   }
-  S = Math.max(3, Math.min(availW / (W + 2 * M), availH / (H + 2 * M)));
-  const w = (W + 2 * M) * S, h = (H + 2 * M) * S;
+  if (isoView()) isoK = clamp((availH / (availW / (W + 2 * M)) - ISO_HEAD) / (H + 2 * M), 0.5, 0.72);   // le terrain occupe la hauteur dispo
+  S = Math.max(3, Math.min(availW / (W + 2 * M), availH / fieldH()));
+  const w = (W + 2 * M) * S, h = fieldH() * S;
   dpr = window.devicePixelRatio || 1;
   canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
   canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
@@ -39,6 +46,8 @@ if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) documen
 //  Outils
 // =====================================================================
 const X = x => (x + M) * S, Y = y => (y + M) * S;
+// vue inclinée : point du terrain (x, y) à la hauteur z (m) → ordonnée à l'écran (px)
+const IY = (y, z) => Y(y) * isoK + ISO_HEAD * S - (z || 0) * S * ISO_Z;
 const rand = (a, b) => a + Math.random() * (b - a);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const dist = (a, b, c, d) => Math.hypot(c - a, d - b);

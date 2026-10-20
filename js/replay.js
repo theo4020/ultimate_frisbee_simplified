@@ -45,7 +45,8 @@ function drawReplay() {
   const R = G.replay, k = R.t / REPLAY.STEP, i = Math.min(R.frames.length - 2, Math.floor(k)), u = k - i;
   const A = R.frames[i], B = R.frames[i + 1];
   const cw = canvas.width / dpr, ch = canvas.height / dpr, r = 0.95 * S;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  screenT(); if (isoView()) { ctx.fillStyle = '#0b1220'; ctx.fillRect(0, 0, cw, ch); }
+  groundT();                                                // vue inclinée : le ralenti se joue au sol (vu de biais)
   drawField();
   const lerp = (a, b) => a + (b - a) * u;
   players.forEach((p, j) => {
@@ -67,6 +68,7 @@ function drawReplay() {
     ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5; ctx.stroke();
   }
   // bandeau « ralenti »
+  screenT();
   const fs = Math.max(13, S * 2);
   ctx.save();
   ctx.fillStyle = 'rgba(15,23,42,.75)'; ctx.fillRect(10, 10, fs * 7.2, fs * 1.9);

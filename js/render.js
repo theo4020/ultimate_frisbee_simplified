@@ -47,17 +47,23 @@ function heightColor(z, a) {
   return `rgba(${z < REACH_DIVE ? c[0] : z < REACH_STAND ? c[1] : z < REACH_STAND + JUMP_H ? c[2] : c[3]},${a})`;
 }
 function drawFlightPath(sx, sy, cx, cy, ex, ey, peak, u0, alpha, width, dash, kind, curve) {
-  const step = 0.025, len = dist(sx, sy, ex, ey);
-  ctx.save(); ctx.lineWidth = width; ctx.lineCap = 'round'; if (dash) ctx.setLineDash(dash);
-  let [px, py] = bez(sx, sy, cx, cy, ex, ey, u0);
+  const step = 0.025, len = dist(sx, sy, ex, ey), iso = isoView(), keep = isoText;
+  if (iso) {                                                 // vue inclinée : l'ombre de la trajectoire au sol…
+    ctx.save(); ctx.strokeStyle = `rgba(0,0,0,${0.22 * alpha})`; ctx.lineWidth = width; ctx.setLineDash([3, 4]); ctx.beginPath();
+    for (let u = u0; u <= 1.0001; u += step) { const [x, y] = bez(sx, sy, cx, cy, ex, ey, Math.min(1, u)); if (u === u0) ctx.moveTo(X(x), Y(y)); else ctx.lineTo(X(x), Y(y)); }
+    ctx.stroke(); ctx.restore();
+  }
+  ctx.save(); if (iso) screenT();                             // … et la trajectoire elle-même, à sa vraie hauteur
+  ctx.lineWidth = width; ctx.lineCap = 'round'; if (dash) ctx.setLineDash(dash);
+  const P = u => { const [x, y] = bez(sx, sy, cx, cy, ex, ey, Math.min(1, u)); return iso ? [X(x), IY(y, heightAt(Math.min(1, u), peak, kind, len, curve))] : [X(x), Y(y)]; };
+  let [px, py] = P(u0);
   for (let u = u0 + step; u <= 1.0001; u += step) {
-    const [x, y] = bez(sx, sy, cx, cy, ex, ey, Math.min(1, u));
-    const um = u - step / 2;
+    const [x, y] = P(u), um = u - step / 2;
     ctx.strokeStyle = heightColor(heightAt(um, peak, kind, len, curve), alpha);
-    ctx.beginPath(); ctx.moveTo(X(px), Y(py)); ctx.lineTo(X(x), Y(y)); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(x, y); ctx.stroke();
     px = x; py = y;
   }
-  ctx.restore();
+  ctx.restore(); isoText = keep;
 }
 function drawHeightLegend() {
   const fs = Math.max(9, S * 1.15), x0 = X(0.8), y0 = Y(0.8) + fs;
@@ -150,6 +156,49 @@ function drawBody(p, x, y, r, face, o) {
   ctx.restore();
 }
 function circle(x, y, r) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); }
+
+// ---------- vue inclinée (côté tribune) ----------
+// Le sol est dessiné avec une transformation qui l'aplatit (groundT) : tout ce qui est « au sol » marche sans changement.
+// Les textes sont redressés ; les joueurs debout, le disque en l'air et sa trajectoire sont dessinés à l'écran (screenT),
+// à leur hauteur réelle (IY).
+let isoText = false;
+const CTX_FILL = ctx.fillText;
+ctx.fillText = function (t, x, y, w) {
+  if (!isoText) return w === undefined ? CTX_FILL.call(this, t, x, y) : CTX_FILL.call(this, t, x, y, w);
+  this.save(); this.translate(x, y); this.scale(1, 1 / isoK);
+  if (w === undefined) CTX_FILL.call(this, t, 0, 0); else CTX_FILL.call(this, t, 0, 0, w);
+  this.restore();
+};
+function groundT() {
+  if (isoView()) { ctx.setTransform(dpr, 0, 0, dpr * isoK, 0, dpr * ISO_HEAD * S); isoText = true; }
+  else { ctx.setTransform(dpr, 0, 0, dpr, 0, 0); isoText = false; }
+}
+function screenT() { ctx.setTransform(dpr, 0, 0, dpr, 0, 0); isoText = false; }
+function inScreen(fn) { const t = isoText; ctx.save(); screenT(); try { fn(); } finally { ctx.restore(); isoText = t; } }
+const ISO_BODY = 1.35;                                       // les joueurs debout, un peu plus grands que nature (lisibilité)
+const isoU = (o) => S * ISO_Z * ISO_BODY * ((o && o.scale) || 1);
+// joueur debout vu de côté : jambes, bras, maillot (numéro), tête ; (x, y) au sol, z = hauteur des pieds (saut)
+function drawStanding(p, x, y, z, o) {
+  const u = isoU(o), sx = X(x), sy = IY(y, z), k = (p.team * 5 + p.i) % 5, sw = o.swing || 0, fx = Math.cos(o.face || 0) >= 0 ? 1 : -1;
+  const light = (G.teams[p.team] || {}).color === 'blanc' || (G.teams[p.team] || {}).color === 'jaune';
+  ctx.save(); ctx.lineCap = 'round';
+  ctx.strokeStyle = '#1f2937'; ctx.lineWidth = Math.max(1.5, u * 0.13);
+  ctx.beginPath(); ctx.moveTo(sx - u * 0.1, sy - u * 0.85); ctx.lineTo(sx - u * 0.13 - sw * u * 0.18, sy);
+  ctx.moveTo(sx + u * 0.1, sy - u * 0.85); ctx.lineTo(sx + u * 0.13 + sw * u * 0.18, sy); ctx.stroke();
+  const arm = (ax, ay, bx, by) => { ctx.strokeStyle = SKIN[k]; ctx.lineWidth = Math.max(1.5, u * 0.11); ctx.beginPath(); ctx.moveTo(sx + ax * u, sy - ay * u); ctx.lineTo(sx + bx * u, sy - by * u); ctx.stroke(); };
+  if (o.jumping) { arm(-0.25, 1.38, -0.35, 2.05); arm(0.25, 1.38, 0.35, 2.05); }
+  else if (o.throwing) { arm(-0.25 * fx, 1.38, -0.32 * fx, 0.95); arm(0.25 * fx, 1.38, 0.8 * fx, 1.25); }
+  else { arm(-0.25, 1.38, -0.33 - sw * 0.16, 0.92); arm(0.25, 1.38, 0.33 + sw * 0.16, 0.92); }
+  ctx.fillStyle = tcol(p.team); ctx.strokeStyle = tdark(p.team); ctx.lineWidth = 1.5;
+  roundRectPath(sx - u * 0.27, sy - u * 1.47, u * 0.54, u * 0.66, u * 0.14); ctx.fill(); ctx.stroke();
+  if (u >= 10) {
+    ctx.fillStyle = light ? 'rgba(15,23,42,.75)' : 'rgba(255,255,255,.9)'; ctx.font = `800 ${Math.round(u * 0.36)}px system-ui`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(p.i + 1), sx, sy - u * 1.13); ctx.textBaseline = 'alphabetic';
+  }
+  ctx.fillStyle = SKIN[k]; circle(sx, sy - u * 1.66, u * 0.17); ctx.fill();
+  ctx.fillStyle = HAIR[k]; ctx.beginPath(); ctx.arc(sx, sy - u * 1.69, u * 0.175, Math.PI, 0); ctx.fill();
+  ctx.restore();
+}
 function arrow(x1, y1, x2, y2, color) {
   ctx.save(); ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 2; ctx.setLineDash([5, 5]);
   ctx.beginPath(); ctx.moveTo(X(x1), Y(y1)); ctx.lineTo(X(x2), Y(y2)); ctx.stroke(); ctx.setLineDash([]);
@@ -160,6 +209,29 @@ function arrow(x1, y1, x2, y2, color) {
   ctx.restore();
 }
 
+// vue inclinée : le disque à sa hauteur (en main, en l'air, levé pour une passe haute), son ombre au sol
+function drawIsoDisc(dx, dy, tell) {
+  const z = disc.mode === 'air' ? disc.z : tell ? 2.3 : disc.mode === 'held' || disc.mode === 'carry' ? 1.05 : 0.05;
+  if (disc.mode === 'air') {                                 // au sol : ombre et anneau coloré selon la hauteur
+    ctx.fillStyle = 'rgba(0,0,0,.35)'; circle(X(dx), Y(dy), 0.5 * S); ctx.fill();
+    ctx.strokeStyle = heightColor(disc.z, 0.95); ctx.lineWidth = 2.5; circle(X(dx), Y(dy), 1.05 * S); ctx.stroke();
+  }
+  inScreen(() => {
+    const sx = X(dx), sy = IY(dy, z);
+    if (disc.mode === 'air' || tell) {                       // trait vertical jusqu'au sol : on lit la hauteur
+      ctx.strokeStyle = disc.mode === 'air' ? heightColor(disc.z, 0.6) : 'rgba(196,181,253,.8)'; ctx.lineWidth = 1.5; ctx.setLineDash([2, 3]);
+      ctx.beginPath(); ctx.moveTo(sx, IY(dy, 0)); ctx.lineTo(sx, sy); ctx.stroke(); ctx.setLineDash([]);
+    }
+    if (tell) {
+      ctx.strokeStyle = 'rgba(196,181,253,.95)'; ctx.lineWidth = 2.5; circle(sx, sy, 0.95 * S + Math.sin(G.time * 14) * 2); ctx.stroke();
+      ctx.font = `800 ${Math.max(10, S * 1.25)}px system-ui`; ctx.textAlign = 'center'; ctx.fillStyle = '#ddd6fe';
+      ctx.fillText('↑ passe haute', sx, sy - S * 1.6);
+    }
+    const rd = 0.5 * S * (1 + Math.min(z, 6) * 0.06);
+    ctx.beginPath(); ctx.ellipse(sx, sy, rd * 1.25, rd * 0.62, 0, 0, Math.PI * 2);   // un disque vu de biais
+    ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5; ctx.stroke();
+  });
+}
 function drawField() {
   const cw = canvas.width / dpr, ch = canvas.height / dpr;
   ctx.fillStyle = '#1a6b35'; ctx.fillRect(0, 0, cw, ch);
@@ -185,8 +257,13 @@ function drawField() {
   ctx.fillStyle = vg; ctx.fillRect(-20, -20, cw + 40, ch + 40);
 }
 function draw() {
-  const cw = canvas.width / dpr, ch = canvas.height / dpr;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const cw = canvas.width / dpr, ch = canvas.height / dpr, iso = isoView();
+  screenT();
+  if (iso) {                                                 // vue inclinée : au fond, la tribune d'en face
+    const g = ctx.createLinearGradient(0, 0, 0, ISO_HEAD * S); g.addColorStop(0, '#0b1220'); g.addColorStop(1, '#14301f');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, cw, ch);
+  }
+  groundT();
   drawField();
 
   drawStreaks();
@@ -260,7 +337,7 @@ function draw() {
     const u0 = Math.min(1, disc.t / disc.dur);
     drawFlightPath(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, discPeak(), u0, 0.7, 2.5, [5, 4], discKind(), disc.curveV);
   }
-  if (playing && (disc.mode === 'air' || (canThrow() && G.pointer.active))) drawHeightLegend();
+  if (playing && (disc.mode === 'air' || (canThrow() && G.pointer.active))) { if (iso) inScreen(drawHeightLegend); else drawHeightLegend(); }
 
   // Joueurs
   const r = 0.95 * S, swT = switchTarget(meH());
@@ -268,17 +345,7 @@ function draw() {
     const jl = Math.max(0, jumpVis(p)), [lx, ly] = pivLean(p);
     ctx.fillStyle = `rgba(0,0,0,${0.25 - jl * 0.08})`; circle(X(p.x + lx) + 2 + jl * 3, Y(p.y + ly) + 3 + jl * 3, r * (1 - jl * 0.15)); ctx.fill();
   }
-  for (const p of players) {
-    ctx.globalAlpha = p.down > 0 ? 0.6 : 1;
-    const jv = jumpVis(p), jl = Math.max(0, jv), crouch = jv < 0;   // saut : accroupi, puis il grossit et s'élève
-    const hop = celebrateHop(p) * S + jl * S * 0.9;              // (et saut de joie après un point)
-    const lying = p.dive > 0 || p.down > 0, face = lying ? (Math.atan2(p.vy, p.vx) || faceOf(p)) : faceOf(p);
-    if (lying) p.face = face;
-    p.stride = (p.stride || 0) + Math.hypot(p.vx, p.vy) * (FX.dt || 0.016) * 1.6;
-    const [lx, ly] = pivLean(p);                                // porteur : le corps se penche du côté de son pied de pivot
-    drawBody(p, X(p.x + lx), Y(p.y + ly) - hop, r * 1.06, face, { lying, scale: (1 + jl * 0.22) * (crouch ? 0.84 : 1),
-      throwing: p.throwT > 0, jumping: jl > 0.05, swing: Math.hypot(p.vx, p.vy) > 1 ? Math.sin(p.stride) : 0 });
-    ctx.globalAlpha = 1;
+  const rings = p => {                                       // repères au sol autour d'un joueur
     if (p === disc.holder && (disc.mode === 'held' || disc.mode === 'carry')) {
       ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; circle(X(p.x), Y(p.y), r + 4); ctx.stroke();
     }
@@ -296,6 +363,35 @@ function draw() {
       ctx.save(); ctx.setLineDash([3, 4]); ctx.strokeStyle = 'rgba(255,255,255,.8)'; ctx.lineWidth = 2;
       circle(X(p.x), Y(p.y), r + 4); ctx.stroke(); ctx.restore();
     }
+  };
+  const bodyO = p => {
+    const jv = jumpVis(p), jl = Math.max(0, jv), crouch = jv < 0;   // saut : accroupi, puis il grossit et s'élève
+    const lying = p.dive > 0 || p.down > 0, face = lying ? (Math.atan2(p.vy, p.vx) || faceOf(p)) : faceOf(p);
+    if (lying) p.face = face;
+    p.stride = (p.stride || 0) + Math.hypot(p.vx, p.vy) * (FX.dt || 0.016) * 1.6;
+    return { jl, lying, face, scale: (1 + jl * 0.22) * (crouch ? 0.84 : 1), throwing: p.throwT > 0, jumping: jl > 0.05, swing: Math.hypot(p.vx, p.vy) > 1 ? Math.sin(p.stride) : 0 };
+  };
+  if (!iso) for (const p of players) {
+    ctx.globalAlpha = p.down > 0 ? 0.6 : 1;
+    const o = bodyO(p), hop = celebrateHop(p) * S + o.jl * S * 0.9;   // (et saut de joie après un point)
+    const [lx, ly] = pivLean(p);                                // porteur : le corps se penche du côté de son pied de pivot
+    drawBody(p, X(p.x + lx), Y(p.y + ly) - hop, r * 1.06, o.face, o);
+    ctx.globalAlpha = 1;
+    rings(p);
+  } else {                                                    // vue inclinée : repères et joueurs au sol, puis les joueurs debout
+    const O = new Map(players.map(p => [p, bodyO(p)]));
+    for (const p of players) {
+      rings(p);
+      const o = O.get(p);
+      if (o.lying) { ctx.globalAlpha = p.down > 0 ? 0.6 : 1; drawBody(p, X(p.x), Y(p.y), r * 1.06, o.face, o); ctx.globalAlpha = 1; }
+    }
+    inScreen(() => {
+      for (const p of players.slice().sort((a, b) => a.y - b.y)) {   // du fond vers le devant
+        const o = O.get(p); if (o.lying) continue;
+        const [lx, ly] = pivLean(p), z = o.jl + celebrateHop(p) * 0.6;
+        drawStanding(p, p.x + lx, p.y + ly, z, o);
+      }
+    });
   }
 
   // Humains : étiquette (pseudo, ou « J2 ») sous des joueurs contrôlés par d'autres personnes,
@@ -320,20 +416,22 @@ function draw() {
 
   // Repères des plays
   ctx.font = `800 ${Math.max(11, S * 1.6)}px system-ui`; ctx.textAlign = 'center';
-  for (const p of players) {
+  const headY = p => (iso ? IY(p.y, Math.max(0, jumpVis(p))) - isoU() * 2 : Y(p.y) - r);   // au-dessus de la tête
+  const overHead = fn => (iso ? inScreen(fn) : fn());
+  overHead(() => { for (const p of players) {
     if (!p.tag || hiddenFromMe(p.team)) continue;           // en ligne : on ne voit pas qui joue le play adverse
     const label = p.tag === '2d' ? '2' : p.tag;
-    ctx.fillStyle = 'rgba(15,23,42,.75)'; circle(X(p.x), Y(p.y) - r - 9, Math.max(8, S * 1.1)); ctx.fill();
-    ctx.fillStyle = '#facc15'; ctx.fillText(label, X(p.x), Y(p.y) - r - 9 + Math.max(4, S * 0.55));
-  }
+    ctx.fillStyle = 'rgba(15,23,42,.75)'; circle(X(p.x), headY(p) - 9, Math.max(8, S * 1.1)); ctx.fill();
+    ctx.fillStyle = '#facc15'; ctx.fillText(label, X(p.x), headY(p) - 9 + Math.max(4, S * 0.55));
+  } });
 
   // Compte du marqueur
-  if (disc.mode === 'held' && G.stall > 0) {
+  if (disc.mode === 'held' && G.stall > 0) overHead(() => {
     const n = Math.min(10, Math.floor(G.stall) + 1);
     ctx.fillStyle = n >= 8 ? '#f87171' : '#facc15';
     ctx.font = `700 ${Math.max(12, S * 2)}px system-ui`; ctx.textAlign = 'center';
-    ctx.fillText(n, X(disc.x), Y(disc.y) - r - 8);
-  }
+    ctx.fillText(n, X(disc.x), headY(disc.holder) - 8);
+  });
 
   // remontée du disque : pointillés jusqu'à la ligne / au brick
   if (disc.mode === 'carry' && G.carryTo && disc.holder) {
@@ -355,6 +453,8 @@ function draw() {
       const [rx, ry] = releasePoint(h, h.x, h.y), w = Math.min(1, Math.abs(pv) * 1.5);
       dx += (Math.cos(f + 0.5) * 0.95) * (1 - w) + (rx - h.x) * w; dy += (Math.sin(f + 0.5) * 0.95) * (1 - w) + (ry - h.y) * w;
     }
+    if (iso) drawIsoDisc(dx, dy, tell);
+    else {
     const lift = disc.mode === 'air' ? disc.z * S * 1.2 : tell ? 1.9 * S : 0;
     if (tell) {
       ctx.save(); ctx.strokeStyle = 'rgba(196,181,253,.9)'; ctx.lineWidth = 2; ctx.setLineDash([2, 3]);
@@ -373,10 +473,12 @@ function draw() {
     }
     circle(X(dx), Y(dy) - lift, 0.5 * S * (1 + disc.z * 0.12));
     ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5; ctx.stroke();
+    }
   }
 
   drawParticles();
   drawPullUI();
+  screenT();                                                // la suite (messages) se dessine à l'écran, pas au sol
   const hw = typeof hostWaitMsg === 'function' ? hostWaitMsg() : '';
   if (hw) {                                                   // en ligne : l'hôte ne répond plus pour l'instant
     ctx.save(); ctx.font = `700 ${Math.max(13, S * 1.9)}px system-ui`; ctx.textAlign = 'center';

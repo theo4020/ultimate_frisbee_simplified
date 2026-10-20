@@ -18,6 +18,7 @@ const CTRL = Object.assign({ sling: true, throwUI: 'gestes', move: 'tap', keys: 
 if (CTRL.v !== 2) { Object.assign(CTRL, { sling: true, throwUI: 'gestes', move: 'tap', v: 2 }); delete CTRL.mobile; delete CTRL.follow; saveCtrl(); }
 if (!['gestes', 'boutons'].includes(CTRL.throwUI)) CTRL.throwUI = 'gestes';
 if (!['tap', 'follow', 'joystick'].includes(CTRL.move)) CTRL.move = 'tap';
+if (!['top', 'iso'].includes(CTRL.view)) CTRL.view = 'top';
 function saveCtrl() { try { localStorage.setItem('uf-ctrl', JSON.stringify(CTRL)); } catch (e) { } }
 const keysOf = a => (Array.isArray(CTRL.keys[a]) && CTRL.keys[a].length ? CTRL.keys[a] : DEFAULT_KEYS[a]);
 const keyIs = (a, k) => keysOf(a).includes(k);
@@ -39,6 +40,9 @@ function renderCtrl() {
     follow: 'Garde le doigt posé : ton joueur le suit. Taper ton joueur le fait sauter, un coéquipier pour le prendre ; glisser vite pour plonger.',
     joystick: 'Pose le doigt n’importe où et glisse pour courir dans cette direction (comme un joystick), boutons Layout / Saut / Switch en bas à droite. Taper un coéquipier le prend aussi.' };
   $('ctrlBody').innerHTML = `
+    <h2>Affichage</h2>
+    <div class="row"><span>Vue</span>${b('view', 'top', 'De dessus')}${b('view', 'iso', 'Inclinée (tribune)')}</div>
+    <div class="desc">${CTRL.view === 'iso' ? 'Le terrain vu depuis la tribune : on voit les joueurs debout, et le disque monter et descendre (son ombre montre où il passe au sol).' : 'Le terrain vu d’en haut, comme un tableau tactique.'}</div>
     <h2>Téléphone : avec le disque</h2>
     <div class="row"><span>Lancer</span>${b('sling', true, 'Lance-pierre (tirer en arrière)')}${b('sling', false, 'Glisser vers la cible')}</div>
     <div class="row"><span>Courbe et passe haute</span>${b('throwUI', 'gestes', 'Gestes')}${b('throwUI', 'boutons', 'Boutons sur le bord')}</div>
@@ -56,6 +60,7 @@ function renderCtrl() {
   $('ctrlBody').querySelectorAll('.copt').forEach(el => el.addEventListener('click', () => {
     const v = el.dataset.v === 'true' ? true : el.dataset.v === 'false' ? false : el.dataset.v;
     CTRL[el.dataset.g] = v; saveCtrl(); applyCtrlClass(); hudKey = ''; renderCtrl();
+    if (el.dataset.g === 'view') resize();
   }));
   $('ctrlBody').querySelectorAll('.kbtn').forEach(el => el.addEventListener('click', () => { keyWait = keyWait === el.dataset.a ? null : el.dataset.a; renderCtrl(); }));
   $('keysReset').addEventListener('click', () => { CTRL.keys = {}; keyWait = null; saveCtrl(); renderCtrl(); });

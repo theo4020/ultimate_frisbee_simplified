@@ -170,6 +170,17 @@ export default async function (t) {
     await p.click('#askYes');
     t.ok(await vis(p, '#lobbyHome'), 'quitter ramène au menu principal');
 
+    t.group('Vue inclinée (tribune)');
+    await p.click('#ctrlB'); await p.click('.copt[data-g="view"][data-v="iso"]');
+    const iv = await p.evaluate(() => { const r = canvas.getBoundingClientRect(), x = 60, y = 25;
+      const w = toWorld({ clientX: r.left + X(x), clientY: r.top + IY(y, 0) });
+      return { on: isoView(), saved: JSON.parse(localStorage.getItem('uf-ctrl')).view, k: isoK, back: [w.x, w.y], hRatio: canvas.height / canvas.width }; });
+    t.ok(iv.on && iv.saved === 'iso' && iv.k >= 0.5 && iv.k <= 0.72, 'réglage « Vue : inclinée » (gardé sur l’appareil)', iv);
+    t.ok(Math.abs(iv.back[0] - 60) < 0.05 && Math.abs(iv.back[1] - 25) < 0.05, 'un clic sur le sol retombe au bon endroit du terrain', iv);
+    await p.click('#ctrlBack').catch(() => {}); await p.evaluate(() => { if (typeof closeCard === 'function') closeCard(); });
+    await p.waitForTimeout(800);                                   // le match de fond se dessine en vue inclinée
+    await p.evaluate(() => { CTRL.view = 'top'; saveCtrl(); resize(); });
+
     t.group('Tutoriel');
     await p.click('#tutoB');
     t.ok(await vis(p, '#tutoBaseB') && await vis(p, '#tutoAdvB'), 'deux tutoriels : débutant et avancé');

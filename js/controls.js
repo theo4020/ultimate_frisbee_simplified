@@ -30,7 +30,10 @@ function stickDive(dx, dy) {
 }
 function userJump() { if (canJump()) { doJump(); G.pointer.last = G.time; } }
 function userDive() { if (canLayout()) { doDive(G.pointer.x, G.pointer.y); G.pointer.last = G.time; } }
-function toWorld(e) { const r = canvas.getBoundingClientRect(); return { x: (e.clientX - r.left) / S - M, y: (e.clientY - r.top) / S - M }; }
+function toWorld(e) {
+  const r = canvas.getBoundingClientRect(), sy = e.clientY - r.top;
+  return { x: (e.clientX - r.left) / S - M, y: (isoView() ? (sy - ISO_HEAD * S) / isoK : sy) / S - M };   // vue inclinée : on « redresse » le sol
+}
 function setPointer(e) { const w = toWorld(e); G.pointer.x = w.x; G.pointer.y = w.y; G.pointer.active = true; G.pointer.last = G.time; sendInput(); }
 const attacking = () => G.phase === 'play' && G.off === G.me;
 // taper / cliquer sur un de ses joueurs pour le prendre (s'il est géré par l'IA)
