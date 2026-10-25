@@ -66,6 +66,10 @@ function throwDisc(h, tx, ty, curve, errScale, kind) {
   Object.assign(disc, { mode: 'air', holder: null, sx, sy, ex, ey, cx, cy,
     t: 0, dur, thrower: h, team: h.team, rolled: new Set(), kind: loftLabel(loft), loft, curveV: curve, pull: false,
     rx: tx + wx0, ry: ty + wy0 });                                          // là où la passe devait arriver (sans erreur)
+  // cône d'incertitude (voir CONE) : rayon au lâcher, décalage du cercle affiché, et l'idée que chacun se fait de l'arrivée
+  const r0 = coneR(d, curve, loft, wx0, wy0), oa = rand(0, Math.PI * 2), om = r0 * CONE.SHOW * Math.sqrt(Math.random());
+  disc.cone = r0; disc.coneOff = [Math.cos(oa) * om, Math.sin(oa) * om];
+  makeGuesses(h);
   msThrow(h, d, loftLabel(loft));
   if (G.dplay && G.dplay.team !== h.team) G.dplay.throws++;
   disc.intended = nearest(TEAMS[h.team], ex, ey, h);

@@ -138,9 +138,9 @@ function diveMiss(p, x, y) {
   const [vx, vy] = diveVel(p, x, y), step = 1 / 60; let miss = 99;
   for (let t = step; t <= DIVE_T + 1e-6; t += step) {
     const u = (disc.t + t) / disc.dur, px = p.x + vx * t, py = p.y + vy * t;
-    if (u >= 1) { if (inField(disc.ex, disc.ey)) miss = Math.min(miss, dist(px, py, disc.ex, disc.ey) - 2.4); break; }   // il touche le sol en plongeant
+    if (u >= 1) { const [ex, ey] = seenEnd(p); if (inField(ex, ey)) miss = Math.min(miss, dist(px, py, ex, ey) - 2.4); break; }   // il touche le sol en plongeant
     if (u <= 0.3 || discZ(u) >= REACH_DIVE + 0.3) continue;
-    const [bx, by] = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u);
+    const [bx, by] = seenAt(p, u);
     if (inField(bx, by)) miss = Math.min(miss, dist(px, py, bx, by) - DIVE_R);
   }
   return miss;
@@ -148,9 +148,9 @@ function diveMiss(p, x, y) {
 // meilleure direction de plongeon : vers chaque point de la trajectoire restante et tout autour de lui ; la plus sûre
 function bestDive(p) {
   const u0 = disc.t / disc.dur, cand = [];
-  for (let u = Math.min(1, u0 + 0.02); u <= 1.001; u += 0.02) cand.push(bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, Math.min(1, u)));
+  for (let u = Math.min(1, u0 + 0.02); u <= 1.001; u += 0.02) cand.push(seenAt(p, Math.min(1, u)));
   for (let a = 0; a < 16; a++) cand.push([p.x + Math.cos(a * Math.PI / 8) * 3, p.y + Math.sin(a * Math.PI / 8) * 3]);
-  let best = { x: disc.ex, y: disc.ey, miss: 99 };
+  const [gx, gy] = seenEnd(p); let best = { x: gx, y: gy, miss: 99 };
   for (const [x, y] of cand) { const m = diveMiss(p, x, y); if (m < best.miss) best = { x, y, miss: m }; }
   return best;
 }
@@ -170,7 +170,7 @@ const inSpot = (x, y) => [clamp(x, 0.3, W - 0.3), clamp(y, 0.3, H - 0.3)];
 // receveur IA : il attaque le disque — il court vers le premier point de la trajectoire qu'il peut atteindre avant le disque
 // (au lieu d'attendre au point d'arrivée, où le défenseur a le temps de revenir)
 function runPoint(p) {
-  return catchPoint(p) || [...inSpot(disc.ex, disc.ey), false];   // sinon il attend au bord du terrain, au plus près du disque
+  return catchPoint(p) || [...inSpot(...seenEnd(p)), false];   // sinon il attend au bord du terrain, au plus près du disque
 }
 // « attaque cet espace » : le coéquipier IA le plus proche coupe vers le point demandé
 function callFor(h, x, y) {

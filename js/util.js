@@ -53,8 +53,11 @@ const SY = (y, z) => (isoView() ? IY(y, z) : Y(y) - (z || 0) * S);
 const rand = (a, b) => a + Math.random() * (b - a);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const dist = (a, b, c, d) => Math.hypot(c - a, d - b);
-const dirOf = t => (t === 0 ? 1 : -1);                    // les Bleus attaquent vers la droite
-const inScoreZone = (t, x) => (t === 0 ? x > W - EZ : x < EZ);
+// côtés : au premier point, les Bleus attaquent vers la droite ; après chaque point, l'équipe qui a marqué reste du côté
+// où elle a marqué (elle y pulle) et l'autre change de côté — les deux équipes changent donc de sens à chaque point
+const sidesFlipped = () => !G.tuto && !G.practice && (G.score[0] + G.score[1]) % 2 === 1;
+const dirOf = t => ((t === 0) !== sidesFlipped() ? 1 : -1);
+const inScoreZone = (t, x) => (dirOf(t) > 0 ? x > W - EZ : x < EZ);
 const inField = (x, y) => x >= 0 && x <= W && y >= 0 && y <= H;
 // disque repris dans un en-but (pas sur une réception) : ramené sur la ligne d'en-but la plus proche
 const lineSpot = (x, y) => (x < EZ ? { x: EZ, y } : x > W - EZ ? { x: W - EZ, y } : null);

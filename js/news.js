@@ -8,6 +8,17 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
+  { id: 26, date: '2026-10-26', tag: 'Gameplay', title: 'Où va tomber le disque ? 🎯',
+    body: `La trajectoire d'une passe n'est plus un simple trait : c'est un <b>cône</b> qui montre où le disque peut aller,
+      avec un <b>cercle d'arrivée</b>. Pendant le vol, le cône se resserre et le cercle se réduit peu à peu jusqu'à un point :
+      le disque tombe quelque part dedans, pas forcément au centre. À toi de lire le vol et d'anticiper !<br>
+      Les IA aussi doivent deviner : une IA facile lit mal l'arrivée et se place de travers, une IA difficile la lit bien.<br>
+      Et aussi :<br>
+      • comme sur un vrai terrain, l'équipe qui marque <b>reste de son côté</b> et pulle de là, l'autre change de côté ;<br>
+      • le jeu est un peu <b>moins rapide</b> par défaut (réglable avant le point) ;<br>
+      • le <b>saut</b> part plus vite ;<br>
+      • sur téléphone, nouveaux réglages par défaut : <b>joystick et boutons</b> pour se déplacer, et lancer en glissant
+      <b>vers la cible</b> (le lance-pierre reste dans Commandes).` },
   { id: 25, date: '2026-10-25', tag: 'Gameplay', title: 'Choisis la hauteur de chaque passe 🌈',
     body: `Fini le simple « normal ou passe haute » : la <b>hauteur</b> de la passe se règle en continu, de la
       <b>rasante</b> (tendue, rapide, précise, mais facile à couper près de toi) à la <b>passe haute</b> (par-dessus la défense,

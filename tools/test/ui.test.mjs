@@ -243,6 +243,9 @@ export default async function (t) {
     await q.goto(srv.url + 'index.html');
     await q.waitForFunction(() => typeof G !== 'undefined' && G.attract);
     t.ok(await q.evaluate(() => document.body.classList.contains('touch')), 'mode tactile détecté');
+    t.ok(await q.evaluate(() => CTRL.move === 'joystick' && CTRL.sling === false), 'téléphone, par défaut : joystick et boutons, lancer vers la cible');
+    await q.evaluate(() => localStorage.setItem('uf-ctrl', JSON.stringify({ v: 3, sling: true, throwUI: 'gestes', move: 'tap', keys: {} })));   // la suite teste le lance-pierre et le tap
+    await q.reload(); await q.waitForFunction(() => typeof G !== 'undefined' && G.attract);
     await q.click('#soloMenuB'); await q.click('#soloB');
     await q.evaluate(() => { G.form.first = String(G.me); });  // l'IA adverse pulle : on reçoit le disque
     await q.click('#go');
@@ -321,7 +324,7 @@ export default async function (t) {
     const jb = await q.locator('#joy').boundingBox();
     t.ok(jb && Math.abs(jb.x + jb.width / 2 - jp.x) < 3 && Math.abs(jb.y + jb.height / 2 - jp.y) < 3, 'le joystick apparaît là où le doigt s’est posé', jb);
     const s0 = await q.evaluate(() => { const s = meH().sel; return { x: s.x, y: s.y }; });
-    await q.waitForTimeout(600);
+    await q.waitForTimeout(800);
     const s1 = await q.evaluate(() => { const s = meH().sel; return { x: s.x, y: s.y }; });
     t.ok(s1.x - s0.x > 1.5 && Math.abs(s1.y - s0.y) < 1, 'ton joueur court dans la direction départ → doigt', [s0, s1]);
     await touch('touchEnd', jp.x + 80, jp.y);

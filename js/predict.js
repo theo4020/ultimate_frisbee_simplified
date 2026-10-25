@@ -18,6 +18,32 @@ function diveVel(p, x, y) {
 const diveReach = v => Math.max(DIVE.min, (v || 0) + DIVE.boost) * DIVE_T + DIVE_R;   // distance couverte par un plongeon lancé à v m/s, bras compris
 const seeT = p => SEE_T * aiLvl(p.team).react;
 
+// ---------- où va le disque ? (cône d'incertitude) ----------
+// rayon du cercle d'arrivée au lâcher (m) : imprécision du lancer et rafales, avec un minimum qui grandit avec la distance
+const coneR = (d, curve, kind, wx, wy) => Math.max(CONE.MIN + CONE.PER * d, throwErr(d, curve, kind) + Math.hypot(wx || 0, wy || 0) * 0.08);
+// part du cône qui reste (1 au lâcher → 0 à l'arrivée)
+const coneLeft = () => (disc.mode === 'air' ? Math.max(0, 1 - disc.t / disc.dur) ** CONE.K : 0);
+// erreur de lecture d'un joueur IA (× rayon du cône) : un joueur qui lit bien le jeu devine mieux l'arrivée
+function readErr(p) { const L = aiLvl(p.team), r = L && L.k ? L.k.read : 0.5; return clamp(0.3 + 0.7 * (1 - r), CONE.READ_MIN, CONE.READ_MAX); }
+// au lâcher : chaque joueur se fait une idée de l'arrivée (p.guess, décalage en m), qui s'affine à mesure que le disque approche
+function makeGuesses(thrower) {
+  for (const p of players) {
+    p.guess = null;
+    if (p === thrower || G.tuto || !disc.cone) continue;
+    const a = rand(0, Math.PI * 2), m = disc.cone * readErr(p) * Math.sqrt(Math.random());
+    p.guess = [Math.cos(a) * m, Math.sin(a) * m];
+  }
+}
+// point de la trajectoire restante (v ≥ maintenant) tel que le joueur p le croit : la vraie trajectoire, qui glisse vers
+// son arrivée supposée (son erreur fond avec le cône)
+function seenAt(p, v) {
+  const [x, y] = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, v), g = p && p.guess;
+  if (!g || disc.pull || disc.mode !== 'air') return [x, y];
+  const u = disc.t / disc.dur, s = coneLeft(), w = u >= 1 ? 1 : clamp((v - u) / (1 - u), 0, 1);
+  return [x + g[0] * s * w, y + g[1] * s * w];
+}
+const seenEnd = p => seenAt(p, 1);
+
 // attaquant : temps pour être en position de recevoir en (x, y)
 function recvTime(p, x, y) { return reachTime(p, x, y, SPD.cut * aiLvl(p.team).speed, 0.9); }
 // défenseur qui suit le jeu (avant le lancer) : temps pour arriver en (x, y), réaction comprise
@@ -64,7 +90,7 @@ function firstTouch(d) {
   for (let u = u0 + 0.03; u <= 1.001; u += 0.04) {
     const z = discZ(u);
     if (z > REACH_STAND - 0.1) continue;                     // les sauts sont gérés à part (aiJumps)
-    const [x, y] = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u), tA = (u - u0) * disc.dur;
+    const [x, y] = seenAt(d, u), tA = (u - u0) * disc.dur;
     if (touchTime(d, x, y, z, 0) + 0.05 <= tA) return { x, y, tA, r: dist(d.x, d.y, x, y) };
   }
   return null;
@@ -75,7 +101,7 @@ function catchPoint(p) {
   const u0 = disc.t / disc.dur, jmax = REACH_STAND + 0.85 * jumpH(p), len = discLen();
   for (let u = u0 + 0.02; u <= 1.001; u += 0.025) {
     const z = discZ(u); if (z > jmax) continue;
-    const [x, y] = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u);
+    const [x, y] = seenAt(p, u);
     if (!inField(x, y) || (u < 0.45 && u * len < 3)) continue;   // pas hors du terrain, ni collé au lanceur
     const extra = z > REACH_STAND ? JUMP_PREP + JUMP_T * 0.4 : 0;
     if (recvTime(p, x, y) <= Math.max(0, (u - u0) * disc.dur - 0.06 - extra)) return [x, y, true];

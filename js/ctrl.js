@@ -11,13 +11,15 @@ const KEY_ACTIONS = [
   ['jump', 'Sauter'], ['dive', 'Layout'], ['switch', 'Changer de joueur'], ['play1', 'Appeler le play 1'], ['play2', 'Appeler le play 2']
 ];
 const DEFAULT_KEYS = { pivot: ['x'], loftUp: ['z', 'w', 'arrowup'], loftDown: ['s', 'arrowdown'], curveL: ['a', 'q', 'arrowleft'], curveR: ['e', 'd', 'arrowright'], jump: ['s'], dive: ['f', 'shift'], switch: [' '], play1: ['r'], play2: ['t'] };
-const CTRL = Object.assign({ sling: true, throwUI: 'gestes', move: 'tap', keys: {} }, (() => {
+const CTRL = Object.assign({ sling: false, throwUI: 'gestes', move: 'joystick', keys: {}, v: 3 }, (() => {
   try { const o = JSON.parse(localStorage.getItem('uf-ctrl') || 'null'); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; }
 })());
 // nouvelles commandes par défaut pour tout le monde (réglages téléphone d'avant remis à zéro une fois ; les touches sont gardées)
-if (CTRL.v !== 2) { Object.assign(CTRL, { sling: true, throwUI: 'gestes', move: 'tap', v: 2 }); delete CTRL.mobile; delete CTRL.follow; saveCtrl(); }
+if (!(CTRL.v >= 2)) { Object.assign(CTRL, { sling: false, throwUI: 'gestes', move: 'joystick', v: 3 }); delete CTRL.mobile; delete CTRL.follow; saveCtrl(); }
 if (!CTRL.keys || typeof CTRL.keys !== 'object') CTRL.keys = {};
 if (CTRL.keys.high) { CTRL.keys.pivot = CTRL.keys.high.filter(k => k !== 'z' && k !== 'w'); delete CTRL.keys.high; saveCtrl(); }   // ancienne touche « pivot / passe haute »
+// v3 : sur téléphone, joystick + boutons et lancer vers la cible par défaut (sauf si on avait déjà changé ces réglages)
+if (CTRL.v < 3) { if (CTRL.move === 'tap' && CTRL.sling === true) Object.assign(CTRL, { move: 'joystick', sling: false }); CTRL.v = 3; saveCtrl(); }
 if (!['gestes', 'boutons'].includes(CTRL.throwUI)) CTRL.throwUI = 'gestes';
 if (!['tap', 'follow', 'joystick'].includes(CTRL.move)) CTRL.move = 'tap';
 if (!['top', 'iso'].includes(CTRL.view)) CTRL.view = 'top';

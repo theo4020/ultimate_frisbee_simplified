@@ -155,7 +155,7 @@ function showMenu(kind) {
   computeTeams();
   for (const id of ['lobbyCard', 'seriesCard', 'profileCard', 'endlessCard']) $(id).style.display = 'none';
   $('stratCard').style.display = '';
-  const ME = G.me, side = `les ${tn(ME)} et tu attaques vers la ${ME === 0 ? 'droite' : 'gauche'}`;
+  const ME = G.me, side = `les ${tn(ME)} et tu attaques vers la ${dirOf(ME) > 0 ? 'droite' : 'gauche'}`;
   const S_ = G.series;
   if (kind === 'over') {
     const won = G.score[ME] > G.score[1 - ME];

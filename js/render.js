@@ -22,10 +22,10 @@ function drawAim(h, px, py, curve, kind, aiming, ally) {
   ctx.save();
   const cancel = aiming && dist(px, py, h.x, h.y) < CANCEL_R;
   ctx.globalAlpha = (cancel ? 0.3 : !ally && kindLocked() ? 0.35 : 1) * (ally ? 0.6 : 1);   // changement de passe en cours : aperçu estompé
-  drawFlightPath(sx, sy, cx, cy, ex, ey, peakOf(dur, kind), 0, aiming ? 0.95 : 0.7, aiming ? 3 : 2, kind >= LOFT.HIGH ? [2, 5] : [6, 5], kind, curve);
+  const er = coneR(d, curve, kind, wx, wy);                 // cône : là où le disque peut aller (imprécision du lancer, rafales)
+  drawFlightPath(sx, sy, cx, cy, ex, ey, peakOf(dur, kind), 0, aiming ? 0.95 : 0.7, aiming ? 3 : 2, kind >= LOFT.HIGH ? [2, 5] : [6, 5], kind, curve, null, er);
   ctx.strokeStyle = aiming ? 'rgba(250,204,21,.95)' : 'rgba(255,255,255,.75)'; ctx.lineWidth = 2;
-  const er = throwErr(d, curve, kind) + Math.hypot(wx, wy) * 0.08;
-  circle(X(ex), Y(ey), Math.max(er * S, 4)); ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.fill(); ctx.stroke();
+  circle(X(ex), Y(ey), Math.max(er * S, 4)); ctx.stroke();
   if (Math.hypot(wx, wy) > 0.6) {                         // croix = point visé, le vent emmène le disque jusqu'au cercle
     ctx.strokeStyle = 'rgba(125,211,252,.9)'; ctx.lineWidth = 2; const k = 5;
     ctx.beginPath(); ctx.moveTo(X(tx) - k, Y(ty) - k); ctx.lineTo(X(tx) + k, Y(ty) + k); ctx.moveTo(X(tx) + k, Y(ty) - k); ctx.lineTo(X(tx) - k, Y(ty) + k); ctx.stroke();
@@ -65,19 +65,45 @@ function heightColor(z, a) {
   const c = HC;
   return `rgba(${z < REACH_DIVE ? c[0] : z < REACH_STAND ? c[1] : z < REACH_STAND + JUMP_H ? c[2] : c[3]},${a})`;
 }
-function drawFlightPath(sx, sy, cx, cy, ex, ey, peak, u0, alpha, width, dash, kind, curve) {
+// cône d'incertitude : là où le disque peut encore aller. Il part de (u0) et s'élargit jusqu'au cercle d'arrivée de rayon r ;
+// G(v) = point au sol de la trajectoire affichée (voir drawFlightPath)
+function drawCone(G_, u0, r, alpha) {
+  const step = 0.04, L = [], R = [];
+  for (let v = u0; v <= 1.0001; v += step) {
+    const vv = Math.min(1, v), [x, y] = G_(vv), [x2, y2] = G_(Math.min(1, vv + 0.01)), [x1, y1] = G_(Math.max(0, vv - 0.01));
+    let nx = -(y2 - y1), ny = x2 - x1; const nl = Math.hypot(nx, ny) || 1; nx /= nl; ny /= nl;
+    const hw = r * (u0 >= 1 ? 1 : (vv - u0) / (1 - u0));
+    L.push([X(x + nx * hw), Y(y + ny * hw)]); R.push([X(x - nx * hw), Y(y - ny * hw)]);
+  }
+  const [ex, ey] = G_(1), rr = Math.max(0.25, r) * S;
+  ctx.save();
+  ctx.fillStyle = `rgba(255,255,255,${0.13 * alpha})`; ctx.strokeStyle = `rgba(255,255,255,${0.4 * alpha})`; ctx.lineWidth = 1.5;
+  ctx.beginPath(); L.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); for (let i = R.length - 1; i >= 0; i--) ctx.lineTo(R[i][0], R[i][1]); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); L.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke();
+  ctx.beginPath(); R.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke();
+  ctx.fillStyle = `rgba(255,255,255,${0.16 * alpha})`; ctx.strokeStyle = `rgba(255,255,255,${0.85 * alpha})`; ctx.lineWidth = 2;   // cercle d'arrivée
+  circle(X(ex), Y(ey), rr); ctx.fill(); ctx.stroke();
+  ctx.restore();
+}
+// trajectoire colorée selon la hauteur. off = { x, y } : décalage de l'arrivée affichée (disque en vol : on ne montre pas
+// l'arrivée exacte, voir drawCone) — il glisse de 0 (au disque) à 1 (à l'arrivée) ; cone = rayon du cercle d'arrivée (m)
+function drawFlightPath(sx, sy, cx, cy, ex, ey, peak, u0, alpha, width, dash, kind, curve, off, cone) {
   const step = 0.025, len = dist(sx, sy, ex, ey), iso = isoView(), keep = isoText;
+  const Gp = v => { const [x, y] = bez(sx, sy, cx, cy, ex, ey, v); if (!off) return [x, y]; const w = u0 >= 1 ? 1 : Math.max(0, (v - u0) / (1 - u0)); return [x + off.x * w, y + off.y * w]; };
+  if (cone !== undefined) drawCone(Gp, u0, cone, alpha);
   if (iso) {                                                 // vue inclinée : l'ombre de la trajectoire au sol…
     ctx.save(); ctx.strokeStyle = `rgba(10,30,18,${0.55 * alpha})`; ctx.lineWidth = width + 1; ctx.lineCap = 'round'; ctx.beginPath();
-    for (let u = u0; u <= 1.0001; u += step) { const [x, y] = bez(sx, sy, cx, cy, ex, ey, Math.min(1, u)); if (u === u0) ctx.moveTo(X(x), Y(y)); else ctx.lineTo(X(x), Y(y)); }
+    for (let u = u0; u <= 1.0001; u += step) { const [x, y] = Gp(Math.min(1, u)); if (u === u0) ctx.moveTo(X(x), Y(y)); else ctx.lineTo(X(x), Y(y)); }
     ctx.stroke();
-    ctx.strokeStyle = `rgba(255,255,255,${0.75 * alpha})`; ctx.lineWidth = 2;   // point d'arrivée au sol : une croix
-    const q = 0.7 * S; ctx.beginPath(); ctx.moveTo(X(ex) - q, Y(ey) - q); ctx.lineTo(X(ex) + q, Y(ey) + q); ctx.moveTo(X(ex) + q, Y(ey) - q); ctx.lineTo(X(ex) - q, Y(ey) + q); ctx.stroke();
+    if (cone === undefined) {                                // point d'arrivée au sol : une croix (sans cône)
+      ctx.strokeStyle = `rgba(255,255,255,${0.75 * alpha})`; ctx.lineWidth = 2;
+      const q = 0.7 * S; ctx.beginPath(); ctx.moveTo(X(ex) - q, Y(ey) - q); ctx.lineTo(X(ex) + q, Y(ey) + q); ctx.moveTo(X(ex) + q, Y(ey) - q); ctx.lineTo(X(ex) - q, Y(ey) + q); ctx.stroke();
+    }
     ctx.restore();
   }
   ctx.save(); if (iso) screenT();                             // … et la trajectoire elle-même, à sa vraie hauteur
   ctx.lineWidth = width; ctx.lineCap = 'round'; if (dash) ctx.setLineDash(dash);
-  const P = u => { const [x, y] = bez(sx, sy, cx, cy, ex, ey, Math.min(1, u)); return iso ? [X(x), IY(y, heightAt(Math.min(1, u), peak, kind, len, curve))] : [X(x), Y(y)]; };
+  const P = u => { const [x, y] = Gp(Math.min(1, u)); return iso ? [X(x), IY(y, heightAt(Math.min(1, u), peak, kind, len, curve))] : [X(x), Y(y)]; };
   let [px, py] = P(u0);
   for (let u = u0 + step; u <= 1.0001; u += step) {
     const [x, y] = P(u), um = u - step / 2;
@@ -194,11 +220,12 @@ function drawField() {
   ctx.fillStyle = '#1a6b35'; ctx.fillRect(0, 0, cw, ch);
   if (FX.shake > 0) ctx.translate((Math.random() - 0.5) * FX.shake, (Math.random() - 0.5) * FX.shake);   // secousse
   for (let i = 0; i < 10; i++) { ctx.fillStyle = i % 2 ? '#1f7a3d' : '#22843f'; ctx.fillRect(X(i * 10), Y(0), 10 * S, H * S); }
-  ctx.fillStyle = rgba(tcol(0), 0.22); ctx.fillRect(X(W - EZ), Y(0), EZ * S, H * S);
-  ctx.fillStyle = rgba(tcol(1), 0.22); ctx.fillRect(X(0), Y(0), EZ * S, H * S);
+  const tR = dirOf(0) > 0 ? 0 : 1;                           // l'équipe qui attaque vers la droite (on change de côté à chaque point)
+  ctx.fillStyle = rgba(tcol(tR), 0.22); ctx.fillRect(X(W - EZ), Y(0), EZ * S, H * S);
+  ctx.fillStyle = rgba(tcol(1 - tR), 0.22); ctx.fillRect(X(0), Y(0), EZ * S, H * S);
   ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.font = `600 ${Math.max(10, S * 1.6)}px system-ui`; ctx.textAlign = 'center';
-  ctx.fillText('Les ' + tn(0), X(W - EZ / 2), Y(H / 2 - 1)); ctx.fillText('marquent ici', X(W - EZ / 2), Y(H / 2 + 1.5));
-  ctx.fillText('Les ' + tn(1), X(EZ / 2), Y(H / 2 - 1)); ctx.fillText('marquent ici', X(EZ / 2), Y(H / 2 + 1.5));
+  ctx.fillText('Les ' + tn(tR), X(W - EZ / 2), Y(H / 2 - 1)); ctx.fillText('marquent ici', X(W - EZ / 2), Y(H / 2 + 1.5));
+  ctx.fillText('Les ' + tn(1 - tR), X(EZ / 2), Y(H / 2 - 1)); ctx.fillText('marquent ici', X(EZ / 2), Y(H / 2 + 1.5));
   ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 2;
   ctx.strokeRect(X(0), Y(0), W * S, H * S);
   ctx.beginPath(); ctx.moveTo(X(EZ), Y(0)); ctx.lineTo(X(EZ), Y(H)); ctx.moveTo(X(W - EZ), Y(0)); ctx.lineTo(X(W - EZ), Y(H)); ctx.stroke();
@@ -292,7 +319,11 @@ function draw() {
   // Trajectoire restante du disque en vol, colorée selon la hauteur
   if (disc.mode === 'air') {
     const u0 = Math.min(1, disc.t / disc.dur);
-    drawFlightPath(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, discPeak(), u0, 0.7, 2.5, [5, 4], discKind(), disc.curveV);
+    // passe : un cône qui se resserre pendant le vol ; le cercle d'arrivée (décalé, il contient l'arrivée réelle) devient
+    // peu à peu un point — on devine où le disque tombera. Pull : trajectoire exacte.
+    const s = coneLeft(), co = disc.coneOff || [0, 0];
+    if (disc.pull || !disc.cone) drawFlightPath(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, discPeak(), u0, 0.7, 2.5, [5, 4], discKind(), disc.curveV);
+    else drawFlightPath(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, discPeak(), u0, 0.7, 2.5, [5, 4], discKind(), disc.curveV, { x: co[0] * s, y: co[1] * s }, disc.cone * s);
   }
   if (playing && (disc.mode === 'air' || (canThrow() && G.pointer.active))) { if (iso) inScreen(drawHeightLegend); else drawHeightLegend(); }
 

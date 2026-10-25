@@ -6,7 +6,7 @@
 // Si le pull sort des limites, l'équipe qui reçoit repart du « brick ».
 
 const PULL = { BRICK: 12, MAX: 72, AUTO_T: 60, GAUGE_HZ: 0.8, PERFECT: [0.82, 0.95] };
-const goalLine = t => (t === 0 ? EZ : W - EZ);   // ligne d'en-but que l'équipe t défend
+const goalLine = t => (dirOf(t) > 0 ? EZ : W - EZ);   // ligne d'en-but que l'équipe t défend
 
 const PULL_YS = [4, 11, 18.5, 26, 33], REGROUP_SPD = 11;   // places sur la ligne · vitesse de mise en place (m/s)
 // joueur qui va pulle : celui de l'humain désigné s'il a un joueur fixe, sinon le plus proche du centre de la ligne
@@ -184,7 +184,8 @@ function launchPull(ax, ay, curve, q) {
   const [wx, wy] = drift(dur);
   const [cx, cy] = ctrlFor(h.x, h.y, aimX, aimY, curve);
   Object.assign(disc, { mode: 'air', holder: null, sx: h.x, sy: h.y, ex: aimX + wx, ey: aimY + wy, cx, cy,
-    t: 0, dur, thrower: h, team: r, rolled: new Set(), pull: true, kind: 'normal', loft: LOFT.N, curveV: curve });
+    t: 0, dur, thrower: h, team: r, rolled: new Set(), pull: true, kind: 'normal', loft: LOFT.N, curveV: curve, cone: 0, coneOff: null });
+  players.forEach(p => { p.guess = null; });
   disc.intended = nearest(TEAMS[r], disc.ex, disc.ey);
   G.phase = 'play'; G.off = r; G.pullPending = true; G.pull = null;
   assignRoles(r, disc.intended);

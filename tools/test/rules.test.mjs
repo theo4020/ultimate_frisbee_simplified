@@ -429,4 +429,39 @@ export default async function (t, { quick }) {
   t.group('Mini-tournoi');
   const s = R(`(() => { G.series = { cur: 2 }; const r = [oppLevel() === AI_LEVELS.difficile, winPts(), serOpp().name]; G.series = null; return r; })()`);
   t.ok(s[0] && s[1] === 5 && s[2] === 'Titans', 'tour 3 : Titans, niveau difficile, 5 points', s);
+
+  t.group('Changement de côté après un point');
+  const sd = R(`(() => {
+    G.score = [0, 0]; const a = [dirOf(0), goalLine(0), inScoreZone(0, 95)];
+    G.score = [1, 0]; const b = [dirOf(0), dirOf(1), goalLine(0), goalLine(1), inScoreZone(0, 5), inScoreZone(1, 95)];
+    G.receiving = 1; placeOnPullLines(); const blue = TEAMS[0].every(p => p.x > W / 2), red = TEAMS[1].every(p => p.x < W / 2);
+    G.score = [0, 0]; return { a, b, blue, red };
+  })()`);
+  t.ok(sd.a[0] === 1 && sd.a[1] === 18 && sd.a[2], '1er point : les Bleus attaquent vers la droite', sd);
+  t.ok(sd.b[0] === -1 && sd.b[1] === 1 && sd.b[2] === 82 && sd.b[3] === 18 && sd.b[4] && sd.b[5], 'après le point des Bleus, chacun change de sens', sd);
+  t.ok(sd.blue && sd.red, 'les Bleus (qui ont marqué à droite) restent à droite pour puller, les Rouges vont à gauche', sd);
+
+  t.group('Cône d’incertitude : chacun devine l’arrivée selon sa lecture du jeu');
+  const cn = R(`(() => {
+    G.score = [0, 0]; G.receiving = 0; newWind(); startPoint();
+    for (let f = 0; f < 3000 && !(G.phase === 'play' && disc.mode === 'held' && disc.holder && !disc.pull); f++) __tick();
+    const h = disc.holder, out = { n: 0, facile: 0, difficile: 0, cone: 0, end: 0, seenStart: 0 };
+    for (let k = 0; k < 40; k++) {
+      for (const lv of ['facile', 'difficile']) {
+        G.form.level = lv; holdDisc(h); throwDisc(h, h.x + dirOf(h.team) * 25, h.y, 0, 1, 0.3);
+        out.cone += disc.cone;
+        const o = TEAMS[1 - h.team].filter(p => p.guess);
+        out[lv] += o.reduce((s, p) => s + Math.hypot(p.guess[0], p.guess[1]), 0) / o.length / disc.cone;
+        const q = o[0], [x0, y0] = seenAt(q, 0);
+        out.seenStart = Math.max(out.seenStart, dist(x0, y0, disc.sx, disc.sy));
+        disc.t = disc.dur; const [x1, y1] = seenEnd(q); out.end = Math.max(out.end, dist(x1, y1, disc.ex, disc.ey));
+        out.n++;
+      }
+    }
+    G.form.level = 'normal';
+    return { cone: out.cone / out.n, facile: out.facile / 40, difficile: out.difficile / 40, end: out.end, start: out.seenStart };
+  })()`);
+  t.ok(cn.cone > 1.5 && cn.cone < 4, 'passe de 25 m : cercle d’arrivée de quelques mètres au lâcher', cn);
+  t.ok(cn.facile > cn.difficile * 1.6, 'une IA facile lit l’arrivée bien moins bien qu’une difficile', cn);
+  t.ok(cn.end < 1e-6 && cn.start < 1e-6, 'l’erreur fond : nulle au départ du disque et à son arrivée', cn);
 }

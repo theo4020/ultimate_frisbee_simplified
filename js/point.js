@@ -6,7 +6,7 @@
 function placeForPoint() {
   const r = G.receiving, d = 1 - r, dir = dirOf(r), open = -closedOf(d);
   const h = TEAMS[r][0];
-  h.x = r === 0 ? EZ : W - EZ; h.y = H / 2;
+  h.x = dirOf(r) > 0 ? EZ : W - EZ; h.y = H / 2;
   TEAMS[r].forEach((p, k) => { if (k) { p.x = h.x + dir * (6 + k * 3); p.y = [5, 13, 24, 32][k - 1]; } });
   players.forEach(p => { p.vx = p.vy = 0; p.dive = p.down = 0; p.react = 0; p.tag = ''; });
   G.off = r; G.oplay = null;

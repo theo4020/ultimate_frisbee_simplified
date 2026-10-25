@@ -334,8 +334,9 @@ function aiJumps(u) {
   if (left < JUMP_PREP + JUMP_T * 0.55 && left > JUMP_PREP + JUMP_T * 0.3) {
     for (const p of players) {
       if (p === disc.thrower || p.jumpTried || controllerOf(p) && userControls(p)) continue;
-      if (dist(p.x, p.y, disc.ex, disc.ey) > 1.8) continue;
-      if (nearestD(TEAMS[1 - p.team], disc.ex, disc.ey)[1] > 2.2) continue;
+      const [gx, gy] = seenEnd(p);                            // là où il croit que le disque arrive
+      if (dist(p.x, p.y, gx, gy) > 1.8) continue;
+      if (nearestD(TEAMS[1 - p.team], gx, gy)[1] > 2.2) continue;
       p.jumpTried = true; jumpTo(p);                         // duel à l'arrivée : il saute (sa détente dépend de son niveau)
     }
   }
@@ -343,12 +344,12 @@ function aiJumps(u) {
   if (u2 > 1) return;
   const z2 = discZ(u2);
   if (z2 < REACH_STAND - 0.1 || z2 > REACH_STAND + 0.1 + 0.95 * Math.max(JUMP_H, aiLvl(0).jump || 0, aiLvl(1).jump || 0)) return;
-  const [x2, y2] = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u2);
   for (const p of players) {
     if (p === disc.thrower || p.jumpTried || controllerOf(p) && userControls(p)) continue;
     if (disc.t < 0.4 && dist(p.x, p.y, disc.sx, disc.sy) < 3) continue;   // la mark : voir plus haut
     const mine = p.team === disc.team;
     if (!mine && disc.t < 0.2 * aiLvl(p.team).react) continue;       // un défenseur ne saute pas avant d'avoir vu le lancer
+    const [x2, y2] = seenAt(p, u2);
     if (dist(p.x, p.y, x2, y2) > (mine ? ARM_R + 0.2 : ARM_R) + 0.4) continue;
     p.jumpTried = true; jumpTo(p);                           // le disque passe juste au-dessus de lui : il saute
   }

@@ -46,9 +46,9 @@ const DEF_TUNE = {
 const DIVE_T = 0.28, DOWN_T = 1.2;                         // plongeon : ~1,8 m arrêté, ~2,8 m lancé, puis 1,2 s au sol
 // saut : préparation (le joueur s'accroupit et ralentit), temps en l'air, gain de hauteur au sommet,
 // récupération à la réception (ralenti) et délai avant de pouvoir ressauter
-const JUMP_PREP = 0.12, JUMP_T = 0.5, JUMP_H = 0.6, JUMP_REC = 0.15, JUMP_CD = 0.35;
+const JUMP_PREP = 0.05, JUMP_T = 0.5, JUMP_H = 0.6, JUMP_REC = 0.15, JUMP_CD = 0.35;
 const HIGH_WINDUP = [0.3, 1.2];                            // l'IA arme sa passe haute plus ou moins longtemps avant de lancer
-const SPEEDS = { lent: 0.78, normal: 1, rapide: 1.2 };
+const SPEEDS = { lent: 0.72, normal: 0.88, rapide: 1.05 };   // vitesse du jeu (× le temps réel)
 const DRIFT = 0.5;                                          // dérive du disque : vent (m/s) × temps de vol × DRIFT
 const STALL_R = 4;                                          // distance max de la mark pour le stall count (4 m)
 const STALL_RATE = 1;                                       // stall count : 1 compte par seconde
@@ -130,6 +130,10 @@ function throwK(k) {
 }
 const loftLabel = l => (l >= LOFT.HIGH ? 'high' : 'normal');   // catégorie (stats, succès, tutoriel)
 const loftName = l => (l < 0.15 ? 'rasante' : l < 0.45 ? 'normale' : l < LOFT.HIGH ? 'lobée' : 'haute');
+// Cône d'incertitude d'une passe en vol : le cercle d'arrivée (rayon coneR, voir predict.js) se resserre jusqu'à un point
+// à l'arrivée (× (1 - u)^K) ; son centre affiché est décalé (au plus SHOW × rayon) : l'arrivée réelle est dedans, pas au centre.
+// Les joueurs IA lisent l'arrivée avec une erreur qui dépend de leur lecture du jeu (READ_MIN à READ_MAX × rayon).
+const CONE = { MIN: 0.5, PER: 0.06, K: 1, SHOW: 0.8, READ_MIN: 0.25, READ_MAX: 1.3 };
 const KIND_DELAY = 0.4;   // disque levé (au-dessus de LOFT.TELL) : on ne peut pas lancer tout de suite (s)
 
 // Couleurs d'équipe : remplissage, contour, teinte de l'en-but

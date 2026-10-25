@@ -249,7 +249,7 @@ function defenderAI(d, ax, ay, dir, closed, form, slots) {
       if (!d.diveTried && bi.tA < 0.32 && bi.r > ARM_R + 0.3 && bi.r < diveReach(Math.hypot(d.vx, d.vy))) { d.diveTried = true; diveTo(d, bi.x, bi.y); }   // trop loin pour les bras : layout
       return;
     }
-    if ((form === 'man' || (form === 'mix' && d.mission && d.mission.type === 'man')) && d.match === disc.intended) { d.tx = disc.ex; d.ty = disc.ey; d.sp = SPD.sprint; return; }
+    if ((form === 'man' || (form === 'mix' && d.mission && d.mission.type === 'man')) && d.match === disc.intended) { [d.tx, d.ty] = seenEnd(d); d.sp = SPD.sprint; return; }
   }
   const DP = G.dplay;
   if (DP && DP.d === d && DP.team === d.team) {

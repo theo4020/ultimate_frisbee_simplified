@@ -119,7 +119,7 @@ function fxPlay(name, x, y, team) {
     case 'layout': burst(x, y, 10, { color: ['#a3e635', '#65a30d', '#d9f99d'], speed: 4, life: 0.5, size: 0.3 }); vibrate(25); break;
     case 'turn': burst(x, y, 8, { color: ['#cbd5e1', '#94a3b8'], speed: 3, life: 0.5, size: 0.28 }); break;
     case 'score': {
-      const ex = team === 0 ? W - EZ / 2 : EZ / 2;
+      const ex = dirOf(team) > 0 ? W - EZ / 2 : EZ / 2;
       for (let i = 0; i < 70; i++) {
         FX.parts.push({ x: ex + (Math.random() - 0.5) * EZ, y: Math.random() * H, vx: (Math.random() - 0.5) * 4, vy: -2 - Math.random() * 5,
           t: 0, life: 1.2 + Math.random() * 0.8, color: [c, '#facc15', '#fff'][i % 3], size: 0.85, kind: 'confetti', rot: Math.random() * 6, vr: (Math.random() - 0.5) * 14, drag: 0.6, grav: 5 });
