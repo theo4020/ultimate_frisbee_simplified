@@ -72,8 +72,9 @@ function discShape(sx, sy, R, iso) {
   ctx.closePath();
 }
 // vue inclinée : le disque à sa hauteur (en main, en l'air, levé pour une passe haute), son ombre au sol
-function drawIsoDisc(dx, dy, tell) {
-  const z = disc.mode === 'air' ? disc.z : tell ? 2.6 : disc.mode === 'held' || disc.mode === 'carry' ? 0.7 : 0.05;   // en main : à hauteur des mains du personnage
+function drawIsoDisc(dx, dy, tell, lf) {
+  const l = lf === undefined ? LOFT.N : lf, held = disc.mode === 'held' || disc.mode === 'carry';
+  const z = disc.mode === 'air' ? disc.z : tell ? 0.3 + loftZ(l) : held ? 0.7 + (loftZ(l) - 1) * 0.6 : 0.05;   // en main : à hauteur des mains du personnage
   if (disc.mode === 'air') {                                 // au sol : ombre nette (plus petite et plus pâle quand il est haut) et anneau de hauteur
     const hz = Math.min(1, disc.z / 6);
     ctx.fillStyle = `rgba(0,0,0,${0.6 - 0.3 * hz})`; circle(X(dx), Y(dy), (0.75 - 0.25 * hz) * S); ctx.fill();
@@ -88,11 +89,8 @@ function drawIsoDisc(dx, dy, tell) {
       ctx.strokeStyle = disc.mode === 'air' ? heightColor(disc.z, 1) : 'rgba(196,181,253,.95)'; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(sx, IY(dy, 0)); ctx.lineTo(sx, sy); ctx.stroke();
     }
-    if (tell) {
-      ctx.strokeStyle = 'rgba(196,181,253,.95)'; ctx.lineWidth = 2.5; circle(sx, sy, 0.95 * S + Math.sin(G.time * 14) * 2); ctx.stroke();
-      ctx.font = `800 ${Math.max(10, S * 1.25)}px system-ui`; ctx.textAlign = 'center'; ctx.fillStyle = '#ddd6fe';
-      ctx.fillText('↑ passe haute', sx, sy - S * 1.6);
-    }
+    if (tell) { ctx.strokeStyle = 'rgba(196,181,253,.95)'; ctx.lineWidth = 2.5; circle(sx, sy, 0.95 * S + Math.sin(G.time * 14) * 2); ctx.stroke(); }
+    if (held && disc.holder && Math.abs(l - LOFT.N) > 0.04) drawLoftGauge(disc.holder, X(disc.holder.x), IY(disc.holder.y, 0), l);
     const rd = 0.6 * S * (1 + Math.min(z, 6) * 0.05);
     discShape(sx, sy, rd * 1.3, true);                       // vu de biais, penché selon sa courbe
     ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 2; ctx.stroke();

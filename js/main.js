@@ -33,8 +33,8 @@ function frame(now, visible) {
   const gdt = dt * SPEEDS[G.form.speed];
   if (G.net === 'guest') {
     guestFrame(dt); G.gt += gdt;
-    const hk = G.throwKind === 'high' && canThrow();         // passe haute armée : l'hôte doit le savoir tout de suite
-    if (hk !== !!G.lastHk) { G.lastHk = hk; sendInput(true); }
+    const hk = canThrow() ? G.loft : -1;                     // hauteur de passe changée : l'hôte doit le savoir tout de suite
+    if (hk !== G.lastHk) { G.lastHk = hk; sendInput(true); }
   }
   else {
     if ((G.paused && !G.net) || G.pz) { /* pause (solo : menu ou confirmation ouverts ; en ligne : pause pour tous) */ }
@@ -47,8 +47,8 @@ function frame(now, visible) {
     }
     if (G.net === 'host') { netT += dt; if (netT >= 0.05) { netT = 0; sendSnapshot(); } }
   }
-  const ctNow = canThrow();                                   // on perd le disque : la passe haute armée est annulée
-  if (G.lastCt && !ctNow) G.throwKind = 'normal';
+  const ctNow = canThrow();                                   // on perd le disque : on revient à la passe normale
+  if (G.lastCt && !ctNow) setLoft(LOFT.N, true);
   G.lastCt = ctNow;
   if (G.tuto) tutoFrame(dt);
   if (G.practice) practiceFrame(dt);

@@ -26,11 +26,11 @@ canvas{display:block;margin:0 auto;border-radius:10px;touch-action:none;cursor:c
 #controls button,#controls input{touch-action:manipulation}
 #curveTouch{display:none;align-items:center;gap:10px;flex:1;max-width:520px;color:var(--muted);font-size:20px}
 #curveRange{flex:1;accent-color:var(--accent);height:34px}
-#fsB{display:none}
+#fsB{font-size:16px}
+body.fs{padding:4px 8px}
 #rotateHint{display:none;background:#1e3a8a;color:#dbeafe;border-radius:8px;padding:8px 12px;font-size:13px;margin-bottom:8px;text-align:center}
 body.touch #curveL,body.touch #curveR,body.touch .kbd,body.touch #hint,body.touch #curveBox{display:none!important}
 body.touch #curveTouch{display:flex}
-body.touch #fsB{display:inline-block}
 body.touch #controls button{padding:13px 22px;font-size:17px;font-weight:600}
 #stage{position:relative;margin:0 auto}
 #joy,#tbtns{display:none;position:absolute;touch-action:none;user-select:none;-webkit-user-select:none}
@@ -96,11 +96,13 @@ details b{color:var(--text)}
 #stratRows.locked{opacity:.55;pointer-events:none}
 
 /* types de lancer */
-#throwSel{display:flex;gap:0;align-items:center;border-radius:8px;overflow:hidden}
-#throwSel .tk{border-radius:0;padding:9px 12px;background:var(--panel);white-space:nowrap}
-#throwSel .tk.on{background:var(--accent);color:#1e293b;font-weight:700}
-#throwSel .kbd{color:var(--muted);font-size:13px;margin-left:6px}
-body.touch #throwSel .tk{padding:12px 14px;font-size:15px}
+#throwSel{display:flex;gap:6px;align-items:center;color:var(--muted)}
+#throwSel button{padding:6px 10px;line-height:1}
+#throwSel b{color:var(--text,#e2e8f0);min-width:62px}
+.ltrack{position:relative;display:inline-block;width:110px;height:10px;border-radius:5px;background:#475569;overflow:hidden}
+#loftFill{position:absolute;left:0;top:0;bottom:0;width:30%;background:linear-gradient(90deg,#7dd3fc,#facc15 40%,#a78bfa)}
+.lmid{position:absolute;left:30%;top:-2px;bottom:-2px;width:2px;background:#fff}
+#throwSel .kbd{color:var(--muted);font-size:13px;margin-left:2px}
 /* chat rapide */
 #emoBar{position:absolute;top:8px;right:8px;display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end;max-width:60%;pointer-events:none}
 #emoBar button{pointer-events:auto}
@@ -168,7 +170,6 @@ body.touch #controls{position:fixed;left:0;right:0;bottom:max(6px,env(safe-area-
   background:rgba(15,23,42,.7);border-radius:12px;padding:3px 10px;gap:8px;flex-wrap:nowrap;z-index:5}
 body.touch #curveTouch{font-size:16px;gap:6px;max-width:none}
 body.touch #curveRange{height:26px}
-body.touch #throwSel .tk{padding:7px 9px;font-size:13px}
 body.touch #controls button{padding:7px 10px;font-size:13px}
 body.touch #fsB{position:fixed;top:0;right:max(4px,env(safe-area-inset-right));height:26px;padding:0 10px!important;font-size:15px!important;
   background:transparent;z-index:7}
@@ -191,7 +192,7 @@ body.touch .tutoBtns button{padding:4px 8px;font-size:12px}
 body.touch #rotateHint{position:fixed;top:30px;left:10px;right:10px;z-index:8}
 
 /* téléphone : joystick flottant pour lancer, courbe et passe haute sur le bord droit */
-#fjoy,#curveV,#highB{display:none}
+#fjoy,#curveV,#loftV,#highB{display:none}
 #fjoy{position:fixed;transform:translate(-50%,-50%);border-radius:50%;border:2px dashed rgba(255,255,255,.55);
   background:rgba(15,23,42,.18);pointer-events:none;z-index:4}
 #fknob{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;background:rgba(250,204,21,.85);
@@ -203,6 +204,11 @@ body.touch.curveon #curveV{display:flex}
 .cvmid{position:absolute;left:-6px;right:-6px;top:50%;height:2px;background:#94a3b8}
 #curveVThumb{position:absolute;left:50%;top:50%;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;background:var(--accent);box-shadow:0 2px 6px rgba(0,0,0,.4)}
 body.touch.highon #highB{display:block}
+body.touch.highon #loftV{display:flex}
+#loftV{position:fixed;right:calc(max(10px,env(safe-area-inset-right)) + 52px);top:34px;height:min(46vh,190px);width:46px;flex-direction:column;align-items:center;
+  gap:2px;background:rgba(15,23,42,.6);border-radius:23px;padding:4px 0;z-index:5;touch-action:none;color:#cbd5e1;font-size:16px;user-select:none;-webkit-user-select:none}
+.lvmid{position:absolute;left:-6px;right:-6px;top:70%;height:2px;background:#fff}
+#loftVThumb{position:absolute;left:50%;top:70%;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;background:#a78bfa;box-shadow:0 2px 6px rgba(0,0,0,.4)}
 #highB{position:fixed;right:max(6px,env(safe-area-inset-right));top:calc(40px + min(46vh,190px));width:56px;padding:6px 0;font-size:11px;font-weight:700;
   line-height:1.15;border-radius:12px;background:rgba(51,65,85,.9);border:2px solid rgba(196,181,253,.6);z-index:5;touch-action:none}
 #highB.on{background:#7c3aed;border-color:#ddd6fe;color:#fff}
@@ -262,7 +268,7 @@ body.touch #menuB,body.touch #teamsB{padding:0 8px;font-size:12px;height:22px}
 .popt.on{background:var(--blue);color:#fff}
 
 /* téléphone, schéma « gestes » : aucun bouton sur le terrain */
-body.touch:not(.thrbtn) #curveV,body.touch:not(.thrbtn) #highB{display:none!important}
+body.touch:not(.thrbtn) #curveV,body.touch:not(.thrbtn) #loftV,body.touch:not(.thrbtn) #highB{display:none!important}
 body.touch:not(.mvjoy) #joy,body.touch:not(.mvjoy) #tbtns{display:none!important}
 body.touch #fknob{opacity:.7}
 /* menu en jeu, commandes, signalement, pause */

@@ -83,9 +83,9 @@ function buildReport() {
     net: G.net, myId: G.myId, me: G.me, spectator: G.spectator, humans: G.humans.map(h => ({ id: h.id, team: h.team, sel: idx(h.sel), name: h.name || '' })),
     mode: G.tuto ? 'tuto ' + G.tuto.step : G.practice ? 'practice' : G.series ? 'series ' + G.series.cur : G.net ? 'online' : 'solo',
     phase: G.phase, off: G.off, score: G.score, receiving: G.receiving, stall: r2(G.stall), marker: idx(G.marker), pickup: idx(G.pickup), carryTo: G.carryTo,
-    wind: G.wind, curve: G.curve, throwKind: G.throwKind, form: G.form, ai: G.ai, pull: G.pull, pullUI: G.pullUI, oplay: G.oplay && G.oplay.type, dplay: G.dplay && G.dplay.type,
+    wind: G.wind, curve: G.curve, loft: G.loft, form: G.form, ai: G.ai, pull: G.pull, pullUI: G.pullUI, oplay: G.oplay && G.oplay.type, dplay: G.dplay && G.dplay.type,
     disc: { mode: disc.mode, holder: idx(disc.holder), x: r2(disc.x), y: r2(disc.y), z: r2(disc.z || 0), sx: r2(disc.sx), sy: r2(disc.sy), cx: r2(disc.cx), cy: r2(disc.cy),
-      ex: r2(disc.ex), ey: r2(disc.ey), t: r2(disc.t), dur: r2(disc.dur), team: disc.team, intended: idx(disc.intended), kind: disc.kind, pull: !!disc.pull },
+      ex: r2(disc.ex), ey: r2(disc.ey), t: r2(disc.t), dur: r2(disc.dur), team: disc.team, intended: idx(disc.intended), kind: disc.kind, loft: disc.loft, pull: !!disc.pull },
     players: players.map(pl), frames: DBG.frames, errors: DBG.errors
   };
 }

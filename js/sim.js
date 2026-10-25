@@ -355,15 +355,18 @@ function aiJumps(u) {
 }
 
 // ---------- passe haute : le lanceur lève le disque (signal visible), la mark peut tenter de la lire ----------
-// vrai quand le porteur a armé une passe haute (IA pendant sa préparation, humain tant qu'il l'a armée)
-function highTell() {
-  if (disc.mode !== 'held' || !disc.holder) return false;
-  if (G.net === 'guest') return !!G.netTell;
-  if (disc.holder.windup) return true;
+// hauteur de passe que le porteur prépare (IA pendant l'armement d'une passe haute, humain selon son réglage) :
+// elle se voit (disque levé, jauge) ; au-dessus de LOFT.TELL, la mark peut tenter de deviner le lâcher
+function holderLoft() {
+  if (disc.mode !== 'held' || !disc.holder) return LOFT.N;
+  if (G.net === 'guest') return canThrow() ? G.loft : loftOf(G.netTell);
+  const h = disc.holder;
+  if (h.windup) return loftOf(h.windup.loft === undefined ? 1 : h.windup.loft);
   const th = throwerHuman();
-  if (!th) return false;
-  return th.id === G.myId ? G.throwKind === 'high' : !!inputOf(th).high;
+  if (!th) return LOFT.N;
+  return th.id === G.myId ? G.loft : loftOf(inputOf(th).loft);
 }
+const highTell = () => holderLoft() >= LOFT.TELL;
 // la mark IA voit le disque levé et programme son saut (plus ou moins bien synchronisé selon le niveau)
 // la mark IA ne peut pas réagir au lâcher (trop tard) : elle devine le moment, de temps en temps
 function markReads(dt) {

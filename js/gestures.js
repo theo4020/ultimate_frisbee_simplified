@@ -2,8 +2,9 @@
 //  Avec le disque (ou pour le pull) :
 //   • lancer : poser le doigt n'importe où et tirer en arrière (lance-pierre) — ou vers la cible, selon les réglages ;
 //     la longueur règle la distance, relâcher lance, revenir au point de départ annule ;
-//   • courbe : pendant la visée, un 2e doigt glisse sur le côté et « pousse » la trajectoire de ce côté ;
-//   • taper ton porteur : changer de pied de pivot · le maintenir : passe haute · taper ailleurs : appeler un cut.
+//   • courbe et hauteur : pendant la visée, un 2e doigt glisse — sur le côté, il « pousse » la trajectoire de ce côté
+//     (courbe) ; le long de la passe, vers le porteur = passe plus haute, vers la cible = plus basse ;
+//   • taper ton porteur : changer de pied de pivot · taper ailleurs : appeler un cut.
 //  Sans le disque :
 //   • taper un endroit : ton joueur y va · taper un coéquipier : tu le prends · taper ton joueur : il saute ;
 //   • glisser vite n'importe où : layout dans cette direction ;
@@ -12,7 +13,7 @@
 
 // Chaque doigt est suivi à part (plusieurs doigts à la fois) : un tap reste un tap même si un autre doigt vise ou courbe.
 //  • le premier doigt qui glisse quand tu as le disque devient le doigt de visée ;
-//  • un autre doigt qui glisse pendant la visée règle la courbe ;
+//  • un autre doigt qui glisse pendant la visée règle la courbe ou la hauteur (selon le sens où il part) ;
 //  • un doigt qui se lève sans avoir glissé est un tap ; vite et loin, c'est un glissé (layout).
 const GS = { ptr: new Map(), aim: null };
 const GS_DEAD = 16, GS_TAP = 12, GS_SWIPE = 30;               // px
@@ -24,7 +25,7 @@ window.addEventListener('pointerdown', e => {
   if (!gsReady(e)) return;
   if (G.phase === 'pull' && !fdPull()) return;                // pendant la jauge, le tap l'arrête (controls.js)
   const F = { id: e.pointerId, x0: e.clientX, y0: e.clientY, t: G.time, len: 0, role: null };
-  if (G.phase === 'play' && canThrow()) { const w = toWorld(e), h = disc.holder; if (h && pickDist(w, h) < 2.5) { F.pb = true; pivotBtnDown(); } }   // doigt sur ton porteur : pivot / passe haute
+  if (G.phase === 'play' && canThrow()) { const w = toWorld(e), h = disc.holder; if (h && pickDist(w, h) < 2.5) { F.pb = true; pivotBtnDown(); } }   // doigt sur ton porteur : pied de pivot
   GS.ptr.set(e.pointerId, F);
 }, true);
 
@@ -38,7 +39,7 @@ window.addEventListener('pointermove', e => {
       F.role = 'aim'; F.pull = fdPull(); GS.aim = F;
       const el = $('fjoy'); el.style.left = F.x0 + 'px'; el.style.top = F.y0 + 'px';
       el.style.width = el.style.height = fdRadius() * 2 + 'px'; el.style.display = 'block';
-    } else if (GS.aim) { F.role = 'curve'; F.cx = e.clientX; F.cy = e.clientY; F.c0 = G.curve; }
+    } else if (GS.aim) { F.role = 'shape'; F.cx = e.clientX; F.cy = e.clientY; F.c0 = G.curve; F.l0 = G.loft; }
     else if (CTRL.move === 'joystick' && joyMode() && !joy.active) { F.role = 'stick'; joyStart(F.id, F.x0, F.y0); }   // joystick flottant
   }
   if (F.role === 'stick') { joyMove(e.clientX, e.clientY); return; }
@@ -53,10 +54,12 @@ window.addEventListener('pointermove', e => {
     const d = F.pull ? 25 + m * (PULL.MAX - 25) : 3 + m * JOY_MAXD;
     F.aimAt = [h.x + F.dir[0] * d, h.y + F.dir[1] * d];
     G.pointer.x = F.aimAt[0]; G.pointer.y = F.aimAt[1]; G.pointer.active = true; G.aiming = !F.pull;
-  } else if (F.role === 'curve') {                            // courbe : déplacement perpendiculaire à la passe
+  } else if (F.role === 'shape') {                            // 2e doigt : courbe (sur le côté) ou hauteur (le long de la passe)
     const A = GS.aim, dir = A && A.dir; if (!dir) return;
-    const lat = (e.clientX - F.cx) * -dir[1] + (e.clientY - F.cy) * dir[0];
-    setCurve(Math.round((F.c0 + lat / 110) * 20) / 20);
+    const mx = e.clientX - F.cx, my = e.clientY - F.cy, lat = mx * -dir[1] + my * dir[0], lon = mx * dir[0] + my * dir[1];
+    if (!F.axis && Math.hypot(lat, lon) > 14) F.axis = Math.abs(lat) >= Math.abs(lon) ? 'curve' : 'loft';   // le premier sens choisi reste
+    if (F.axis === 'curve') setCurve(Math.round((F.c0 + lat / 110) * 20) / 20);
+    else if (F.axis === 'loft' && canThrow()) setLoft(Math.round((F.l0 - lon / 150) * 20) / 20);   // vers le porteur : plus haute
   } else if (!F.role && CTRL.move === 'follow' && G.time - F.t > 0.25 && gsCanMove()) {   // réglage : le joueur suit le doigt
     F.role = 'follow';
   }
@@ -81,7 +84,7 @@ function gsEnd(e, cancel) {
     return;
   }
   if (F.role === 'stick') { joyEnd(); return; }
-  if (F.role === 'curve' || cancel) return;
+  if (F.role === 'shape' || cancel) return;
   if (F.role === 'follow') { G.pointer.down = false; G.pointer.last = G.time; sendInput(true); return; }
   if (len >= GS_SWIPE && dt < 0.3) {                          // glissé rapide : layout
     if (!gsAimCtx() && CTRL.move !== 'joystick' && canLayout()) { doDive(...stickDive(dx, dy)); G.pointer.last = G.time; }

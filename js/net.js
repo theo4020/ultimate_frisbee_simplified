@@ -34,16 +34,16 @@ const sendTo = (id, msg) => safeSend(conns.get(id), msg);
 function netAimOut() {
   const th = throwerHuman();
   if (G.phase !== 'play' || !th) return null;
-  if (th.id === G.myId) return canThrow() && G.pointer.active ? [+G.pointer.x.toFixed(1), +G.pointer.y.toFixed(1), +(+G.curve || 0).toFixed(2), G.throwKind, G.aiming ? 1 : 0] : null;
+  if (th.id === G.myId) return canThrow() && G.pointer.active ? [+G.pointer.x.toFixed(1), +G.pointer.y.toFixed(1), +(+G.curve || 0).toFixed(2), +G.loft.toFixed(2), G.aiming ? 1 : 0] : null;
   const i = inputOf(th);
-  return i.aim ? [+(+i.x).toFixed(1), +(+i.y).toFixed(1), +(i.curve || 0).toFixed(2), i.high ? 'high' : 'normal', i.aiming ? 1 : 0] : null;
+  return i.aim ? [+(+i.x).toFixed(1), +(+i.y).toFixed(1), +(i.curve || 0).toFixed(2), +loftOf(i.loft).toFixed(2), i.aiming ? 1 : 0] : null;
 }
 function sendInput(force) {
   if (G.net !== 'guest') return;
   if (!force && G.time - inT < 0.033) return;
   inT = G.time;
   const aim = canThrow() && G.pointer.active;                  // il vise : ses coéquipiers voient l'aperçu de sa passe
-  netSend({ t: 'in', x: +G.pointer.x.toFixed(2), y: +G.pointer.y.toFixed(2), down: G.pointer.down, brake: braking(G.pointer), high: G.throwKind === 'high' && canThrow(), aim, aiming: aim && !!G.aiming, curve: aim ? +(+G.curve || 0).toFixed(2) : 0, piv: canThrow() && G.pivHolder === disc.holder ? G.pivSel : -1 });
+  netSend({ t: 'in', x: +G.pointer.x.toFixed(2), y: +G.pointer.y.toFixed(2), down: G.pointer.down, brake: braking(G.pointer), loft: canThrow() ? +G.loft.toFixed(2) : LOFT.N, aim, aiming: aim && !!G.aiming, curve: aim ? +(+G.curve || 0).toFixed(2) : 0, piv: canThrow() && G.pivHolder === disc.holder ? G.pivSel : -1 });
 }
 function netError(msg) {
   for (const c of conns.values()) { try { c.close(); } catch (e) { } }
@@ -235,9 +235,9 @@ function hostOnData(id, m) {
     case 'team': setTeam(id, m.team === 1 ? 1 : m.team === -1 ? -1 : 0); break;
     case 'emo': hostEmote(id, m.e | 0); break;
     case 'name': h.name = cleanName(m.name); broadcastRoom(); break;
-    case 'in': Object.assign(inputOf(h), { x: +m.x || 0, y: +m.y || 0, bx: m.brake ? +m.x || 0 : undefined, by: m.brake ? +m.y || 0 : undefined, down: !!m.down, high: !!m.high, aim: !!m.aim, aiming: !!m.aiming, curve: clamp(+m.curve || 0, -1, 1), piv: m.piv === 1 ? 1 : -1, last: G.time }); break;
+    case 'in': Object.assign(inputOf(h), { x: +m.x || 0, y: +m.y || 0, bx: m.brake ? +m.x || 0 : undefined, by: m.brake ? +m.y || 0 : undefined, down: !!m.down, loft: loftOf(+m.loft), aim: !!m.aim, aiming: !!m.aiming, curve: clamp(+m.curve || 0, -1, 1), piv: m.piv === 1 ? 1 : -1, last: G.time }); break;
     case 'callplay': if (G.phase === 'play' && throwerHuman() === h) callPlay(h.team, m.n === 2 ? 2 : 1); break;
-    case 'throw': if (G.phase === 'play' && throwerHuman() === h) throwDisc(disc.holder, +m.x, +m.y, clamp(+m.curve || 0, -1, 1), 1, THROWS[m.kind] ? m.kind : 'normal'); break;
+    case 'throw': if (G.phase === 'play' && throwerHuman() === h) throwDisc(disc.holder, +m.x, +m.y, clamp(+m.curve || 0, -1, 1), 1, loftOf(typeof m.kind === 'string' ? m.kind : +m.kind)); break;
     case 'dive': diveFor(h, +m.x, +m.y); break;
     case 'jump': jumpFor(h); break;
     case 'switch': { const n = switchTarget(h); if (n) selectFor(h, n); break; }
@@ -276,10 +276,10 @@ function snapshot() {
   return {
     t: 's', m: sendMeta ? meta : undefined,
     p: players.map(p => [r1(p.x), r1(p.y), r1(p.vx), r1(p.vy), p.dive > 0 ? 1 : 0, p.down > 0 ? 1 : 0, p.tag, p.state, p.role, r1(p.cx), r1(p.cy), idx(p.match), p.jprep > 0 ? -1 : r1(jumpLift(p))]),
-    d: [disc.mode, idx(disc.holder), r1(disc.x), r1(disc.y), r1(disc.sx), r1(disc.sy), r1(disc.cx), r1(disc.cy), r1(disc.ex), r1(disc.ey), r2(disc.t), r2(disc.dur), idx(disc.intended), disc.kind, r2(disc.curveV || 0)],
+    d: [disc.mode, idx(disc.holder), r1(disc.x), r1(disc.y), r1(disc.sx), r1(disc.sy), r1(disc.cx), r1(disc.cy), r1(disc.ex), r1(disc.ey), r2(disc.t), r2(disc.dur), idx(disc.intended), r2(disc.loft), r2(disc.curveV || 0)],
     g: { score: G.score, off: G.off, phase: G.phase, stall: r1(G.stall), mk: idx(G.marker), msg: G.msg, mid: G.msgId, mt: G.msgTeam, ma: G.msgAlt,
       dbl: idx(G.dbl), gt: r1(G.gt), carry: G.carryTo,
-      pull: G.phase === 'pull' && G.pull ? G.pull.team : -1, pullBy: G.pull ? G.pull.by : null, pready: G.phase === 'pull' && pullReady(), pleft: pullLeft(), tell: highTell(), pz: G.pz || null, aim: netAimOut(), piv: disc.holder ? r2(disc.holder.pivY || 0) : 0 }
+      pull: G.phase === 'pull' && G.pull ? G.pull.team : -1, pullBy: G.pull ? G.pull.by : null, pready: G.phase === 'pull' && pullReady(), pleft: pullLeft(), tell: r2(holderLoft()), pz: G.pz || null, aim: netAimOut(), piv: disc.holder ? r2(disc.holder.pivY || 0) : 0 }
   };
 }
 // envoi aux invités : on n'empile jamais les états chez un invité dont la connexion sature
@@ -420,7 +420,7 @@ function applySnapshot(m) {
   disc.mode = d[0]; disc.holder = d[1] >= 0 ? players[d[1]] : null;
   disc.nx = d[2]; disc.ny = d[3];
   [disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey] = d.slice(4, 10);
-  disc.netT = d[10]; disc.dur = d[11]; disc.intended = d[12] >= 0 ? players[d[12]] : null; disc.kind = THROWS[d[13]] ? d[13] : 'normal'; disc.curveV = +d[14] || 0;
+  disc.netT = d[10]; disc.dur = d[11]; disc.intended = d[12] >= 0 ? players[d[12]] : null; disc.loft = loftOf(typeof d[13] === 'string' ? d[13] : +d[13]); disc.kind = loftLabel(disc.loft); disc.curveV = +d[14] || 0;
   const g = m.g;
   G.score = g.score; G.off = g.off; G.stall = g.stall; G.marker = g.mk >= 0 ? players[g.mk] : null;
   G.dbl = g.dbl >= 0 ? players[g.dbl] : null; G.carryTo = g.carry || null; G.gt = g.gt;
@@ -434,9 +434,9 @@ function applySnapshot(m) {
     if (mt.teams) G.netTeams = mt.teams;
     G.order = mt.order.map(o => o.map(i => players[i]));
   }
-  G.netTell = !!g.tell; G.pz = g.pz || null;
+  G.netTell = loftOf(+g.tell); G.pz = g.pz || null;
   if (disc.holder) disc.holder.pivY = +g.piv || 0;
-  G.netAim = Array.isArray(g.aim) ? { x: +g.aim[0], y: +g.aim[1], curve: +g.aim[2] || 0, kind: g.aim[3] === 'high' ? 'high' : 'normal', aiming: !!g.aim[4] } : null;
+  G.netAim = Array.isArray(g.aim) ? { x: +g.aim[0], y: +g.aim[1], curve: +g.aim[2] || 0, kind: loftOf(typeof g.aim[3] === 'string' ? g.aim[3] : +g.aim[3]), aiming: !!g.aim[4] } : null;
   if ((g.phase === 'play' || g.phase === 'pull') && G.started && !G.teamsOpen && !cardStack.length && !$('overlay').classList.contains('hidden') && $('stratCard').style.display === 'none') {
     $('overlay').classList.add('hidden'); G.menuShown = false;          // arrivée en cours de point : on montre le terrain
   }

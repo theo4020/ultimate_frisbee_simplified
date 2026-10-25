@@ -85,7 +85,7 @@ const TUTO_STEPS = [
     title: 'Le pied de pivot',
     ctx: 'throw',
     text: {
-      mouse: () => `Ta mark ferme le côté de ton coéquipier (sa zone rouge). <b>${keysOf('high').map(keyName).join(' / ')}</b> (appui court) change de pied : le disque passe de l’autre côté de la mark. Pivote, attends que le disque soit passé de l’autre côté, puis lance.`,
+      mouse: () => `Ta mark ferme le côté de ton coéquipier (sa zone rouge). <b>${keysOf('pivot').map(keyName).join(' / ')}</b> change de pied : le disque passe de l’autre côté de la mark. Pivote, attends que le disque soit passé de l’autre côté, puis lance.`,
       touch: 'Ta mark ferme le côté de ton coéquipier (sa zone rouge). <b>Tape ton porteur</b> pour changer de pied : le disque passe de l’autre côté de la mark. Pivote, attends que le disque soit passé de l’autre côté, puis lance.',
       joy: 'Ta mark ferme le côté de ton coéquipier (sa zone rouge). Un appui sur <b>Pivot</b> (bord droit) change de pied : le disque passe de l’autre côté de la mark. Pivote, attends que le disque soit passé de l’autre côté, puis lance.',
       pad: 'Ta mark ferme le côté de ton coéquipier (sa zone rouge). Un appui sur <b>Y</b> change de pied : le disque passe de l’autre côté de la mark. Pivote, attends que le disque soit passé de l’autre côté, puis lance avec A.'
@@ -113,10 +113,10 @@ const TUTO_STEPS = [
     title: 'La passe haute',
     ctx: 'throw',
     text: {
-      mouse: () => `Un mur bloque le passage. <b>${tutoCmd('high')}</b> arme la passe haute, puis lance par-dessus.`,
-      touch: 'Un mur bloque le passage. <b>Maintiens ton doigt sur ton porteur</b> pour armer la passe haute, puis lance par-dessus.',
-      joy: 'Un mur bloque le passage. <b>Maintiens</b> la touche <b>Pivot</b> (bord droit) pour armer la passe haute, puis lance par-dessus.',
-      pad: 'Un mur bloque le passage. <b>Maintiens Y</b> pour armer la passe haute, puis lance par-dessus avec A.'
+      mouse: () => `Un mur bloque le passage. Monte ta passe tout en haut (<b>${tutoCmd('loftUp')}</b>, jauge à côté de ton porteur), puis lance par-dessus. Plus elle est haute, plus elle vole longtemps et part de travers.`,
+      touch: 'Un mur bloque le passage. Pendant la visée, glisse un <b>2<sup>e</sup> doigt vers ton porteur</b> pour monter la passe tout en haut (jauge à côté de lui), puis lance par-dessus.',
+      joy: 'Un mur bloque le passage. Monte le <b>curseur de hauteur</b> (bord droit) tout en haut, puis lance par-dessus.',
+      pad: 'Un mur bloque le passage. <b>Croix ↑</b> pour monter la passe tout en haut, puis lance par-dessus avec A.'
     },
     setup() {
       tutoReset(); G.tuto.wall = true;
@@ -131,7 +131,7 @@ const TUTO_STEPS = [
     },
     on(ev, p) {
       if (ev === 'catch' && p.team === 0) { if (disc.kind === 'high') tutoSuccess('Passe haute réussie !'); else tutoFail('Passé, mais essaie la passe haute !'); }
-      if (ev === 'turnover') tutoFail(disc.kind === 'high' ? 'Raté, réessaie !' : `Bloqué ! Arme la passe haute (${tutoCmd('high')}).`);
+      if (ev === 'turnover') tutoFail(disc.kind === 'high' ? (disc.loft < 0.95 ? 'Bloqué : monte-la encore plus haut !' : 'Raté, réessaie !') : `Bloqué ! Monte la passe tout en haut (${tutoCmd('loftUp')}).`);
     }
   },
   {
@@ -368,11 +368,11 @@ function tutoReset() {
   players.forEach(p => Object.assign(p, { vx: 0, vy: 0, dive: 0, down: 0, jump: 0, jprep: 0, jrec: 0, jumpCd: 0, jumpAt: 0, windup: null, react: 0, tag: '', inT: 0, state: 'stack', role: 'cutter',
     match: null, diveTried: false, called: 0, freeAcc: 0, free: false }));
   Object.assign(G, { oplay: null, dplay: null, pendingOPlay: null, pullPending: false, carryTo: null, stall: 0, marker: null, dbl: null,
-    pickup: null, throwKind: 'normal', score: [0, 0], celebrate: null, scorer: null, phase: 'play', pull: null });
+    pickup: null, loft: LOFT.N, score: [0, 0], celebrate: null, scorer: null, phase: 'play', pull: null });
   Object.assign(G.tuto, { spots: null, mark: false, piv: 0, wall: false, level: null, count: 0, called: false, played: false, jumped: false, blocked: false, lblock: false, thrown: false, holdT: 0, cd: 0, cued: false });
   G.wind = { x: 0, y: 0, kmh: 0 };                             // pas de vent pendant le tutoriel
   setCurve(0);
-  disc.pull = false; disc.kind = 'normal';
+  disc.pull = false; disc.kind = 'normal'; disc.loft = LOFT.N;
   $('overlay').classList.add('hidden'); G.menuShown = false;
 }
 function tutoPut(t, spots, all) {
@@ -427,11 +427,11 @@ function tutoInput(S) {
 // commande à utiliser, telle que réglée par le joueur (touches choisies, gestes ou boutons, manette)
 function tutoCmd(a, touchAlt) {
   const inp = tutoInput(G.tuto && TUTO_STEPS[G.tuto.step]);
-  if (inp === 'mouse') return keysOf(a).map(keyName).join(' / ') + (a === 'high' ? ' maintenu' : '');
+  if (inp === 'mouse') return keysOf(a).map(keyName).join(' / ') + (a === 'loftUp' ? ' ou molette' : '');
   if (a === 'play1') return inp === 'pad' ? 'croix ←' : 'bouton ▶';
-  if (inp === 'pad') return { high: 'Y maintenu', jump: 'A', dive: 'B', switch: 'X', curveL: 'LB', curveR: 'RB' }[a];
-  if (inp === 'joy') return { high: 'bouton Pivot maintenu', jump: 'bouton Saut', dive: 'bouton Layout', switch: 'bouton Switch', curveL: 'curseur', curveR: 'curseur' }[a];
-  return touchAlt || { high: 'maintiens ton porteur', jump: 'tape ton joueur', dive: 'glisse vite', switch: 'tape un coéquipier', curveL: '2e doigt', curveR: '2e doigt' }[a];
+  if (inp === 'pad') return { pivot: 'Y', loftUp: 'croix ↑', jump: 'A', dive: 'B', switch: 'X', curveL: 'LB', curveR: 'RB' }[a];
+  if (inp === 'joy') return { pivot: 'bouton Pivot', loftUp: 'curseur de hauteur', jump: 'bouton Saut', dive: 'bouton Layout', switch: 'bouton Switch', curveL: 'curseur', curveR: 'curseur' }[a];
+  return touchAlt || { pivot: 'tape ton porteur', loftUp: '2e doigt vers ton porteur', jump: 'tape ton joueur', dive: 'glisse vite', switch: 'tape un coéquipier', curveL: '2e doigt', curveR: '2e doigt' }[a];
 }
 function tutoText(force) {
   const T = G.tuto, S = TUTO_STEPS[T.step], inp = tutoInput(S), sig = inp + JSON.stringify(CTRL);

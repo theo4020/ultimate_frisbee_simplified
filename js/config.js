@@ -23,14 +23,17 @@ const RUN = { acc: 6, dec: 12, lat: 9, defK: 0.95 };
 //   anticip (s), block, jump (m), tspd (durée de vol, < 1 = disque plus rapide), err, hands, safe, greed,
 //   fake (chance de feinter la mark), misread (s : défenseurs vus plus lents qu'ils ne sont)
 function skill(k) {
-  const prec = Math.max(0, Math.min(1, k.prec)), read = Math.max(0, Math.min(1, k.read));   // (clamp n'existe pas encore : util.js vient après)
+  // prec et read vont de 0 à 1 ; en dessous de 0 (jusqu'à -1) : vrai débutant (lancers ratés, mains de beurre, passes forcées)
+  const prec = Math.max(-1, Math.min(1, k.prec)), read = Math.max(-1, Math.min(1, k.read));   // (clamp n'existe pas encore : util.js vient après)
+  const spow = (x, e) => Math.sign(x) * Math.abs(x) ** e, low = Math.max(0, -prec);
   return { k: { react: k.react, speed: k.speed, prec, read }, react: k.react, speed: k.speed,
     jump: Math.min(1.1, 0.4 + (k.speed - 0.9) * 1.6),
-    block: Math.min(0.99, 0.8 + 0.2 * prec), err: 0.35 + 1.55 * (1 - prec) ** 1.3, tspd: 1.12 - 0.27 * prec, hands: 0.004 * (1 - prec) ** 2,
-    anticip: 0.22 + 0.2 * read, safe: -0.05 + 0.16 * read ** 1.3, greed: 0.6 * (1 - read) ** 2.5, fake: 0.12 + 0.4 * read, misread: 0.25 * (1 - read) };
+    block: Math.min(0.99, 0.8 + 0.2 * prec), err: 0.35 + 1.55 * (1 - prec) ** 1.3, tspd: 1.12 - 0.27 * prec, hands: 0.004 * (1 - prec) ** 2 + 0.06 * low,
+    anticip: Math.max(0.05, 0.22 + 0.2 * read), safe: -0.05 + 0.16 * spow(read, 1.3), greed: Math.min(1, 0.6 * (1 - read) ** 2.5),
+    fake: Math.max(0.02, 0.12 + 0.4 * read), misread: 0.25 * (1 - read) };
 }
 const AI_LEVELS = {
-  facile:    skill({ react: 1.3, speed: 0.9,  prec: 0,    read: 0 }),
+  facile:    skill({ react: 1.4, speed: 0.87, prec: -0.85, read: -0.8 }),   // débutant : ~77 % de passes réussies
   normal:    skill({ react: 1,   speed: 1,    prec: 0.5,  read: 0.5 }),
   difficile: skill({ react: 0.8, speed: 1.09, prec: 0.75, read: 0.8 })
 };
@@ -105,17 +108,29 @@ const DESCS = {
   straight: 'La mark se place pile devant le handler : elle coupe les lancers vers l’avant (et les hucks), mais laisse les deux côtés ouverts.'
 };
 
-// Types de lancer : dur = temps de vol, peak = hauteur, drift = sensibilité au vent, drop = chance de drop en plus
-// (+ dropWind par km/h de vent). L'imprécision est calculée par throwErr (throwing.js).
-//  • normal : passe classique
-//  • high : passe haute (hammer, blade…) — par-dessus la défense, mais lente, imprécise avec la distance et le vent,
-//    et plus dure à attraper
-const THROWS = {
-  normal: { name: 'Normal', dur: 1, peak: 1, drift: 1, min: 2, max: 50, drop: 0, dropWind: 0 },
-  high: { name: 'Passe haute', dur: 1.4, peak: 2.4, drift: 1.3, min: 6, max: 30, drop: 0.006, dropWind: 0.00025 }
-};
-const THROW_ORDER = ['normal', 'high'];
-const KIND_DELAY = 0.4;   // après un passage normal <-> passe haute, on ne peut pas lancer tout de suite (s)
+// Hauteur de passe (loft), de 0 à 1 : tout change en continu avec elle
+//  • 0 : passe rasante — tendue, plus rapide, plus précise, moins sensible au vent, mais facile à couper près du lanceur ;
+//  • 0,3 : passe normale ;
+//  • 1 : passe haute (hammer, blade…) — par-dessus la défense, mais lente, imprécise avec la distance et le vent,
+//    plus dure à attraper ; au-dessus de TELL, le disque levé se voit et la mark peut tenter de deviner le lâcher.
+// dur = temps de vol (×), drift = sensibilité au vent, min/max = distance possible, drop (+ dropWind par km/h) = drops en plus.
+// L'imprécision et la forme du vol sont calculées par throwErr (throwing.js) et heightAt (util.js).
+const LOFT = { MIN: 0, N: 0.3, MAX: 1, STEP: 0.1, HIGH: 0.7, TELL: 0.55 };
+const THROW_LOW = { dur: 0.88, drift: 0.85, min: 2, max: 50, drop: 0, dropWind: 0 };
+const THROW_N = { dur: 1, drift: 1, min: 2, max: 50, drop: 0, dropWind: 0 };
+const THROW_HIGH = { dur: 1.4, drift: 1.3, min: 6, max: 30, drop: 0.006, dropWind: 0.00025 };
+// une hauteur (nombre) ou un ancien type ('normal', 'high')
+function loftOf(k) { return typeof k === 'number' && isFinite(k) ? Math.max(LOFT.MIN, Math.min(LOFT.MAX, k)) : k === 'high' ? LOFT.MAX : LOFT.N; }
+const loftW = l => Math.max(0, (l - LOFT.N) / (LOFT.MAX - LOFT.N));   // part « passe haute » (0 → 1)
+const loftLow = l => Math.max(0, (LOFT.N - l) / (LOFT.N - LOFT.MIN)); // part « rasante » (0 → 1)
+function throwK(k) {
+  const l = loftOf(k), w = loftW(l), A = w > 0 ? THROW_HIGH : THROW_LOW, f = w > 0 ? w : loftLow(l), o = {};
+  for (const key in THROW_N) o[key] = THROW_N[key] + (A[key] - THROW_N[key]) * f;
+  return o;
+}
+const loftLabel = l => (l >= LOFT.HIGH ? 'high' : 'normal');   // catégorie (stats, succès, tutoriel)
+const loftName = l => (l < 0.15 ? 'rasante' : l < 0.45 ? 'normale' : l < LOFT.HIGH ? 'lobée' : 'haute');
+const KIND_DELAY = 0.4;   // disque levé (au-dessus de LOFT.TELL) : on ne peut pas lancer tout de suite (s)
 
 // Couleurs d'équipe : remplissage, contour, teinte de l'en-but
 const PALETTE = {

@@ -106,7 +106,14 @@ function pointerEnd(e) {
 window.addEventListener('pointerup', pointerEnd);            // relâché n'importe où (même hors du terrain)
 canvas.addEventListener('pointercancel', e => { if (touchUI(e)) return; G.pointer.down = false; G.aiming = false; sendInput(true); });
 canvas.addEventListener('contextmenu', e => e.preventDefault());
-canvas.addEventListener('wheel', e => { e.preventDefault(); adjustCurve(e.deltaY > 0 ? 0.1 : -0.1); }, { passive: false });
+// molette : hauteur de la passe quand on a le disque (vers le haut = plus haute), courbe pendant le pull
+let wheelAcc = 0;
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  if (!canThrow()) { adjustCurve(e.deltaY > 0 ? 0.1 : -0.1); return; }
+  wheelAcc += e.deltaY * (e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 400 : 1);
+  while (Math.abs(wheelAcc) >= 50) { const s = Math.sign(wheelAcc); wheelAcc -= s * 50; adjustLoft(-s * LOFT.STEP); }
+}, { passive: false });
 window.addEventListener('keydown', e => {
   if (e.target && (e.target.tagName === 'TEXTAREA' || (e.target.tagName === 'INPUT' && e.target.type !== 'range'))) { if (e.key === 'Enter' && e.target.id === 'joinCode') $('joinGo').click(); return; }
   const k = e.key.toLowerCase();
@@ -114,9 +121,10 @@ window.addEventListener('keydown', e => {
   if (G.replay) { if (k === 'escape' || k === ' ' || k === 'enter') { e.preventDefault(); stopReplay(); } return; }
   if (keyIs('play1', k)) { doPlay(1); return; }
   if (keyIs('play2', k)) { doPlay(2); return; }
-  if (keyIs('high', k)) { if (!e.repeat) pivotBtnDown(); return; }
-  if (keyIs('curveL', k)) adjustCurve(-0.25);
-  else if (keyIs('curveR', k)) adjustCurve(0.25);
+  if (keyIs('pivot', k)) { if (!e.repeat) pivotBtnDown(); return; }
+  if (canThrow() && (keyIs('loftUp', k) || keyIs('loftDown', k))) { e.preventDefault(); adjustLoft(keyIs('loftUp', k) ? LOFT.STEP : -LOFT.STEP); return; }
+  if (keyIs('curveL', k)) { if (k.startsWith('arrow')) e.preventDefault(); adjustCurve(-0.25); }
+  else if (keyIs('curveR', k)) { if (k.startsWith('arrow')) e.preventDefault(); adjustCurve(0.25); }
   else if ((k === ' ' || k === 'enter') && localPuller()) { e.preventDefault(); pullStop(); }
   else if (k === 'escape' && localPuller()) pullBack();
   else if (keyIs('switch', k)) { e.preventDefault(); switchDefender(); }
@@ -199,21 +207,27 @@ for (const [id, fn] of [['tDive', touchDive], ['tSwitch', switchDefender], ['tJu
   $(id).addEventListener('pointerdown', e => { e.preventDefault(); fn(); });
 const fsOK = document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen;
 if (!fsOK) $('fsB').style.setProperty('display', 'none', 'important');
-$('fsB').addEventListener('click', () => {
+// plein écran (téléphone et PC) : bouton ⛶ en haut ; Échap ou le même bouton pour en sortir
+const isFs = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+function toggleFullscreen() {
   const el = document.documentElement;
-  if (document.fullscreenElement || document.webkitFullscreenElement) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  if (isFs()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
   else {
     const p = (el.requestFullscreen || el.webkitRequestFullscreen).call(el);
-    if (p && p.then) p.then(() => screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape').catch(() => {})).catch(() => {});
+    if (p && p.then) p.then(() => gestures() && screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape').catch(() => {})).catch(() => {});
   }
   setTimeout(resize, 300);
-});
+}
+$('fsB').addEventListener('click', toggleFullscreen);
+function fsChanged() { const on = isFs(); document.body.classList.toggle('fs', on); $('fsB').textContent = on ? '🗗' : '⛶'; $('fsB').title = on ? 'Quitter le plein écran' : 'Plein écran'; setTimeout(resize, 50); }
+document.addEventListener('fullscreenchange', fsChanged);
+document.addEventListener('webkitfullscreenchange', fsChanged);
 
 
 // ---------- téléphone : outils communs aux gestes (gestures.js) ----------
 const fdPull = () => G.phase === 'pull' && localPuller() && G.pullUI && G.pullUI.stage === 'aim' && !!disc.holder;
 const fdRadius = () => clamp(window.innerHeight * 0.32, 80, 150);
-const fdOnUI = t => !!(t && t.closest && t.closest('button, input, textarea, #controls, #tbtns, #tutoBox, #pracBox, #overlay, #hud, #curveV, #highB, #pauseBanner'));
+const fdOnUI = t => !!(t && t.closest && t.closest('button, input, textarea, #controls, #tbtns, #tutoBox, #pracBox, #overlay, #hud, #curveV, #loftV, #highB, #pauseBanner'));
 
 // ---------- téléphone, réglage « Courbe et passe haute : boutons » : curseur de courbe et bouton sur le bord droit ----------
 // haut = courbe ↶ (comme A), bas = courbe ↷ (comme E)
@@ -231,4 +245,17 @@ $('curveV').addEventListener('dblclick', () => setCurve(0));
 $('highB').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); pivotBtnDown(); });
 $('highB').addEventListener('pointerup', e => { e.preventDefault(); e.stopPropagation(); pivotBtnUp(); });
 $('highB').addEventListener('pointercancel', () => pivotBtnCancel());
-window.addEventListener('keyup', e => { if (keyIs('high', e.key.toLowerCase())) pivotBtnUp(); });
+window.addEventListener('keyup', e => { if (keyIs('pivot', e.key.toLowerCase())) pivotBtnUp(); });
+// curseur de hauteur (téléphone, réglage « curseurs sur le bord ») : en haut = passe haute, en bas = rasante
+function loftVFrom(e) {
+  const r = $('loftV').querySelector('.cvtrack').getBoundingClientRect();
+  setLoft(Math.round((1 - clamp((e.clientY - r.top) / r.height, 0, 1)) * 20) / 20);
+}
+let loftVId = null;
+$('loftV').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); if (!canThrow()) return; loftVId = e.pointerId; $('loftV').setPointerCapture(e.pointerId); loftVFrom(e); });
+$('loftV').addEventListener('pointermove', e => { if (e.pointerId === loftVId && canThrow()) loftVFrom(e); });
+$('loftV').addEventListener('pointerup', e => { if (e.pointerId === loftVId) loftVId = null; });
+$('loftV').addEventListener('pointercancel', () => { loftVId = null; });
+$('loftV').addEventListener('dblclick', () => setLoft(LOFT.N));
+$('loftDn').addEventListener('click', () => adjustLoft(-LOFT.STEP));
+$('loftUp').addEventListener('click', () => adjustLoft(LOFT.STEP));

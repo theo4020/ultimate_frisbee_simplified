@@ -48,7 +48,7 @@ function gpPlay(sx, sy, m, press) {
   }
   if (press(4)) adjustCurve(-0.25);
   if (press(5)) adjustCurve(0.25);
-  if (press(3)) pivotBtnDown();                               // Y : pivot (appui) / passe haute (maintenu)
+  if (press(3)) pivotBtnDown();                               // Y : changer de pied de pivot
   if (!btn(3) && GP.prev[3]) pivotBtnUp();
   // pull
   if (G.phase === 'pull') {
@@ -84,6 +84,8 @@ function gpPlay(sx, sy, m, press) {
     else if (press(2)) doCall(GP.aim[0], GP.aim[1]);
     if (press(14)) doPlay(1);                                  // croix ← / → : appeler Play 1 / Play 2
     if (press(15)) doPlay(2);
+    if (press(12)) adjustLoft(LOFT.STEP);                      // croix ↑ / ↓ : passe plus haute / plus basse
+    if (press(13)) adjustLoft(-LOFT.STEP);
     if (press(1)) gpNoLayout();
     return;
   }

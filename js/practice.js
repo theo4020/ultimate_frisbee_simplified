@@ -25,7 +25,7 @@ function practiceWind() {
 function practiceRound() {
   const P = G.practice;
   players.forEach(p => Object.assign(p, { vx: 0, vy: 0, dive: 0, down: 0, jump: 0, jprep: 0, jrec: 0, jumpCd: 0, react: 0, tag: '', match: null, windup: null }));
-  Object.assign(G, { phase: 'play', oplay: null, dplay: null, pendingOPlay: null, pullPending: false, carryTo: null, stall: 0, marker: null, dbl: null, pickup: null, throwKind: 'normal' });
+  Object.assign(G, { phase: 'play', oplay: null, dplay: null, pendingOPlay: null, pullPending: false, carryTo: null, stall: 0, marker: null, dbl: null, pickup: null, loft: LOFT.N });
   disc.pull = false;
   practiceWind();
   const h = TEAMS[0][0];

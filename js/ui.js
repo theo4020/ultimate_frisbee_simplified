@@ -21,13 +21,13 @@ function updateHud() {
   const hk = G.humans.map(h => h.id + ':' + h.team).join(',');
   const ct = canThrow();
   $('throwSel').style.display = ct || (att && G.phase === 'play' && soloStyle(ME)) ? '' : 'none';
-  document.querySelectorAll('.tk').forEach(b => b.classList.toggle('on', b.dataset.k === G.throwKind));
-  // téléphone : courbe (bord droit) quand on lance ou qu'on pulle, bouton passe haute quand on a le disque
+  const lp = (G.loft - LOFT.MIN) / (LOFT.MAX - LOFT.MIN);
+  $('loftFill').style.width = (lp * 100) + '%'; $('loftTxt').textContent = loftName(G.loft);
+  // téléphone : courbe (bord droit) quand on lance ou qu'on pulle, hauteur et pivot quand on a le disque
   document.body.classList.toggle('curveon', ct || localPuller() || throwSoon());
   document.body.classList.toggle('highon', ct);
-  $('highB').classList.toggle('on', G.throwKind === 'high');
-  $('highB').innerHTML = G.throwKind === 'high' ? 'Haute ✓<br><small>annuler</small>' : 'Pivot<br><small>maintenir : haute</small>';
   $('curveVThumb').style.top = ((G.curve + 1) / 2 * 100) + '%';
+  $('loftVThumb').style.top = ((1 - lp) * 100) + '%';
   const key = [att, G.phase, pulling, G.phase === 'play', forceOf(0), forceOf(1), formOf(0), formOf(1), defFormOf(0), defFormOf(1), op, dp, G.wind.kmh, G.net, G.me, hk,
     tn(0), tn(1), tcol(0), tcol(1), G.spectator, !!G.gpActive, !!G.tuto, !!G.attract, !!G.practice].join('|');
   if (key === hudKey) return;
@@ -67,9 +67,9 @@ function updateHud() {
     : att
     ? (multi ? '<i>Attaque à plusieurs</i> : ton joueur (anneau jaune) suit la souris ; quand il a le disque, vise et relâche pour lancer. <i>' + K('switch') + ' / 1 à 5</i> = prendre un joueur géré par l’IA.'
              : '<i>Attaque</i> : vise et relâche pour lancer (relâche sur ton joueur pour annuler).')
-    + ' <i>' + K('high') + '</i> = changer de pied de pivot ; maintenu = armer la passe haute (la défense voit le disque levé et doit deviner quand tu lances). <i>' + K('jump') + '</i> = saut du receveur pendant le vol (duel en l’air). <i>Clic droit</i> = saut (en défense, ou du receveur pendant le vol) ; avec le disque, clic droit sur le terrain = le coéquipier IA le plus proche attaque cet espace. <i>Clic sur un coéquipier</i> = tu le prends. <i>' + K('dive') + ' / clic pendant le vol</i> = layout du receveur. Anneau vert = coéquipier démarqué. Zone rouge = break side : ajoute de la courbe (' + K('curveL') + ' / ' + K('curveR') + ', molette) pour contourner la mark. Cercle pointillé = zone de stall. Couleur de la trajectoire : rouge = contrable, jaune = contrable debout seulement, rose = en sautant, bleu = trop haut.'
+    + ' <i>' + K('pivot') + '</i> = changer de pied de pivot. <i>' + K('loftUp') + ' / ' + K('loftDown') + ' ou molette</i> = passe plus haute / plus basse (plus haute : elle passe par-dessus mais vole plus longtemps et part plus de travers ; la défense voit le disque levé). <i>' + K('curveL') + ' / ' + K('curveR') + '</i> = courbe. <i>' + K('jump') + '</i> = saut du receveur pendant le vol (duel en l’air). <i>Clic droit</i> = saut (en défense, ou du receveur pendant le vol) ; avec le disque, clic droit sur le terrain = le coéquipier IA le plus proche attaque cet espace. <i>Clic sur un coéquipier</i> = tu le prends. <i>' + K('dive') + ' / clic pendant le vol</i> = layout du receveur. Anneau vert = coéquipier démarqué. Zone rouge = break side : ajoute de la courbe (' + K('curveL') + ' / ' + K('curveR') + ', molette) pour contourner la mark. Cercle pointillé = zone de stall. Couleur de la trajectoire : rouge = contrable, jaune = contrable debout seulement, rose = en sautant, bleu = trop haut.'
     : '<i>Défense</i> : ton joueur (anneau jaune) suit la souris ou le doigt. <i>Clic / ' + K('dive') + '</i> = layout. <i>' + K('jump') + '</i> = saut (contrer une passe haute au lâcher à la mark, ou à l’arrivée). <i>' + K('switch') + '</i> = switch vers le joueur en gris, <i>1 à 5</i> = prendre ce joueur. Entre dans le cercle du handler pour lancer le stall (un seul défenseur dedans, sinon double team). L’anneau sous le disque en vol : rouge = contrable, jaune = debout seulement, rose = en sautant, bleu = trop haut.';
-  if (G.gpActive) $('hint').innerHTML = '🎮 <i>Manette</i> : stick gauche = déplacer le curseur de visée / courir (stick droit = visée fine) · A ou RT = lancer au curseur (sans le disque : saut) · B = layout · X = appel de cut au curseur (sans le disque : switch) · Y = passe haute · LB/RB = courbe · Start = menu. ' + $('hint').innerHTML;
+  if (G.gpActive) $('hint').innerHTML = '🎮 <i>Manette</i> : stick gauche = déplacer le curseur de visée / courir (stick droit = visée fine) · A ou RT = lancer au curseur (sans le disque : saut) · B = layout · X = appel de cut au curseur (sans le disque : switch) · Y = pivot · croix ↑/↓ = hauteur de passe · LB/RB = courbe · Start = menu. ' + $('hint').innerHTML;
   $('emoBar').style.display = G.net && G.started ? '' : 'none';
   resize();
 }
@@ -331,10 +331,16 @@ function tryStartOnline() {
 // =====================================================================
 //  Actions du joueur (appliquées ici, ou envoyées à l'hôte si on est l'invité)
 // =====================================================================
-// changement de type de passe : court délai pendant lequel on ne peut pas lancer
+// Hauteur de la passe (G.loft, voir LOFT) : réglée avant de lancer, revient à la passe normale après chaque lancer.
+// Monter le disque au-dessus de LOFT.TELL se voit (disque levé) : court délai pendant lequel on ne peut pas lancer
 // (un lancer demandé pendant ce délai part dès qu'il est fini, si on a toujours le disque)
 const kindLocked = () => G.time - (G.kindAt || -9) < KIND_DELAY;
-function setKind(k) { if (THROWS[k] && k !== G.throwKind) { G.throwKind = k; G.kindAt = G.time; } }
+function setLoft(v, quiet) {
+  const l = Math.round(loftOf(+v) * 100) / 100;
+  if (!quiet && l >= LOFT.TELL && G.loft < LOFT.TELL) G.kindAt = G.time;
+  G.loft = l;
+}
+function adjustLoft(dv) { if (canThrow()) setLoft(G.loft + dv); }
 function pendingThrowTick() {
   const P = G.pendThrow; if (!P) return;
   if (!canThrow() || disc.holder !== P.holder) { G.pendThrow = null; return; }
@@ -343,37 +349,26 @@ function pendingThrowTick() {
 function doThrow(x, y, curve) {
   if (kindLocked() && canThrow()) { G.pendThrow = { x, y, curve, holder: disc.holder }; return; }
   G.pendThrow = null;
-  const kind = G.throwKind;
-  G.throwKind = 'normal';                                   // après chaque lancer, on revient au lancer normal
+  const kind = G.loft;
+  G.loft = LOFT.N;                                          // après chaque lancer, on revient à la passe normale
   if (G.net === 'guest') { netSend({ t: 'throw', x, y, curve, kind }); return; }
   if (canThrow()) throwDisc(disc.holder, x, y, curve, 1, kind);
 }
-function setThrowKind(k) { setKind(k); }
-// Bouton pivot (Z, Y à la manette, bouton à l'écran, appui sur ton porteur au doigt) :
-//  appui court = changer de pied de pivot (côté open ↔ côté fermé, la mark suit : feinte possible) ;
-//  maintenu PIVOT_HOLD s = armer la passe haute (le temps de maintien compte dans sa préparation) ; appui court si armée = annuler
-const PIVOT_HOLD = 0.3, PB = { down: false, at: 0, done: false };
-function pivotBtnDown() { if (!canThrow() || PB.down) return; PB.down = true; PB.at = G.time; PB.done = false; }
+// Bouton pivot (X, Y à la manette, bouton à l'écran, appui sur ton porteur au doigt) : changer de pied de pivot
+// (côté open ↔ côté fermé, la mark suit : feinte possible)
+const PB = { down: false };
+function pivotBtnDown() { if (!canThrow() || PB.down) return; PB.down = true; }
 function pivotBtnCancel() { PB.down = false; }
 function pivotBtnUp() {
   if (!PB.down) return;
   PB.down = false;
-  if (PB.done || !canThrow()) return;
-  if (G.throwKind === 'high') setKind('normal'); else togglePivot();
+  if (canThrow()) togglePivot();
 }
 function togglePivot() { if (G.pivHolder !== disc.holder) { G.pivHolder = disc.holder; G.pivSel = -1; } G.pivSel = G.pivSel > 0 ? -1 : 1; sendInput(true); }
 function pivotBtnFrame() {
   if (disc.mode !== 'held') G.pivHolder = null;             // le même porteur peut recevoir à nouveau : on repart côté open
   if (disc.mode === 'held' && disc.holder !== G.pivHolder) { G.pivHolder = disc.holder; G.pivSel = -1; }   // nouvelle réception : pivot côté open
-  if (PB.down && !PB.done && G.time - PB.at >= PIVOT_HOLD) {
-    PB.done = true;
-    if (canThrow() && G.throwKind !== 'high') { setKind('high'); G.kindAt -= PIVOT_HOLD; }
-  }
 }
-// armer / désarmer la passe haute (les défenseurs voient le disque levé tant qu'elle est armée)
-function toggleHigh() { setKind(G.throwKind === 'high' ? 'normal' : 'high'); }
-function cycleThrowKind() { setKind(THROW_ORDER[(THROW_ORDER.indexOf(G.throwKind) + 1) % THROW_ORDER.length]); }
-document.querySelectorAll('.tk').forEach(b => b.addEventListener('click', () => setThrowKind(b.dataset.k)));
 
 // chat rapide en ligne
 // un seul petit bouton 😀 sur le terrain ; la liste des réactions ne s'ouvre qu'en le touchant (et se referme seule)

@@ -8,6 +8,19 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
+  { id: 25, date: '2026-10-25', tag: 'Gameplay', title: 'Choisis la hauteur de chaque passe 🌈',
+    body: `Fini le simple « normal ou passe haute » : la <b>hauteur</b> de la passe se règle en continu, de la
+      <b>rasante</b> (tendue, rapide, précise, mais facile à couper près de toi) à la <b>passe haute</b> (par-dessus la défense,
+      mais elle vole plus longtemps et part plus de travers). Entre les deux, tout change petit à petit.<br>
+      • <b>PC</b> : <b>Z</b> / <b>S</b>, <b>↑</b> / <b>↓</b> ou la <b>molette</b> ; <b>←</b> / <b>→</b> pour la courbe ;
+      le pied de pivot passe sur <b>X</b> ;<br>
+      • <b>téléphone</b> : pendant la visée, un 2<sup>e</sup> doigt glisse <b>le long de la passe</b> (vers ton porteur =
+      plus haute) ; sur le côté, il règle toujours la courbe ;<br>
+      • <b>manette</b> : croix ↑ / ↓.<br>
+      Une <b>jauge à côté du porteur</b> montre à tout le monde, adversaires compris, la hauteur qu'il prépare : en défense,
+      tu vois venir le lob.<br>
+      Aussi : un bouton <b>⛶ plein écran</b> en haut, maintenant aussi sur PC, et un niveau <b>Facile</b> vraiment plus
+      facile (plus de drops et de passes ratées).` },
   { id: 24, date: '2026-10-20', tag: 'Affichage', title: 'Nouvelle vue inclinée 🏟️',
     body: `Dans <b>Commandes → Affichage</b>, choisis la vue <b>Inclinée (tribune)</b> : le terrain vu depuis le bord, avec
       des joueurs debout qui sautent et plongent vraiment, et le disque qui monte et redescend (son ombre et un trait montrent

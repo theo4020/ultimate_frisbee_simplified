@@ -55,9 +55,9 @@ function drawStreaks() {
 function throwDur(sx, sy, ax, ay, kind) {
   const d = dist(sx, sy, ax, ay) || 0.01, [wx, wy] = windNow();
   const along = (wx * (ax - sx) + wy * (ay - sy)) / d;       // > 0 : vent dans le dos du lanceur
-  return flightTime(d) * clamp(1 - 0.01 * along, 0.85, 1.15) * (THROWS[kind] || THROWS.normal).dur;
+  return flightTime(d) * clamp(1 - 0.01 * along, 0.85, 1.15) * throwK(kind).dur;
 }
-function drift(dur, kind) { const [wx, wy] = windNow(), k = dur * DRIFT * (THROWS[kind] || THROWS.normal).drift; return [wx * k, wy * k]; }
+function drift(dur, kind) { const [wx, wy] = windNow(), k = dur * DRIFT * throwK(kind).drift; return [wx * k, wy * k]; }
 function windLabel() {
   const { x, y, kmh } = G.wind;
   if (kmh < 4) return 'presque nul';

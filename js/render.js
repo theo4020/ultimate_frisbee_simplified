@@ -8,11 +8,11 @@ function allyAim() {
   if (!G.net || G.phase !== 'play' || disc.mode !== 'held' || !disc.holder || disc.holder.team !== G.me || G.spectator) return null;
   const th = throwerHuman();
   if (!th || th.id === G.myId) return null;
-  const a = G.net === 'guest' ? G.netAim : (() => { const i = inputOf(th); return i.aim ? { x: i.x, y: i.y, curve: i.curve || 0, kind: i.high ? 'high' : 'normal', aiming: !!i.aiming } : null; })();
+  const a = G.net === 'guest' ? G.netAim : (() => { const i = inputOf(th); return i.aim ? { x: i.x, y: i.y, curve: i.curve || 0, kind: loftOf(i.loft), aiming: !!i.aiming } : null; })();
   return a && isFinite(a.x) && isFinite(a.y) ? a : null;
 }
 function drawAim(h, px, py, curve, kind, aiming, ally) {
-  const K = THROWS[kind] || THROWS.normal; kind = THROWS[kind] ? kind : 'normal';
+  kind = loftOf(kind); const K = throwK(kind);
   let tx = px, ty = py, dx = tx - h.x, dy = ty - h.y, d = Math.hypot(dx, dy) || 0.01;
   if (d > K.max) { tx = h.x + dx / d * K.max; ty = h.y + dy / d * K.max; d = K.max; }
   if (d < K.min && d >= CANCEL_R) { tx = h.x + dx / d * K.min; ty = h.y + dy / d * K.min; d = K.min; }
@@ -22,7 +22,7 @@ function drawAim(h, px, py, curve, kind, aiming, ally) {
   ctx.save();
   const cancel = aiming && dist(px, py, h.x, h.y) < CANCEL_R;
   ctx.globalAlpha = (cancel ? 0.3 : !ally && kindLocked() ? 0.35 : 1) * (ally ? 0.6 : 1);   // changement de passe en cours : aperçu estompé
-  drawFlightPath(sx, sy, cx, cy, ex, ey, peakOf(dur, kind), 0, aiming ? 0.95 : 0.7, aiming ? 3 : 2, kind === 'high' ? [2, 5] : [6, 5], kind, curve);
+  drawFlightPath(sx, sy, cx, cy, ex, ey, peakOf(dur, kind), 0, aiming ? 0.95 : 0.7, aiming ? 3 : 2, kind >= LOFT.HIGH ? [2, 5] : [6, 5], kind, curve);
   ctx.strokeStyle = aiming ? 'rgba(250,204,21,.95)' : 'rgba(255,255,255,.75)'; ctx.lineWidth = 2;
   const er = throwErr(d, curve, kind) + Math.hypot(wx, wy) * 0.08;
   circle(X(ex), Y(ey), Math.max(er * S, 4)); ctx.fillStyle = 'rgba(255,255,255,.15)'; ctx.fill(); ctx.stroke();
@@ -30,9 +30,9 @@ function drawAim(h, px, py, curve, kind, aiming, ally) {
     ctx.strokeStyle = 'rgba(125,211,252,.9)'; ctx.lineWidth = 2; const k = 5;
     ctx.beginPath(); ctx.moveTo(X(tx) - k, Y(ty) - k); ctx.lineTo(X(tx) + k, Y(ty) + k); ctx.moveTo(X(tx) + k, Y(ty) - k); ctx.lineTo(X(tx) - k, Y(ty) + k); ctx.stroke();
   }
-  if (kind !== 'normal') {                                  // rappel du type de lancer choisi
+  if (Math.abs(kind - LOFT.N) > 0.04) {                     // rappel de la hauteur choisie
     ctx.font = `800 ${Math.max(10, S * 1.3)}px system-ui`; ctx.textAlign = 'center'; ctx.fillStyle = '#facc15';
-    ctx.fillText(K.name.toUpperCase(), X(ex), Y(ey) - Math.max(er * S, 4) - 4);
+    ctx.fillText('PASSE ' + loftName(kind).toUpperCase(), X(ex), Y(ey) - Math.max(er * S, 4) - 4);
   }
   ctx.restore();
 }
@@ -42,6 +42,25 @@ function defending() { return G.phase === 'play' && G.off !== G.me; }
 // rose = seulement en sautant, bleu = trop haut
 // palette Okabe-Ito, lisible par les daltoniens : vermillon, jaune, rose, bleu ciel
 const HC = ['213,94,0', '240,228,66', '204,121,167', '86,180,233'];
+// hauteur du disque levé dans la main selon la passe préparée (m)
+const loftZ = l => 1.0 + 1.3 * loftW(l) - 0.25 * loftLow(l);
+// jauge de hauteur à côté du porteur (vue par tout le monde, l'adversaire compris) : rasante en bas, passe haute en haut ;
+// (sx, sy) = pieds du porteur à l'écran
+function drawLoftGauge(h, sx, sy, l) {
+  const r = Math.max(10, S * 1.1), gh = Math.max(32, S * 4.2), gw = Math.max(7, S * 0.75);
+  const x = sx + r * 1.5 * (h.x > W - 6 ? -1 : 1), y0 = sy - (isoView() ? ISO_HEAD * 0.35 * S : 0) - gh * 0.3, top = y0 - gh;
+  const fy = y0 - gh * l, ny = y0 - gh * LOFT.N, hot = l >= LOFT.TELL;
+  ctx.save();
+  ctx.fillStyle = 'rgba(15,23,42,.75)'; ctx.fillRect(x - gw / 2 - 2, top - 2, gw + 4, gh + 4);
+  ctx.fillStyle = hot ? '#a78bfa' : l < LOFT.N ? '#7dd3fc' : '#facc15';
+  ctx.fillRect(x - gw / 2, fy, gw, y0 - fy);
+  ctx.strokeStyle = 'rgba(255,255,255,.9)'; ctx.lineWidth = 1.5;                         // repère de la passe normale
+  ctx.beginPath(); ctx.moveTo(x - gw / 2 - 3, ny); ctx.lineTo(x + gw / 2 + 3, ny); ctx.stroke();
+  ctx.font = `800 ${Math.max(10, S * 1.15)}px system-ui`; ctx.textAlign = 'center';
+  ctx.fillStyle = hot ? '#ddd6fe' : l < LOFT.N ? '#bae6fd' : '#fef08a';
+  ctx.fillText((l < LOFT.N ? '↓ ' : '↑ ') + loftName(l), x, top - 5);
+  ctx.restore();
+}
 function heightColor(z, a) {
   const c = HC;
   return `rgba(${z < REACH_DIVE ? c[0] : z < REACH_STAND ? c[1] : z < REACH_STAND + JUMP_H ? c[2] : c[3]},${a})`;
@@ -267,7 +286,7 @@ function draw() {
   }
 
   // Aperçu du lancer (le tien, ou celui d'un coéquipier humain qui vise, en ligne)
-  if (canThrow() && G.pointer.active) drawAim(disc.holder, G.pointer.x, G.pointer.y, G.curve, G.throwKind, G.aiming, false);
+  if (canThrow() && G.pointer.active) drawAim(disc.holder, G.pointer.x, G.pointer.y, G.curve, G.loft, G.aiming, false);
   else { const A = allyAim(); if (A) drawAim(disc.holder, A.x, A.y, A.curve, A.kind, A.aiming, true); }
 
   // Trajectoire restante du disque en vol, colorée selon la hauteur
@@ -393,25 +412,25 @@ function draw() {
   // Disque
   if (disc.mode !== 'dead') {
     let dx = disc.x, dy = disc.y;
-    const tell = playing && highTell();                     // passe haute en préparation : disque levé au-dessus de la tête
+    // hauteur de la passe préparée : visible par tous (disque levé ou baissé, jauge à côté du porteur)
+    const lf = playing && disc.mode === 'held' ? holderLoft() : LOFT.N, tell = lf >= LOFT.TELL, shown = Math.abs(lf - LOFT.N) > 0.04;
     if ((disc.mode === 'held' || disc.mode === 'carry') && !tell) {   // dans la main : du côté de son pivot (sinon du côté où il regarde)
       const h = disc.holder, pv = disc.mode === 'held' ? h.pivY || 0 : 0;
       const f = h.face !== undefined ? h.face : (dirOf(h.team) > 0 ? 0 : Math.PI);
       const [rx, ry] = releasePoint(h, h.x, h.y), w = Math.min(1, Math.abs(pv) * 1.5);
       dx += (Math.cos(f + 0.5) * 0.95) * (1 - w) + (rx - h.x) * w; dy += (Math.sin(f + 0.5) * 0.95) * (1 - w) + (ry - h.y) * w;
     }
-    if (iso) drawIsoDisc(dx, dy, tell);
+    if (iso) drawIsoDisc(dx, dy, tell, lf);
     else {
-    const lift = disc.mode === 'air' ? disc.z * S * 1.2 : tell ? 1.9 * S : 0;
+    const lift = disc.mode === 'air' ? disc.z * S * 1.2 : tell ? loftZ(lf) * 0.83 * S : 0;
     if (tell) {
       ctx.save(); ctx.strokeStyle = 'rgba(196,181,253,.9)'; ctx.lineWidth = 2; ctx.setLineDash([2, 3]);
       ctx.beginPath(); ctx.moveTo(X(dx), Y(dy)); ctx.lineTo(X(dx), Y(dy) - lift); ctx.stroke();
       ctx.setLineDash([]); ctx.strokeStyle = 'rgba(196,181,253,.95)'; ctx.lineWidth = 2.5;
       circle(X(dx), Y(dy) - lift, 0.95 * S + Math.sin(G.time * 14) * 2); ctx.stroke();
-      ctx.font = `800 ${Math.max(10, S * 1.25)}px system-ui`; ctx.textAlign = 'center'; ctx.fillStyle = '#ddd6fe';
-      ctx.fillText('↑ passe haute', X(dx), Y(dy) - lift - S * 1.3);
       ctx.restore();
     }
+    if (shown) drawLoftGauge(disc.holder, X(disc.holder.x), Y(disc.holder.y), lf);
     if (disc.mode === 'air') {                                // ombre + anneau coloré = hauteur, trait = altitude
       ctx.fillStyle = 'rgba(0,0,0,.3)'; circle(X(dx), Y(dy), 0.45 * S); ctx.fill();
       ctx.strokeStyle = heightColor(disc.z, 0.95); ctx.lineWidth = 2.5; circle(X(dx), Y(dy), 1.05 * S); ctx.stroke();

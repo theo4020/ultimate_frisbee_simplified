@@ -39,7 +39,7 @@ function startPoint() {
   if (!G.ms) newMatchStats();
   G.firstRoll = null;                                          // prochain match : nouveau tirage au sort
   G.ms.ptT = 0;
-  replayReset(); G.celebrate = null; G.scorer = null; FX.celebrate = null; G.throwKind = 'normal';
+  replayReset(); G.celebrate = null; G.scorer = null; FX.celebrate = null; G.loft = LOFT.N;
   const dType = cfg(d).dplay;
   G.dplay = dType === 'none' ? null : { type: dType, team: d, t: 0, throws: 0, d: null };
   G.oplay = null; G.aiPlayTried = false;                      // les plays d'attaque s'appellent en jeu (plays.js)

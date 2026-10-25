@@ -29,12 +29,12 @@ const G = {
   stats: { throws: 0, comps: 0, blocks: 0, ints: 0, stalls: 0, ground: 0, out: 0, dives: 0 },
   teams: DEFAULT_TEAMS.map(o => Object.assign({}, o)),   // nom et couleur affichés de chaque équipe (voir teams.js)
   ms: null,                                  // statistiques du match en cours (voir stats.js)
-  throwKind: 'normal',                       // type du prochain lancer : normal ou high (passe haute)
+  loft: 0.3,                                 // hauteur du prochain lancer (LOFT, config.js) : 0,3 = passe normale
   series: null, tuto: null, replay: null, emotes: [], spectator: false,
   attract: false, practice: null                             // match IA contre IA derrière le menu principal
 };
 const disc = { mode: 'held', holder: null, x: 0, y: 0, z: 0, sx: 0, sy: 0, cx: 0, cy: 0, ex: 0, ey: 0,
-  t: 0, dur: 1, thrower: null, team: 0, intended: null, rolled: new Set(), kind: 'normal', curveV: 0 };
+  t: 0, dur: 1, thrower: null, team: 0, intended: null, rolled: new Set(), kind: 'normal', loft: 0.3, curveV: 0 };
 
 const formOf = t => cfg(t).off;
 function defFormOf(t) {
