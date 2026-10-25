@@ -85,7 +85,7 @@
       <h2>🎓 Tutoriel</h2>
       <button class="bigbtn" id="tutoBaseB">🌱 Débutant<small id="tutoBaseTxt">Se déplacer, lancer, courber, appeler un cut, défendre : de quoi jouer ton premier match (2 minutes)</small></button>
       <button class="bigbtn" id="tutoAdvB">🔥 Avancé<small id="tutoAdvTxt">Pied de pivot contre la mark, passe haute, plays, duels en l'air, contre au lâcher, pull (3 minutes)</small></button>
-      <button id="tutoBack">← Retour</button>
+      <button id="tutoBack" class="back">← Retour</button>
     </div>
     <div id="lobbySolo" style="display:none">
       <h2>🤖 Solo</h2>
@@ -93,7 +93,7 @@
       <button class="bigbtn" id="soloB">⚡ Match rapide<small>Un match contre l'ordinateur, réglé comme tu veux</small></button>
       <button class="bigbtn" id="seriesB">🏆 Mini-tournoi<small id="seriesTxt">Trois matchs contre des équipes de plus en plus fortes</small></button>
       <button class="bigbtn" id="pracB">🎯 Entraînement<small>Lance sur des cibles à ton rythme : courbe, passe haute, vent</small></button>
-      <button id="soloBack">← Retour</button>
+      <button id="soloBack" class="back">← Retour</button>
     </div>
     <div id="lobbyOnline" style="display:none">
       <h2>🌐 En ligne</h2>
@@ -101,7 +101,7 @@
       <button class="bigbtn" id="coopB">🤝 Mode infini à plusieurs<small>Alliez-vous contre l'IA, de plus en plus forte : classement par équipe</small></button>
       <button class="bigbtn" id="hostB">🌐 Créer une partie<small>Jusqu'à 10 joueurs : contre l'IA ensemble ou en vrai 5 contre 5</small></button>
       <button class="bigbtn" id="joinB">🔗 Rejoindre une partie<small>Avec le code de l'hôte</small></button>
-      <button id="onlineBack">← Retour</button>
+      <button id="onlineBack" class="back">← Retour</button>
     </div>
     <div id="lobbyRoom" style="display:none">
       <div id="roomCodeBox">
@@ -120,14 +120,14 @@
       <button class="testNet ghost">📶 Tester la connexion</button><p class="net"></p>
       <button id="startOnline" class="primary">Lancer la partie ▶</button>
       <button id="roomBack" class="primary" style="display:none">← Retour au jeu</button>
-      <button id="backB1">← Quitter</button>
+      <button id="backB1" class="back">← Quitter</button>
     </div>
     <div id="lobbyJoin" style="display:none">
       <p>Entre le code de la partie :</p>
       <div class="row" style="justify-content:center"><input id="joinCode" maxlength="4" autocomplete="off" autocapitalize="characters" spellcheck="false"><button id="joinGo" class="primary" style="width:auto;margin:0">Rejoindre</button></div>
       <p class="net" id="joinStatus"></p>
       <button class="testNet ghost">📶 Tester la connexion</button><p class="net"></p>
-      <button id="backB2">← Retour</button>
+      <button id="backB2" class="back">← Retour</button>
     </div>
     <div class="err" id="lobbyErr"></div>
   </div>
@@ -144,7 +144,7 @@
   <div class="card" id="ctrlCard" style="display:none">
     <h1>⚙️ Commandes</h1>
     <div id="ctrlBody"></div>
-    <button id="ctrlBack" class="primary">← Retour</button>
+    <button id="ctrlBack" class="primary back">← Retour</button>
   </div>
   <div class="card" id="reportCard" style="display:none">
     <h1>🐞 Signaler un problème</h1>
@@ -154,7 +154,7 @@
     <button id="repCopy" class="ghost">Copier le rapport</button>
     <p class="net" id="repStatus"></p>
     <textarea id="repOut" rows="4" readonly style="display:none"></textarea>
-    <button id="repBack">← Retour</button>
+    <button id="repBack" class="back">← Retour</button>
   </div>
   <div class="card" id="endlessCard" style="display:none">
     <h1 id="endTitle">♾️ Mode infini</h1>
@@ -171,7 +171,7 @@
     <h2 id="endBoardTitle">Classement</h2>
     <ol id="endBoard"></ol>
     <p class="net" id="endStatus"></p>
-    <button id="endBack">← Retour</button>
+    <button id="endBack" class="back">← Retour</button>
   </div>
   <div class="card" id="sysCard" style="display:none">
     <div class="accTabs sysTabs" id="sysTabs"><button data-t="mine">📋 Mes systèmes</button><button data-t="gal">🌍 Galerie</button></div>
@@ -183,7 +183,7 @@
         <input id="galQ" class="tname" placeholder="Chercher un nom ou un auteur" maxlength="30" autocomplete="off" spellcheck="false"></div>
       <ul id="galItems"></ul>
       <p class="net" id="galStatus"></p>
-      <button id="galBack">← Retour</button>
+      <button id="galBack" class="back">← Retour</button>
     </div>
     <div id="sysList">
       <h1>📋 Mes systèmes</h1>
@@ -191,7 +191,7 @@
         dans le menu d’avant-point, en solo comme en ligne. Ils sont gardés avec ton compte.</p>
       <ul id="sysItems"></ul>
       <div class="accBtns"><button id="sysNewOff" class="primary">＋ Formation</button><button id="sysNewPlay" class="primary">＋ Play</button><button id="sysNewDef" class="primary">＋ Défense</button><span class="net" id="sysCount"></span></div>
-      <button id="sysBack">← Retour</button>
+      <button id="sysBack" class="back">← Retour</button>
     </div>
     <div id="sysEdit" style="display:none">
       <h1>✏️ <span id="edTitle"></span></h1>
@@ -208,12 +208,12 @@
     <h1>👤 Compte</h1>
     <div id="accBody"></div>
     <p class="net" id="accMsg"></p>
-    <button id="accBack">← Retour</button>
+    <button id="accBack" class="back">← Retour</button>
   </div>
   <div class="card" id="newsCard" style="display:none">
     <h1>📰 Nouveautés</h1>
     <div id="newsList"></div>
-    <button id="newsBack" class="primary">← Retour</button>
+    <button id="newsBack" class="primary back">← Retour</button>
   </div>
   <div class="card" id="moveCard" style="display:none">
     <h1>🚚 Le jeu change d'adresse</h1>
@@ -232,21 +232,21 @@
         <li>Supprime l'ancienne icône : appui long dessus → « Supprimer » (iPhone) ou « Désinstaller » (Android).</li>
       </ol>
     </div>
-    <button id="moveBack">← Retour</button>
+    <button id="moveBack" class="back">← Retour</button>
   </div>
   <div class="card" id="profileCard" style="display:none">
     <h1>🏅 Profil · <span id="profileName"></span></h1>
     <div class="pgrid" id="profileStats"></div>
     <h2 id="profileAchTitle">Succès</h2>
     <div class="agrid" id="profileAch"></div>
-    <div class="row" style="justify-content:space-between"><button id="profileBack">← Menu principal</button><button id="profileReset">Effacer mon profil</button></div>
+    <div class="row back" style="justify-content:space-between"><button id="profileBack">← Menu principal</button><button id="profileReset">Effacer mon profil</button></div>
   </div>
   <div class="card" id="seriesCard" style="display:none">
     <h1>🏆 Mini-tournoi</h1>
     <p id="seriesText"></p>
     <ol id="seriesList"></ol>
     <button id="seriesGo" class="primary">Jouer ▶</button>
-    <div class="row" style="justify-content:space-between"><button id="seriesBack">← Retour</button><button id="seriesReset">Recommencer le tournoi</button></div>
+    <div class="row back" style="justify-content:space-between"><button id="seriesBack">← Retour</button><button id="seriesReset">Recommencer le tournoi</button></div>
   </div>
   <div class="card" id="stratCard" style="display:none">
     <h1 id="ovTitle">Ultimate Frisbee</h1>
@@ -384,8 +384,7 @@
       <b>Plays de départ</b> : avant chaque point, tu peux lancer une combinaison préparée. Les joueurs concernés portent un repère (★, 1, 2, S) pendant le play.<br><br>
       On marque en attrapant le disque dans l'en-but adverse.
     </details>
-    <button id="go" class="primary">Jouer le point ▶</button>
-    <button id="menuBack" class="ghost">← Menu principal</button>
+    <div class="back stratFoot"><button id="go" class="primary">Jouer le point ▶</button><button id="menuBack" class="ghost">← Menu principal</button></div>
     <div id="oppReady"></div>
   </div>
 </div>

@@ -67,6 +67,10 @@ button:hover{filter:brightness(1.15)}
 #overlay.hidden{display:none}
 .card{background:var(--panel);padding:20px 22px;border-radius:14px;max-width:560px;width:100%;max-height:100%;overflow:auto;box-shadow:0 20px 50px rgba(0,0,0,.4)}
 .card h1{margin:0 0 6px;font-size:24px}
+/* boutons « Retour » / « Menu principal » : toujours visibles en bas du panneau, même quand il défile */
+.card .back{position:sticky;bottom:0;z-index:3;box-shadow:0 0 0 8px var(--panel),0 22px 0 8px var(--panel),0 -14px 14px 4px var(--panel)}
+.card div.back{background:var(--panel)}
+.stratFoot{display:flex;flex-direction:column;gap:6px;margin-top:8px}
 .card p{margin:6px 0 14px;color:var(--muted);line-height:1.45}
 .row{display:flex;align-items:center;gap:8px;margin:10px 0 4px;flex-wrap:wrap}
 .row span{width:110px;font-weight:600}
@@ -76,7 +80,7 @@ details{margin:12px 0;color:var(--muted);font-size:14px;line-height:1.5}
 summary{cursor:pointer;color:var(--text)}
 details b{color:var(--text)}
 .primary{background:var(--accent);color:#1e293b;font-weight:700;width:100%;padding:12px;margin-top:8px}
-#go{position:sticky;bottom:0;box-shadow:0 -8px 16px var(--panel)}
+#go{box-shadow:none}
 #go:disabled{opacity:.75;cursor:default}
 @media (max-width:560px){.row span{width:100%}.desc{margin-left:0}}
 @media (max-height:520px){
