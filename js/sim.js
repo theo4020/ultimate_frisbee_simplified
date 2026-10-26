@@ -238,7 +238,7 @@ function update(dt) {
         if (G.tuto) G.tuto.blocked = true;
         defStop(p, 'Block en l’air !'); return;
       }
-      if (r < (G.tuto && (G.tuto.wall || diving) ? 1 : (diving ? 0.95 : L.block) * blockOdds(p, diving, p === disc.mark && disc.t < MARK_LUNGE_T ? ARM_R + MARK_LUNGE : 0))) {   // tutoriel : bien placé = contré
+      if (r < (G.tuto && (G.tuto.wall || G.tuto.sure || diving) ? 1 : (diving ? 0.95 : L.block) * blockOdds(p, diving, p === disc.mark && disc.t < MARK_LUNGE_T ? ARM_R + MARK_LUNGE : 0))) {   // tutoriel : bien placé = contré
         if (diving) { achEvent('layoutblock', p.team); if (G.tuto) G.tuto.lblock = true; } defStop(p, diving ? 'Layout block !' : p.jump > 0 ? 'Block en l’air !' : 'Block !'); return; }
     }
     if (catcher) {

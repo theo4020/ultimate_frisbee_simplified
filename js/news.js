@@ -8,6 +8,14 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
+  { id: 29, date: '2026-10-26', tag: 'Tutoriel', title: 'Coach Disco t’apprend à jouer 🧢',
+    body: `Le tutoriel fait peau neuve : <b>Coach Disco</b>, 30 ans de terrain et zéro genou intact, te guide en petits
+      <b>défis</b> et commente tes exploits (et tes ratés) avec son humour bien à lui.<br>
+      • chaque défi rapporte des <b>étoiles</b> : ★ réussi, ★★ du premier coup, ★★★ du premier coup et vite ; ton meilleur
+      score s'affiche dans le menu du tutoriel ;<br>
+      • nouveau défi <b>« Lire le cône »</b> : cours sous une passe en devinant où elle tombe dans le cercle d'arrivée ;<br>
+      • les étapes suivent les dernières nouveautés (hauteur de passe, commandes à jour) ;<br>
+      • à la fin, un bilan de tes étoiles… et un match contre <b>l'équipe du coach</b>.` },
   { id: 28, date: '2026-10-26', tag: 'Événement', title: 'Mode Halloween 🎃',
     body: `Touche la <b>petite citrouille</b> en haut du menu principal pour passer en mode Halloween : en match, le terrain
       est plongé dans le noir et tu ne vois que dans un <b>cône</b>, dans la direction de ta souris (ou de ton joystick

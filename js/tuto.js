@@ -1,10 +1,23 @@
-// tuto.js — Tutoriel interactif : petites étapes guidées (toutes les commandes du jeu), chacune passable.
+// tuto.js — Tutoriel interactif avec Coach Disco : petits défis guidés (toutes les commandes du jeu), chacun passable.
 // Les étapes placent les joueurs, en « figent » certains (pin), et attendent un événement de jeu
-// (réception, point, turnover, pull) pour valider.
+// (réception, point, turnover, pull) pour valider. Chaque défi rapporte des étoiles : ★ réussi, ★★ du premier coup,
+// ★★★ du premier coup et en moins de « par » secondes. Le coach présente chaque étape et commente (avec humour).
+
+// Coach Disco : ses réactions (tirées au hasard)
+const COACH = {
+  name: 'Coach Disco', face: '🧢',
+  win: ['Propre. Même ma grand-mère n’aurait pas fait mieux, et elle a un sacré bras.', 'Joli ! Je verse une larme. Non, c’est la sueur.',
+    'Voilà ! Tu vois, quand tu veux.', 'Magnifique. Je le mets dans ma vidéo de fin de saison.', 'Parfait. Bon, je retourne à mon thermos de café.',
+    'Ça, c’est du jeu ! Les tribunes sont debout. Enfin, le pigeon sur la tribune.'],
+  fail: ['Le disque, c’est l’objet rond. Pas le sol.', 'Presque ! Enfin… dans une autre dimension.', 'Pas grave, moi aussi j’ai raté mon premier. Et le deuxième. Allez !',
+    'On recommence, personne n’a rien vu. Sauf moi. Et le pigeon.', 'Respire. Visualise. Et réessaie.', 'C’était une feinte, c’est ça ? Bien sûr que c’était une feinte.']
+};
+const pickLine = a => a[Math.floor(Math.random() * a.length)];
 
 const TUTO_STEPS = [
   {
     title: 'Se déplacer',
+    coach: 'Bienvenue au camp ! Moi c’est Coach Disco : 30 ans de terrain, zéro genou intact. Première leçon : courir. Oui, même ça.', par: 14,
     ctx: 'move',
     text: {
       mouse: 'Ton joueur (anneau jaune) <b>suit la souris</b>. Amène-le dans les 3 cercles, l’un après l’autre.',
@@ -34,6 +47,7 @@ const TUTO_STEPS = [
   },
   {
     title: 'Lancer',
+    coach: 'Un disque, ça se lance vers un coéquipier. Pas comme une assiette chez mamie.', par: 16,
     text: {
       mouse: 'Vise un coéquipier libre (anneau vert) : <b>maintiens le clic</b>, puis relâche. Réussis 2 passes.',
       touch: () => CTRL.sling ? 'Pose le doigt n’importe où et <b>tire en arrière</b>, à l’opposé de la passe, puis relâche. Réussis 2 passes.' : 'Pose le doigt n’importe où et <b>glisse vers ton coéquipier</b>, puis relâche. Réussis 2 passes.',
@@ -57,6 +71,7 @@ const TUTO_STEPS = [
   },
   {
     title: 'La courbe',
+    coach: 'Un défenseur sur la ligne droite ? On fait le tour, comme le disque. C’est ça, la courbe.', par: 16,
     ctx: 'throw',
     text: {
       mouse: () => `Un défenseur bloque la ligne droite. Ajoute de la <b>courbe</b> (${tutoCmd('curveL')} / ${tutoCmd('curveR')} ou molette) pour passer à côté.`,
@@ -83,6 +98,7 @@ const TUTO_STEPS = [
   },
   {
     title: 'Le pied de pivot',
+    coach: 'La mark te colle ? Change de pied. Elle suivra… avec un temps de retard. Hé hé.', par: 16,
     ctx: 'throw',
     text: {
       mouse: () => `Ta mark ferme le côté de ton coéquipier (sa zone rouge). <b>${keysOf('pivot').map(keyName).join(' / ')}</b> change de pied : le disque passe de l’autre côté de la mark. Pivote, attends que le disque soit passé de l’autre côté, puis lance.`,
@@ -110,7 +126,8 @@ const TUTO_STEPS = [
     }
   },
   {
-    title: 'La passe haute',
+    title: 'La hauteur de passe',
+    coach: 'Un mur de défenseurs ? On passe par-dessus. Plus c’est haut, plus c’est beau… et plus ça part de travers.', par: 16,
     ctx: 'throw',
     text: {
       mouse: () => `Un mur bloque le passage. Monte ta passe tout en haut (<b>${tutoCmd('loftUp')}</b>, jauge à côté de ton porteur), puis lance par-dessus. Plus elle est haute, plus elle vole longtemps et part de travers.`,
@@ -135,7 +152,49 @@ const TUTO_STEPS = [
     }
   },
   {
+    title: 'Lire le cône',
+    coach: 'Une passe en l’air, c’est une promesse floue. Le cône te dit où elle peut tomber… à toi de deviner où elle tombe vraiment.', par: 10,
+    ctx: 'move',
+    text: {
+      mouse: 'Une passe va partir (compte à rebours). Elle tombera <b>quelque part dans le cercle</b>, qui rétrécit pendant le vol : cours-y et <b>touche le disque</b> avant qu’il tombe.',
+      touch: () => (CTRL.move === 'joystick' ? 'Avec le joystick, cours' : 'Tape le terrain pour courir') + ' vers le <b>cercle d’arrivée</b> : la passe tombera quelque part dedans (il rétrécit pendant le vol). <b>Touche le disque</b> avant qu’il tombe.',
+      joy: 'Une passe va partir. Elle tombera <b>quelque part dans le cercle</b>, qui rétrécit pendant le vol : cours-y avec le joystick et <b>touche le disque</b> avant qu’il tombe.',
+      pad: 'Une passe va partir. Elle tombera <b>quelque part dans le cercle</b>, qui rétrécit pendant le vol : cours-y avec le stick et <b>touche le disque</b> avant qu’il tombe.'
+    },
+    setup() {
+      tutoReset(); G.tuto.sure = true;
+      Object.assign(G.form, { def: 'man', force: 'straight', dplay: 'none', play: 'none' });
+      G.tuto.target = TUTO_CONE[Math.floor(Math.random() * TUTO_CONE.length)];
+      tutoPut(1, [[72, 18.5], [64, 18.5], [88, 5], [88, 32], [84, 18.5]]);
+      tutoPut(0, [[49, 18.5], [95, 4], [95, 11], [95, 26], [95, 33]]);
+      tutoGive(TEAMS[1][0]);
+      const h = meH(); if (h) h.sel = TEAMS[0][0];
+      G.tuto.armT = 2;
+    },
+    frame() {
+      const T = G.tuto;
+      if (T.done || T.thrown) return;
+      const n = Math.ceil(T.armT - (T.holdT || 0)); if (n > 0 && n !== T.cd) { T.cd = n; flash('Passe dans ' + n + '…', true); }
+    },
+    pin(p) { return p === disc.holder && disc.mode === 'held' ? null : [[72, 18.5], [64, 18.5], [88, 5], [88, 32], [84, 18.5]][p.i]; },
+    pinD(d) { return d === (meH() || {}).sel ? null : tutoFar(d); },
+    hold(h, dt) {
+      const T = G.tuto;
+      if (T.thrown || T.done) return true;
+      T.holdT = (T.holdT || 0) + dt;
+      if (T.holdT >= T.armT) { T.thrown = true; throwDisc(h, T.target[0], T.target[1], 0, 1.4, 0.6); }
+      return true;
+    },
+    on(ev, p) {
+      // réussi : il a touché le disque, ou il était sous le disque à l'arrivée (il l'aurait attrapé)
+      const me = TEAMS[0][0];                                 // (après une interception, on n'a plus de joueur « sélectionné »)
+      if (ev === 'turnover') { if (me && (G.tuto.stopBy === me || dist(me.x, me.y, disc.x, disc.y) < 2.2)) tutoSuccess('Bien lu ! 🎯'); else tutoFail('Il est tombé… fonce vers le cercle dès le lancer !'); }
+      if (ev === 'catch' && p.team === 1) tutoFail('Attrapé par l’adversaire : va chercher le disque !');
+    }
+  },
+  {
     title: 'Appeler un cut',
+    coach: 'Tes coéquipiers sont collés comme des chewing-gums. Les IA ne voient pas tout : montre-leur un espace libre.', par: 16,
     text: {
       mouse: 'Tes coéquipiers sont marqués. <b>Clic droit</b> sur un espace libre : l’un d’eux y court. Lance-lui.',
       touch: 'Tes coéquipiers sont marqués. <b>Tape un espace libre</b> : l’un d’eux y court. Lance-lui.',
@@ -167,6 +226,7 @@ const TUTO_STEPS = [
   },
   {
     title: 'Appeler un play',
+    coach: 'Un play, c’est une chorégraphie : toi tu appelles, eux ils dansent.', par: 16,
     plays: true,                                               // les plays sont permis à cette étape
     text: {
       mouse: () => `Tu as choisi un <b>Play 1 : Huck</b>. Appelle-le : touche <b>${tutoCmd('play1')}</b> ou bouton <b>▶ Huck</b> en haut du terrain. Le coupeur ★ part en profondeur : lance long, devant lui.`,
@@ -201,6 +261,7 @@ const TUTO_STEPS = [
   },
   {
     title: 'Duel en l’air',
+    coach: 'Le disque est à celui qui saute le plus haut. Ou au bon moment. Idéalement les deux.', par: 12,
     ctx: 'move',
     text: {
       mouse: () => `Ton receveur est collé. Lance-lui, puis <b>${tutoCmd('jump')}</b> (ou clic droit) pendant le vol : il saute et gagne le duel.`,
@@ -226,6 +287,7 @@ const TUTO_STEPS = [
   },
   {
     title: 'Changer de joueur',
+    coach: 'Ton défenseur fait du tourisme à l’autre bout du terrain. Prends-en un plus utile.', par: 8,
     ctx: 'move',
     text: {
       mouse: () => `Ton défenseur (anneau jaune) est loin du disque. <b>${tutoCmd('switch')}</b> prend le plus proche (entouré en gris), ou clique sur un joueur.`,
@@ -247,6 +309,7 @@ const TUTO_STEPS = [
   },
   {
     title: 'Plonger en défense',
+    coach: 'Le layout : la plus belle façon de finir couvert d’herbe. Au signal, tu plonges !', par: 10,
     ctx: 'move',
     text: {
       mouse: () => `Une passe va passer à côté de toi (compte à rebours en bas). Dès que <b>PLONGE !</b> s'affiche, <b>clique sur sa trajectoire</b> (ou ${tutoCmd('dive')}).`,
@@ -293,6 +356,7 @@ const TUTO_STEPS = [
   },
   {
     title: 'Contrer une passe haute',
+    coach: 'Le porteur lève le disque : il prépare une passe haute. Devine quand il lâche… et saute !', par: 10,
     ctx: 'move',
     text: {
       mouse: () => `Le porteur a armé une passe haute (compte à rebours en bas). Dès que <b>SAUTE !</b> s'affiche, saute (${tutoCmd('jump')} ou clic droit) : tu contres au lâcher.`,
@@ -335,6 +399,7 @@ const TUTO_STEPS = [
   },
   {
     title: 'Le pull',
+    coach: 'Le pull, c’est l’engagement : long, haut, dans le vert. Et on ne vise pas la buvette.', par: 16,
     text: {
       mouse: 'Clique sur la zone visée, puis arrête la jauge dans le <b>vert</b> (clic ou Espace).',
       touch: () => (CTRL.sling ? 'Tire en arrière pour viser' : 'Glisse vers la zone visée') + ', relâche, puis <b>tape</b> pour arrêter la jauge dans le vert.',
@@ -353,8 +418,8 @@ const TUTO_STEPS = [
 ];
 // deux parcours : débutant (de quoi jouer un premier match) puis avancé ; les étapes sont rangées dans cet ordre
 const TUTO_COURSES = {
-  base: { name: 'Débutant', steps: ['Se déplacer', 'Lancer', 'La courbe', 'Appeler un cut', 'Changer de joueur', 'Plonger en défense'] },
-  adv: { name: 'Avancé', steps: ['Le pied de pivot', 'La passe haute', 'Appeler un play', 'Duel en l’air', 'Contrer une passe haute', 'Le pull'] }
+  base: { name: 'Débutant', steps: ['Se déplacer', 'Lancer', 'La courbe', 'Lire le cône', 'Appeler un cut', 'Changer de joueur', 'Plonger en défense'] },
+  adv: { name: 'Avancé', steps: ['Le pied de pivot', 'La hauteur de passe', 'Appeler un play', 'Duel en l’air', 'Contrer une passe haute', 'Le pull'] }
 };
 { const order = TUTO_COURSES.base.steps.concat(TUTO_COURSES.adv.steps); TUTO_STEPS.sort((a, b) => order.indexOf(a.title) - order.indexOf(b.title)); }
 const TUTO_BASE_N = TUTO_COURSES.base.steps.length;
@@ -362,6 +427,7 @@ const tutoCourseOf = k => (k >= TUTO_BASE_N ? 'adv' : 'base');
 const tutoRange = c => (c === 'adv' ? [TUTO_BASE_N, TUTO_STEPS.length] : [0, TUTO_BASE_N]);
 const TUTO_WALL = [[43.5, 18.5], [43.5, 16.3], [43.5, 20.7], [43.5, 14.1], [43.5, 22.9]];
 const TUTO_STACK = [[46, 18.5], [50, 18.5], [54, 18.5], [58, 18.5]];
+const TUTO_CONE = [[42, 11.5], [42, 25.5], [39, 18.5]];               // lire le cône : arrivées possibles de la passe
 
 // ---------- outils des étapes ----------
 function tutoReset() {
@@ -369,7 +435,7 @@ function tutoReset() {
     match: null, diveTried: false, called: 0, freeAcc: 0, free: false }));
   Object.assign(G, { oplay: null, dplay: null, pendingOPlay: null, pullPending: false, carryTo: null, stall: 0, marker: null, dbl: null,
     pickup: null, loft: LOFT.N, score: [0, 0], celebrate: null, scorer: null, phase: 'play', pull: null });
-  Object.assign(G.tuto, { spots: null, mark: false, piv: 0, wall: false, level: null, count: 0, called: false, played: false, jumped: false, blocked: false, lblock: false, thrown: false, holdT: 0, cd: 0, cued: false });
+  Object.assign(G.tuto, { spots: null, mark: false, piv: 0, wall: false, level: null, count: 0, called: false, played: false, jumped: false, blocked: false, lblock: false, thrown: false, holdT: 0, cd: 0, cued: false, sure: false, stopBy: null, target: null });
   G.wind = { x: 0, y: 0, kmh: 0 };                             // pas de vent pendant le tutoriel
   setCurve(0);
   disc.pull = false; disc.kind = 'normal'; disc.loft = LOFT.N;
@@ -404,13 +470,14 @@ function tutoStart(course) {
   if (typeof course !== 'string') course = 'base';
   backToSolo();
   G.series = null; G.ms = null;
-  G.tuto = { course, step: 0, t: 0, wait: 0, after: null, saved: { def: G.form.def, force: G.form.force, play: G.form.play, play1: G.form.play1, dplay: G.form.dplay }, inp: '' };
+  G.tuto = { course, step: 0, t: 0, wait: 0, after: null, saved: { def: G.form.def, force: G.form.force, play: G.form.play, play1: G.form.play1, dplay: G.form.dplay }, inp: '', stars: {}, tries: 0, last: -1 };
   $('lobbyCard').style.display = 'none';
   $('tutoBox').style.display = '';
   tutoGo(tutoRange(course)[0]);
 }
-function tutoGo(k) {
+function tutoGo(k, retry) {
   const T = G.tuto; if (!T) return;
+  T.tries = retry && T.last === k ? T.tries + 1 : 0; T.last = k;  // nouvel essai de la même étape (après un raté), ou nouvelle étape
   T.step = k; T.t = 0; T.wait = 0; T.after = null; T.done = false; T.finished = false;
   if (k >= TUTO_STEPS.length) { tutoFinish(); return; }
   T.course = tutoCourseOf(k);
@@ -440,7 +507,8 @@ function tutoText(force) {
   $('tutoTitle').textContent = S.title;
   const [a, b] = tutoRange(T.course);
   $('tutoStep').textContent = `${TUTO_COURSES[T.course].name} · étape ${T.step - a + 1} / ${b - a}`;
-  const tx = S.text[inp] || S.text.touch; $('tutoText').innerHTML = typeof tx === 'function' ? tx() : tx;
+  const tx = S.text[inp] || S.text.touch;
+  $('tutoText').innerHTML = coachHtml(T.tries ? pickLine(COACH.fail) : S.coach) + '<div class="tins">' + (typeof tx === 'function' ? tx() : tx) + '</div>';
   $('tutoSkip').style.display = ''; $('tutoSkip').textContent = 'Passer l’étape ▸'; $('tutoMatch').style.display = 'none';
   $('tutoQuit').textContent = 'Quitter ✕';
   resize();
@@ -451,16 +519,25 @@ function tutoEvent(ev, a) {
   if (S && S.on) S.on(ev, a);
   if (!T.done && (ev === 'turnover' || ev === 'score')) tutoFail('Raté ! On recommence.');   // toute perte non prévue relance l'étape
 }
+// bulle du coach (en haut de la consigne)
+const coachHtml = line => line ? `<div class="coach"><span class="cface">${COACH.face}</span><span><b>${COACH.name}</b> « ${line} »</span></div>` : '';
+function coachSay(line) {
+  try { const el = document.querySelector('#tutoText .coach'); if (el) el.outerHTML = coachHtml(line); else $('tutoText').insertAdjacentHTML('afterbegin', coachHtml(line)); } catch (e) { }
+}
+const starStr = n => '★'.repeat(n) + '☆'.repeat(3 - n);
 function tutoSuccess(msg, delay) {
   const T = G.tuto; T.done = true;
-  flash(msg, true);
+  const S = TUTO_STEPS[T.step], n = 1 + (T.tries === 0 ? 1 : 0) + (T.tries === 0 && T.t <= ((S && S.par) || 15) ? 1 : 0);
+  if (S) T.stars[S.title] = Math.max(T.stars[S.title] || 0, n);
+  flash(msg + '  ' + starStr(n), true);
+  coachSay(pickLine(COACH.win));
   try { SOUNDS.score(); } catch (e) { }
-  T.wait = delay || 1.6; T.after = tutoNext;
+  T.wait = Math.max(delay || 0, 2.2); T.after = tutoNext;
 }
 function tutoFail(msg) {
   const T = G.tuto; T.done = true;
   flash(msg, true);
-  T.wait = 1.5; T.after = () => tutoGo(T.step);
+  T.wait = 1.7; T.after = () => tutoGo(T.step, true);
 }
 function tutoFrame(dt) {
   const T = G.tuto;
@@ -476,17 +553,25 @@ function tutoFinish() {
   storeSet(adv ? 'uf-tuto2' : 'uf-tuto', true);
   achEvent(adv ? 'tuto2' : 'tuto');
   T.done = true; T.finished = true; T.step = TUTO_STEPS.length;   // plus d'étape en cours : jeu libre derrière le message
+  // bilan : les étoiles de chaque défi, et le mot de la fin du coach
+  const steps = TUTO_COURSES[T.course].steps, got = steps.reduce((n, t) => n + (T.stars[t] || 0), 0), max = steps.length * 3;
+  const best = storeGet('uf-tuto-stars', {}) || {}; steps.forEach(t => { if ((T.stars[t] || 0) > (best[t] || 0)) best[t] = T.stars[t]; }); storeSet('uf-tuto-stars', best);
+  const end = got >= max * 0.9 ? 'Je n’ai plus rien à t’apprendre. Enfin si, mais pas aujourd’hui.'
+    : got >= max * 0.6 ? 'Pas mal du tout ! Encore quelques tours de terrain et tu me piques ma place.'
+    : 'Tu es arrivé au bout, c’est l’essentiel. Le talent, ça vient en jouant !';
   $('tutoTitle').textContent = 'Bravo ! 🎉';
-  $('tutoStep').textContent = TUTO_COURSES[T.course].name + ' terminé';
-  $('tutoText').innerHTML = adv
-    ? 'Tu maîtrises les gestes avancés : pied de pivot contre la mark, passe haute, plays, duel en l’air, contre au lâcher et pull. Dans le menu d’avant-point, choisis ta formation, ta défense, tes consignes et deux plays à appeler en jeu (boutons ▶). À toi de jouer !'
-    : 'Tu sais te déplacer, lancer, courber, appeler un cut, changer de joueur et plonger en défense : de quoi jouer ton premier match. Le tutoriel avancé t’apprend ensuite à battre la mark (pied de pivot, passe haute), les plays, les duels en l’air et le pull.';
-  $('tutoSkip').textContent = adv ? 'Jouer un match ▶' : 'Continuer avec l’avancé ▶';
+  $('tutoStep').textContent = `${TUTO_COURSES[T.course].name} terminé · ${got} / ${max} ★`;
+  $('tutoText').innerHTML = coachHtml(end) + '<div class="tins tstars">' + steps.map(t => `<span>${t} <b>${starStr(T.stars[t] || 0)}</b></span>`).join('') + '</div>'
+    + '<div class="tins">' + (adv
+      ? 'Pied de pivot, hauteur de passe, plays, duels en l’air, contre au lâcher, pull : tu as tout vu. Dans le menu d’avant-point, choisis ta formation, ta défense, tes consignes et deux plays à appeler en jeu. Allez, viens défier mon équipe !'
+      : 'Tu sais te déplacer, lancer, courber, lire le cône, appeler un cut, changer de joueur et plonger : de quoi jouer ton premier match. L’avancé t’apprend ensuite à battre la mark, les plays, les duels en l’air et le pull.') + '</div>';
+  $('tutoSkip').textContent = adv ? 'Défier l’équipe du coach ▶' : 'Continuer avec l’avancé ▶';
   $('tutoMatch').style.display = adv ? 'none' : '';
+  $('tutoMatch').textContent = 'Défier l’équipe du coach ▶';
   $('tutoQuit').textContent = 'Menu';
   resize();
 }
-function tutoPlay() { tutoCleanup(); G.series = null; newMatch(); showMenu('first'); }
+function tutoPlay() { tutoCleanup(); G.series = null; G.form.level = 'facile'; newMatch(); showMenu('first'); flash('🧢 L’équipe du coach t’attend (IA facile) !', true); }
 function tutoCleanup() {
   const T = G.tuto; if (!T) return;
   Object.assign(G.form, T.saved);

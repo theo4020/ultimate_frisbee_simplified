@@ -125,6 +125,11 @@ details b{color:var(--text)}
 .tutoHead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
 .tutoHead b{font-size:16px;color:var(--accent)} .tutoHead span{font-size:12px;color:var(--muted)}
 #tutoText b{color:#fff}
+#tutoText .coach{display:flex;gap:8px;align-items:flex-start;color:#fde68a;font-style:italic;margin-bottom:3px}
+#tutoText .coach b{color:#facc15;font-style:normal;margin-right:4px}
+#tutoText .cface{font-size:1.5em;line-height:1;font-style:normal}
+#tutoText .tstars{display:flex;flex-wrap:wrap;gap:2px 14px;margin:3px 0}
+#tutoText .tstars b{color:#facc15;letter-spacing:1px}
 .tutoBtns{display:flex;gap:8px;justify-content:flex-end}
 .tutoBtns button{padding:6px 12px;font-size:13px}
 #tutoSkip{background:var(--accent);color:#1e293b;font-weight:700}

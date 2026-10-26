@@ -79,6 +79,7 @@ function interception(p) {
 // un défenseur arrête la passe : 1 fois sur 3 il l'intercepte, et toujours dans l'en-but adverse (Callahan) ; sinon block
 const INT_CHANCE = 1 / 3;
 function defStop(p, msg) {
+  if (G.tuto) G.tuto.stopBy = p;                                // tutoriel : qui a arrêté la passe
   if (inScoreZone(p.team, disc.x) || Math.random() < INT_CHANCE) { interception(p); return; }
   G.stats.blocks++; msTurnover(disc.thrower, 'block', p); turnover(disc.x, disc.y, msg, 'block');
 }

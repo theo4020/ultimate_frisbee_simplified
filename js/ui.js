@@ -127,12 +127,13 @@ function showLobby(err, view) {
   G.menuShown = true; G.teamsOpen = null; G.series = null;
   $('lobbyCard').style.display = ''; for (const id of ['stratCard', 'seriesCard', 'profileCard', 'endlessCard']) $(id).style.display = 'none';
   const tutoDone = storeGet('uf-tuto', false), tuto2 = storeGet('uf-tuto2', false), s = seriesState();
-  $('tutoTxt').textContent = !tutoDone ? 'Nouveau ? Commence ici : les commandes en 2 minutes'
+  $('tutoTxt').textContent = !tutoDone ? 'Nouveau ? Coach Disco t’attend : les commandes en petits défis'
     : tuto2 ? 'Revoir les commandes, débutant ou avancé' : 'Débutant fait : passe à l’avancé (mark, passe haute, plays…)';
   $('tutoB').classList.toggle('primary', !tutoDone);
   $('tutoBaseB').classList.toggle('primary', !tutoDone); $('tutoAdvB').classList.toggle('primary', tutoDone && !tuto2);
-  $('tutoBaseTxt').textContent = (tutoDone ? '✓ Fait · ' : '') + 'Se déplacer, lancer, courber, appeler un cut, défendre : de quoi jouer ton premier match (2 minutes)';
-  $('tutoAdvTxt').textContent = (tuto2 ? '✓ Fait · ' : '') + 'Pied de pivot contre la mark, passe haute, plays, duels en l’air, contre au lâcher, pull (3 minutes)';
+const tStars = c => { const b = storeGet('uf-tuto-stars', {}) || {}, st = TUTO_COURSES[c].steps; return st.reduce((n, t) => n + (b[t] || 0), 0) + ' / ' + st.length * 3 + ' ★ · '; };
+  $('tutoBaseTxt').textContent = (tutoDone ? tStars('base') : '') + 'Avec Coach Disco : se déplacer, lancer, courber, lire le cône, appeler un cut, défendre (3 minutes)';
+  $('tutoAdvTxt').textContent = (tuto2 ? tStars('adv') : '') + 'Pied de pivot, hauteur de passe, plays, duels en l’air, contre au lâcher, pull (3 minutes)';
   $('seriesTxt').textContent = s.round >= SERIES.length ? 'Champion ! 🏆 Rejoue quand tu veux'
     : s.round > 0 || s.tries[0] ? `En cours : tour ${s.round + 1} sur 3 contre les ${SERIES[s.round].name}` : 'Trois matchs contre des équipes de plus en plus fortes';
   if (!G.net && !G.attract) startAttract();                     // un vrai match se joue derrière le menu

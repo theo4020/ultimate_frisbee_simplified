@@ -214,6 +214,28 @@ export default async function (t, { quick }) {
     const st = c.state; Object.assign(c, { x: 40, y: 15, vx: -6, vy: 0 }); startCut(c, 60, 16, false); return { same: st, back: c.state }; })()`);
   t.ok(cf.same === 'cut' && cf.back === 'jab', 'déjà lancé vers la cible : il continue sans s’arrêter (feinte seulement sinon)', cf);
 
+  t.group('Tutoriel : lire le cône (Coach Disco)');
+  const tc = R(`(() => {
+    const keepH = G.humans, keepS = G.series; G.series = null; G.humans = [{ id: 0, team: 0, sel: null }]; G.myId = 0; syncMe();
+    const run = chase => {
+      tutoStart(); tutoGo(TUTO_STEPS.findIndex(s => s.title === 'Lire le cône'));
+      const coach = document.getElementById ? true : true;
+      for (let f = 0; f < 60 * 8 && !G.tuto.done; f++) {
+        const me = meH().sel;
+        const [x, y] = chase && disc.mode === 'air' ? [disc.ex, disc.ey] : [me.x, me.y];   // il court vers l'arrivée (ou reste planté)
+        Object.assign(G.pointer, { x, y, last: G.time, active: true, down: true });
+        __tick(); tutoFrame(1 / 60);
+      }
+      const r = { done: G.tuto.done, ok: G.tuto.after === tutoNext, cone: disc.cone > 1, stars: Object.values(G.tuto.stars)[0] || 0 };
+      tutoCleanup(); return r;
+    };
+    const r = { chase: run(true), idle: run(false) };
+    G.humans = keepH; G.series = keepS; syncMe();
+    return r;
+  })()`);
+  t.ok(tc.chase.done && tc.chase.ok && tc.chase.stars >= 2, 'courir vers le cercle d’arrivée et toucher le disque réussit le défi (étoiles)', tc);
+  t.ok(tc.idle.done && !tc.idle.ok, 'rester planté : le disque tombe, on recommence', tc);
+
   t.group('Tutoriel : plonger en défense');
   const td = R(`(() => {
     const keepH = G.humans, keepS = G.series; G.series = null; G.humans = [{ id: 0, team: 0, sel: null }]; G.myId = 0; syncMe();
@@ -288,7 +310,7 @@ export default async function (t, { quick }) {
     tutoCleanup(); G.humans = keepH; G.series = keepS; syncMe();
     return r;
   })()`);
-  t.ok(tmv.msgs.join() === '1 / 3,2 / 3,Bien couru !' && tmv.next === 'Lancer' && tmv.s < 18, 'les 3 cercles l’un après l’autre, puis l’étape suivante', tmv);
+  t.ok(/^1 \/ 3,2 \/ 3,Bien couru !  ★/.test(tmv.msgs.join()) && tmv.next === 'Lancer' && tmv.s < 18, 'les 3 cercles l’un après l’autre, puis l’étape suivante', tmv);
 
   t.group('Tutoriel : le pied de pivot');
   const tpv = R(`(() => {
