@@ -22,10 +22,11 @@ function drawAim(h, px, py, curve, kind, aiming, ally) {
   ctx.save();
   const cancel = aiming && dist(px, py, h.x, h.y) < CANCEL_R;
   ctx.globalAlpha = (cancel ? 0.3 : !ally && kindLocked() ? 0.35 : 1) * (ally ? 0.6 : 1);   // changement de passe en cours : aperçu estompé
-  const er = coneR(d, curve, kind, wx, wy);                 // cône : là où le disque peut aller (imprécision du lancer, rafales)
-  drawFlightPath(sx, sy, cx, cy, ex, ey, peakOf(dur, kind), 0, aiming ? 0.95 : 0.7, aiming ? 3 : 2, kind >= LOFT.HIGH ? [2, 5] : [6, 5], kind, curve, null, er);
+  // disque en main : seulement la ligne de trajectoire (le cône n'apparaît qu'une fois le disque lancé)
+  const er = 0;
+  drawFlightPath(sx, sy, cx, cy, ex, ey, peakOf(dur, kind), 0, aiming ? 0.95 : 0.7, aiming ? 3 : 2, kind >= LOFT.HIGH ? [2, 5] : [6, 5], kind, curve);
   ctx.strokeStyle = aiming ? 'rgba(250,204,21,.95)' : 'rgba(255,255,255,.75)'; ctx.lineWidth = 2;
-  circle(X(ex), Y(ey), Math.max(er * S, 4)); ctx.stroke();
+  circle(X(ex), Y(ey), 4); ctx.stroke();
   if (Math.hypot(wx, wy) > 0.6) {                         // croix = point visé, le vent emmène le disque jusqu'au cercle
     ctx.strokeStyle = 'rgba(125,211,252,.9)'; ctx.lineWidth = 2; const k = 5;
     ctx.beginPath(); ctx.moveTo(X(tx) - k, Y(ty) - k); ctx.lineTo(X(tx) + k, Y(ty) + k); ctx.moveTo(X(tx) + k, Y(ty) - k); ctx.lineTo(X(tx) - k, Y(ty) + k); ctx.stroke();
