@@ -211,6 +211,7 @@ export default async function (t) {
     t.ok(await vis(p, '#tutoBox'), 'consignes du tutoriel affichées');
     t.ok(/Débutant · étape 1 \/ 7/.test(await p.textContent('#tutoStep')) && (await p.textContent('#tutoTitle')) === 'Se déplacer', 'le débutant commence par se déplacer (7 étapes)', await p.textContent('#tutoStep'));
     t.ok(await vis(p, '#coachCard') && (await p.textContent('#ccLine')).length > 20 && await p.evaluate(() => G.paused), 'Coach Disco présente l’étape en grand, le jeu attend');
+    t.ok(await p.evaluate(() => S > 8), 'la carte du coach ne rétrécit pas le terrain (elle flotte par-dessus)', await p.evaluate(() => S));
     await p.click('#ccGo');
     t.ok(!(await vis(p, '#coachCard')) && await p.evaluate(() => !G.paused && !(document.getElementById('tutoText').textContent.includes('Coach'))), '« C’est parti » lance l’étape ; la consigne seule reste affichée');
     for (let i = 0; i < 7; i++) { await p.evaluate(() => document.getElementById('tutoSkip').click()); await p.waitForTimeout(120); }

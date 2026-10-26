@@ -220,7 +220,10 @@ function drawField() {
   ctx.fillStyle = '#1a6b35'; ctx.fillRect(0, 0, cw, ch);
   if (FX.shake > 0) ctx.translate((Math.random() - 0.5) * FX.shake, (Math.random() - 0.5) * FX.shake);   // secousse
   for (let i = 0; i < 10; i++) { ctx.fillStyle = i % 2 ? '#1f7a3d' : '#22843f'; ctx.fillRect(X(i * 10), Y(0), 10 * S, H * S); }
-  const tR = dirOf(0) > 0 ? 0 : 1;                           // l'équipe qui attaque vers la droite (on change de côté à chaque point)
+  // l'équipe qui attaque vers la droite (on change de côté à chaque point ; pendant la célébration, on garde les zones
+  // du point qui vient d'être marqué)
+  const cele = (G.phase === 'between' || G.phase === 'over') && G.celebrate && (!G.menuShown || G.attract) && G.betweenT > 0 && !G.tuto && !G.practice;
+  const tR = (dirOf(0) > 0) !== !!cele ? 0 : 1;
   ctx.fillStyle = rgba(tcol(tR), 0.22); ctx.fillRect(X(W - EZ), Y(0), EZ * S, H * S);
   ctx.fillStyle = rgba(tcol(1 - tR), 0.22); ctx.fillRect(X(0), Y(0), EZ * S, H * S);
   ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.font = `600 ${Math.max(10, S * 1.6)}px system-ui`; ctx.textAlign = 'center';

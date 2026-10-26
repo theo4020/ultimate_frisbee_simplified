@@ -122,6 +122,7 @@ function update(dt) {
     d.react = (dform !== 'man' ? rand(...DEF_TUNE.reactZone) : rand(...DEF_TUNE.reactMan)) * aiLvl(def).react;
     defenderAI(d, ax, ay, dir, closed, defFormOf(def), slots);
   }
+  unmarkedGuard(dfn, def);
   holdOffMark(dfn);
 
   for (const p of players) if (p !== disc.holder || disc.mode !== 'held') steer(p, dt);
@@ -305,6 +306,16 @@ function pickupSpeed(p) {
   let need = Math.max(0, (flowOf(p.team) ? 1.5 : 3) - t);    // temps qu'il faut encore aux autres pour se placer (structuré : on prend le temps)
   for (const q of players) if (q !== p) need = Math.max(need, Math.max(0, dist(q.x, q.y, q.tx, q.ty) - 1.5) / (SPD.cut * 0.9));
   return clamp(left / Math.max(need, 0.05), 2.5, SPD.cut);
+}
+// filet de sécurité : porteur laissé sans mark plus de 2 s (son défenseur pris ailleurs, mémoire fausse…) et personne qui
+// arrive : le défenseur IA le plus proche vient le marquer (sinon le compte ne démarre jamais et le porteur peut attendre)
+function unmarkedGuard(dfn, def) {
+  if (disc.mode !== 'held' || G.holdT < 2 || G.tuto || G.practice) return;
+  const h = disc.holder;
+  if (dfn.some(d => dist(d.x, d.y, h.x, h.y) < STALL_R || dist(d.tx, d.ty, h.x, h.y) < STALL_R + 0.5)) return;
+  const ai = dfn.filter(d => !userControls(d)); if (!ai.length) return;
+  const d = nearest(ai, h.x, h.y);
+  [d.tx, d.ty] = markSpot(def, h.x, h.y);
 }
 // reprise posée (et disque ramené à pied) : la défense ne marque pas avant que le lanceur ait le disque
 function holdOffMark(dfn) {

@@ -516,4 +516,21 @@ export default async function (t, { quick }) {
   t.ok(vi.isGhost && vi.staleX < 31.5, 'un joueur hors de son champ de vision : il le croit encore à sa dernière position vue', vi);
   t.ok(vi.front, 'un joueur dans son champ : position à jour au coup d’œil', vi);
   t.ok(vi.look[0] > vi.look[1] && vi.look[1] > vi.look[2] && vi.ext[0] < vi.ext[1], 'facile : coups d’œil plus rares et moins d’anticipation que difficile', vi);
+
+  t.group('Porteur jamais laissé sans mark');
+  const um = R(`(() => {
+    const _a = aiThrow, out = [];
+    aiThrow = function (h, ...r) { if (h.team === 0) return; return _a(h, ...r); };   // le porteur garde le disque
+    for (let k = 0; k < 12; k++) {
+      G.score = [0, 0]; G.receiving = 0; G.form.def = 'man'; newWind(); startPoint();
+      G.phase = 'play'; G.off = 0; const h = TEAMS[0][0]; h.x = 50; h.y = 18; holdDisc(h);
+      const wrong = () => { for (const d of TEAMS[1]) d.match = TEAMS[0][1 + (d.i % 4)]; };   // personne n'est attribué au porteur
+      for (const d of TEAMS[1]) { d.x = 20; d.y = 5 + d.i * 6; }
+      let first = -1; for (let f = 0; f < 60 * 8 && G.phase === 'play'; f++) { wrong(); G.dplay = null; __tick(); if (first < 0 && G.stall > 0) first = +(f / 60).toFixed(1); }
+      out.push(first);
+    }
+    aiThrow = _a;
+    return out;
+  })()`);
+  t.ok(um.every(x => x >= 0 && x < 6), 'défenseurs tous pris ailleurs : le plus proche vient marquer (le compte démarre en moins de 6 s)', um);
 }

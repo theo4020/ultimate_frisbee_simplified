@@ -22,7 +22,9 @@ function resize() {
     availW = window.innerWidth; availH = window.innerHeight - TOUCH_HUD;
   } else {
     // PC : le terrain prend toute la largeur et la hauteur de la fenêtre (le texte d'aide reste en dessous, on peut défiler)
-    const others = [...wrap.children].filter(e => e !== stage && e.id !== 'hint').reduce((h, e) => h + e.offsetHeight, 0);
+    // (les fenêtres qui flottent par-dessus, comme la carte du coach, ne prennent pas de place)
+    const others = [...wrap.children].filter(e => e !== stage && e.id !== 'hint' && !(typeof getComputedStyle === 'function' && /fixed|absolute/.test(getComputedStyle(e).position)))
+      .reduce((h, e) => h + e.offsetHeight, 0);
     availW = wrap.clientWidth; availH = window.innerHeight - others - 24;
   }
   if (isoView()) isoK = clamp((availH / (availW / (W + 2 * M)) - ISO_HEAD) / (H + 2 * M), 0.5, 0.72);   // le terrain occupe la hauteur dispo

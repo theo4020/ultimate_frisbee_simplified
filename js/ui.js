@@ -38,8 +38,8 @@ function updateHud() {
     if (t === ME && !G.spectator) return n > 1 ? `toi + ${n - 1}` : 'toi';
     return n ? (n > 1 ? `${n} joueurs` : G.spectator ? '1 joueur' : 'adversaire') : 'IA';
   };
-  $('nameB').textContent = `${tn(0)} (${lbl(0)})`; $('nameB').style.color = tlabel(0);
-  $('nameR').textContent = `${tn(1)} (${lbl(1)})`; $('nameR').style.color = tlabel(1);
+  $('nameB').innerHTML = `${esc(tn(0))}<span class="tlab"> (${esc(lbl(0))})</span>`; $('nameB').style.color = tlabel(0);
+  $('nameR').innerHTML = `${esc(tn(1))}<span class="tlab"> (${esc(lbl(1))})</span>`; $('nameR').style.color = tlabel(1);
   $('windArrow').style.transform = `rotate(${Math.atan2(G.wind.y, G.wind.x) * 180 / Math.PI}deg)`;
   $('windArrow').style.opacity = G.wind.kmh < 4 ? 0.3 : 1;
   $('windTxt').textContent = Math.round(G.wind.kmh) + ' km/h';
@@ -164,7 +164,7 @@ function showMenu(kind) {
     $('ovTitle').textContent = G.spectator ? `Victoire des ${tn(G.score[0] > G.score[1] ? 0 : 1)}` : won ? 'Victoire ! 🥏' : 'Défaite…';
     $('ovText').textContent = S_ && S_.endless ? endlessOverText(won)
       : S_ ? (won ? (S_.cur === SERIES.length - 1 ? 'Tu remportes le tournoi ! 🏆' : `Tu passes au tour ${S_.cur + 2} !`) : 'Éliminé… tu peux retenter ce match depuis le tournoi.')
-      : G.spectator ? 'Fin du match.' : 'Change de stratégie et retente ta chance.';
+      : G.spectator ? 'Fin du match.' : won ? 'Bien joué ! Essaie un niveau au-dessus, ou une autre stratégie.' : 'Change de stratégie et retente ta chance.';
     $('go').textContent = S_ && S_.endless ? (won ? 'Match suivant ▶' : 'Voir le classement ▶') : S_ ? 'Suite du tournoi ▶' : G.net ? 'Revanche ▶' : 'Rejouer ▶';
     if (G.net === 'guest' && G.netSummary) G.lastSummary = G.netSummary;
     renderSummary(G.lastSummary);

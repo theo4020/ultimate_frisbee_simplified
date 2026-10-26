@@ -58,6 +58,7 @@ Les scripts sont chargés dans cet ordre par `index.html` et partagent le même 
 | `sw.js` | Service worker : garde une copie des fichiers pour jouer hors connexion |
 | `manifest.webmanifest`, `icons/` | Nom, icônes et affichage de l'application installée |
 | `tools/simulate.js` | Matchs IA contre IA sans navigateur : `node tools/simulate.js 20` |
+| `tools/review-play.mjs` | Relecture en jouant : des joueurs robots jouent de vrais matchs dans Chromium (souris, clavier, pull), en solo ou à plusieurs, avec captures et journal : `node tools/review-play.mjs dossier difficile 6 coop` |
 | `tools/bench.mjs` | Banc de réalisme : chiffres par niveau, chaque niveau contre une équipe Normal, échelle du mode infini : `node tools/bench.mjs 60` |
 | `tools/test/` | Suite de tests (voir « Tests ») |
 
@@ -181,8 +182,6 @@ Le service worker charge toujours la dernière version quand il y a du réseau, 
 
 ## À faire plus tard
 
-- **Relecture complète en jouant** (tâche longue, à lancer quand personne n'attend) : jouer automatiquement des matchs
-  entiers dans chaque mode et chaque vue (solo, infini, tournoi, entraînement, tutoriel, en ligne simulé, vue inclinée)
-  pour repérer les textes qui ne correspondent plus aux commandes, les situations bloquées et les erreurs ; en tirer une
-  liste des problèmes connus.
+- **Relecture en jouant** : faite le 26/10/2026 avec `tools/review-play.mjs` (solo à chaque niveau, vue inclinée, tutoriel,
+  entraînement, mode infini, à plusieurs). À relancer après les gros changements.
 - **Face-à-face avec la mark** : la mark humaine voit le pied de pivot, lit les feintes et peut contrer le lob en sautant.

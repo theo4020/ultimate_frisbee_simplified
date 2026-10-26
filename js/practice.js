@@ -82,8 +82,10 @@ function practiceUI() {
   $('pracWind').textContent = 'Vent : ' + { 0: 'aucun', 1: 'léger', 2: 'fort' }[P.wind];
   $('pracDef').textContent = 'Défenseur : ' + (P.def ? 'oui' : 'non');
   $('pracText').innerHTML = isTouchUI()
-    ? 'Glisse pour lancer dans la cible. Courbe : curseur à droite ; <b>Passe haute</b> pour passer par-dessus le défenseur. La cible rétrécit si tu enchaînes.'
-    : 'Lance dans la cible. Courbe avec A / E ou la molette ; <b>Z</b> pour armer une passe haute par-dessus le défenseur. La cible rétrécit si tu enchaînes.';
+    ? (CTRL.throwUI === 'boutons'
+      ? 'Lance dans la cible. Les curseurs règlent la <b>courbe</b> et la <b>hauteur</b> : plus haut pour passer par-dessus le défenseur. La cible rétrécit si tu enchaînes.'
+      : 'Glisse pour lancer dans la cible. Un 2<sup>e</sup> doigt règle la <b>courbe</b> (de côté) et la <b>hauteur</b> (le long de la passe) : plus haut pour passer par-dessus le défenseur. La cible rétrécit si tu enchaînes.')
+    : `Lance dans la cible. Courbe avec ${keyName(keysOf('curveL')[0])} / ${keyName(keysOf('curveR')[0])} ; <b>hauteur</b> avec ${keyName(keysOf('loftUp')[0])} / ${keyName(keysOf('loftDown')[0])} ou la molette : plus haut pour passer par-dessus le défenseur. La cible rétrécit si tu enchaînes.`;
 }
 // cible dessinée sur le terrain
 function drawPractice() {
