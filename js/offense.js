@@ -196,7 +196,7 @@ function runCutSequencer(t, ax, ay, dir, open, form, dt) {
   G.cutT -= dt;
   if (G.cutT > 0) return;
   G.cutT = 0.25;
-  refreshRoles(t, disc.holder);                             // rôles selon la position du moment
+  if (!P) refreshRoles(t, disc.holder);                     // rôles selon la position du moment (pendant un play, on ne touche pas aux siens)
   const ord = G.order[t];
   const running = ord.filter(p => p.state === 'jab' || p.state === 'cut').length;
   G.noRun = running ? 0 : (G.noRun || 0) + 0.25;            // depuis combien de temps personne ne coupe

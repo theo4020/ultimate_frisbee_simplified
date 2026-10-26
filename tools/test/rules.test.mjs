@@ -464,4 +464,22 @@ export default async function (t, { quick }) {
   t.ok(cn.cone > 1.5 && cn.cone < 4, 'passe de 25 m : cercle d’arrivée de quelques mètres au lâcher', cn);
   t.ok(cn.facile > cn.difficile * 1.6, 'une IA facile lit l’arrivée bien moins bien qu’une difficile', cn);
   t.ok(cn.end < 1e-6 && cn.start < 1e-6, 'l’erreur fond : nulle au départ du disque et à son arrivée', cn);
+
+  t.group('Vision limitée des IA : coups d’œil et mémoire');
+  const vi = R(`(() => {
+    G.score = [0, 0]; G.receiving = 0; newWind(); startPoint();
+    const h = TEAMS[0][0], q = TEAMS[1][3];
+    h.x = 50; h.y = 18; q.x = 30; q.y = 18; q.vx = 0; q.vy = 0;              // q est derrière le porteur (qui regarde vers la droite)
+    holdDisc(h); visReset(); h.scanI = 0;
+    q.x = 32; q.vx = 3;                                                     // q bouge sans être vu
+    G.gt += 0.5; glance(h);                                                 // coup d'œil devant : q n'est pas dans le champ
+    const behind = seen(h, q), staleX = behind.x, isGhost = behind !== q && behind.src === q;
+    const r = TEAMS[1][4]; r.x = 70; r.y = 18; G.gt += 0.1; h.scanI = 0; glance(h);       // devant lui : vu tout de suite
+    const front = seen(h, r);
+    return { staleX, isGhost, front: Math.abs(front.x - 70) < 1e-6,
+      look: [AI_LEVELS.facile.look, AI_LEVELS.normal.look, AI_LEVELS.difficile.look], ext: [AI_LEVELS.facile.ext, AI_LEVELS.difficile.ext] };
+  })()`);
+  t.ok(vi.isGhost && vi.staleX < 31.5, 'un joueur hors de son champ de vision : il le croit encore à sa dernière position vue', vi);
+  t.ok(vi.front, 'un joueur dans son champ : position à jour au coup d’œil', vi);
+  t.ok(vi.look[0] > vi.look[1] && vi.look[1] > vi.look[2] && vi.ext[0] < vi.ext[1], 'facile : coups d’œil plus rares et moins d’anticipation que difficile', vi);
 }

@@ -85,6 +85,7 @@ function update(dt) {
   const [ax, ay] = anchor();
   const oform = formOf(off), dform = defFormOf(def), closed = closedOf(def), open = -closed;
 
+  visTick(dt);                                              // coups d'œil des joueurs IA (vision.js)
   updatePlays(dt, ax, ay, dir, open);
   runCutSequencer(off, ax, ay, dir, open, oform, dt);
   for (const p of atk) {

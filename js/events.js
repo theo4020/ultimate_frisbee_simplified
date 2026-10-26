@@ -12,7 +12,8 @@ function holdDisc(p) {
   if (p.dive > 0 || p.down > 0) { p.vx *= 0.5; p.vy *= 0.5; }
   p.dive = p.down = 0; p.jump = p.jprep = p.jrec = 0;           // réception en layout ou en saut : il se relève avec le disque
   G.stall = 0; G.holdT = 0; G.marker = null; G.dbl = null; G.pickup = null;
-  players.forEach(q => { q.inT = 0; }); p.think = 0.35 * aiLvl(p.team).react;   // le temps de lever la tête et lire le jeu
+  players.forEach(q => { q.inT = 0; }); p.think = Math.max(0.35 * aiLvl(p.team).react, aiLvl(p.team).lift || 0);   // le temps de lever la tête et lire le jeu
+  visCatch(p);
   assignRoles(p.team, p);
   if (!G.pullPending) continuationCut(p.team, p);
   const df = defFormOf(1 - p.team);

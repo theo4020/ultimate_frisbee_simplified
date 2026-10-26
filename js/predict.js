@@ -71,7 +71,7 @@ function pathSlack(path, opp, mark, misread) {
     for (const q of D) {
       const o = q.o; let s;
       if (z > q.jmax) continue;
-      if (mark && o === mark.p) {
+      if (mark && (o.src || o) === mark.p) {
         s = dist(mark.x, mark.y, x, y) < ARM_R + (tA < MARK_LUNGE_T ? MARK_LUNGE : 0) ? -0.6 : 9;
         if (s < 0 && z > REACH_STAND) s += JUMP_RISK;
       } else {

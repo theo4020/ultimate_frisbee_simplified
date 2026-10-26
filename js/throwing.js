@@ -114,15 +114,17 @@ function aiThrow(h, release) {
   const press = Math.max(G.stall, G.holdT * 0.8);           // même sans marqueur, l'IA finit par lancer
   const ST = aiStyle(t), L = aiLvl(t), RK = riskOf(t), greed = clamp((L.greed || 0) + RK[1], 0, 1);   // greed : un débutant force les passes (et la consigne « osé »)
   let best = null, bv = -1e9, rawV = -1e9, want = 0;
-  const mkH = markOf(h), oppNoMk = mkH ? opp.filter(o => o !== mkH) : opp;
-  for (const p of TEAMS[t]) {
-    if (p === h) continue;
+  // il juge les passes sur ce qu'il a vu (vision.js) : coéquipiers et défenseurs à leur position de mémoire
+  const mkH = markOf(h), oppS = seenAll(h, opp), oppNoMk = mkH ? oppS.filter(o => (o.src || o) !== mkH) : oppS;
+  for (const pr of TEAMS[t]) {
+    if (pr === h) continue;
+    const p = seen(h, pr);
     let tx = p.x, ty = p.y;
     for (let it = 0; it < 2; it++) {                         // anticipe la course du receveur
       const ft = flightTime(dist(h.x, h.y, tx, ty));
       tx = p.x + p.vx * ft * 0.9; ty = p.y + p.vy * ft * 0.9;
     }
-    const P = G.oplay, playBonus = P && P.team === t && P.targets.includes(p) ? 3 : 0;
+    const P = G.oplay, playBonus = P && P.team === t && P.targets.includes(pr) ? 3 : 0;
     // play en cours : tant que ses coupeurs sont en route, l'IA attend leur appel (mais pas trop longtemps)
     if (P && P.team === t && P.t < 2.5 && press < 5 && !playBonus && P.targets.some(q => q.state === 'jab' || q.state === 'cut' || q.state === 'park')) continue;
     // cibles : là où sera le receveur, et pour un joueur qui file vers l'avant, l'espace devant lui (passe longue)
@@ -141,7 +143,7 @@ function aiThrow(h, release) {
       if (d < 4 || d > 48 || cx0 < 0.8 || cx0 > W - 0.8 || cy0 < 0.8 || cy0 > H - 0.8) continue;
       // le receveur doit pouvoir y être à temps (avec sa vraie accélération), avec une petite marge pour l'imprécision du lancer
       const early = throwDur(h.x, h.y, cx0, cy0, 'normal') * throwSpd(h) - recvTime(p, cx0, cy0);
-      if (early < 0.1 && !controllerOf(p)) continue;
+      if (early < 0.1 && !controllerOf(pr)) continue;
       const gain = dir * (cx0 - h.x), long = gain > 20;
       // lancers essayés : normal avec 3 courbes ; rasante (tendue, rapide) ; lob et passe haute par-dessus la défense
       // (receveur peu mobile, pas trop loin)
@@ -156,7 +158,7 @@ function aiThrow(h, release) {
         if (dist(h.x, h.y, aimX, aimY) > throwK(kind).max) continue;
         const side = hi ? (h.pivY || 0) : pivotFor(h, aimX, aimY);   // passe haute : par-dessus la mark, pas de pivot
         if (!hi && G.holdT < (h.pivLock || 0) && side !== h.pivTo) continue;   // il vient de pivoter : il regarde de ce côté
-        const slack = laneSlack(h, aimX, aimY, cx0, cy0, curve, opp, kind, side, L.misread);   // un joueur qui lit mal voit des passes ouvertes qui ne le sont pas
+        const slack = laneSlack(h, aimX, aimY, cx0, cy0, curve, oppS, kind, side, L.misread);   // un joueur qui lit mal voit des passes ouvertes qui ne le sont pas
         const kindCost = hw > 0 ? (release ? 0 : ((0.1 + G.wind.kmh * 0.04 + throwErr(d, 0, kind) * 0.2) / ST.high + (ST.high < 1 ? 1.5 : 0)) * hw)
           : loftLow(kind) * 0.5;                                // rasante : seulement quand elle apporte vraiment quelque chose
         // les passes qui font avancer le jeu valent plus, les longues encore plus (huck)

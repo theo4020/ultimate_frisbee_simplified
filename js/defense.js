@@ -227,7 +227,7 @@ const bestIntercept = firstTouch;
 function doubleSpot(dir, open) { const k = (STALL_R + 0.7) / Math.hypot(0.6, 1); return [disc.x + dir * 0.6 * k, disc.y + open * k]; }
 // aide : il quitte un peu son joueur pour fermer la ligne vers l'attaquant libre (B = lecture collective)
 function helpSpot(d, B, dir, lean, k) {
-  const a = d.match, ant = aiLvl(d.team).anticip;
+  const a = d.match && seen(d, d.match), ant = aiLvl(d.team).anticip;   // son joueur, là où il le croit (vision.js)
   const ox = a ? a.x + a.vx * ant + dir * 0.4 : d.tx, oy = a ? a.y + a.vy * ant + lean : d.ty, w = B.help.w * (k || 1);
   return [ox + (B.help.x - ox) * w, oy + (B.help.y - oy) * w];
 }
@@ -271,7 +271,7 @@ function defenderAI(d, ax, ay, dir, closed, form, slots) {
     } else if (brainOf(d) && brainOf(d).help && brainOf(d).help.d === d) {   // aide : il ferme la ligne vers l'attaquant libre
       [d.tx, d.ty] = helpSpot(d, brainOf(d), dir, lean); d.react = Math.min(d.react, 0.1);
     } else {                                                // on anticipe la course et on se place entre lui et l'espace qu'il veut
-      const ant = aiLvl(d.team).anticip, px = a.x + a.vx * ant, py = a.y + a.vy * ant;
+      const ant = aiLvl(d.team).anticip, ag = seen(d, a), px = ag.x + ag.vx * ant, py = ag.y + ag.vy * ant;   // là où il le croit (vision.js)
       [d.tx, d.ty] = manSpot(px, py, ax, ay, dir, lean);
       const R = brainOf(d) && brainOf(d).read;
       if (R && R.a === a) { lineShift(d, R, readK(d.team)); d.react = Math.min(d.react, 0.12); }   // c'est lui que le porteur regarde
@@ -295,7 +295,8 @@ function mixDefender(d, ax, ay, dir, open, slots) {
     const a = d.match, ant = aiLvl(d.team).anticip;
     if (B && B.help && B.help.d === d) { [d.tx, d.ty] = helpSpot(d, B, dir, 0); d.react = Math.min(d.react, 0.1); return; }   // aide
     if (M.P.gap === 'serre') d.react = Math.min(d.react, 0.1);
-    [d.tx, d.ty] = mixManSpot(M.P, a.x + a.vx * ant, a.y + a.vy * ant, ax, ay, dir, M.P.side === 'auto' && forceOf(d.team) === 'straight' ? 0 : open);
+    const ag = seen(d, a);                                   // là où il le croit (vision.js)
+    [d.tx, d.ty] = mixManSpot(M.P, ag.x + ag.vx * ant, ag.y + ag.vy * ant, ax, ay, dir, M.P.side === 'auto' && forceOf(d.team) === 'straight' ? 0 : open);
     const R = B && B.read;
     if (R && R.a === a && M.P.side === 'auto') lineShift(d, R, readK(d.team));   // c'est lui que le porteur regarde
     return;

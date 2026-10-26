@@ -8,6 +8,16 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
+  { id: 27, date: '2026-10-26', tag: 'IA', title: 'Des IA qui ne voient pas tout 👀',
+    body: `Toi, tu vois tout le terrain d'en haut. Les joueurs IA, eux, ne connaissent plus que <b>ce qu'ils ont vu</b> :<br>
+      • ils regardent dans une direction (le porteur balaie le terrain, les autres suivent le disque) et ne voient que ce qui
+      est dans leur champ de vision, plus ce qui est tout près d'eux ;<br>
+      • ils prennent l'information par <b>coups d'œil</b> : entre deux, ils se fient à leur <b>mémoire</b> — un défenseur revenu
+      dans la ligne de passe, un coupeur qui vient de se démarquer dans leur dos peuvent leur échapper ;<br>
+      • après une réception, il leur faut le temps de <b>lever la tête</b> : fini les enchaînements instantanés.<br>
+      Tout ça s'améliore avec le niveau : une IA facile regarde rarement et croit les joueurs restés sur place, une IA
+      difficile balaie vite le terrain et anticipe les courses. Un défenseur qui fixe le disque peut aussi perdre son joueur
+      de vue : à toi d'en profiter en coupant dans son dos !` },
   { id: 26, date: '2026-10-26', tag: 'Gameplay', title: 'Où va tomber le disque ? 🎯',
     body: `La trajectoire d'une passe n'est plus un simple trait : c'est un <b>cône</b> qui montre où le disque peut aller,
       avec un <b>cercle d'arrivée</b>. Pendant le vol, le cône se resserre et le cercle se réduit peu à peu jusqu'à un point :

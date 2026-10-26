@@ -21,7 +21,7 @@ const RUN = { acc: 6, dec: 12, lat: 9, defK: 0.95 };
 //           feinte rarement — il ne joue pas au hasard, il se trompe
 // skill() en déduit les réglages utilisés par le jeu (mêmes noms partout) :
 //   anticip (s), block, jump (m), tspd (durée de vol, < 1 = disque plus rapide), err, hands, safe, greed,
-//   fake (chance de feinter la mark), misread (s : défenseurs vus plus lents qu'ils ne sont)
+//   fake (chance de feinter la mark), misread (s : défenseurs vus plus lents qu'ils ne sont), look / lift / fov / ext (vision.js)
 function skill(k) {
   // prec et read vont de 0 à 1 ; en dessous de 0 (jusqu'à -1) : vrai débutant (lancers ratés, mains de beurre, passes forcées)
   const prec = Math.max(-1, Math.min(1, k.prec)), read = Math.max(-1, Math.min(1, k.read));   // (clamp n'existe pas encore : util.js vient après)
@@ -30,10 +30,14 @@ function skill(k) {
     jump: Math.min(1.1, 0.4 + (k.speed - 0.9) * 1.6),
     block: Math.min(0.99, 0.8 + 0.2 * prec), err: 0.35 + 1.55 * (1 - prec) ** 1.3, tspd: 1.12 - 0.27 * prec, hands: 0.004 * (1 - prec) ** 2 + 0.06 * low,
     anticip: Math.max(0.05, 0.22 + 0.2 * read), safe: -0.05 + 0.16 * spow(read, 1.3), greed: Math.min(1, 0.6 * (1 - read) ** 2.5),
-    fake: Math.max(0.02, 0.12 + 0.4 * read), misread: 0.25 * (1 - read) };
+    fake: Math.max(0.02, 0.12 + 0.4 * read), misread: 0.25 * (1 - read),
+    // vision (vision.js) : coup d'œil toutes les look s, lever la tête après une réception (lift s), demi-angle de vision (fov rad),
+    // prolongement des courses vues (ext : 0 = il croit les joueurs immobiles, 1 = il anticipe parfaitement)
+    look: Math.min(0.6, 0.07 + 0.3 * (1 - read) ** 1.4), lift: Math.min(0.6, 0.05 + 0.3 * (1 - read) ** 1.4),
+    fov: Math.max(0.7, Math.min(1.3, 0.8 + 0.45 * read)), ext: Math.max(0, Math.min(1, 0.2 + 0.8 * read)) };
 }
 const AI_LEVELS = {
-  facile:    skill({ react: 1.4, speed: 0.87, prec: -0.85, read: -0.8 }),   // débutant : ~77 % de passes réussies
+  facile:    skill({ react: 1.4, speed: 0.87, prec: -0.6, read: -0.5 }),    // débutant
   normal:    skill({ react: 1,   speed: 1,    prec: 0.5,  read: 0.5 }),
   difficile: skill({ react: 0.8, speed: 1.09, prec: 0.75, read: 0.8 })
 };

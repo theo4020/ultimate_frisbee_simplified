@@ -53,6 +53,7 @@ function placeOnPullLines() {
   players.forEach(p => { p.x = p.tx; p.y = p.ty; p.vx = p.vy = 0; p.dive = p.down = 0; });
   Object.assign(disc, { mode: 'held', holder: puller, x: puller.x, y: puller.y, z: 0, pull: false });
   G.off = G.receiving;
+  visReset();
 }
 function placeForPull() {
   const r = G.receiving, d = 1 - r;
