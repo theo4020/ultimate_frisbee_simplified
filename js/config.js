@@ -33,11 +33,11 @@ function skill(k) {
     fake: Math.max(0.02, 0.12 + 0.4 * read), misread: 0.25 * (1 - read),
     // vision (vision.js) : coup d'œil toutes les look s, lever la tête après une réception (lift s), demi-angle de vision (fov rad),
     // prolongement des courses vues (ext : 0 = il croit les joueurs immobiles, 1 = il anticipe parfaitement)
-    look: Math.min(0.6, 0.07 + 0.3 * (1 - read) ** 1.4), lift: Math.min(0.6, 0.05 + 0.3 * (1 - read) ** 1.4),
-    fov: Math.max(0.7, Math.min(1.3, 0.8 + 0.45 * read)), ext: Math.max(0, Math.min(1, 0.2 + 0.8 * read)) };
+    look: Math.min(0.6, 0.04 + 0.4 * (1 - read) ** 1.6), lift: Math.min(0.6, 0.04 + 0.4 * (1 - read) ** 1.6),
+    fov: Math.max(0.7, Math.min(1.4, 0.75 + 0.6 * read)), ext: Math.max(0, Math.min(1, 0.1 + 1.1 * read)) };
 }
 const AI_LEVELS = {
-  facile:    skill({ react: 1.4, speed: 0.87, prec: -0.6, read: -0.5 }),    // débutant
+  facile:    skill({ react: 1.4, speed: 0.87, prec: -0.5, read: -0.5 }),    // débutant
   normal:    skill({ react: 1,   speed: 1,    prec: 0.5,  read: 0.5 }),
   difficile: skill({ react: 0.8, speed: 1.09, prec: 0.75, read: 0.8 })
 };
