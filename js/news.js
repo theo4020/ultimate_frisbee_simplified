@@ -8,6 +8,16 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
+  { id: 30, date: '2026-10-26', tag: 'En ligne', title: 'La partie continue même si l’hôte part 🔁',
+    body: `En ligne, si l'hôte quitte la partie (onglet fermé, réseau coupé…), un autre joueur la <b>reprend
+      automatiquement</b> là où elle en était : même score, mêmes équipes, chacun garde sa place. Plus besoin de tout
+      recommencer.<br>
+      Et aussi :<br>
+      • une fois lancé, le disque n'affiche plus que son <b>cône</b>, coloré selon la hauteur (contrable, debout, en
+      sautant, trop haut) ; la trajectoire et le cercle d'atterrissage restent pendant la visée ;<br>
+      • toutes les défenses IA (zone, clam, défense perso) ne voient plus que ce qu'elles regardent : elles se parlent,
+      mais une coupe dans leur dos peut leur échapper ;<br>
+      • les niveaux du mode infini sont mieux étagés : chaque palier bat nettement le précédent.` },
   { id: 29, date: '2026-10-26', tag: 'Tutoriel', title: 'Coach Disco t’apprend à jouer 🧢',
     body: `Le tutoriel fait peau neuve : <b>Coach Disco</b>, 30 ans de terrain et zéro genou intact, te guide en petits
       <b>défis</b> et commente tes exploits (et tes ratés) avec son humour bien à lui.<br>

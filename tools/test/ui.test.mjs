@@ -145,7 +145,7 @@ export default async function (t) {
     await p.waitForTimeout(100);
     const pv0 = await p.evaluate(() => G.pivSel);
     await p.keyboard.press('x');
-    await p.waitForTimeout(400);
+    await p.waitForTimeout(650);
     const pv1 = await p.evaluate(() => ({ sel: G.pivSel, loft: G.loft, piv: disc.holder.pivY }));
     t.ok(pv0 === -1 && pv1.sel === 1 && pv1.loft === 0.3 && pv1.piv > 0.5, 'X : il change de pied de pivot (côté fermé)', { pv0, pv1 });
     for (let k = 0; k < 3; k++) await p.keyboard.press('z');

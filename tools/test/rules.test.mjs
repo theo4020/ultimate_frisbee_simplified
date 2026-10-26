@@ -430,7 +430,7 @@ export default async function (t, { quick }) {
   for (let i = 1; i < lv.length; i++) if (!(lv[i].react <= lv[i - 1].react && lv[i].block >= lv[i - 1].block && lv[i].err <= lv[i - 1].err)) mono = false;
   t.ok(mono, 'la difficulté ne baisse jamais (réaction, contres, précision)');
   t.ok(lv[0].react === R('AI_LEVELS.facile.react') && lv[2].react === R('AI_LEVELS.normal.react') && lv[4].react === R('AI_LEVELS.difficile.react'), 'facile au 1er match, normal au 2e, difficile (Titans) au 5e');
-  t.ok(lv[6].react < lv[4].react && lv[8].react < lv[6].react && lv[9].react < lv[8].react && lv[9].block > lv[8].block, 'continue de monter après difficile, et encore après le 15e match');
+  t.ok(lv[6].react < lv[4].react && lv[8].react < lv[6].react && lv[9].react < lv[8].react && lv[9].err < lv[8].err, 'continue de monter après difficile, et encore après le 15e match');
   const far = R('endlessLevel(200)');
   t.ok(far.react >= 0.2 && far.block <= 0.99 && far.speed <= 1.3 && far.err >= 0.1, 'même très loin, les réglages restent dans des limites possibles', far);
   R('showMenu = () => {}; showEndless = () => {};');            // pas d'écran ici

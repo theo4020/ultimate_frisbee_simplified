@@ -66,3 +66,13 @@ function seen(p, q) {
   return g;
 }
 const seenAll = (p, list) => list.map(q => seen(p, q));
+// ce que l'équipe t sait de q : ses joueurs se parlent, on garde le souvenir le plus récent (défense de zone, lecture collective)
+function teamSeen(t, q) {
+  if (!visOn()) return q;
+  let best = null, bt = -1e9;
+  for (const p of TEAMS[t]) {
+    if (!p.mem || (controllerOf(p) && userControls(p))) continue;
+    const m = p.mem[pIdx(q)]; if (m.t > bt) { bt = m.t; best = p; }
+  }
+  return best ? seen(best, q) : q;
+}

@@ -23,6 +23,7 @@ if (CTRL.v < 3) { if (CTRL.move === 'tap' && CTRL.sling === true) Object.assign(
 if (!['gestes', 'boutons'].includes(CTRL.throwUI)) CTRL.throwUI = 'gestes';
 if (!['tap', 'follow', 'joystick'].includes(CTRL.move)) CTRL.move = 'tap';
 if (!['top', 'iso'].includes(CTRL.view)) CTRL.view = 'top';
+CTRL.perf = !!CTRL.perf;                                        // affichage des performances (admin)
 function saveCtrl() { try { localStorage.setItem('uf-ctrl', JSON.stringify(CTRL)); } catch (e) { } }
 const keysOf = a => (Array.isArray(CTRL.keys[a]) && CTRL.keys[a].length ? CTRL.keys[a] : DEFAULT_KEYS[a]);
 const keyIs = (a, k) => keysOf(a).includes(k);
@@ -59,6 +60,9 @@ function renderCtrl() {
     ${KEY_ACTIONS.map(([a, l]) => `<div class="row"><span>${l}</span><button class="kbtn${keyWait === a ? ' on' : ''}" data-a="${a}">${keyWait === a ? 'Appuie sur une touche…' : keysOf(a).map(keyName).join(' / ')}</button></div>`).join('')}
     <div class="desc">La souris vise et lance (clic maintenu). Clic sur un coéquipier : tu le prends. Molette : hauteur de la passe (pendant le pull : courbe). Clic droit : avec le disque, appel d’un cut ; sinon saut (en défense, ou pour ton receveur pendant le vol) ; 1 à 5 prennent aussi un joueur.</div>
     <button id="keysReset" class="ghost">Touches par défaut</button>
+    ${typeof accGet === 'function' && accGet() && accGet().admin ? `<h2>Admin</h2>
+    <div class="row"><span>Performances</span>${b('perf', false, 'Masquées')}${b('perf', true, 'Afficher')}</div>
+    <div class="desc">Images par seconde, temps de calcul du jeu et du dessin (ms par image), en haut à gauche du terrain.</div>` : ''}
     <h2>Manette</h2>
     <div class="desc">Stick gauche : curseur de visée (avec le disque) ou déplacement · A / RT : lancer (sans le disque : saut) · B : layout · X : appel de cut au curseur ou changer de joueur · Y : pied de pivot · croix ↑ / ↓ : hauteur de la passe · LB / RB : courbe · croix ← / → : Play 1 / Play 2 · Start : valider.</div>`;
   $('ctrlBody').querySelectorAll('.copt').forEach(el => el.addEventListener('click', () => {

@@ -3,8 +3,10 @@
 // Les invités envoient seulement leurs actions (pointeur, lancer, layout, switch, appel, pull).
 // Tout invité arrive en spectateur ; il rejoint une équipe quand il veut (bouton 👥 Équipes), partie lancée ou non,
 // s'il y reste une place (5 humains max par équipe). Une équipe sans humain est jouée par l'IA. L'hôte joue toujours.
+// Si l'hôte part, un invité désigné à l'avance (l'« héritier », annoncé dans l'état du jeu) reprend la partie là où elle
+// en était, et les autres invités se reconnectent à lui (voir hostLost).
 
-let peer = null, hostConn = null, netT = 0, inT = 0, lastMid = 0, snapAt = 0, lastRecv = 0, pingT = 0;
+let peer = null, codePeer = null, hostConn = null, netT = 0, inT = 0, lastMid = 0, snapAt = 0, lastRecv = 0, pingT = 0;
 const conns = new Map();                                     // côté hôte : id d'invité → connexion
 const lastSeen = new Map();
 let nextId = 1;
@@ -50,7 +52,8 @@ function netError(msg) {
   conns.clear(); lastSeen.clear();
   try { if (hostConn) hostConn.close(); } catch (e) { }
   try { if (peer) peer.destroy(); } catch (e) { }
-  peer = hostConn = null;
+  try { if (codePeer) codePeer.destroy(); } catch (e) { }
+  peer = codePeer = hostConn = null;
   backToSolo();
   showLobby(msg, 'online');                                    // on revient à la section En ligne
 }
@@ -59,7 +62,7 @@ function backToSolo() {
   if (typeof endlessCfgOut === 'function') endlessCfgOut();   // on sort du mode infini : réglages du match rapide
   G.attract = false; G.coopRoom = false; G.roomCode = null;
   if (G.practice) { G.practice = null; $('pracBox').style.display = 'none'; }
-  G.net = null; G.myId = 0; G.humans = [{ id: 0, team: 0, sel: null, name: myName() }]; G.started = false; G.netCfg = null; G.netTeams = null; G.spectator = false;
+  G.net = null; G.myId = 0; G.hostId = 0; G.heir = null; G.humans = [{ id: 0, team: 0, sel: null, name: myName() }]; G.started = false; G.netCfg = null; G.netTeams = null; G.spectator = false;
   G.netSummary = null; G.emotes = []; G.pz = null;
   syncMe(); G.phase = 'menu'; G.score = [0, 0]; G.receiving = 0; hudKey = '';
   placeForPoint();
@@ -144,17 +147,11 @@ function hostGame() {
     peer = p;
     p.on('open', () => {
       $('hostCode').textContent = code;
-      G.net = 'host'; G.myId = 0; G.humans = [{ id: 0, team: 0, sel: null, name: myName() }]; G.started = false; nextId = 1;
+      G.net = 'host'; G.myId = 0; G.hostId = 0; G.humans = [{ id: 0, team: 0, sel: null, name: myName() }]; G.started = false; nextId = 1;
       syncMe(); renderRoom();
       G.roomCode = code; G.inviteUrl = location.href.split('#')[0] + '#join=' + code;
     });
-    p.on('connection', c => {
-      let opened = false;
-      $('hostStatus').textContent = 'Un joueur se connecte…';
-      const to = setTimeout(() => { if (!opened) renderRoom('Un joueur n’arrive pas à se connecter (réseau).'); }, 15000);
-      setTimeout(() => watchIce(c, () => { if (!opened) renderRoom('La connexion directe d’un joueur a échoué (réseau).'); }), 0);
-      c.on('open', () => { opened = true; clearTimeout(to); addGuest(c); });
-    });
+    p.on('connection', hostAccept);
     p.on('error', err => {
       const t = err && err.type;
       if (t === 'unavailable-id') { p.destroy(); hostGame(); return; }
@@ -167,7 +164,17 @@ function hostGame() {
     });
   }).catch(() => netError('Impossible de charger le module réseau. Vérifie ta connexion.'));
 }
-// l'invité se présente (« hello ») : il arrive en spectateur
+// un invité se connecte à l'hôte (au début, ou après un changement d'hôte)
+function hostAccept(c) {
+  if (G.net !== 'host') { try { c.close(); } catch (e) { } return; }
+  let opened = false;
+  $('hostStatus').textContent = 'Un joueur se connecte…';
+  const to = setTimeout(() => { if (!opened) renderRoom('Un joueur n’arrive pas à se connecter (réseau).'); }, 15000);
+  setTimeout(() => watchIce(c, () => { if (!opened) renderRoom('La connexion directe d’un joueur a échoué (réseau).'); }), 0);
+  c.on('open', () => { opened = true; clearTimeout(to); addGuest(c); });
+  if (c.open) { opened = true; clearTimeout(to); addGuest(c); }
+}
+// l'invité se présente (« hello ») : il arrive en spectateur (ou reprend sa place après un changement d'hôte)
 function addGuest(c) {
   let id = null;
   c.on('data', m => {
@@ -180,6 +187,16 @@ function addGuest(c) {
   setTimeout(() => { if (id === null) { try { c.close(); } catch (e) { } } }, 15000);
 }
 function admitGuest(c, m) {
+  const back = m.rejoin != null && humanById(+m.rejoin) && !conns.has(+m.rejoin) && +m.rejoin !== G.myId;   // retour après un changement d'hôte
+  if (back) {
+    const id = +m.rejoin;
+    conns.set(id, c); lastSeen.set(id, G.time);
+    sendTo(id, { t: 'welcome', id });
+    sendTo(id, roomState());
+    if (G.started && G.menuShown) sendTo(id, { t: 'menu', kind: G.lastMenu || 'between', score: G.score, rec: G.receiving, wind: G.wind, teams: G.teams, pts: winPts(), sum: G.lastMenu === 'over' ? G.lastSummary : null, ser: coopSer() });
+    broadcastRoom();
+    return id;
+  }
   if (G.humans.filter(h => h.team < 0).length >= MAX_SPEC) { safeSend(c, { t: 'full' }); setTimeout(() => c.close(), 300); return null; }
   const id = nextId++;
   conns.set(id, c); lastSeen.set(id, G.time);
@@ -204,14 +221,14 @@ function dropGuest(id, why) {
   if (G.started) { if (G.phase === 'play') updateSelected(); tryStartOnline(); }
   broadcastRoom();
 }
-const roomState = () => ({ t: 'room', started: !!G.started, coop: !!G.coopRoom, hum: G.humans.map(h => [h.id, h.team, h.name || '']) });
+const roomState = () => ({ t: 'room', started: !!G.started, coop: !!G.coopRoom, host: G.myId, hum: G.humans.map(h => [h.id, h.team, h.name || '']) });
 function broadcastRoom() { syncMe(); netSend(roomState()); renderRoom(); refreshCaptainUI(); }
 function setTeam(id, team) {
   const h = humanById(id);
   if (!h || h.team === team) return;
   if (team >= 0 && teamHumans(team).length >= MAX_PER_TEAM) return;
   if (G.coopRoom && team === 1) return;                      // mode infini à plusieurs : les Rouges sont l'IA
-  if (id === 0 && team < 0) return;                          // l'hôte joue toujours
+  if (id === G.hostId && team < 0) return;                   // l'hôte joue toujours
   h.team = team; h.sel = null;                               // partie en cours : il prend tout de suite un joueur de l'équipe
   if (G.readyIds) G.readyIds.delete(id);
   if (G.started && G.phase === 'play') updateSelected();
@@ -270,7 +287,7 @@ let metaJson = '', metaAt = -9;
 function snapshot() {
   const meta = { wind: G.wind, rec: G.receiving, speed: G.form.speed, hum: G.humans.map(h => [h.id, h.team, idx(h.sel)]),
     op: G.oplay && { type: G.oplay.type, team: G.oplay.team }, dp: G.dplay && { type: G.dplay.type, team: G.dplay.team },
-    order: [G.order[0].map(idx), G.order[1].map(idx)], cfg: [0, 1].map(t => (captain(t) && captain(t).id === G.myId ? myCfg() : cfg(t))), teams: G.teams };
+    order: [G.order[0].map(idx), G.order[1].map(idx)], cfg: [0, 1].map(t => (captain(t) && captain(t).id === G.myId ? myCfg() : cfg(t))), teams: G.teams, heir: heirInfo() };
   const mj = JSON.stringify(meta), sendMeta = mj !== metaJson || G.time - metaAt > 1;
   if (sendMeta) { metaJson = mj; metaAt = G.time; }
   return {
@@ -281,6 +298,13 @@ function snapshot() {
       dbl: idx(G.dbl), gt: r1(G.gt), carry: G.carryTo,
       pull: G.phase === 'pull' && G.pull ? G.pull.team : -1, pullBy: G.pull ? G.pull.by : null, pready: G.phase === 'pull' && pullReady(), pleft: pullLeft(), tell: r2(holderLoft()), pz: G.pz || null, aim: netAimOut(), piv: disc.holder ? r2(disc.holder.pivY || 0) : 0 }
   };
+}
+// l'invité qui reprendrait la partie si l'hôte partait : le plus ancien encore connecté ([id, adresse de son navigateur])
+function heirInfo() {
+  let best = null;
+  for (const [id, c] of conns) if (c.open && (best === null || id < best)) best = id;
+  if (best === null) return null;
+  const c = conns.get(best); return [best, c.peer || c.other || null];
 }
 // envoi aux invités : on n'empile jamais les états chez un invité dont la connexion sature
 // (sinon le retard grandit jusqu'à la coupure) ; ses effets sonores en attente partent avec l'état suivant
@@ -305,6 +329,7 @@ function joinGame(code) {
   $('lobbyErr').textContent = ''; $('joinStatus').textContent = 'Connexion au service…';
   makePeer(null).then(p => {
     peer = p;
+    p.on('connection', hostAccept);                           // si l'hôte part et qu'on reprend la partie, les autres arrivent ici
     p.on('open', () => {
       $('joinStatus').textContent = 'Recherche de la partie…';
       const c = p.connect(PEER_PREFIX + code, { reliable: true, serialization: 'json' });
@@ -317,10 +342,7 @@ function joinGame(code) {
       }, 1500);
       c.on('open', () => {
         opened = true; clearTimeout(to);
-        hostConn = c; lastRecv = G.time;
-        c.on('data', m => { lastRecv = G.time; if (m && typeof m === 'object') guestOnData(m); });
-        c.on('close', () => { if (hostConn === c) connectionLost('La connexion avec l’hôte a été perdue.'); });
-        c.on('error', () => { if (hostConn === c) connectionLost('Erreur de connexion avec l’hôte.'); });
+        attachHost(c);
         G.score = [0, 0]; G.receiving = 0; G.phase = 'menu';
         G.net = 'guest';
         G.roomCode = code; G.inviteUrl = location.href.split('#')[0] + '#join=' + code;   // pour inviter d'autres joueurs (menu ☰)
@@ -339,6 +361,76 @@ function joinGame(code) {
       else netError('Connexion impossible (' + (t || 'réseau') + ').');
     });
   }).catch(() => netError('Impossible de charger le module réseau. Vérifie ta connexion.'));
+}
+// liaison avec l'hôte (au début, ou avec le nouvel hôte après un changement)
+function attachHost(c) {
+  hostConn = c; lastRecv = G.time;
+  c.on('data', m => { lastRecv = G.time; if (m && typeof m === 'object') guestOnData(m); });
+  c.on('close', () => { if (hostConn === c) hostLost('La connexion avec l’hôte a été perdue.'); });
+  c.on('error', () => { if (hostConn === c) hostLost('Erreur de connexion avec l’hôte.'); });
+}
+// ---------- changement d'hôte ----------
+// l'hôte est parti : l'héritier reprend la partie ; les autres se reconnectent à lui (pendant 25 s au plus)
+function hostLost(msg) {
+  const H = G.heir;
+  if (!G.started || !H || !peer || peer.destroyed || G.net !== 'guest') { connectionLost(msg); return; }
+  try { if (hostConn) hostConn.close(); } catch (e) { }
+  hostConn = null;
+  if (H[0] === G.myId) { becomeHost(); return; }
+  if (!H[1]) { connectionLost(msg); return; }
+  const until = G.time + 25;
+  flash('L’hôte est parti : connexion au nouvel hôte…', true);
+  const tryOnce = () => {
+    if (G.net !== 'guest' || hostConn) return;
+    if (G.time > until) { connectionLost('L’hôte est parti et personne n’a pu reprendre la partie.'); return; }
+    const c = peer.connect(H[1], { reliable: true, serialization: 'json' });
+    let ok = false;
+    c.on('open', () => { ok = true; attachHost(c); lastMid = -1; netSend({ t: 'hello', name: myName(), rejoin: G.myId }); flash('Partie reprise ✓', true); });
+    setTimeout(() => { if (!ok) { try { c.close(); } catch (e) { } tryOnce(); } }, 2500);
+  };
+  setTimeout(tryOnce, 600);                                      // le temps que l'héritier se mette en place
+}
+// on devient l'hôte : on reprend la partie depuis le dernier état reçu (positions, disque, score, stratégies…)
+function becomeHost() {
+  const oldHost = humanById(G.hostId);
+  G.net = 'host'; hostConn = null; conns.clear(); lastSeen.clear();
+  G.humans = G.humans.filter(h => h.id !== G.hostId);
+  G.hostId = G.myId;
+  nextId = Math.max(0, ...G.humans.map(h => h.id)) + 1;
+  for (const t of [0, 1]) { const c = captain(t); if (c && c.id !== G.myId && G.netCfg && G.netCfg[t]) c.cfg = Object.assign({}, DEFAULT_CFG, G.netCfg[t]); }
+  if (G.netTeams) G.teams = G.netTeams;
+  syncMe();
+  players.forEach(p => { if (p.nx !== undefined) { p.x = p.nx; p.y = p.ny; } p.nx = p.ny = undefined; p.tx = p.x; p.ty = p.y; p.windup = null; p.guess = null; });
+  G.oplay = null; G.dplay = null; G.pz = null;
+  visReset();
+  if (G.phase === 'play') {
+    if ((disc.mode === 'held' || disc.mode === 'carry') && disc.holder) {
+      const st = G.stall, carry = disc.mode === 'carry' && G.carryTo;
+      if (carry) startCarry(disc.holder, G.carryTo.x, G.carryTo.y, ''); else { holdDisc(disc.holder); G.stall = st; }
+    } else if (disc.mode === 'air') {
+      disc.t = disc.netT || disc.t; disc.rolled = new Set(); disc.pull = false;
+      disc.thrower = nearest(TEAMS[disc.team], disc.sx, disc.sy);
+      assignRoles(disc.team, disc.intended || disc.thrower); setupDefense(1 - disc.team, disc.intended || disc.thrower);
+    } else if (disc.mode === 'ground') {
+      disc.x = disc.nx !== undefined ? disc.nx : disc.x; disc.y = disc.ny !== undefined ? disc.ny : disc.y;
+      G.pickup = pickupFor(G.off, disc.x, disc.y); assignRoles(G.off, G.pickup); setupDefense(1 - G.off, G.pickup);
+    }
+  } else if (G.phase === 'pull') startPull();
+  else if (G.menuShown && $('stratCard').style.display !== 'none') showMenu(G.phase === 'over' ? 'over' : 'between');   // entre deux points : le menu, côté hôte
+  G.readyIds = new Set();
+  claimCode(G.time + 60);
+  broadcastRoom();
+  flash((oldHost ? humanLabel(oldHost) + ' (hôte) est parti' : 'L’hôte est parti') + ' : tu reprends la partie', true);
+}
+// le nouvel hôte reprend aussi le code de la partie (dès que l'ancien l'a libéré) : on peut encore la rejoindre avec le code
+function claimCode(until) {
+  if (G.net !== 'host' || !G.roomCode || codePeer || G.time > until) return;
+  makePeer(PEER_PREFIX + G.roomCode).then(p => {
+    if (G.net !== 'host') { try { p.destroy(); } catch (e) { } return; }
+    p.on('open', () => { codePeer = p; });
+    p.on('connection', hostAccept);
+    p.on('error', err => { if (err && err.type === 'unavailable-id') { try { p.destroy(); } catch (e) { } setTimeout(() => claimCode(until), 3000); } });
+  }).catch(() => {});
 }
 function applyHumans(list) {
   const old = new Map(G.humans.map(h => [h.id, h]));
@@ -360,7 +452,7 @@ function guestOnData(m) {
     case 'full': netError('La partie est complète.'); break;
     case 'room':
       applyHumans(m.hum.map(([id, team, name]) => [id, team, -1, name]));
-      G.started = m.started; G.coopRoom = !!m.coop; hudKey = '';
+      G.started = m.started; G.coopRoom = !!m.coop; G.hostId = m.host == null ? 0 : m.host; hudKey = '';
       if (!G.started && G.series) G.series = null;
       if (!G.started || G.teamsOpen) { showRoom(); renderRoom(); }
       else if ((G.phase === 'play' || G.phase === 'pull') && !cardStack.length) { $('overlay').classList.add('hidden'); G.menuShown = false; }
@@ -400,7 +492,7 @@ function netHeartbeat(dt) {
   if (!G.net) return;
   pingT += dt;
   if (pingT > 1) { pingT = 0; netSend({ t: 'ping' }); }
-  if (G.net === 'guest' && hostConn && G.time - lastRecv > 30) connectionLost('L’hôte ne répond plus.');
+  if (G.net === 'guest' && hostConn && G.time - lastRecv > (G.started && G.heir ? 8 : 30)) hostLost('L’hôte ne répond plus.');   // partie lancée : au bout de 8 s, un invité reprend
   if (G.net === 'host') for (const [id, t] of lastSeen) if (G.time - t > 30) dropGuest(id, 'ne répond plus');
 }
 window.addEventListener('beforeunload', () => {
@@ -432,6 +524,7 @@ function applySnapshot(m) {
     G.oplay = mt.op; G.dplay = mt.dp; G.netCfg = mt.cfg; G.netCfgJson = cj;
     if (cfgChanged && G.menuShown) refreshCaptainUI();          // la stratégie du capitaine s'affiche chez ses coéquipiers
     if (mt.teams) G.netTeams = mt.teams;
+    G.heir = Array.isArray(mt.heir) ? mt.heir : null;
     G.order = mt.order.map(o => o.map(i => players[i]));
   }
   G.netTell = loftOf(+g.tell); G.pz = g.pz || null;
@@ -497,7 +590,7 @@ function renderRoom(note) {
   for (const t of [0, 1]) {
     const ul = $(t === 0 ? 'rosterB' : 'rosterR');
     const hs = teamHumans(t);
-    ul.innerHTML = hs.length ? hs.map(h => `<li>${esc(humanLabel(h))}${h.id === 0 ? ' (hôte)' : ''}${h.id === G.myId ? ' — <b>toi</b>' : ''}${captain(t) === h ? ' · capitaine' : ''}</li>`).join('')
+    ul.innerHTML = hs.length ? hs.map(h => `<li>${esc(humanLabel(h))}${h.id === G.hostId ? ' (hôte)' : ''}${h.id === G.myId ? ' — <b>toi</b>' : ''}${captain(t) === h ? ' · capitaine' : ''}</li>`).join('')
       : '<li class="ai">IA</li>';
     const me = meH();
     $('teamB' + t).disabled = !me || me.team === t || hs.length >= MAX_PER_TEAM;
@@ -508,7 +601,7 @@ function renderRoom(note) {
   if (G.coopRoom) $('rosterR').innerHTML = '<li class="ai">IA (de plus en plus forte)</li>';
   const sp = G.humans.filter(h => h.team < 0), me = meH();
   $('rosterS').innerHTML = sp.length ? sp.map(h => esc(humanLabel(h)) + (h.id === G.myId ? ' (toi)' : '')).join(', ') : 'aucun';
-  $('teamBS').disabled = !me || me.team < 0 || me.id === 0 || sp.length >= MAX_SPEC;
+  $('teamBS').disabled = !me || me.team < 0 || me.id === G.hostId || sp.length >= MAX_SPEC;
   const n = G.humans.filter(h => h.team >= 0).length;
   $('hostStatus').textContent = note || (G.net === 'host'
     ? (n > 1 ? `${n} joueurs connectés. Lance la partie quand tout le monde est là.` : 'En attente de joueurs… (tu peux aussi lancer seul contre l’IA)')
@@ -517,7 +610,7 @@ function renderRoom(note) {
 function chooseTeam(t) {
   if (t < 0 && G.net !== 'guest') return;
   if (G.net === 'guest') netSend({ t: 'team', team: t });
-  else if (G.net === 'host') setTeam(0, t);
+  else if (G.net === 'host') setTeam(G.myId, t);
   if (G.started) closeTeams();
 }
 

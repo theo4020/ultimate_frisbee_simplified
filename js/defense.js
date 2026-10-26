@@ -17,7 +17,7 @@ const ZONE = { cupF: 4, cupOpen: 4.5, cupClosed: 3.5, cupPull: 0.45, cupReach: 1
 function zoneSlots(defT, ax, ay, dir, closed) {
   if (defFormOf(defT) === 'mix') return mixSlots(dsysOf(defT), defT, ax, ay, dir, closed);
   if (defFormOf(defT) === 'clam') return clamSlots(defT, ax, ay, dir, closed);
-  const open = -closed, atk = TEAMS[1 - defT], s = [];
+  const open = -closed, atk = TEAMS[1 - defT].map(a => teamSeen(defT, a)), s = [];   // les attaquants là où la défense les a vus (vision.js)
   s[0] = { x: ax + dir * 1.0, y: ay + closed * 1.3 };                       // marqueur
   let deepA = null, dd = -1e9;
   for (const a of atk) { const dep = dir * (a.x - ax); if (dep > dd) { dd = dep; deepA = a; } }
@@ -47,7 +47,7 @@ function zoneSlots(defT, ax, ay, dir, closed) {
 }
 // Clam : la mark, deux « pinces » devant le disque (under cuts côté open et au centre), deux deep qui se partagent la largeur
 function clamSlots(defT, ax, ay, dir, closed) {
-  const open = -closed, atk = TEAMS[1 - defT].filter(a => a !== disc.holder), s = [];
+  const open = -closed, atk = TEAMS[1 - defT].filter(a => a !== disc.holder).map(a => teamSeen(defT, a)), s = [];
   const [mx, my] = markSpot(defT, ax, ay);
   s[0] = { x: mx, y: my };
   const near = (x, y, r) => { const [a, d] = nearestD(atk, x, y); return a && d < r ? a : null; };
@@ -129,7 +129,7 @@ function assignMix(defT, h) {
 }
 // places des postes en zone (0 = la mark), selon leur comportement
 function mixSlots(D, defT, ax, ay, dir, closed) {
-  const open = -closed, [mx, my] = markSpot(defT, ax, ay), atk = TEAMS[1 - defT].filter(a => a !== disc.holder);
+  const open = -closed, [mx, my] = markSpot(defT, ax, ay), atk = TEAMS[1 - defT].filter(a => a !== disc.holder).map(a => teamSeen(defT, a));
   const w = sysWorld(D.postes.map(q => q.pos), ax, ay, dir, open), s = [{ x: mx, y: my }];
   D.postes.forEach((P, k) => {
     let [x, y] = w[k];
@@ -192,10 +192,11 @@ function defenseBrain(defT, dt) {
   // 2) passe probable : l'attaquant le plus dangereux (ligne de passe ouverte, terrain gagné, défenseur loin)
   let best = null, bv = -1e9;
   for (const a of atk) {
-    const tx = a.state === 'cut' || a.state === 'jab' ? a.cx : a.x, ty = a.state === 'cut' || a.state === 'jab' ? a.cy : a.y;
+    // là où la défense l'a vu, prolongé un peu (elle ne connaît pas la destination de sa coupe)
+    const ag = teamSeen(defT, a), tx = clamp(ag.x + ag.vx * 0.6, 0.5, W - 0.5), ty = clamp(ag.y + ag.vy * 0.6, 0.5, H - 0.5);
     const lane = clamp(laneSlack(h, tx, ty, tx, ty, 0, TEAMS[defT]), -1, 0.6), gain = dir * (tx - h.x);
     const g = (man || mix) && TEAMS[defT].find(d => d.match === a) || nearest(TEAMS[defT], a.x, a.y);
-    const sep = g ? dist(g.x, g.y, a.x, a.y) : 9;
+    const sep = g ? dist(g.x, g.y, ag.x, ag.y) : 9;
     const v = lane * 4 + gain * 0.12 + sep * 0.5;
     if (v > bv) { bv = v; best = { a, x: tx, y: ty, sep, lane }; }
   }

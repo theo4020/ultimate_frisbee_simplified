@@ -50,3 +50,17 @@ for (const lv of ['facile', 'normal', 'difficile']) {
   })()`);
   console.log(`${lv.padEnd(9)} passes ${pct(r.comp[0], r.thr[0])} % (Normal en face : ${pct(r.comp[1], r.thr[1])} %) · points ${r.pts[0]}–${r.pts[1]}`);
 }
+
+// l'échelle du mode infini : chaque palier contre le précédent (le plus fort doit gagner)
+console.log('\n== échelle (chaque palier contre le précédent) ==');
+for (const [a, b] of [['normal', 'facile'], ['difficile', 'normal'], ['legend', 'difficile'], ['super', 'legend']]) {
+  const g = loadGame();
+  const r = g.run(`(() => {
+    const lv = s => (s === 'legend' ? LEGEND : s === 'super' ? SUPER : AI_LEVELS[s]);
+    const L = lv('${a}'), R = lv('${b}'); aiLvl = t => (t === 0 ? L : R);
+    const pts = [0, 0];
+    for (let k = 0; k < ${N}; k++) { G.score = [0, 0]; G.receiving = k % 2; __playPoint(); pts[0] += G.score[0]; pts[1] += G.score[1]; }
+    return pts;
+  })()`);
+  console.log(`${a.padEnd(9)} contre ${b.padEnd(9)} points ${r[0]}–${r[1]}`);
+}

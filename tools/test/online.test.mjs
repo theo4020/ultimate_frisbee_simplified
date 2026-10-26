@@ -221,6 +221,47 @@ export default async function (t) {
     await g2.waitForFunction(() => document.getElementById('lobbyRoom').style.display !== 'none', null, { timeout: 5000 });
     t.ok(await h2.isVisible('#startOnline'), 'retour à la salle, avec les mêmes joueurs');
     await cx.close();
+    t.group('Changement d’hôte');
+    {
+      const cx = await browser.newContext({ viewport: { width: 1000, height: 700 } });
+      await cx.addInitScript(shim);
+      const h3 = await cx.newPage(), a3 = await cx.newPage(), b3 = await cx.newPage();
+      for (const [n, p] of [['hôte 3', h3], ['invité A', a3], ['invité B', b3]]) p.on('pageerror', e => errs.push(n + ' : ' + e.message + ' ' + (e.stack || '').split('\n').slice(1, 4).join(' | ')));
+      const ready = p => p.waitForFunction(() => typeof G !== 'undefined' && G.attract);
+      await h3.goto(srv.url + 'index.html'); await ready(h3);
+      await h3.click('#onlineMenuB'); await h3.click('#hostB');
+      await h3.waitForFunction(() => /^[A-Z0-9]{4}$/.test(document.getElementById('hostCode').textContent));
+      const code3 = await h3.textContent('#hostCode');
+      for (const p of [a3, b3]) { await p.goto(srv.url + 'index.html#join=' + code3); await p.waitForFunction(() => G.net === 'guest' && G.myId > 0, null, { timeout: 10000 }); }
+      await h3.waitForFunction(() => G.humans.length === 3, null, { timeout: 10000 });
+      await b3.click('#teamB1');
+      await h3.waitForFunction(() => G.humans.some(h => h.team === 1), null, { timeout: 5000 });
+      await h3.evaluate(() => { G.form.puller = 'ai'; });
+      await h3.click('#startOnline');
+      await h3.waitForFunction(() => document.getElementById('stratCard').style.display !== 'none', null, { timeout: 5000 });
+      await b3.waitForFunction(() => document.getElementById('stratCard').style.display !== 'none', null, { timeout: 5000 });
+      await b3.evaluate(() => { G.form.puller = 'ai'; });
+      await h3.click('#go'); await b3.click('#go');
+      await h3.waitForFunction(() => G.phase === 'play', null, { timeout: 30000 });
+      await a3.waitForFunction(() => Array.isArray(G.heir), null, { timeout: 5000 });
+      const heir = await a3.evaluate(() => [G.heir[0], G.myId]);
+      t.ok(heir[0] === heir[1], 'l’héritier annoncé est le premier invité arrivé', heir);
+      const score0 = await h3.evaluate(() => G.score.slice());
+      await h3.evaluate(() => { for (const c of conns.values()) c.close(); });   // l'hôte s'en va
+      await h3.close();
+      await a3.waitForFunction(() => G.net === 'host', null, { timeout: 8000 });
+      t.ok(true, 'l’invité A reprend la partie');
+      await b3.waitForFunction(() => G.net === 'guest' && hostConn && hostConn.open && G.time - lastRecv < 1, null, { timeout: 15000 });
+      t.ok(true, 'l’invité B se reconnecte au nouvel hôte');
+      const st = await a3.evaluate(() => ({ hum: G.humans.map(h => [h.id, h.team]), phase: G.phase, score: G.score, conns: conns.size }));
+      t.ok(!st.hum.some(([id]) => id === 0) && st.hum.some(([id, team]) => team === 1) && st.conns === 1, 'l’ancien hôte n’est plus dans la partie, l’invité B garde sa place (Rouges)', st);
+      t.ok(JSON.stringify(st.score) === JSON.stringify(score0) && ['play', 'between', 'pull'].includes(st.phase), 'même score, la partie continue', { st, score0 });
+      const m0 = await b3.evaluate(() => players.map(p => p.x).join());
+      await b3.waitForTimeout(1200);
+      t.ok((await b3.evaluate(() => players.map(p => p.x).join())) !== m0 || await a3.evaluate(() => G.phase !== 'play'), 'l’invité B reçoit à nouveau le jeu en direct');
+      t.ok(await b3.evaluate(() => G.me === 1 && !G.spectator), 'l’invité B joue toujours les Rouges');
+      await cx.close();
+    }
   } finally {
     await browser.close(); await srv.close();
   }

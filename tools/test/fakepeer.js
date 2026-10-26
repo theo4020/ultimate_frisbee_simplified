@@ -4,7 +4,7 @@
   const peers = {};
   class Emitter { constructor(){ this.h = {}; } on(e, f){ (this.h[e] = this.h[e] || []).push(f); } emit(e, ...a){ (this.h[e] || []).forEach(f => f(...a)); } }
   class Conn extends Emitter {
-    constructor(self, other, cid){ super(); this.self = self; this.other = other; this.cid = cid; this.open = false; }
+    constructor(self, other, cid){ super(); this.self = self; this.other = other; this.peer = other; this.cid = cid; this.open = false; }
     send(d){ bc.postMessage({ type: 'data', to: this.other, from: this.self, cid: this.cid, data: JSON.parse(JSON.stringify(d)) }); }
     close(){ if (!this.open) return; this.open = false; bc.postMessage({ type: 'close', to: this.other, cid: this.cid }); this.emit('close'); }
   }

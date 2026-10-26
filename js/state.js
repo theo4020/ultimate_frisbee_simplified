@@ -29,6 +29,7 @@ const G = {
   stats: { throws: 0, comps: 0, blocks: 0, ints: 0, stalls: 0, ground: 0, out: 0, dives: 0 },
   teams: DEFAULT_TEAMS.map(o => Object.assign({}, o)),   // nom et couleur affichés de chaque équipe (voir teams.js)
   ms: null,                                  // statistiques du match en cours (voir stats.js)
+  hostId: 0, heir: null,                     // en ligne : id de l'hôte, et l'invité qui reprendrait la partie
   loft: 0.3,                                 // hauteur du prochain lancer (LOFT, config.js) : 0,3 = passe normale
   series: null, tuto: null, replay: null, emotes: [], spectator: false,
   attract: false, practice: null                             // match IA contre IA derrière le menu principal

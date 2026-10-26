@@ -24,8 +24,11 @@ function loop(now) {
   else bgSync();
   requestAnimationFrame(loop);
 }
+// mesure des performances (option admin dans Commandes) : images par seconde, calcul du jeu et dessin (ms)
+const PERF = { n: 0, t: 0, sim: 0, draw: 0, txt: '', at: 0 };
 function frame(now, visible) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  const t0 = CTRL.perf ? performance.now() : 0;
   G.time += dt;
   computeTeams();
   gamepadFrame();
@@ -68,8 +71,22 @@ function frame(now, visible) {
   $('teamsB').style.display = G.net && G.started ? '' : 'none';
   $('menuB').style.visibility = G.attract || ($('lobbyCard').style.display !== 'none' && !$('overlay').classList.contains('hidden') && !G.net) ? 'hidden' : 'visible';
   if (!visible) return;
+  const t1 = CTRL.perf ? performance.now() : 0;
   if (G.replay) drawReplay(); else draw();
   updateHud();
+  perfFrame(now, t0, t1);
+}
+function perfFrame(now, t0, t1) {
+  const on = !!CTRL.perf && !!(typeof accGet === 'function' && accGet() && accGet().admin), box = $('perfBox');
+  if (!on) { if (box.style.display !== 'none') box.style.display = 'none'; return; }
+  const t2 = performance.now();
+  PERF.n++; PERF.sim += t1 - t0; PERF.draw += t2 - t1;
+  if (now - PERF.at >= 500) {                                 // moyenne toutes les 0,5 s
+    const k = PERF.n || 1, fps = PERF.at ? PERF.n * 1000 / (now - PERF.at) : 0;
+    box.textContent = `${fps.toFixed(0)} img/s · jeu ${(PERF.sim / k).toFixed(2)} ms · dessin ${(PERF.draw / k).toFixed(2)} ms`;
+    PERF.n = 0; PERF.sim = 0; PERF.draw = 0; PERF.at = now;
+  }
+  box.style.display = '';
 }
 loadSettings();
 newWind();

@@ -57,7 +57,7 @@ $('repBack').addEventListener('click', closeCard);
 const canUnpause = () => !!G.pz && (G.pz.by === G.myId || G.net === 'host');
 function setPause(id, on) {                                  // côté hôte
   if (on && !G.pz) { const h = humanById(id); G.pz = { by: id, name: h ? humanLabel(h) : '?' }; }
-  else if (!on && G.pz && (G.pz.by === id || id === 0)) G.pz = null;
+  else if (!on && G.pz && (G.pz.by === id || id === G.hostId)) G.pz = null;
 }
 function togglePause() {
   if (!G.net) return;

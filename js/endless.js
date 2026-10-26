@@ -7,8 +7,9 @@ const ENDLESS_PTS = 2;
 // niveaux de référence (d = numéro du match à partir de 0, plus la montée pendant le match) :
 //   facile au 1er match, normal au 2e, difficile (Titans) au 5e, légende au 10e, surhumain au 15e,
 //   puis ça ne s'arrête jamais : chaque match rend l'adversaire encore un peu plus fort (voir endlessLevel)
-const LEGEND = skill({ react: 0.7, speed: 1.13, prec: 0.88, read: 0.92 });
-const SUPER = skill({ react: 0.62, speed: 1.17, prec: 0.94, read: 1 });
+// (chaque palier bat nettement le précédent : voir tools/bench.mjs)
+const LEGEND = skill({ react: 0.68, speed: 1.16, prec: 0.9, read: 0.95 });
+const SUPER = skill({ react: 0.6, speed: 1.2, prec: 0.95, read: 1 });
 const ENDLESS_STEPS = [[0, AI_LEVELS.facile], [1, AI_LEVELS.normal], [4, AI_LEVELS.difficile], [9, LEGEND], [14, SUPER]];
 // au-delà du dernier palier : plus vif, plus rapide et plus précis à chaque match, sans jamais dépasser des limites humaines
 function endlessLevel(d) {
