@@ -82,9 +82,11 @@ export default async function (t, { quick }) {
     const t = 0, d = 1, dir = dirOf(t), goal = dir > 0 ? W - EZ : EZ, keep = defFormOf; defFormOf = () => 'zone';
     G.off = t; const h = TEAMS[t][0]; h.x = goal - dir * 8; h.y = H / 2; holdDisc(h);
     TEAMS[t].forEach((p, i) => { if (p !== h) { p.x = goal - dir * (2 + i); p.y = 5 + i * 6; } });
+    visReset();                                                     // (la défense voit tout le monde : on teste la géométrie de la zone)
     const back = () => { const s = zoneSlots(d, h.x, h.y, dir, closedOf(d)); return dir * (s[1].x - goal); };
     const near = back();
     TEAMS[t][3].x = goal + dir * 10;                               // un attaquant au fond de l'en-but : l'arrière le suit
+    visReset();
     const deep = back();
     defFormOf = keep;
     return { near: +near.toFixed(1), deep: +deep.toFixed(1) };
