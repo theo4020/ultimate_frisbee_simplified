@@ -209,16 +209,19 @@ export default async function (t) {
     await p.waitForFunction(() => G.tuto);
     t.ok(await vis(p, '#tutoBox'), 'consignes du tutoriel affichées');
     t.ok(/Débutant · étape 1 \/ 7/.test(await p.textContent('#tutoStep')) && (await p.textContent('#tutoTitle')) === 'Se déplacer', 'le débutant commence par se déplacer (7 étapes)', await p.textContent('#tutoStep'));
-    t.ok((await p.textContent('#tutoText')).includes('Coach Disco'), 'Coach Disco présente l’étape');
-    for (let i = 0; i < 7; i++) { await p.click('#tutoSkip'); await p.waitForTimeout(120); }
+    t.ok(await vis(p, '#coachCard') && (await p.textContent('#ccLine')).length > 20 && await p.evaluate(() => G.paused), 'Coach Disco présente l’étape en grand, le jeu attend');
+    await p.click('#ccGo');
+    t.ok(!(await vis(p, '#coachCard')) && await p.evaluate(() => !G.paused && !(document.getElementById('tutoText').textContent.includes('Coach'))), '« C’est parti » lance l’étape ; la consigne seule reste affichée');
+    for (let i = 0; i < 7; i++) { await p.evaluate(() => document.getElementById('tutoSkip').click()); await p.waitForTimeout(120); }
     const fin = await p.evaluate(() => ({ t: document.getElementById('tutoTitle').textContent, skip: document.getElementById('tutoSkip').textContent, match: document.getElementById('tutoMatch').style.display !== 'none', saved: storeGet('uf-tuto', false), ach: !!(storeGet('uf-ach', {}) || {}).tuto }));
     t.ok(/Bravo/.test(fin.t) && /avancé/.test(fin.skip) && fin.match && fin.saved, 'fin du débutant : continuer avec l’avancé, ou jouer un match', fin);
-    await p.click('#tutoSkip'); await p.waitForTimeout(150);
+    await p.evaluate(() => document.getElementById('tutoSkip').click()); await p.waitForTimeout(150);
     t.ok(/Avancé · étape 1 \/ 6/.test(await p.textContent('#tutoStep')) && (await p.textContent('#tutoTitle')) === 'Le pied de pivot', '« continuer » lance l’avancé', await p.textContent('#tutoStep'));
     const k = await p.evaluate(() => TUTO_STEPS.findIndex(s => s.plays) - TUTO_BASE_N);
     t.ok(k > 0, 'une étape « Appeler un play » dans l’avancé');
-    for (let i = 0; i < k; i++) { await p.click('#tutoSkip'); await p.waitForTimeout(150); }
+    for (let i = 0; i < k; i++) { await p.evaluate(() => document.getElementById('tutoSkip').click()); await p.waitForTimeout(150); }
     t.ok((await p.textContent('#tutoBox')).includes('Play 1'), 'consigne : appeler son Play 1', await p.textContent('#tutoBox'));
+    await p.click('#ccGo');                                          // carte du coach : on lance l'étape
     await p.waitForFunction(() => document.getElementById('play1B').style.display !== 'none', null, { timeout: 5000 });
     await p.keyboard.press('r');
     t.ok(await p.evaluate(() => !!G.oplay && G.oplay.type === 'huck'), 'le play s’appelle dans le tutoriel');
@@ -228,7 +231,7 @@ export default async function (t) {
     await p.waitForFunction(() => G.tuto && G.tuto.done, null, { timeout: 8000 }).catch(() => {});
     const res = await p.evaluate(() => ({ done: G.tuto && G.tuto.done, txt: document.getElementById('tutoBox').textContent }));
     t.ok(res.done || /Bien joué|étape/.test(res.txt), 'un huck devant le coupeur ★ réussit l’étape', res);
-    for (let i = 0; i < 15 && await p.evaluate(() => !!G.tuto); i++) { await p.click('#tutoSkip'); await p.waitForTimeout(150); }
+    for (let i = 0; i < 15 && await p.evaluate(() => !!G.tuto); i++) { await p.evaluate(() => document.getElementById('tutoSkip').click()); await p.waitForTimeout(150); }
     t.ok(await p.evaluate(() => !G.tuto) && await vis(p, '#stratCard'), 'toutes les étapes passent, puis un match commence');
     await p.click('#menuBack');
     if (await vis(p, '#askBox')) await p.click('#askYes');

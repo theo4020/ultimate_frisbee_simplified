@@ -118,6 +118,7 @@ window.addEventListener('keydown', e => {
   if (e.target && (e.target.tagName === 'TEXTAREA' || (e.target.tagName === 'INPUT' && e.target.type !== 'range'))) { if (e.key === 'Enter' && e.target.id === 'joinCode') $('joinGo').click(); return; }
   const k = e.key.toLowerCase();
   if (keyWait) { e.preventDefault(); captureKey(k); return; }   // réglage d'une touche (panneau Commandes)
+  if (coachOpen()) { if (k === 'enter' || k === ' ') { e.preventDefault(); tutoPlayStep(); } return; }   // carte du coach : Entrée / Espace lance l'étape
   if (G.replay) { if (k === 'escape' || k === ' ' || k === 'enter') { e.preventDefault(); stopReplay(); } return; }
   if (keyIs('play1', k)) { doPlay(1); return; }
   if (keyIs('play2', k)) { doPlay(2); return; }
@@ -227,7 +228,7 @@ document.addEventListener('webkitfullscreenchange', fsChanged);
 // ---------- téléphone : outils communs aux gestes (gestures.js) ----------
 const fdPull = () => G.phase === 'pull' && localPuller() && G.pullUI && G.pullUI.stage === 'aim' && !!disc.holder;
 const fdRadius = () => clamp(window.innerHeight * 0.32, 80, 150);
-const fdOnUI = t => !!(t && t.closest && t.closest('button, input, textarea, #controls, #tbtns, #tutoBox, #pracBox, #overlay, #hud, #curveV, #loftV, #highB, #pauseBanner'));
+const fdOnUI = t => !!(t && t.closest && t.closest('button, input, textarea, #controls, #tbtns, #tutoBox, #coachCard, #pracBox, #overlay, #hud, #curveV, #loftV, #highB, #pauseBanner'));
 
 // ---------- téléphone, réglage « Courbe et passe haute : boutons » : curseur de courbe et bouton sur le bord droit ----------
 // haut = courbe ↶ (comme A), bas = courbe ↷ (comme E)

@@ -329,12 +329,16 @@ function jumpTo(p) {
 }
 // les joueurs IA sautent quand le disque va passer juste au-dessus d'eux (une seule tentative par lancer)
 function aiJumps(u) {
-  if (G.tuto) return;                                        // tutoriel : seuls les sauts du joueur comptent
+  // tutoriel : les receveurs IA sautent pour attraper (sauf au défi du duel, où c'est toi qui fais sauter ton receveur) ;
+  // les défenseurs IA, jamais (seuls les sauts du joueur comptent)
+  const tutoS = G.tuto && TUTO_STEPS[G.tuto.step];
+  if (G.tuto && (!tutoS || tutoS.noAutoJump)) return;
+  const skip = p => !!G.tuto && p.team !== disc.team;
   // arrivée disputée : attaquant et défenseur au point de chute, l'IA saute pour gagner le duel
   const left = disc.dur - disc.t;
   if (left < JUMP_PREP + JUMP_T * 0.55 && left > JUMP_PREP + JUMP_T * 0.3) {
     for (const p of players) {
-      if (p === disc.thrower || p.jumpTried || controllerOf(p) && userControls(p)) continue;
+      if (p === disc.thrower || p.jumpTried || controllerOf(p) && userControls(p) || skip(p)) continue;
       const [gx, gy] = seenEnd(p);                            // là où il croit que le disque arrive
       if (dist(p.x, p.y, gx, gy) > 1.8) continue;
       if (nearestD(TEAMS[1 - p.team], gx, gy)[1] > 2.2) continue;
@@ -346,7 +350,7 @@ function aiJumps(u) {
   const z2 = discZ(u2);
   if (z2 < REACH_STAND - 0.1 || z2 > REACH_STAND + 0.1 + 0.95 * Math.max(JUMP_H, aiLvl(0).jump || 0, aiLvl(1).jump || 0)) return;
   for (const p of players) {
-    if (p === disc.thrower || p.jumpTried || controllerOf(p) && userControls(p)) continue;
+    if (p === disc.thrower || p.jumpTried || controllerOf(p) && userControls(p) || skip(p)) continue;
     if (disc.t < 0.4 && dist(p.x, p.y, disc.sx, disc.sy) < 3) continue;   // la mark : voir plus haut
     const mine = p.team === disc.team;
     if (!mine && disc.t < 0.2 * aiLvl(p.team).react) continue;       // un défenseur ne saute pas avant d'avoir vu le lancer

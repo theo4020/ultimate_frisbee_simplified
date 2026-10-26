@@ -125,6 +125,17 @@ details b{color:var(--text)}
 .tutoHead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px}
 .tutoHead b{font-size:16px;color:var(--accent)} .tutoHead span{font-size:12px;color:var(--muted)}
 #tutoText b{color:#fff}
+/* carte du coach (avant chaque étape du tutoriel) : en gros au milieu, le jeu attend */
+#coachCard{position:fixed;inset:0;z-index:9;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.55);padding:12px}
+.ccIn{background:var(--panel);border:2px solid var(--accent);border-radius:16px;max-width:560px;width:100%;padding:18px 22px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.45)}
+#ccRes{font-size:15px;color:#facc15;margin-bottom:6px;min-height:0}
+#ccRes b{letter-spacing:2px}
+.ccWho{display:flex;align-items:center;justify-content:center;gap:8px;color:#facc15;font-size:15px}
+.ccFace{font-size:34px;line-height:1}
+#ccLine{font-size:21px;line-height:1.35;font-style:italic;color:#fef3c7;margin:10px 0}
+#ccStep{font-size:13px;color:var(--muted);margin-bottom:12px}
+#ccGo{font-size:17px;padding:10px 26px}
+@media (max-height:520px){.ccIn{padding:10px 16px}#ccLine{font-size:17px;margin:6px 0}.ccFace{font-size:26px}#ccStep{margin-bottom:8px}}
 #tutoText .coach{display:flex;gap:8px;align-items:flex-start;color:#fde68a;font-style:italic;margin-bottom:3px}
 #tutoText .coach b{color:#facc15;font-style:normal;margin-right:4px}
 #tutoText .cface{font-size:1.5em;line-height:1;font-style:normal}

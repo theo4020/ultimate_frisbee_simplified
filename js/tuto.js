@@ -261,6 +261,7 @@ const TUTO_STEPS = [
   },
   {
     title: 'Duel en l’air',
+    noAutoJump: true,                                          // c'est toi qui fais sauter ton receveur
     coach: 'Le disque est à celui qui saute le plus haut. Ou au bon moment. Idéalement les deux.', par: 12,
     ctx: 'move',
     text: {
@@ -483,7 +484,25 @@ function tutoGo(k, retry) {
   T.course = tutoCourseOf(k);
   TUTO_STEPS[k].setup();
   tutoText(true);
+  tutoIntro(retry);
 }
+// carte du coach avant l'étape (le jeu attend) : le résultat de l'étape d'avant, sa phrase, puis « C'est parti »
+function tutoIntro(retry) {
+  const T = G.tuto, S = TUTO_STEPS[T.step], [a, b] = tutoRange(T.course);
+  T.intro = true; G.paused = true;
+  $('ccRes').innerHTML = T.res ? `<b>${starStr(T.res.n)}</b> « ${T.res.line} »` : '';
+  $('ccLine').textContent = retry ? (T.failMsg ? T.failMsg + ' ' : '') + pickLine(COACH.fail) : S.coach;
+  $('ccStep').textContent = `${TUTO_COURSES[T.course].name} · étape ${T.step - a + 1} / ${b - a} · ${S.title}`;
+  $('ccGo').textContent = retry ? 'On réessaie ▶' : 'C’est parti ▶';
+  $('coachCard').style.display = '';
+  T.res = null; T.failMsg = '';
+}
+function tutoPlayStep() {
+  const T = G.tuto; if (!T || !T.intro) return;
+  T.intro = false; T.t = 0; G.paused = false;
+  $('coachCard').style.display = 'none';
+}
+const coachOpen = () => !!(G.tuto && G.tuto.intro);
 // texte adapté à la façon de jouer : manette, souris, ou téléphone (gestes ou boutons selon les réglages de l'étape)
 function tutoInput(S) {
   if (G.gpActive) return 'pad';
@@ -508,7 +527,7 @@ function tutoText(force) {
   const [a, b] = tutoRange(T.course);
   $('tutoStep').textContent = `${TUTO_COURSES[T.course].name} · étape ${T.step - a + 1} / ${b - a}`;
   const tx = S.text[inp] || S.text.touch;
-  $('tutoText').innerHTML = coachHtml(T.tries ? pickLine(COACH.fail) : S.coach) + '<div class="tins">' + (typeof tx === 'function' ? tx() : tx) + '</div>';
+  $('tutoText').innerHTML = '<div class="tins">' + (typeof tx === 'function' ? tx() : tx) + '</div>';
   $('tutoSkip').style.display = ''; $('tutoSkip').textContent = 'Passer l’étape ▸'; $('tutoMatch').style.display = 'none';
   $('tutoQuit').textContent = 'Quitter ✕';
   resize();
@@ -519,28 +538,26 @@ function tutoEvent(ev, a) {
   if (S && S.on) S.on(ev, a);
   if (!T.done && (ev === 'turnover' || ev === 'score')) tutoFail('Raté ! On recommence.');   // toute perte non prévue relance l'étape
 }
-// bulle du coach (en haut de la consigne)
+// bulle du coach (bilan de fin de parcours)
 const coachHtml = line => line ? `<div class="coach"><span class="cface">${COACH.face}</span><span><b>${COACH.name}</b> « ${line} »</span></div>` : '';
-function coachSay(line) {
-  try { const el = document.querySelector('#tutoText .coach'); if (el) el.outerHTML = coachHtml(line); else $('tutoText').insertAdjacentHTML('afterbegin', coachHtml(line)); } catch (e) { }
-}
 const starStr = n => '★'.repeat(n) + '☆'.repeat(3 - n);
 function tutoSuccess(msg, delay) {
   const T = G.tuto; T.done = true;
   const S = TUTO_STEPS[T.step], n = 1 + (T.tries === 0 ? 1 : 0) + (T.tries === 0 && T.t <= ((S && S.par) || 15) ? 1 : 0);
   if (S) T.stars[S.title] = Math.max(T.stars[S.title] || 0, n);
   flash(msg + '  ' + starStr(n), true);
-  coachSay(pickLine(COACH.win));
+  T.res = { n, line: pickLine(COACH.win) };                   // affiché en haut de la carte de l'étape suivante
   try { SOUNDS.score(); } catch (e) { }
   T.wait = Math.max(delay || 0, 2.2); T.after = tutoNext;
 }
 function tutoFail(msg) {
   const T = G.tuto; T.done = true;
-  flash(msg, true);
+  flash(msg, true); T.failMsg = msg;
   T.wait = 1.7; T.after = () => tutoGo(T.step, true);
 }
 function tutoFrame(dt) {
   const T = G.tuto;
+  if (T.intro) return;                                        // carte du coach ouverte : le jeu attend
   T.t += dt;
   tutoText(false);
   const S = TUTO_STEPS[T.step]; if (S && S.frame && !T.done) S.frame(dt);
@@ -550,6 +567,7 @@ function tutoFrame(dt) {
 function tutoNext() { const T = G.tuto; if (!T) return; if (T.step + 1 >= tutoRange(T.course)[1]) tutoFinish(); else tutoGo(T.step + 1); }
 function tutoFinish() {
   const T = G.tuto, adv = T.course === 'adv';
+  T.intro = false; G.paused = false; $('coachCard').style.display = 'none';
   storeSet(adv ? 'uf-tuto2' : 'uf-tuto', true);
   achEvent(adv ? 'tuto2' : 'tuto');
   T.done = true; T.finished = true; T.step = TUTO_STEPS.length;   // plus d'étape en cours : jeu libre derrière le message
@@ -575,7 +593,7 @@ function tutoPlay() { tutoCleanup(); G.series = null; G.form.level = 'facile'; n
 function tutoCleanup() {
   const T = G.tuto; if (!T) return;
   Object.assign(G.form, T.saved);
-  G.tuto = null;
+  G.tuto = null; G.paused = false; $('coachCard').style.display = 'none';
   $('tutoBox').style.display = 'none'; resize();
   G.phase = 'menu'; G.receiving = 0; disc.pull = false;
   newWind(); placeForPoint();
@@ -588,6 +606,8 @@ if (typeof document !== 'undefined' && document.getElementById('tutoB')) {
   $('tutoBack').addEventListener('click', () => showLobby());
   $('tutoQuit').addEventListener('click', tutoQuit);
   $('tutoMatch').addEventListener('click', tutoPlay);
+  $('ccGo').addEventListener('click', e => { e.stopPropagation(); tutoPlayStep(); });
+  $('coachCard').addEventListener('click', tutoPlayStep);
   $('tutoSkip').addEventListener('click', () => {
     const T = G.tuto; if (!T) return;
     if (T.finished) { if (T.course === 'base') tutoStart('adv'); else tutoPlay(); return; }

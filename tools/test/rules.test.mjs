@@ -218,7 +218,7 @@ export default async function (t, { quick }) {
   const tc = R(`(() => {
     const keepH = G.humans, keepS = G.series; G.series = null; G.humans = [{ id: 0, team: 0, sel: null }]; G.myId = 0; syncMe();
     const run = chase => {
-      tutoStart(); tutoGo(TUTO_STEPS.findIndex(s => s.title === 'Lire le cône'));
+      tutoStart(); tutoGo(TUTO_STEPS.findIndex(s => s.title === 'Lire le cône')); tutoPlayStep();
       const coach = document.getElementById ? true : true;
       for (let f = 0; f < 60 * 8 && !G.tuto.done; f++) {
         const me = meH().sel;
@@ -236,10 +236,20 @@ export default async function (t, { quick }) {
   t.ok(tc.chase.done && tc.chase.ok && tc.chase.stars >= 2, 'courir vers le cercle d’arrivée et toucher le disque réussit le défi (étoiles)', tc);
   t.ok(tc.idle.done && !tc.idle.ok, 'rester planté : le disque tombe, on recommence', tc);
 
+  t.group('Tutoriel : le receveur IA saute pour une passe haute');
+  const tjp = R(`(() => {
+    const keepH = G.humans, keepS = G.series; G.series = null; G.humans = [{ id: 0, team: 0, sel: null }]; G.myId = 0; syncMe();
+    tutoStart(); tutoGo(TUTO_STEPS.findIndex(s => s.title === 'La hauteur de passe')); tutoPlayStep();
+    __tick(); throwDisc(disc.holder, 52, 18.5, 0, 0.3, 1); let jumped = false;
+    for (let f = 0; f < 60 * 5 && !G.tuto.done; f++) { __tick(); tutoFrame(1 / 60); if (TEAMS[0][1].jump > 0 || TEAMS[0][1].jprep > 0) jumped = true; }
+    const r = { ok: G.tuto.after === tutoNext, jumped }; tutoCleanup(); G.humans = keepH; G.series = keepS; syncMe(); return r;
+  })()`);
+  t.ok(tjp.ok && tjp.jumped, 'passe haute par-dessus le mur : le receveur saute et l’attrape', tjp);
+
   t.group('Tutoriel : plonger en défense');
   const td = R(`(() => {
     const keepH = G.humans, keepS = G.series; G.series = null; G.humans = [{ id: 0, team: 0, sel: null }]; G.myId = 0; syncMe();
-    tutoStart(); tutoGo(TUTO_STEPS.findIndex(s => s.title === 'Plonger en défense'));
+    tutoStart(); tutoGo(TUTO_STEPS.findIndex(s => s.title === 'Plonger en défense')); tutoPlayStep();
     const msgs = []; let last = '', cue = -1;
     for (let f = 0; f < 60 * 8 && !G.tuto.done; f++) {
       Object.assign(G.pointer, { x: 50.5, y: 20.5, last: G.time, active: true });     // le joueur attend à sa place…
@@ -298,7 +308,7 @@ export default async function (t, { quick }) {
   t.group('Tutoriel : se déplacer');
   const tmv = R(`(() => {
     const keepH = G.humans, keepS = G.series; G.series = null; G.humans = [{ id: 0, team: 0, sel: null }]; G.myId = 0; syncMe();
-    tutoStart(); tutoGo(TUTO_STEPS.findIndex(s => s.title === 'Se déplacer'));
+    tutoStart(); tutoGo(TUTO_STEPS.findIndex(s => s.title === 'Se déplacer')); tutoPlayStep();
     const msgs = [], step = G.tuto.step; let last = G.msg, f = 0;
     for (; f < 60 * 20 && G.tuto.step === step; f++) {
       const sp = (G.tuto.spots && G.tuto.spots[0]) || [50, 18];
@@ -317,7 +327,7 @@ export default async function (t, { quick }) {
     const keepH = G.humans, keepS = G.series; G.series = null; G.humans = [{ id: 0, team: 0, sel: null }]; G.myId = 0; syncMe();
     const run = piv => { const out = {};
       for (let k = 0; k < 6; k++) {
-        tutoStart(); tutoGo(TUTO_STEPS.findIndex(s => s.title === 'Le pied de pivot'));
+        tutoStart(); tutoGo(TUTO_STEPS.findIndex(s => s.title === 'Le pied de pivot')); tutoPlayStep();
         for (let f = 0; f < 30; f++) { __tick(); tutoFrame(1 / 60); }
         if (piv) { pivotBtnDown(); pivotBtnUp(); for (let f = 0; f < 36; f++) { __tick(); tutoFrame(1 / 60); } }   // pivote, attend que le disque soit passé
         doThrow(TEAMS[0][1].x, TEAMS[0][1].y, 0);
@@ -325,7 +335,7 @@ export default async function (t, { quick }) {
         const m = /Bien pivoté/.test(G.msg) ? 'ok' : 'ko'; out[m] = (out[m] || 0) + 1; tutoCleanup();
       }
       return out; };
-    const r = { piv: run(true), none: run(false), zone: (() => { tutoStart(); tutoGo(TUTO_STEPS.findIndex(s => s.title === 'Le pied de pivot')); __tick(); const z = !!markOf(disc.holder) && G.tuto.mark; tutoCleanup(); return z; })() };
+    const r = { piv: run(true), none: run(false), zone: (() => { tutoStart(); tutoGo(TUTO_STEPS.findIndex(s => s.title === 'Le pied de pivot')); tutoPlayStep(); __tick(); const z = !!markOf(disc.holder) && G.tuto.mark; tutoCleanup(); return z; })() };
     G.humans = keepH; G.series = keepS; syncMe();
     return r;
   })()`);
@@ -336,7 +346,7 @@ export default async function (t, { quick }) {
   t.group('Tutoriel : contrer une passe haute');
   const tj = R(`(() => {
     const keepH = G.humans, keepS = G.series; G.series = null; G.humans = [{ id: 0, team: 0, sel: null }]; G.myId = 0; syncMe();
-    tutoStart(); tutoGo(TUTO_STEPS.findIndex(s => s.title === 'Contrer une passe haute'));
+    tutoStart(); tutoGo(TUTO_STEPS.findIndex(s => s.title === 'Contrer une passe haute')); tutoPlayStep();
     const msgs = []; let last = '', cue = -1;
     for (let f = 0; f < 60 * 8 && !G.tuto.done; f++) {
       const me = TEAMS[0][0]; Object.assign(G.pointer, { x: me.x, y: me.y, last: G.time, active: true });
