@@ -164,7 +164,7 @@ const NEWS = [
   { id: 10, date: '2026-10-12', tag: 'En ligne', title: 'Nouveau relais pour jouer en ligne',
     body: `Le jeu en ligne passe maintenant par le relais de Cloudflare : la connexion doit marcher en 4G/5G et sur les wifi stricts
       (école, entreprise). Si ça coince, <b>📶 Tester la connexion</b> dans la salle d'attente dit exactement pourquoi.` },
-  { id: 9, date: '2026-10-12', tag: 'Info', pin: true, title: 'Le jeu déménage 🚚',
+  { id: 9, date: '2026-10-12', tag: 'Info', title: 'Le jeu déménage 🚚',
     body: `Le jeu a une nouvelle adresse : <b>${NEW_HOST}</b>. L'ancienne marche encore quelque temps, puis elle s'arrêtera.
       Si tu es encore sur l'ancienne, touche le bandeau jaune du menu : il t'emmène sur la nouvelle en gardant ton profil, tes succès et tes réglages.` },
   { id: 8, date: '2026-10-12', tag: 'Menu', title: 'Une page « Nouveautés »',
