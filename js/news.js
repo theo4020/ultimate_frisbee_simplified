@@ -21,7 +21,7 @@ const NEWS = [
       est plongé dans le noir et tu ne vois que dans un <b>cône</b>, dans la direction de ta souris (ou de ton joystick
       au téléphone), plus un petit halo autour de ton joueur. Tourne la souris pour regarder partout et comprendre ce qui
       se passe… comme les joueurs IA, qui ne voient eux aussi que ce qu'ils regardent. Touche à nouveau la citrouille pour
-      revenir à la normale. Ambiance garantie : nuit violette, citrouilles qui vacillent… et parfois une chauve-souris.` },
+      revenir à la normale. Pendant le vol, tu vois par les yeux de ton receveur, qui regarde là où il court.` },
   { id: 27, date: '2026-10-26', tag: 'IA', title: 'Des IA qui ne voient pas tout 👀',
     body: `Toi, tu vois tout le terrain d'en haut. Les joueurs IA, eux, ne connaissent plus que <b>ce qu'ils ont vu</b> :<br>
       • ils regardent dans une direction (le porteur balaie le terrain, les autres suivent le disque) et ne voient que ce qui
