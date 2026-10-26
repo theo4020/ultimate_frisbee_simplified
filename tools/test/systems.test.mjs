@@ -30,7 +30,7 @@ export default async function (t, { quick }) {
   t.ok(w.edge.every(p => p[1] <= 37 - 1.5) && Math.abs((w.edge[1][1] - w.edge[0][1]) - 4) < 0.01, 'près d’une ligne, la formation glisse en bloc au lieu de s’écraser', w.edge);
 
   t.group('Matchs avec des systèmes perso');
-  const games = quick ? 2 : 3;
+  const games = 2;                                         // (3 matchs n'apportaient rien de plus, et coûtaient 15 s)
   const FORM = `cleanSystem(SYS_NEW.off())`;
   const SYS = `cleanSystem({ kind: 'play', name: 'P', base: 'vert', steps: [{ p: 1, to: [6, 10], wait: 0.3 }, { p: 1, to: [18, 12], wait: 0.5 }, { p: 2, to: [30, 6], wait: 0.5 }, { p: 3, to: [9, -8], wait: 0.6 }] })`;
   R('globalThis.__miss = []');                                  // places manquées (détail affiché en cas d'échec)

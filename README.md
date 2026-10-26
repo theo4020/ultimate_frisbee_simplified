@@ -1,6 +1,6 @@
 # Ultimate Frisbee – prototype
 
-Petit jeu d'ultimate en vue du dessus, jouable dans le navigateur (ordinateur et téléphone), en solo contre l'IA (match simple ou mini-tournoi), ou jusqu'à 10 en ligne (plus des spectateurs). Un tutoriel interactif présente les bases, un mode entraînement permet de s'exercer, et un profil garde tes statistiques et tes succès. Le jeu s'installe sur l'écran d'accueil d'un téléphone (application web) et le solo marche hors connexion. Se joue à la souris, au clavier, au doigt ou à la manette. Aucun outil de compilation : ce sont de simples fichiers HTML, CSS et JavaScript.
+Petit jeu d'ultimate en vue du dessus (ou inclinée), jouable dans le navigateur (ordinateur et téléphone), en solo contre l'IA (match simple, mode infini, mini-tournoi), ou jusqu'à 10 en ligne (plus des spectateurs). Un tutoriel interactif (avec Coach Disco) présente les bases, un mode entraînement permet de s'exercer, et un profil garde tes statistiques et tes succès. Le jeu s'installe sur l'écran d'accueil d'un téléphone (application web) et le solo marche hors connexion. Se joue à la souris, au clavier, au doigt ou à la manette. Aucun outil de compilation : ce sont de simples fichiers HTML, CSS et JavaScript.
 
 ## Lancer le jeu en local
 
@@ -22,9 +22,11 @@ Les scripts sont chargés dans cet ordre par `index.html` et partagent le même 
 | `js/humans.js` | Qui contrôle quoi (humains, IA, spectateurs), niveaux de l'IA |
 | `js/teams.js` | Noms et couleurs des équipes, réglages mémorisés dans le navigateur |
 | `js/wind.js` | Vent, rafales, dérive du disque, force (break side) |
+| `js/predict.js` | Lecture du jeu commune à toutes les IA : qui arrive où et à temps, marge d'une passe, cône d'incertitude du disque en vol |
+| `js/vision.js` | Ce que chaque joueur IA sait du terrain : champ de vision, coups d'œil, mémoire, lecture collective de la défense |
 | `js/offense.js` | IA offensive : rôles, places de la formation, coupes vers l'espace libre (course contre le défenseur, ligne de passe, terrain gagné), laisser l'espace aux autres |
 | `js/defense.js` | IA défensive : man, zone, clam, lecture collective (changements, aide, passe probable selon le niveau), interceptions, layout |
-| `js/throwing.js` | Lancers (normal, passe haute) : trajectoire, erreur, choix de passe de l'IA |
+| `js/throwing.js` | Lancers (hauteur de passe continue) : trajectoire, erreur, choix de passe de l'IA |
 | `js/stats.js` | Statistiques du match et résumé de fin de partie (MVP) |
 | `js/events.js` | Réception, interception, turnover, point, sélection du défenseur |
 | `js/sim.js` | Boucle de simulation : déplacements, stall count, vol du disque |
@@ -33,27 +35,47 @@ Les scripts sont chargés dans cet ordre par `index.html` et partagent le même 
 | `js/fx.js` | Sons synthétisés, particules, secousses, vibrations |
 | `js/pull.js` | Le pull : visée, courbe, jauge de puissance, réception et brick |
 | `js/replay.js` | Ralenti du dernier point, célébration après un point |
-| `js/render.js` | Dessin du terrain, des joueurs et des repères |
+| `js/render.js` | Dessin du terrain, des joueurs, du disque (trajectoire à la visée, cône en vol) et des repères |
+| `js/render-iso.js` | Vue inclinée (tribune) et mode Halloween |
 | `js/ui.js` | HUD et menus |
 | `js/account.js` | Compte joueur : création, connexion, sauvegarde automatique du profil en ligne |
 | `js/systems.js` | Systèmes de jeu perso : format, validation, et leur exécution par l'IA (attaque et défense) |
 | `js/editor.js` | Éditeur « Mes systèmes » : terrain où l'on place les joueurs et dessine les courses |
 | `js/gallery.js` | Galerie des systèmes publiés : parcourir, aperçu, ajouter, ❤, publier / retirer |
 | `js/endless.js` | Mode infini : matchs en 2 points de plus en plus durs, record et classement mondial |
+| `js/coop.js` | Mode infini à plusieurs (en ligne, tous dans la même équipe) |
 | `js/series.js` | Mini-tournoi (3 adversaires avec chacun leur style, progression mémorisée) |
 | `js/practice.js` | Mode entraînement (cibles, vent, défenseur) |
 | `js/achievements.js` | Profil : statistiques de carrière et succès |
-| `js/tuto.js` | Tutoriel interactif en 7 étapes |
-| `js/controls.js` | Souris, clavier, tactile, joystick virtuel |
+| `js/tuto.js` | Tutoriel avec Coach Disco : deux parcours de défis (débutant, avancé), étoiles |
+| `js/ctrl.js` | Réglages des commandes (touches, gestes, vue), options admin |
+| `js/controls.js` | Souris, clavier, tactile, joystick virtuel, plein écran |
+| `js/gestures.js` | Gestes sur téléphone (visée, 2e doigt pour la courbe et la hauteur, taps) |
 | `js/gamepad.js` | Manette (API Gamepad) |
-| `js/net.js` | Multijoueur en ligne (PeerJS) : salle d'attente, spectateurs, reconnexion, émojis |
+| `js/net.js` | Multijoueur en ligne (PeerJS) : salle d'attente, spectateurs, émojis, reprise de la partie si l'hôte part |
 | `js/main.js` | Boucle principale et démarrage |
 | `js/pwa.js` | Installation sur l'écran d'accueil (bouton « Installer ») |
 | `sw.js` | Service worker : garde une copie des fichiers pour jouer hors connexion |
 | `manifest.webmanifest`, `icons/` | Nom, icônes et affichage de l'application installée |
 | `tools/simulate.js` | Matchs IA contre IA sans navigateur : `node tools/simulate.js 20` |
-| `tools/bench.mjs` | Banc de réalisme : chiffres par niveau (passes réussies, pertes, contres par distance) : `node tools/bench.mjs 100` |
+| `tools/bench.mjs` | Banc de réalisme : chiffres par niveau, chaque niveau contre une équipe Normal, échelle du mode infini : `node tools/bench.mjs 60` |
 | `tools/test/` | Suite de tests (voir « Tests ») |
+
+## Comment marche le jeu (les grands systèmes)
+
+- **Le disque** (`throwing.js`, `util.js`, `config.js` → `LOFT`) : chaque passe a une hauteur de 0 (rasante) à 1 (passe haute) ;
+  durée de vol, forme du vol, dérive au vent, imprécision et drops se mélangent en continu. Le lanceur voit sa trajectoire et
+  un cercle d'atterrissage ; une fois lancé, tout le monde ne voit plus qu'un **cône** qui se resserre jusqu'à l'arrivée
+  (`CONE`, `render.js` → `drawCone`), coloré selon la hauteur. L'arrivée réelle est quelque part dans le cercle.
+- **Les IA** : toutes lisent le jeu de la même façon (`predict.js`) et ne connaissent que ce qu'elles ont vu (`vision.js`) :
+  coups d'œil réguliers, champ de vision, mémoire prolongée selon la lecture du jeu ; la défense met en commun ce que ses
+  joueurs ont vu. Elles devinent aussi l'arrivée du disque dans le cône (`seenAt`).
+- **Les niveaux** (`config.js` → `skill`) : quatre qualités (réaction, vitesse, précision, lecture du jeu) dont tout le reste
+  est déduit, vision comprise. Facile < Normal < Difficile < Légende < Surhumain (`endless.js`) : `tools/bench.mjs` vérifie que
+  chaque palier bat le précédent.
+- **En ligne** (`net.js`) : l'hôte simule, les invités envoient leurs actions et reçoivent l'état ~20 fois par seconde.
+  L'hôte annonce un héritier (le plus ancien invité) : si l'hôte part, l'héritier reprend la partie depuis le dernier état
+  reçu, les autres se reconnectent à lui et il reprend le code de la partie.
 
 ## Hébergement et relais TURN
 
@@ -110,7 +132,7 @@ Avec un simple serveur de fichiers, le jeu retombe sur `js/secrets.js` (copie de
 
 | Fichier | Ce qui est vérifié |
 |---|---|
-| `rules.test.mjs` | Matchs IA contre IA sans blocage, chiffres réalistes, interceptions (1 sur 3), Callahan, mode infini, tournoi |
+| `rules.test.mjs` | Matchs IA contre IA sans blocage, chiffres réalistes, interceptions (1 sur 3), Callahan, côtés, cône, vision des IA, tutoriel, mode infini, tournoi |
 | `account.test.mjs` | Comptes côté serveur : création, empreinte du mot de passe, connexion, sauvegarde, essais limités, pseudo réservé au classement |
 | `ui-account.test.mjs` | Comptes dans le navigateur : création sur un appareil, connexion sur un autre, profil retrouvé, déconnexion |
 | `systems.test.mjs` | Systèmes perso : validation, placement autour du disque, matchs IA qui les jouent, utilisés aussi en mode infini |
@@ -120,12 +142,12 @@ Avec un simple serveur de fichiers, le jeu retombe sur `js/secrets.js` (copie de
 | `ui-gallery.test.mjs` | Galerie dans le navigateur : publier sur un appareil, voir / aimer / ajouter sur un autre, retirer |
 | `worker.test.mjs` | Serveur : relais TURN (sécurité, erreurs), classement (tri, scores impossibles refusés, pseudos nettoyés) |
 | `ui.test.mjs` | Dans Chromium : menus, section Solo, mode infini jusqu'au classement, menu en jeu, signalement, tutoriel, entraînement, lance-pierre sur téléphone |
-| `online.test.mjs` | Deux onglets : salle d'attente, équipes, pull, passes de l'invité, pause pour tous, départ d'un joueur |
+| `online.test.mjs` | Onglets : salle d'attente, équipes, pull, passes de l'invité, pause pour tous, départ d'un joueur, mode infini à plusieurs, reprise par un invité si l'hôte part |
 
 ```bash
 node tools/test/run.mjs --quick                 # sans navigateur (quelques secondes)
 cd tools/test && npm install && npx playwright install chromium && cd ../..
-node tools/test/run.mjs                         # tout (environ 1 minute)
+node tools/test/run.mjs                         # tout (environ 2 minutes ; JOBS=1 : un fichier à la fois)
 node tools/test/run.mjs ui                      # un seul fichier
 ```
 
@@ -152,3 +174,11 @@ Le site est une application web installable : sur Android (Chrome) un bouton « 
 sur iPhone il faut passer par Partager → « Sur l'écran d'accueil ». Une fois installé, le jeu s'ouvre en plein écran et en paysage.
 Le service worker charge toujours la dernière version quand il y a du réseau, et sert la copie gardée sinon.
 **Si tu ajoutes un fichier JS**, ajoute-le aussi à la liste `FILES` de `sw.js` pour qu'il soit disponible hors connexion.
+
+## À faire plus tard
+
+- **Relecture complète en jouant** (tâche longue, à lancer quand personne n'attend) : jouer automatiquement des matchs
+  entiers dans chaque mode et chaque vue (solo, infini, tournoi, entraînement, tutoriel, en ligne simulé, vue inclinée)
+  pour repérer les textes qui ne correspondent plus aux commandes, les situations bloquées et les erreurs ; en tirer une
+  liste des problèmes connus.
+- **Face-à-face avec la mark** : la mark humaine voit le pied de pivot, lit les feintes et peut contrer le lob en sautant.

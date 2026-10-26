@@ -29,7 +29,6 @@ const POSTE_OPTS = {
 const POSTE_LBL = { role: 'Rôle', zone: 'Zone de coupe', when: 'Quand couper', after: 'Après la coupe', fake: 'Feinte' };
 const POSTE_DEF = { role: 'cutter', zone: 'auto', when: 'auto', after: 'auto', fake: 'yes' };
 const cleanPoste = o => { const r = {}; for (const k in POSTE_OPTS) r[k] = o && POSTE_OPTS[k][o[k]] ? o[k] : POSTE_DEF[k]; return r; };
-const SYS_ROLES = { normal: 'Normal', serre: 'Serré', profond: 'Profond', double: 'Double team' };
 const SYS_F = [-12, 40], SYS_S = [-18, 18];                    // limites des positions dans l'éditeur
 const sysNum = (v, a, b) => (typeof v === 'number' && isFinite(v) ? Math.round(clamp(v, a, b) * 10) / 10 : (a + b) / 2);
 const sysPt = p => (Array.isArray(p) ? [sysNum(p[0], SYS_F[0], SYS_F[1]), sysNum(p[1], SYS_S[0], SYS_S[1])] : [10, 0]);

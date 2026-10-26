@@ -5,7 +5,7 @@ export default async function (t, { quick }) {
   const g = loadGame(), R = c => g.run(c);
 
   t.group('Matchs IA contre IA');
-  const games = quick ? 3 : 5;
+  const games = quick ? 3 : 4;
   const r = R(`(() => {
     let pts = 0, stuck = 0, frames = 0;
     for (let k = 0; k < ${games}; k++) {

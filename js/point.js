@@ -74,9 +74,4 @@ function attractTick(dt) {                                    // entre deux poin
   G.betweenT -= dt;
   if (G.betweenT <= 0) { if (Math.max(...G.score) >= winPts()) G.score = [0, 0]; newWind(); startPoint(); }
 }
-function startFlash(r) {                                      // message de début de point, vu de chaque côté
-  const mine = cfg(G.me);
-  if (r === G.me) flash('À toi de lancer !', true);
-  else flash(mine.dplay !== 'none' ? 'Play : ' + PLAY_NAMES[mine.dplay] + ' !' : 'Défends !', true);
-}
 

@@ -399,6 +399,10 @@ function becomeHost() {
   nextId = Math.max(0, ...G.humans.map(h => h.id)) + 1;
   for (const t of [0, 1]) { const c = captain(t); if (c && c.id !== G.myId && G.netCfg && G.netCfg[t]) c.cfg = Object.assign({}, DEFAULT_CFG, G.netCfg[t]); }
   if (G.netTeams) G.teams = G.netTeams;
+  if (G.coopRoom && G.series) {                                  // mode infini à plusieurs : on reprend la série (adversaire, niveau, victoires)
+    G.series = Object.assign(newCoopSeries(), G.series, { opp: endlessOpp(G.series.cur || 0) });
+    endlessCfgIn();
+  }
   syncMe();
   players.forEach(p => { if (p.nx !== undefined) { p.x = p.nx; p.y = p.ny; } p.nx = p.ny = undefined; p.tx = p.x; p.ty = p.y; p.windup = null; p.guess = null; });
   G.oplay = null; G.dplay = null; G.pz = null;

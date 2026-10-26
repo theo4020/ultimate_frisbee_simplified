@@ -66,8 +66,8 @@ function heightColor(z, a) {
   const c = HC;
   return `rgba(${z < REACH_DIVE ? c[0] : z < REACH_STAND ? c[1] : z < REACH_STAND + JUMP_H ? c[2] : c[3]},${a})`;
 }
-// cône d'incertitude : là où le disque peut encore aller. Il part de (u0) et s'élargit jusqu'au cercle d'arrivée de rayon r ;
-// G(v) = point au sol de la trajectoire affichée (voir drawFlightPath)
+// cône d'incertitude d'une passe en vol : là où le disque peut encore aller. Il part du disque (u0) et s'élargit jusqu'au
+// cercle d'arrivée de rayon r ; G_(v) = point au sol de la trajectoire affichée, zf(v) = hauteur (couleur de chaque tranche)
 function drawCone(G_, u0, r, alpha, zf) {
   const step = 0.04, L = [], R = [], V = [];
   for (let v = u0; v <= 1.0001; v += step) {
@@ -89,20 +89,16 @@ function drawCone(G_, u0, r, alpha, zf) {
   circle(X(ex), Y(ey), rr); ctx.fill(); ctx.stroke();
   ctx.restore();
 }
-// trajectoire colorée selon la hauteur. off = { x, y } : décalage de l'arrivée affichée (disque en vol : on ne montre pas
-// l'arrivée exacte, voir drawCone) — il glisse de 0 (au disque) à 1 (à l'arrivée) ; cone = rayon du cercle d'arrivée (m)
-function drawFlightPath(sx, sy, cx, cy, ex, ey, peak, u0, alpha, width, dash, kind, curve, off, cone) {
+// trajectoire colorée selon la hauteur (visée du lanceur, pull) ; une passe en vol ne montre que son cône (drawCone)
+function drawFlightPath(sx, sy, cx, cy, ex, ey, peak, u0, alpha, width, dash, kind, curve) {
   const step = 0.025, len = dist(sx, sy, ex, ey), iso = isoView(), keep = isoText;
-  const Gp = v => { const [x, y] = bez(sx, sy, cx, cy, ex, ey, v); if (!off) return [x, y]; const w = u0 >= 1 ? 1 : Math.max(0, (v - u0) / (1 - u0)); return [x + off.x * w, y + off.y * w]; };
-  if (cone !== undefined) drawCone(Gp, u0, cone, alpha);
+  const Gp = v => bez(sx, sy, cx, cy, ex, ey, v);
   if (iso) {                                                 // vue inclinée : l'ombre de la trajectoire au sol…
     ctx.save(); ctx.strokeStyle = `rgba(10,30,18,${0.55 * alpha})`; ctx.lineWidth = width + 1; ctx.lineCap = 'round'; ctx.beginPath();
     for (let u = u0; u <= 1.0001; u += step) { const [x, y] = Gp(Math.min(1, u)); if (u === u0) ctx.moveTo(X(x), Y(y)); else ctx.lineTo(X(x), Y(y)); }
     ctx.stroke();
-    if (cone === undefined) {                                // point d'arrivée au sol : une croix (sans cône)
-      ctx.strokeStyle = `rgba(255,255,255,${0.75 * alpha})`; ctx.lineWidth = 2;
-      const q = 0.7 * S; ctx.beginPath(); ctx.moveTo(X(ex) - q, Y(ey) - q); ctx.lineTo(X(ex) + q, Y(ey) + q); ctx.moveTo(X(ex) + q, Y(ey) - q); ctx.lineTo(X(ex) - q, Y(ey) + q); ctx.stroke();
-    }
+    ctx.strokeStyle = `rgba(255,255,255,${0.75 * alpha})`; ctx.lineWidth = 2;   // point d'arrivée au sol : une croix
+    const q = 0.7 * S; ctx.beginPath(); ctx.moveTo(X(ex) - q, Y(ey) - q); ctx.lineTo(X(ex) + q, Y(ey) + q); ctx.moveTo(X(ex) + q, Y(ey) - q); ctx.lineTo(X(ex) - q, Y(ey) + q); ctx.stroke();
     ctx.restore();
   }
   ctx.save(); if (iso) screenT();                             // … et la trajectoire elle-même, à sa vraie hauteur

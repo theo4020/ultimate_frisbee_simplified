@@ -221,6 +221,35 @@ export default async function (t) {
     await g2.waitForFunction(() => document.getElementById('lobbyRoom').style.display !== 'none', null, { timeout: 5000 });
     t.ok(await h2.isVisible('#startOnline'), 'retour à la salle, avec les mêmes joueurs');
     await cx.close();
+    t.group('Changement d’hôte en mode infini à plusieurs');
+    {
+      const cx = await browser.newContext({ viewport: { width: 1000, height: 700 } });
+      await cx.addInitScript(shim);
+      const h4 = await cx.newPage(), a4 = await cx.newPage(), b4 = await cx.newPage();
+      for (const [n, p] of [['hôte 4', h4], ['invité A4', a4], ['invité B4', b4]]) p.on('pageerror', e => errs.push(n + ' : ' + e.message));
+      const ready4 = p => p.waitForFunction(() => typeof G !== 'undefined' && G.attract);
+      await h4.goto(srv.url + 'index.html'); await ready4(h4);
+      await h4.click('#onlineMenuB'); await h4.click('#coopB'); await h4.click('#endGo');
+      await h4.waitForFunction(() => /^[A-Z0-9]{4}$/.test(document.getElementById('hostCode').textContent));
+      const code4 = await h4.textContent('#hostCode');
+      for (const p of [a4, b4]) { await p.goto(srv.url + 'index.html#join=' + code4); await p.waitForFunction(() => G.net === 'guest' && G.myId > 0 && G.coopRoom, null, { timeout: 10000 }); await p.click('#teamB0'); }
+      await h4.waitForFunction(() => G.humans.length === 3 && G.humans.every(h => h.team === 0), null, { timeout: 8000 });
+      await h4.click('#startOnline');
+      await a4.waitForFunction(() => document.getElementById('stratCard').style.display !== 'none' && G.series && G.series.coop, null, { timeout: 5000 });
+      await h4.click('#go');
+      await h4.waitForFunction(() => G.phase === 'play', null, { timeout: 30000 });
+      await a4.waitForFunction(() => Array.isArray(G.heir) && G.heir[0] === G.myId, null, { timeout: 5000 });
+      await h4.evaluate(() => { for (const c of conns.values()) c.close(); });
+      await h4.close();
+      await a4.waitForFunction(() => G.net === 'host', null, { timeout: 8000 });
+      await b4.waitForFunction(() => G.net === 'guest' && hostConn && hostConn.open, null, { timeout: 15000 });
+      const s4 = await a4.evaluate(() => ({ coop: !!(G.series && G.series.coop), lvl: !!(G.series && G.series.opp && typeof G.series.opp.level === 'function'), cur: G.series && G.series.cur, room: G.coopRoom, cap: captain(0) && captain(0).id === G.myId }));
+      t.ok(s4.coop && s4.lvl && s4.cur === 0 && s4.room && s4.cap, 'le nouvel hôte reprend la série (adversaire, niveau) et devient capitaine', s4);
+      await b4.waitForTimeout(1000);
+      t.ok(await b4.evaluate(() => G.time - lastRecv < 1 && G.me === 0), 'l’autre invité continue la série avec lui');
+      await cx.close();
+    }
+
     t.group('Changement d’hôte');
     {
       const cx = await browser.newContext({ viewport: { width: 1000, height: 700 } });
