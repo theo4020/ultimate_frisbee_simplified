@@ -1,7 +1,7 @@
 // menu.js — Menu en jeu (☰), pause pour tout le monde en ligne, panneau Commandes, signalement d'un problème.
 
 // ---------- cartes par-dessus le jeu (on revient toujours à l'écran d'avant) ----------
-const CARDS = ['lobbyCard', 'stratCard', 'seriesCard', 'profileCard', 'gameMenuCard', 'ctrlCard', 'reportCard', 'newsCard', 'moveCard', 'endlessCard', 'accountCard', 'sysCard'];
+const CARDS = ['lobbyCard', 'stratCard', 'seriesCard', 'profileCard', 'gameMenuCard', 'ctrlCard', 'reportCard', 'repListCard', 'newsCard', 'moveCard', 'endlessCard', 'accountCard', 'sysCard'];
 const cardStack = [];
 function openCard(id) {
   const shown = CARDS.find(c => $(c).style.display !== 'none') || null;
@@ -89,6 +89,7 @@ function buildReport() {
     dive: r2(p.dive), down: r2(p.down), jump: r2(p.jump), jprep: r2(p.jprep), match: idx(p.match), zslot: p.zslot });
   return {
     v: 'ultimate-report-1', at: new Date().toISOString(), desc: $('repDesc').value.slice(0, 1000),
+    user: { name: myName(), account: (accGet() || {}).name || null },   // qui l'envoie (le serveur vérifie le compte)
     ua: navigator.userAgent, screen: [innerWidth, innerHeight], touch: isTouch(), gamepad: !!G.gpActive, ctrl: CTRL,
     net: G.net, myId: G.myId, me: G.me, spectator: G.spectator, humans: G.humans.map(h => ({ id: h.id, team: h.team, sel: idx(h.sel), name: h.name || '' })),
     mode: G.tuto ? 'tuto ' + G.tuto.step : G.practice ? 'practice' : G.series ? 'series ' + G.series.cur : G.net ? 'online' : 'solo',
@@ -101,7 +102,7 @@ function buildReport() {
 }
 // envoi direct au développeur (serveur du site : /api/report) ; si ça échoue, on propose de copier le rapport
 $('repSend').addEventListener('click', () => {
-  const txt = JSON.stringify(buildReport());
+  const a = accGet(), txt = JSON.stringify(Object.assign(buildReport(), a ? { auth: { name: a.name, token: a.token } } : {}));   // le jeton ne sert qu'à vérifier le compte (il n'est pas gardé)
   $('repSend').disabled = true; $('repStatus').textContent = 'Envoi…';
   fetch('api/report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: txt })
     .then(r => r.json().catch(() => ({})).then(j => (r.ok ? j : { error: j.error || 'erreur ' + r.status })))
@@ -134,3 +135,52 @@ function loadReport(r) {
   G.phase = r.phase === 'pull' || r.phase === 'play' ? r.phase : 'play';
   $('overlay').classList.add('hidden'); G.menuShown = false;
 }
+
+// ---------- admin : lire les signalements (et savoir qu'il y en a de nouveaux) ----------
+// la liste est relue en arrivant au menu principal et toutes les 2 minutes ; « vu » jusqu'au plus récent ouvert (gardé avec le compte)
+const repAdmin = () => { const a = typeof accGet === 'function' && accGet(); return a && a.admin ? a : null; };
+let repCache = [], repAt = -1e9;
+const repPost = body => fetch('api/reports', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+  .then(r => r.json().catch(() => ({})).then(j => (r.ok ? j : { error: j.error || 'erreur ' + r.status }))).catch(() => ({ error: 'serveur injoignable' }));
+function repBadge() {
+  const seen = +storeGet('uf-rep-seen', 0) || 0, n = repAdmin() ? repCache.filter(r => r.at > seen).length : 0;
+  $('repBadge').style.display = n ? '' : 'none'; $('repBadge').textContent = n;
+  $('menuB').textContent = n ? '☰ Menu 🐞' : '☰ Menu';
+}
+function repPoll(force) {
+  const a = repAdmin();
+  $('repAdminB').style.display = a ? '' : 'none';
+  if (!a) { repCache = []; repBadge(); return; }
+  if (!force && G.time - repAt < 120) return;
+  repAt = G.time;
+  repPost({ name: a.name, token: a.token }).then(j => { if (Array.isArray(j.reports)) { repCache = j.reports; repBadge(); } });
+}
+function repRender(status) {
+  const seen = +storeGet('uf-rep-seen', 0) || 0, day = t => new Date(t).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  $('repListStatus').textContent = status || (repCache.length ? repCache.length + ' rapport' + (repCache.length > 1 ? 's' : '') + ' (les plus récents en haut)' : 'Aucun rapport pour l’instant.');
+  $('repList').innerHTML = repCache.map(r => `<li class="${r.at > seen ? 'new' : ''}"><div class="rh"><b>${esc(r.user || 'anonyme')}</b><span>${day(r.at)}</span><span>${esc(r.mode || '')}</span><span>${esc(r.device || '')}</span><span>n° ${esc(r.id)}</span></div>
+    <div class="rd">${esc(r.descr || '(sans description)')}</div><button data-id="${esc(r.id)}">Copier le rapport complet</button></li>`).join('');
+  $('repList').querySelectorAll('button').forEach(b => b.addEventListener('click', () => repCopyOne(b.dataset.id, b)));
+}
+function repCopyOne(id, btn) {
+  const a = repAdmin(); if (!a) return;
+  btn.textContent = '…';
+  repPost({ name: a.name, token: a.token, id }).then(j => {
+    if (j.error) { btn.textContent = '⚠️ ' + j.error; return; }
+    const txt = JSON.stringify(j), fallback = () => { $('repListOut').style.display = ''; $('repListOut').value = txt; $('repListOut').select(); btn.textContent = 'Sélectionné ci-dessous'; };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(() => { btn.textContent = 'Copié ✓'; }, fallback); else fallback();
+  });
+}
+$('repAdminB').addEventListener('click', () => {
+  openCard('repListCard'); $('repListOut').style.display = 'none';
+  repRender('Chargement…');
+  const a = repAdmin(); if (!a) return;
+  repPost({ name: a.name, token: a.token }).then(j => {
+    if (j.error) { repRender('⚠️ ' + j.error); return; }
+    repCache = j.reports || []; repRender();
+    if (repCache.length) storeSet('uf-rep-seen', Math.max(+storeGet('uf-rep-seen', 0) || 0, repCache[0].at));   // ouverts : tous vus
+    repBadge();
+  });
+});
+$('repListBack').addEventListener('click', closeCard);
+setInterval(() => repPoll(false), 120000);

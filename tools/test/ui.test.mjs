@@ -178,7 +178,8 @@ export default async function (t) {
     await p.click('#repSend');
     await p.waitForFunction(() => /envoyé|impossible/.test(document.getElementById('repStatus').textContent), null, { timeout: 5000 });
     t.ok(/envoyé/.test(await p.textContent('#repStatus')), 'rapport envoyé au développeur en un clic', await p.textContent('#repStatus'));
-    const saved = srv.reports('SELECT descr, mode, device, data FROM reports');
+    const saved = srv.reports('SELECT descr, mode, device, data, user FROM reports');
+    t.ok(saved.length === 1 && /^\S.* \(sans compte\)$/.test(saved[0].user || ''), 'le rapport dit qui l’a envoyé (pseudo, sans compte)', saved.map(r => r.user));
     t.ok(saved.length === 1 && saved[0].descr === 'un test avec des espaces' && JSON.parse(saved[0].data).frames.length > 0, 'gardé sur le serveur, avec l’état du jeu', saved.map(r => [r.descr, r.mode, r.device]));
     await ctx.grantPermissions(['clipboard-read', 'clipboard-write']);
     await p.click('#repCopy');

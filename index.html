@@ -86,6 +86,7 @@
       <button class="bigbtn" id="sysB">📋 Mes systèmes<small>Crée tes propres attaques et défenses</small></button>
       <button class="bigbtn" id="ctrlB">⚙️ Commandes<small>Gestes ou joystick sur téléphone, touches du clavier</small></button>
       <button class="bigbtn" id="profileB">🏅 Profil<small>Tes statistiques de carrière et tes succès</small></button>
+      <button class="bigbtn" id="repAdminB" style="display:none">🐞 Signalements <span id="repBadge" class="badge" style="display:none"></span><small>Admin : les rapports envoyés par les joueurs</small></button>
       <button class="bigbtn" id="newsB">📰 Nouveautés <span id="newsBadge" class="badge" style="display:none"></span><small>Ce qui a changé dans le jeu</small></button>
       <button class="bigbtn" id="installB" style="display:none">📲 Installer le jeu<small>Sur l'écran d'accueil, en plein écran, jouable hors connexion en solo</small></button>
       <p class="net" id="iosHint" style="display:none">📲 Pour installer le jeu sur iPhone : bouton Partager, puis « Sur l'écran d'accueil ».</p>
@@ -154,6 +155,13 @@
     <h1>⚙️ Commandes</h1>
     <div id="ctrlBody"></div>
     <button id="ctrlBack" class="primary back">← Retour</button>
+  </div>
+  <div class="card" id="repListCard" style="display:none">
+    <h1>🐞 Signalements</h1>
+    <p class="net" id="repListStatus"></p>
+    <ul id="repList" class="repList"></ul>
+    <textarea id="repListOut" rows="4" readonly style="display:none"></textarea>
+    <button id="repListBack" class="back">← Retour</button>
   </div>
   <div class="card" id="reportCard" style="display:none">
     <h1>🐞 Signaler un problème</h1>

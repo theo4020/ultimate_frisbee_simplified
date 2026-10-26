@@ -418,20 +418,32 @@ async function scores(request, env) {
 // ---------- rapports de bug (bouton 🐞 du jeu) ----------
 // Gardés dans un objet Reports (table reports, visible dans Data Studio : les 300 derniers) et, si la variable secrète
 // REPORT_WEBHOOK contient l'adresse d'un webhook Discord, envoyés aussitôt dans ce salon (résumé + rapport complet en pièce jointe).
+// Chaque rapport garde qui l'a envoyé (le compte vérifié par son jeton, sinon le pseudo tapé, marqué « sans compte »).
+// Les admins les lisent dans le jeu (/api/reports : liste, puis rapport complet).
 const REPORT_MAX = 256 * 1024, REPORT_KEEP = 300, REPORT_WAIT = 30 * 1000;
 export class Reports {
   constructor(state) {
     this.state = state; this.last = new Map(); this.db = sql(state);
     state.blockConcurrencyWhile(async () => {
       this.db.run('CREATE TABLE IF NOT EXISTS reports (id TEXT PRIMARY KEY, at INTEGER, descr TEXT, mode TEXT, device TEXT, data TEXT)');
+      try { this.db.run('ALTER TABLE reports ADD COLUMN user TEXT'); } catch (e) { }   // (colonne ajoutée après coup)
     });
   }
   async fetch(request) {
-    const { r, ip, device } = await request.json(), now = Date.now();
+    const url = new URL(request.url);
+    if (url.pathname === '/list') {                              // admins : les derniers rapports (sans le détail)
+      const rows = this.db.all('SELECT id, at, user, descr, mode, device FROM reports ORDER BY at DESC LIMIT 60');
+      return json({ reports: rows, total: this.db.one('SELECT COUNT(*) AS n FROM reports').n });
+    }
+    if (url.pathname === '/get') {                               // admins : un rapport complet
+      const { id } = await request.json(), row = this.db.one('SELECT data FROM reports WHERE id = ?', String(id || ''));
+      return row ? new Response(row.data, { headers: { 'Content-Type': 'application/json' } }) : json({ error: 'rapport introuvable' }, 404);
+    }
+    const { r, ip, device, user } = await request.json(), now = Date.now();
     if (now - (this.last.get(ip) || 0) < REPORT_WAIT) return json({ error: 'un rapport vient déjà d’être envoyé, réessaie dans un instant' }, 429);
     this.last.set(ip, now); if (this.last.size > 5000) this.last.clear();
     const id = crypto.randomUUID().slice(0, 8);
-    this.db.run('INSERT INTO reports (id, at, descr, mode, device, data) VALUES (?, ?, ?, ?, ?, ?)', id, now, String(r.desc || '').slice(0, 1000), String(r.mode || ''), device, JSON.stringify(r));
+    this.db.run('INSERT INTO reports (id, at, user, descr, mode, device, data) VALUES (?, ?, ?, ?, ?, ?, ?)', id, now, String(user || ''), String(r.desc || '').slice(0, 1000), String(r.mode || ''), device, JSON.stringify(r));
     this.db.run('DELETE FROM reports WHERE id NOT IN (SELECT id FROM reports ORDER BY at DESC LIMIT ?)', REPORT_KEEP);
     return json({ id });
   }
@@ -451,15 +463,22 @@ async function report(request, env) {
   let r = null; try { r = JSON.parse(txt); } catch (e) { }
   if (!r || r.v !== 'ultimate-report-1') return json({ error: 'rapport invalide' }, 400);
   const device = deviceOf(String(r.ua || ''), !!r.touch);
-  const res = await env.REPORTS.get(env.REPORTS.idFromName('main')).fetch('https://rep/', { method: 'POST', body: JSON.stringify({ r, ip: request.headers.get('CF-Connecting-IP') || '?', device }) });
+  // qui l'envoie : le compte (vérifié par son jeton, jamais gardé dans le rapport), sinon le pseudo tapé
+  const auth = r.auth && typeof r.auth === 'object' ? r.auth : null; delete r.auth;
+  let user = '';
+  if (auth && env.ACCOUNTS && typeof auth.token === 'string' && auth.token) {
+    try { const c = await (await accStub(env).fetch('https://acc/', { method: 'POST', body: JSON.stringify({ op: 'check', name: String(auth.name || ''), token: auth.token }) })).json(); if (c.ok) user = c.name; } catch (e) { }
+  }
+  if (!user) { const n = cleanName((r.user && r.user.name) || ''); user = n ? n + ' (sans compte)' : 'anonyme'; }
+  r.user = Object.assign({}, r.user || {}, { verified: user });
+  const res = await env.REPORTS.get(env.REPORTS.idFromName('main')).fetch('https://rep/', { method: 'POST', body: JSON.stringify({ r, ip: request.headers.get('CF-Connecting-IP') || '?', device, user }) });
   const j = await res.json();
   if (!res.ok) return json(j, res.status);
   let notified = false;
   if (env.REPORT_WEBHOOK) {                                     // message instantané (Discord) : résumé lisible + fichier complet
     try {
-      const who = (r.humans || []).find(h => h.id === r.myId);
-      const msg = `🐞 **Rapport ${j.id}** — ${String(r.desc || '(sans description)').slice(0, 900)}\n` +
-        `Mode : ${r.mode} · phase ${r.phase} · score ${(r.score || []).join('–')}${r.net ? ' · en ligne (' + r.net + ')' : ''}${who && who.name ? ' · ' + who.name : ''}\n${device}` +
+      const msg = `🐞 **Rapport ${j.id}** de **${user}** — ${String(r.desc || '(sans description)').slice(0, 900)}\n` +
+        `Mode : ${r.mode} · phase ${r.phase} · score ${(r.score || []).join('–')}${r.net ? ' · en ligne (' + r.net + ')' : ''}\n${device}` +
         ((r.errors || []).length ? `\n⚠️ Erreurs : ${r.errors.slice(0, 3).join(' | ').slice(0, 500)}` : '');
       const form = new FormData();
       form.append('payload_json', JSON.stringify({ content: msg.replace(/@/g, '@\u200b') }));
@@ -470,10 +489,25 @@ async function report(request, env) {
   return json({ id: j.id, notified });
 }
 
+// admins : lire les rapports dans le jeu (liste des derniers, ou un rapport complet avec { id })
+async function reportsAdmin(request, env) {
+  if (!env.REPORTS || !env.ACCOUNTS) return json({ error: 'rapports indisponibles ici' }, 503);
+  if (request.method !== 'POST') return json({ error: 'POST seulement' }, 405);
+  if (!sameSite(request)) return json({ error: 'interdit' }, 403);
+  let b = null; try { b = await request.json(); } catch (e) { }
+  if (!b || typeof b !== 'object') return json({ error: 'requête invalide' }, 400);
+  const c = await (await accStub(env).fetch('https://acc/', { method: 'POST', body: JSON.stringify({ op: 'check', name: String(b.name || ''), token: String(b.token || '') }) })).json();
+  if (!c.ok) return json({ error: 'session expirée, reconnecte-toi' }, 401);
+  if (!isAdmin(env, c.name)) return json({ error: 'réservé aux admins' }, 403);
+  const stub = env.REPORTS.get(env.REPORTS.idFromName('main'));
+  return b.id ? stub.fetch('https://rep/get', { method: 'POST', body: JSON.stringify({ id: b.id }) }) : stub.fetch('https://rep/list');
+}
+
 export default {
   fetch(request, env) {
     const path = new URL(request.url).pathname;
     if (path === '/api/report') return report(request, env);
+    if (path === '/api/reports') return reportsAdmin(request, env);
     if (path === '/api/turn') return request.method === 'GET' ? turn(request, env) : json({ error: 'GET seulement' }, 405);
     if (path === '/api/scores') return scores(request, env);
     if (path === '/api/gallery') return gallery(request, env);

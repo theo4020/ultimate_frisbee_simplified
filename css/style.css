@@ -126,6 +126,13 @@ details b{color:var(--text)}
 .tutoHead b{font-size:16px;color:var(--accent)} .tutoHead span{font-size:12px;color:var(--muted)}
 #tutoText b{color:#fff}
 #perfBox{position:fixed;left:6px;bottom:6px;z-index:8;font:600 11px ui-monospace,monospace;color:#a7f3d0;background:rgba(2,6,23,.8);padding:3px 7px;border-radius:6px;pointer-events:none;white-space:pre}
+.repList{list-style:none;padding:0;margin:6px 0;display:flex;flex-direction:column;gap:6px}
+.repList li{background:var(--panel2);border-radius:10px;padding:7px 10px;font-size:13px;line-height:1.35}
+.repList li.new{border-left:4px solid var(--red)}
+.repList .rh{display:flex;flex-wrap:wrap;gap:4px 10px;color:var(--muted);font-size:12px}
+.repList .rh b{color:var(--text)}
+.repList .rd{margin:3px 0}
+.repList button{padding:3px 10px;font-size:12px}
 /* carte du coach (avant chaque étape du tutoriel) : en gros au milieu, le jeu attend */
 #coachCard{position:fixed;inset:0;z-index:9;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.55);padding:12px}
 .ccIn{background:var(--panel);border:2px solid var(--accent);border-radius:16px;max-width:560px;width:100%;padding:18px 22px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.45)}

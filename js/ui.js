@@ -124,6 +124,7 @@ function refreshOptions() {
 }
 function showLobby(err, view) {
   if (typeof endlessCfgOut === 'function') endlessCfgOut();
+  if (typeof repPoll === 'function') repPoll(true);              // admin : nouveaux signalements ?
   G.menuShown = true; G.teamsOpen = null; G.series = null;
   $('lobbyCard').style.display = ''; for (const id of ['stratCard', 'seriesCard', 'profileCard', 'endlessCard']) $(id).style.display = 'none';
   const tutoDone = storeGet('uf-tuto', false), tuto2 = storeGet('uf-tuto2', false), s = seriesState();

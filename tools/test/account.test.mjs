@@ -1,5 +1,5 @@
 // Comptes côté serveur (worker/index.js), sans Cloudflare : création, connexion, sauvegarde, pseudo réservé au classement.
-import worker, { Board, Accounts, Gallery } from '../../worker/index.js';
+import worker, { Board, Accounts, Gallery, Reports } from '../../worker/index.js';
 import { fakeState, fakeNs, makeDO } from './lib.mjs';
 
 export default async function (t) {
@@ -90,6 +90,22 @@ export default async function (t) {
   const back = await A('login', { name: 'Perdu', password: rs.j.password });
   t.ok(back.s === 200 && back.j.data['uf-ach'] === '{"win":1}', 'avec le nouveau : il retrouve son profil', back.j);
   t.ok(bs.db.prepare("SELECT wins FROM scores WHERE k = 'perdu'").get()?.wins === 4, 'et sa place au classement');
+
+  t.group('Signalements : qui les envoie, et lecture par les admins');
+  const qrps = fakeState(), qenvR = Object.assign({}, envA, { REPORTS: fakeNs(await makeDO(Reports, qrps)) });
+  const qrep = d => ({ v: 'ultimate-report-1', desc: d, ua: 'Mozilla/5.0 (Windows NT 10.0) Chrome/130', mode: 'solo', phase: 'play', score: [0, 0], errors: [], frames: [] });
+  const qs1 = await call('/api/report', Object.assign(qrep('bug avec compte'), { user: { name: 'Perdu', account: 'Perdu' }, auth: { name: 'Perdu', token: back.j.token } }), { e: qenvR, ip: '50.0.0.1' });
+  const qs2 = await call('/api/report', Object.assign(qrep('bug sans compte'), { user: { name: 'Zoé' } }), { e: qenvR, ip: '50.0.0.2' });
+  const qs3 = await call('/api/report', Object.assign(qrep('faux compte'), { user: { name: 'Chef' }, auth: { name: 'Chef', token: 'faux' } }), { e: qenvR, ip: '50.0.0.3' });
+  const qrows = qrps.db.prepare('SELECT user, data FROM reports ORDER BY at').all();
+  t.ok(qs1.s === 200 && qs2.s === 200 && qs3.s === 200 && qrows.map(r => r.user).join() === 'Perdu,Zoé (sans compte),Chef (sans compte)', 'chaque rapport garde qui l’a envoyé (compte vérifié, sinon pseudo marqué « sans compte »)', qrows.map(r => r.user));
+  t.ok(!qrows.some(r => r.data.includes(back.j.token) || r.data.includes('"auth"')), 'le jeton du compte n’est jamais gardé dans le rapport');
+  const qR2 = (b, e = qenvR) => call('/api/reports', b, { e });
+  t.ok((await qR2({ name: 'Perdu', token: back.j.token })).s === 403 && (await qR2({ name: 'Chef', token: 'faux' })).s === 401, 'liste des rapports : réservée aux admins connectés');
+  const qL = await qR2({ name: 'Chef', token: chef });
+  t.ok(qL.s === 200 && qL.j.total === 3 && qL.j.reports.length === 3 && qL.j.reports.every(r => r.user && r.at && !r.data), 'admin : les derniers rapports (qui, quand, description), sans le détail', qL.j);
+  const qone = await qR2({ name: 'Chef', token: chef, id: qL.j.reports.find(r => r.descr === 'bug avec compte').id });
+  t.ok(qone.s === 200 && qone.j.desc === 'bug avec compte' && qone.j.user.verified === 'Perdu', 'admin : un rapport complet', qone.j.desc);
   const sp = await worker.fetch(new Request('https://jeu.example/api/account/setpw', { method: 'POST', headers: { 'Sec-Fetch-Site': 'same-origin' }, body: JSON.stringify({ name: 'Perdu', password: 'pirate-1' }) }), envA);
   t.ok((await sp.text()) === 'page' && (await A('login', { name: 'Perdu', password: 'pirate-1' })).s === 401, 'l’opération interne n’est pas accessible directement');
 
