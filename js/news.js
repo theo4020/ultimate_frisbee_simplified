@@ -13,7 +13,7 @@ const NEWS = [
       est plongé dans le noir et tu ne vois que dans un <b>cône</b>, dans la direction de ta souris (ou de ton joystick
       au téléphone), plus un petit halo autour de ton joueur. Tourne la souris pour regarder partout et comprendre ce qui
       se passe… comme les joueurs IA, qui ne voient eux aussi que ce qu'ils regardent. Touche à nouveau la citrouille pour
-      revenir à la normale.` },
+      revenir à la normale. Ambiance garantie : nuit violette, citrouilles qui vacillent… et parfois une chauve-souris.` },
   { id: 27, date: '2026-10-26', tag: 'IA', title: 'Des IA qui ne voient pas tout 👀',
     body: `Toi, tu vois tout le terrain d'en haut. Les joueurs IA, eux, ne connaissent plus que <b>ce qu'ils ont vu</b> :<br>
       • ils regardent dans une direction (le porteur balaie le terrain, les autres suivent le disque) et ne voient que ce qui
@@ -23,7 +23,8 @@ const NEWS = [
       • après une réception, il leur faut le temps de <b>lever la tête</b> : fini les enchaînements instantanés.<br>
       Tout ça s'améliore avec le niveau : une IA facile regarde rarement et croit les joueurs restés sur place, une IA
       difficile balaie vite le terrain et anticipe les courses. Un défenseur qui fixe le disque peut aussi perdre son joueur
-      de vue : à toi d'en profiter en coupant dans son dos !` },
+      de vue : à toi d'en profiter en coupant dans son dos ! Les coupeurs IA, eux aussi, choisissent leur course d'après ce
+      qu'ils ont vu des défenseurs : un débutant coupe parfois droit dans un défenseur, un bon joueur trouve les vrais trous.` },
   { id: 26, date: '2026-10-26', tag: 'Gameplay', title: 'Où va tomber le disque ? 🎯',
     body: `La trajectoire d'une passe n'est plus un simple trait : c'est un <b>cône</b> qui montre où le disque peut aller,
       avec un <b>cercle d'arrivée</b>. Pendant le vol, le cône se resserre et le cercle se réduit peu à peu jusqu'à un point :

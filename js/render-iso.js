@@ -139,5 +139,25 @@ function drawHalloween() {
     o.beginPath(); o.arc(X(e.x), Y(e.y), HALLO.NEAR * S, 0, Math.PI * 2); o.fill();
   }
   o.shadowBlur = 0;
-  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(cv, 0, 0); ctx.restore();
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = 'rgba(76,29,149,.16)'; ctx.fillRect(0, 0, w, h);    // nuit violette sur ce qu'on voit encore
+  ctx.drawImage(cv, 0, 0); ctx.restore();
+  // déco (rien qui compte pour le jeu) : lueur orange au bord du cône, citrouilles qui vacillent aux coins du terrain
+  ctx.save(); groundT();
+  ctx.strokeStyle = 'rgba(249,115,22,.35)'; ctx.lineWidth = 2; ctx.shadowColor = 'rgba(249,115,22,.9)'; ctx.shadowBlur = 12;
+  for (const b of [a - f, a + f]) { ctx.beginPath(); ctx.moveTo(X(e.x + Math.cos(b) * HALLO.NEAR), Y(e.y + Math.sin(b) * HALLO.NEAR)); ctx.lineTo(X(e.x + Math.cos(b) * R), Y(e.y + Math.sin(b) * R)); ctx.stroke(); }
+  ctx.restore();
+  inScreen(() => {
+    ctx.font = `${Math.max(16, S * 2.6)}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    [[-0.6, -0.6], [W + 0.6, -0.6], [-0.6, H + 0.6], [W + 0.6, H + 0.6], [W / 2, -0.8], [W / 2, H + 0.8]].forEach(([x, y], k) => {
+      ctx.globalAlpha = 0.75 + 0.25 * Math.sin(G.time * (5 + k) + k * 1.7);
+      ctx.shadowColor = 'rgba(249,115,22,.9)'; ctx.shadowBlur = 14;
+      ctx.fillText('🎃', X(x), iso ? IY(y, 0) : Y(y));
+    });
+    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+    if (Math.sin(G.time * 0.7) > 0.6) {                        // une chauve-souris traverse le ciel de temps en temps
+      const u = (G.time * 0.7) % (Math.PI * 2), bx = X(W * (u - 0.64) / 0.6), by = (iso ? IY(-2, 4) : Y(-1)) + Math.sin(G.time * 9) * 4;
+      ctx.font = `${Math.max(12, S * 1.8)}px system-ui`; ctx.fillText('🦇', bx, by);
+    }
+  });
 }

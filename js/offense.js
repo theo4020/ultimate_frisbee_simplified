@@ -136,6 +136,8 @@ function zoneOk(c, f, s, x, y, h) {
 }
 function bestCut(t, h, ax, ay, dir, open, cands, need) {
   const opp = TEAMS[1 - t], huckK = aiStyle(t).huck;
+  // chacun juge l'espace sur ce qu'il a vu des défenseurs (vision.js) ; la ligne de passe, sur ce qu'en voit le porteur
+  const oppH = seenAll(h, opp), seenBy = new Map(cands.map(c => [c, seenAll(c, opp).filter(d => (d.src || d) !== G.marker)]));
   const busy = TEAMS[t].filter(p => p !== h && (p.state === 'jab' || p.state === 'cut' || p.state === 'park')).map(p => [p.cx, p.cy]);
   let best = null;
   for (const f of CUT_F) {
@@ -143,14 +145,13 @@ function bestCut(t, h, ax, ay, dir, open, cands, need) {
     if (x < 1.5 || x > W - 1.5) continue;
     for (let y = 2.5; y <= H - 2.5; y += 3.2) {
       if (busy.some(([cx, cy]) => dist(cx, cy, x, y) < 7)) continue;            // l'espace d'une autre coupe
-      const lane = clamp(laneSlack(h, x, y, x, y, 0, opp, 'normal', undefined, aiLvl(t).misread), -1, 0.6);
+      const lane = clamp(laneSlack(h, x, y, x, y, 0, oppH, 'normal', undefined, aiLvl(t).misread), -1, 0.6);
       if (lane < -0.4 && need > -50) continue;                 // (personne ne bouge : on coupe quand même, pour faire bouger la défense)
-      let td = 1e9;
-      for (const d of opp) { if (d === G.marker) continue; td = Math.min(td, guardTime(d, x, y)); }
       const gain = f * 0.14 - (f > 18 ? (1.7 - huckK) * 2 : 0) + (inScoreZone(t, x) ? 4 : 0) - (open * (y - ay) < -4 ? 0.8 : 0);   // deep : risqué (sauf équipes de hucks) ; côté break : passe plus dure
       for (const c of cands) {
         const dc = dist(c.x, c.y, x, y);
         if (dc < 3.5 || dc > 27 || !zoneOk(c, f, open * (y - ay), x, y, h)) continue;
+        let td = 1e9; for (const d of seenBy.get(c)) td = Math.min(td, guardTime(d, x, y));
         const race = td - (recvTime(c, x, y) + 0.1);                                              // > 0 : le coupeur arrive le premier
         const v = clamp(race, -1.5, 1.5) * 3 + lane * 3 + gain - dc * 0.04;
         if (v > need && (!best || v > best.v)) best = { c, x, y, v, deep: f > 18 };
@@ -243,18 +244,19 @@ function isAbandoned(p, t) {
   if ((df !== 'man' && df !== 'mix') || p === disc.holder) return false;
   const dfn = TEAMS[1 - t], g = dfn.find(d => d.match === p);
   if (df === 'mix' && !g) return false;                      // défense perso : il est dans une zone, personne ne l'a lâché
-  return (!g || dist(g.x, g.y, p.x, p.y) > FREE_R + 2) && nearestD(dfn, p.x, p.y)[1] > 5;
+  const gs = g && seen(p, g);                                 // il ne se sait libre que s'il a vu son défenseur loin (vision.js)
+  return (!gs || dist(gs.x, gs.y, p.x, p.y) > FREE_R + 2) && nearestD(seenAll(p, dfn), p.x, p.y)[1] > 5;
 }
 function freeSpace(p, t, ax, ay, dir, open) {
-  const dfn = TEAMS[1 - t];
+  const dfn = TEAMS[1 - t], dfnS = seenAll(p, dfn);           // les défenseurs là où il les a vus (vision.js)
   let best = null, bv = -1e9;
   for (const k of [10, 14, 18, 23, 28]) {
     const x = ax + dir * k;
     if (x < 1 || x > W - 1) continue;
     for (const y of [4, 10, 16, 21, 27, 33]) {
-      const room = Math.min(12, nearestD(dfn, x, y)[1]);
+      const room = Math.min(12, nearestD(dfnS, x, y)[1]);
       // il se place là où le handler peut lui lancer (ligne de passe dégagée)
-      const lane = disc.holder ? clamp(laneSlack(disc.holder, x, y, x, y, 0, dfn), -1, 0.6) : 0;
+      const lane = disc.holder ? clamp(laneSlack(disc.holder, x, y, x, y, 0, dfnS), -1, 0.6) : 0;
       const v = room * 1.1 + lane * 6 + k * 0.18 + (open * (y - ay) > 0 ? 1.5 : 0) - dist(p.x, p.y, x, y) * 0.22;
       if (v > bv) { bv = v; best = [x, y]; }
     }
