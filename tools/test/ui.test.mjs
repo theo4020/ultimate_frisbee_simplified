@@ -27,6 +27,13 @@ export default async function (t) {
     t.ok(!(await vis(p, '#pracB')) && !(await vis(p, '#seriesB')), 'les modes solo ne sont plus sur l’accueil');
     await p.fill('#pname', 'Testeur');
 
+    t.group('Mode Halloween (citrouille)');
+    await p.click('#halloB');
+    const hw = await p.evaluate(() => ({ on: HALLO.on, saved: localStorage.getItem('uf-hallo'), cls: document.getElementById('halloB').classList.contains('on') }));
+    t.ok(hw.on && hw.saved === 'true' && hw.cls, 'la citrouille active le mode (gardé dans le navigateur)', hw);
+    await p.click('#halloB');
+    t.ok(await p.evaluate(() => !HALLO.on && localStorage.getItem('uf-hallo') === 'false'), 'un 2e clic le coupe');
+
     t.group('Nouveautés et changement d’adresse');
     await p.click('#newsB');
     t.ok(await vis(p, '#newsCard') && (await p.locator('#newsList .post').count()) >= 5, 'fil des nouveautés');

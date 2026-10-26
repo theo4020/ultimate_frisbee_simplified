@@ -96,3 +96,48 @@ function drawIsoDisc(dx, dy, tell, lf) {
     ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 2; ctx.stroke();
   });
 }
+
+// ---------- mode Halloween 🎃 (bouton citrouille dans le menu) ----------
+// le terrain est plongé dans le noir : on ne voit que dans un cône, dans la direction de la souris (ou du joystick / de la
+// visée au téléphone), comme les joueurs IA (vision.js), plus un petit halo autour de son joueur. Seulement chez soi.
+const HALLO = { on: !!storeGet('uf-hallo', false), a: null, cv: null, FOV: 0.55, NEAR: 3 };
+function setHalloween(on) { HALLO.on = !!on; storeSet('uf-hallo', HALLO.on); if (typeof refreshHalloB === 'function') refreshHalloB(); }
+// d'où l'on regarde : son joueur (défense, attaque à plusieurs), sinon le porteur de son équipe, ou le receveur visé
+function halloEye() {
+  const h = meH(); if (!h || h.team < 0) return null;
+  if (h.sel && !(G.off === h.team && soloStyle(h.team))) return h.sel;
+  if ((disc.mode === 'held' || disc.mode === 'carry') && disc.holder && disc.holder.team === h.team) return disc.holder;
+  if (disc.mode === 'air' && disc.team === h.team && disc.intended) return disc.intended;
+  return nearest(TEAMS[h.team], disc.x, disc.y);
+}
+function halloDir(e) {
+  if (typeof joy !== 'undefined' && joy.active && Math.hypot(joy.dx, joy.dy) > 0.15) return Math.atan2(joy.dy, joy.dx);
+  if (G.pointer && isFinite(G.pointer.x) && dist(G.pointer.x, G.pointer.y, e.x, e.y) > 0.8 && (G.pointer.active || G.time - (G.pointer.last || -9) < 30))
+    return Math.atan2(G.pointer.y - e.y, G.pointer.x - e.x);
+  return HALLO.a !== null ? HALLO.a : Math.atan2(disc.y - e.y, disc.x - e.x);
+}
+const halloActive = () => HALLO.on && (G.phase === 'play' || G.phase === 'pull') && !G.attract && !G.replay && !G.tuto && !G.practice && !G.spectator;
+function drawHalloween() {
+  if (!halloActive()) return;
+  const e = halloEye(); if (!e) return;
+  HALLO.a = halloDir(e);
+  const w = canvas.width, h = canvas.height;
+  if (!HALLO.cv) HALLO.cv = document.createElement('canvas');
+  const cv = HALLO.cv; if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+  const o = cv.getContext('2d');
+  o.setTransform(1, 0, 0, 1, 0, 0); o.globalCompositeOperation = 'source-over'; o.clearRect(0, 0, w, h);
+  o.fillStyle = 'rgba(6,8,14,.97)'; o.fillRect(0, 0, w, h);
+  // on « perce » le noir : le cône de vision et le halo (bords adoucis par l'ombre), au sol (+ la hauteur des joueurs en vue inclinée)
+  const iso = isoView(), R = 140, a = HALLO.a, f = HALLO.FOV;
+  o.globalCompositeOperation = 'destination-out'; o.fillStyle = '#000'; o.shadowColor = '#000'; o.shadowBlur = 18 * dpr;
+  const lifts = iso ? [0, 2.4 * ISO_Z * S / isoK] : [0];
+  for (const up of lifts) {
+    if (iso) o.setTransform(dpr, 0, 0, dpr * isoK, 0, dpr * ISO_HEAD * S - up * dpr * isoK); else o.setTransform(dpr, 0, 0, dpr, 0, 0);
+    o.beginPath(); o.moveTo(X(e.x), Y(e.y));
+    for (let k = 0; k <= 16; k++) { const b = a - f + 2 * f * k / 16; o.lineTo(X(e.x + Math.cos(b) * R), Y(e.y + Math.sin(b) * R)); }
+    o.closePath(); o.fill();
+    o.beginPath(); o.arc(X(e.x), Y(e.y), HALLO.NEAR * S, 0, Math.PI * 2); o.fill();
+  }
+  o.shadowBlur = 0;
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(cv, 0, 0); ctx.restore();
+}

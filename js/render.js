@@ -475,6 +475,7 @@ function draw() {
   }
 
   drawParticles();
+  drawHalloween();                                          // mode Halloween : le noir, sauf dans son cône de vision
   drawPullUI();
   screenT();                                                // la suite (messages) se dessine à l'écran, pas au sol
   const hw = typeof hostWaitMsg === 'function' ? hostWaitMsg() : '';

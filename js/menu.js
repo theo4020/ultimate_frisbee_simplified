@@ -39,6 +39,16 @@ $('gmReport').addEventListener('click', () => { $('repStatus').textContent = '';
 $('gmQuit').addEventListener('click', () => { closeAllCards(); goMainMenu(); });
 $('gmPause').addEventListener('click', () => { togglePause(); closeCard(); });
 $('ctrlB').addEventListener('click', () => openCard('ctrlCard'));
+// mode Halloween (citrouille en haut du menu) : en jeu, on ne voit que dans la direction de sa souris (render-iso.js)
+function refreshHalloB() {
+  const b = $('halloB'); b.classList.toggle('on', HALLO.on); b.innerHTML = HALLO.on ? '🎃<small>ON</small>' : '🎃';
+  b.title = HALLO.on ? 'Mode Halloween : activé (on ne voit que dans la direction de sa souris) — toucher pour le couper' : 'Mode Halloween : désactivé — toucher pour l’activer';
+}
+$('halloB').addEventListener('click', () => {
+  setHalloween(!HALLO.on);
+  flash(HALLO.on ? '🎃 Mode Halloween : en jeu, tu ne vois que dans la direction de ta souris !' : 'Mode Halloween coupé', true);
+});
+refreshHalloB();
 $('ctrlBack').addEventListener('click', closeCard);
 $('repBack').addEventListener('click', closeCard);
 
