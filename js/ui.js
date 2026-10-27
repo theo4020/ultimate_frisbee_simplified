@@ -65,10 +65,16 @@ function updateHud() {
     : G.phase === 'pull'
     ? (pulling ? '<i>Pull</i> : clique sur la zone visée (' + K('curveL') + ' / ' + K('curveR') + ' ou molette pour la courbe), puis arrête la jauge dans le vert (clic ou Espace). Échap pour revenir à la visée. Un pull long et haut laisse le temps à ta défense de monter.' : '<i>Pull</i> : le disque arrive, ton équipe se met en place.')
     : att
-    ? (multi ? '<i>Attaque à plusieurs</i> : ton joueur (anneau jaune) suit la souris ; quand il a le disque, vise et relâche pour lancer. <i>' + K('switch') + ' / 1 à 5</i> = prendre un joueur géré par l’IA.'
-             : '<i>Attaque</i> : vise et relâche pour lancer (relâche sur ton joueur pour annuler).')
-    + ' <i>' + K('pivot') + '</i> = changer de pied de pivot. <i>' + K('loftUp') + ' / ' + K('loftDown') + ' ou molette</i> = passe plus haute / plus basse (plus haute : elle passe par-dessus mais vole plus longtemps et part plus de travers ; la défense voit le disque levé). <i>' + K('curveL') + ' / ' + K('curveR') + '</i> = courbe. <i>' + K('jump') + '</i> = saut du receveur pendant le vol (duel en l’air). <i>Clic droit</i> = saut (en défense, ou du receveur pendant le vol) ; avec le disque, clic droit sur le terrain = le coéquipier IA le plus proche attaque cet espace. <i>Clic sur un coéquipier</i> = tu le prends. <i>' + K('dive') + ' / clic pendant le vol</i> = layout du receveur. Anneau vert = coéquipier démarqué. Zone rouge = break side : ajoute de la courbe (' + K('curveL') + ' / ' + K('curveR') + ', molette) pour contourner la mark. Cercle pointillé = zone de stall. Couleur du cône du disque en vol : rouge = contrable, jaune = contrable debout seulement, rose = en sautant, bleu = trop haut.'
-    : '<i>Défense</i> : ton joueur (anneau jaune) suit la souris ou le doigt. <i>Clic / ' + K('dive') + '</i> = layout. <i>' + K('jump') + '</i> = saut (contrer une passe haute au lâcher à la mark, ou à l’arrivée). <i>' + K('switch') + '</i> = switch vers le joueur en gris, <i>1 à 5</i> = prendre ce joueur. Entre dans le cercle du handler pour lancer le stall (un seul défenseur dedans, sinon double team). L’anneau sous le disque en vol : rouge = contrable, jaune = debout seulement, rose = en sautant, bleu = trop haut.';
+    ? (multi ? '<i>Attaque à plusieurs</i> : ton joueur (anneau jaune) suit la souris ; avec le disque, vise et relâche pour lancer · <i>' + K('switch') + ' / 1 à 5</i> prendre un joueur de l’IA'
+             : '<i>Attaque</i> : vise et relâche pour lancer (relâche sur ton joueur pour annuler)')
+    + ' · <i>' + K('loftUp') + ' / ' + K('loftDown') + ' ou molette</i> hauteur de passe (haute : par-dessus la défense, mais plus lente et moins précise)'
+    + ' · <i>' + K('curveL') + ' / ' + K('curveR') + '</i> courbe (pour contourner la mark côté break, en rouge)'
+    + ' · <i>' + K('pivot') + '</i> pied de pivot · <i>clic droit sur le terrain</i> appel de cut · <i>clic sur un coéquipier</i> le prendre'
+    + ' · pendant le vol : <i>' + K('jump') + ' / clic droit</i> saut, <i>' + K('dive') + ' / clic</i> layout du receveur.'
+    + ' Anneau vert = coéquipier démarqué ; pointillés = zone de stall.'
+    : '<i>Défense</i> : ton joueur (anneau jaune) suit la souris · <i>clic / ' + K('dive') + '</i> layout · <i>' + K('jump') + ' / clic droit</i> saut (contre au lâcher ou à l’arrivée)'
+    + ' · <i>' + K('switch') + '</i> switch vers le joueur en gris, <i>1 à 5</i> prendre ce joueur.'
+    + ' Entre dans le cercle du porteur pour lancer le compte (un seul défenseur dedans, sinon double team).';
   if (G.gpActive) $('hint').innerHTML = '🎮 <i>Manette</i> : stick gauche = déplacer le curseur de visée / courir (stick droit = visée fine) · A ou RT = lancer au curseur (sans le disque : saut) · B = layout · X = appel de cut au curseur (sans le disque : switch) · Y = pivot · croix ↑/↓ = hauteur de passe · LB/RB = courbe · Start = menu. ' + $('hint').innerHTML;
   $('emoBar').style.display = G.net && G.started ? '' : 'none';
   resize();

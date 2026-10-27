@@ -20,6 +20,11 @@ function resize() {
   if (document.body.classList.contains('touch')) {
     // téléphone / tablette (paysage) : le terrain prend tout l'écran sous un fin bandeau ; les commandes flottent sur les bords
     availW = window.innerWidth; availH = window.innerHeight - TOUCH_HUD;
+    // consignes du tutoriel / de l'entraînement : le terrain passe dessous au lieu d'être caché par elles
+    const box = ['tutoBox', 'pracBox'].map(id => document.getElementById(id)).find(e => e && e.offsetHeight > 0);
+    const top = box ? box.offsetTop + box.offsetHeight + 4 : 0;
+    stage.style.marginTop = top ? top + 'px' : '';
+    if (top) availH = window.innerHeight - top;
   } else {
     // PC : le terrain prend toute la largeur et la hauteur de la fenêtre (le texte d'aide reste en dessous, on peut défiler)
     // (les fenêtres qui flottent par-dessus, comme la carte du coach, ne prennent pas de place)

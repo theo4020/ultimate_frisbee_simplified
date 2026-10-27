@@ -96,6 +96,8 @@ function burst(x, y, n, opt) {
   }
 }
 function ring(x, y, color, maxR, life) { FX.parts.push({ x, y, t: 0, life: life || 0.45, color, maxR: maxR || 2.5, kind: 'ring', vx: 0, vy: 0 }); }
+// petit rond plein qui grandit très vite et s'efface (retour visuel léger : réception, ramassage…)
+function pop(x, y, color, maxR, life) { FX.parts.push({ x, y, t: 0, life: life || 0.22, color, maxR: maxR || 1, kind: 'pop', vx: 0, vy: 0 }); }
 function vibrate(p) { try { if (navigator.vibrate && document.body.classList.contains('touch')) navigator.vibrate(p); } catch (e) { } }
 
 // ---------- événements ----------
@@ -111,13 +113,15 @@ function fxPlay(name, x, y, team) {
     case 'throw': {                                          // geste du lanceur
       const p = nearest(players, x, y);
       if (p) { p.throwT = 0.32; p.throwA = disc.mode === 'air' ? Math.atan2(disc.ey - p.y, disc.ex - p.x) : p.face; }
+      ring(x, y, 'rgba(255,255,255,.55)', 1.2, 0.22);          // petit souffle au lâcher
       break;
     }
-    case 'catch': ring(x, y, 'rgba(255,255,255,.9)', 2.2, 0.35); break;
+    case 'catch': pop(x, y, '#fff', 1.3, 0.25); ring(x, y, 'rgba(255,255,255,.9)', 2, 0.32); break;
+    case 'pickup': pop(x, y, '#fff', 0.9, 0.2); break;
     case 'block': burst(x, y, 14, { color: ['#f87171', '#fb923c', '#fde68a'], speed: 9, life: 0.5 }); ring(x, y, '#f87171', 3, 0.4); FX.shake = Math.max(FX.shake, 7); vibrate(60); break;
     case 'int': burst(x, y, 18, { color: [c, '#fde68a', '#fff'], speed: 10, life: 0.6 }); ring(x, y, c, 3.5, 0.5); FX.shake = Math.max(FX.shake, 9); vibrate([40, 30, 60]); break;
     case 'layout': burst(x, y, 10, { color: ['#a3e635', '#65a30d', '#d9f99d'], speed: 4, life: 0.5, size: 0.3 }); vibrate(25); break;
-    case 'turn': burst(x, y, 8, { color: ['#cbd5e1', '#94a3b8'], speed: 3, life: 0.5, size: 0.28 }); break;
+    case 'turn': burst(x, y, 8, { color: ['#cbd5e1', '#94a3b8'], speed: 3, life: 0.5, size: 0.28 }); ring(x, y, 'rgba(226,232,240,.7)', 1.8, 0.35); break;
     case 'score': {
       const ex = dirOf(team) > 0 ? W - EZ / 2 : EZ / 2;
       for (let i = 0; i < 70; i++) {
@@ -151,12 +155,16 @@ function fxUpdate(dt) {
     const p = FX.parts[i];
     p.t += dt;
     if (p.t >= p.life) { FX.parts.splice(i, 1); continue; }
-    if (p.kind !== 'ring') {
+    if (p.kind !== 'ring' && p.kind !== 'pop') {
       const k = Math.max(0, 1 - (p.drag || 0) * dt);
       p.vx *= k; p.vy = p.vy * k + (p.grav || 0) * dt;
       p.x += p.vx * dt; p.y += p.vy * dt; if (p.vr) p.rot += p.vr * dt;
     }
   }
+  // ton joueur change (switch, clic, touche 1 à 5…) : un rond jaune sous le nouveau, pour le repérer tout de suite
+  const me = typeof meH === 'function' && !G.attract ? meH() : null, sel = me && me.sel;
+  if (sel && FX.lastSel && sel !== FX.lastSel && G.phase === 'play' && disc.holder !== sel) ring(sel.x, sel.y, '#facc15', 1.6, 0.35);
+  FX.lastSel = sel || null;
   FX.shake = Math.max(0, FX.shake - dt * 30);
   if (FX.celebrate) FX.celebrate.t += dt;
   FX.pop = Math.max(0, FX.pop - dt * 1.5);
@@ -185,9 +193,11 @@ function drawParticles() {
   for (const p of FX.parts) {
     const a = 1 - p.t / p.life;
     ctx.globalAlpha = Math.max(0, a);
-    if (p.kind === 'ring') {
+    if (p.kind === 'ring' || p.kind === 'pop') {
+      const u = p.t / p.life, g = 1 - (1 - u) * (1 - u) * (1 - u);   // grandit vite, puis ralentit
+      if (p.kind === 'pop') { ctx.globalAlpha = Math.max(0, a * 0.75); ctx.fillStyle = p.color; circle(X(p.x), Y(p.y), (0.25 + g * p.maxR) * S); ctx.fill(); continue; }
       ctx.strokeStyle = p.color; ctx.lineWidth = 3 * a + 1;
-      circle(X(p.x), Y(p.y), (0.4 + (p.t / p.life) * p.maxR) * S); ctx.stroke();
+      circle(X(p.x), Y(p.y), (0.4 + g * p.maxR) * S); ctx.stroke();
     } else if (p.kind === 'confetti') {
       ctx.save(); ctx.translate(X(p.x), Y(p.y)); ctx.rotate(p.rot); ctx.fillStyle = p.color;
       ctx.fillRect(-p.size * S / 2, -p.size * S / 4, p.size * S, p.size * S / 2); ctx.restore();

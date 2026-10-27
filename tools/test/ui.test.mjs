@@ -257,6 +257,8 @@ export default async function (t) {
     await q.waitForFunction(() => typeof G !== 'undefined' && G.attract);
     t.ok(await q.evaluate(() => document.body.classList.contains('touch')), 'mode tactile détecté');
     t.ok(await q.evaluate(() => CTRL.move === 'joystick' && CTRL.sling === false), 'téléphone, par défaut : joystick et boutons, lancer vers la cible');
+    const tl = await q.evaluate(() => { tutoStart('base'); tutoPlayStep(); const b = document.getElementById('tutoBox').getBoundingClientRect(), c = canvas.getBoundingClientRect(); const r = { box: Math.round(b.bottom), field: Math.round(c.top) }; tutoQuit(); return r; });
+    t.ok(tl.field >= tl.box, 'tutoriel au téléphone : le terrain commence sous les consignes (elles ne cachent plus de joueurs)', tl);
     await q.evaluate(() => localStorage.setItem('uf-ctrl', JSON.stringify({ v: 3, sling: true, throwUI: 'gestes', move: 'tap', keys: {} })));   // la suite teste le lance-pierre et le tap
     await q.reload(); await q.waitForFunction(() => typeof G !== 'undefined' && G.attract);
     await q.click('#soloMenuB'); await q.click('#soloB');

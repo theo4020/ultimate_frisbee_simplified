@@ -8,6 +8,15 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
+  { id: 31, date: '2026-10-27', tag: 'Jeu', title: 'Des petits retours visuels ✨',
+    body: `Chaque action se voit mieux : un <b>petit rond blanc</b> jaillit à chaque réception et quand on ramasse le
+      disque, une onde part au lâcher, une autre quand le disque touche le sol, et un rond jaune montre ton nouveau joueur
+      quand tu changes.<br>
+      Et aussi :<br>
+      • tutoriel : le terrain n'est plus minuscule sur ordinateur, et au téléphone il passe sous les consignes au lieu
+      d'être caché par elles ;<br>
+      • l'aide sous le terrain est plus courte, la légende des couleurs du disque est sortie du terrain ;<br>
+      • « Belle prise en l'air ! » est réservé aux vraies prises en saut, disputées.` },
   { id: 30, date: '2026-10-26', tag: 'En ligne', title: 'La partie continue même si l’hôte part 🔁',
     body: `En ligne, si l'hôte quitte la partie (onglet fermé, réseau coupé…), un autre joueur la <b>reprend
       automatiquement</b> là où elle en était : même score, mêmes équipes, chacun garde sa place. Plus besoin de tout

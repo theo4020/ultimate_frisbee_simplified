@@ -533,4 +533,14 @@ export default async function (t, { quick }) {
     return out;
   })()`);
   t.ok(um.every(x => x >= 0 && x < 6), 'défenseurs tous pris ailleurs : le plus proche vient marquer (le compte démarre en moins de 6 s)', um);
+
+  t.group('Retours visuels légers');
+  const fxr = R(`(() => {
+    G.score = [0, 0]; G.receiving = 0; newWind(); startPoint(); G.phase = 'play'; FX.parts.length = 0;
+    const p = TEAMS[0][1]; catchDisc(p);
+    const pop = FX.parts.some(q => q.kind === 'pop'), ring = FX.parts.some(q => q.kind === 'ring');
+    for (let i = 0; i < 30; i++) fxUpdate(1 / 60);
+    return { pop, ring, gone: !FX.parts.some(q => q.kind === 'pop') };
+  })()`);
+  t.ok(fxr.pop && fxr.ring && fxr.gone, 'une réception : petit rond blanc + onde, effacés en moins d’une demi-seconde', fxr);
 }

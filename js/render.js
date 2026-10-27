@@ -114,7 +114,8 @@ function drawFlightPath(sx, sy, cx, cy, ex, ey, peak, u0, alpha, width, dash, ki
   ctx.restore(); isoText = keep;
 }
 function drawHeightLegend() {
-  const fs = Math.max(9, S * 1.15), x0 = X(0.8), y0 = Y(0.8) + fs;
+  // dans la marge au-dessus du terrain (elle ne cache plus l'en-but ni les joueurs)
+  const fs = Math.max(9, Math.min(S * 1.15, S * M / 1.7)), x0 = X(0) + fs * 0.4, y0 = (isoView() ? SY(0) : Y(0)) - fs * 0.5;
   ctx.save(); ctx.font = `600 ${fs}px system-ui`; ctx.textAlign = 'left';
   const items = [['contrable', REACH_DIVE - 0.1], ['debout seulement', REACH_STAND - 0.1], ['en sautant', REACH_STAND + JUMP_H * 0.5], ['trop haut', REACH_STAND + JUMP_H + 0.5]];
   let x = x0;

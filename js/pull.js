@@ -92,8 +92,8 @@ function choosePuller(t) {
 const localPuller = () => G.phase === 'pull' && !!G.pull && G.pull.by != null && G.pull.by === G.myId;
 function pullFlash() {
   if (!G.pull) return;
-  const by = G.pull.by != null && humanById(G.pull.by);
-  flash(G.spectator ? 'Pull !' : G.pull.team === G.me ? (localPuller() ? 'À toi de puller !' : by ? `${humanLabel(by)} pulle…` : 'Ton équipe pulle…') : 'Pull adverse…', true);
+  // seulement quand c'est à toi : pour les autres, le bandeau du terrain (« L'adversaire prépare son pull… ») le dit déjà
+  if (localPuller()) flash('À toi de puller !', true);
 }
 
 // position de la jauge (0 → 1 → 0…), en temps réel

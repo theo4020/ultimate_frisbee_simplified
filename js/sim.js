@@ -244,7 +244,8 @@ function update(dt) {
     }
     if (catcher) {
       if (catcher.dive > 0) flash('Layout !');              // réception en plongeon
-      else if (catcher.jump > 0 && disc.z > 2.3) flash('Belle prise en l’air !');
+      // vraie prise en l'air : il fallait sauter (hors de portée debout) et un défenseur était là
+      else if (catcher.jump > 0 && disc.z > REACH_STAND + 0.3 && nearestD(TEAMS[1 - catcher.team], disc.x, disc.y)[1] < 2.5) flash('Belle prise en l’air !');
       catchDisc(catcher); return;
     }
     if (u >= 1) {
@@ -266,6 +267,7 @@ function update(dt) {
     const p = G.pickup;
     if (p && dist(p.x, p.y, disc.x, disc.y) < 1.2) {
       p.x = disc.x; p.y = disc.y; p.vx = p.vy = 0;
+      fxEvent('pickup', p.x, p.y, p.team);
       if (G.carryTo) startCarry(p, G.carryTo.x, G.carryTo.y, ''); else holdDisc(p);
     }
   } else if (disc.mode === 'carry') {                           // remontée du disque à pied
