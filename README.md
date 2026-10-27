@@ -183,6 +183,6 @@ Le service worker charge toujours la dernière version quand il y a du réseau, 
 
 ## À faire plus tard
 
-- **Relecture en jouant** : faite le 26/10/2026 avec `tools/review-play.mjs` (solo à chaque niveau, vue inclinée, tutoriel,
+- **Relecture en jouant** : faite les 26 et 27/10/2026 avec `tools/review-play.mjs` (solo à chaque niveau, vue inclinée, tutoriel,
   entraînement, mode infini, à plusieurs). À relancer après les gros changements.
 - **Face-à-face avec la mark** : la mark humaine voit le pied de pivot, lit les feintes et peut contrer le lob en sautant.
