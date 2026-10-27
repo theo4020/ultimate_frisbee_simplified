@@ -1,4 +1,5 @@
-// style.js — « Mon style » : disque, terrain, tenue de ton équipe et célébration, débloqués par les succès.
+// style.js — « Mon style » : disque, terrain, maillot, cheveux et accessoire de ton équipe, célébration ; débloqués par les
+// succès. Pensé d'abord pour la vue de dessus (la vue inclinée suit en bonus).
 // Purement visuel (aucun effet sur le jeu). Chacun voit ses propres choix ; gardé dans le navigateur (uf-style) et avec
 // le compte. Règle de lisibilité : le disque et les deux équipes restent toujours bien visibles (ex. sur la neige, un
 // disque blanc devient orange).
@@ -12,14 +13,35 @@ const STYLES = {
     { id: 'galaxie', name: 'Galaxie', ach: 'huck40' },
     { id: 'flamme', name: 'Flamme', ach: 'duel' },
     { id: 'neon', name: 'Néon', ach: 'start' },
-    { id: 'or', name: 'Or', ach: 'champion' }
+    { id: 'or', name: 'Or', ach: 'champion' },
+    { id: 'cible', name: 'Cible', ach: 'practice10' },
+    { id: 'pasteque', name: 'Pastèque', ach: 'matches10' },
+    { id: 'damier', name: 'Damier', ach: 'callahan' }
   ],
   field: [
     { id: 'gazon', name: 'Gazon' },
     { id: 'stade', name: 'Stade de nuit', ach: 'win' },
     { id: 'plage', name: 'Plage', ach: 'pull' },
     { id: 'salle', name: 'Salle', ach: 'layout' },
-    { id: 'neige', name: 'Neige', ach: 'endless5' }
+    { id: 'neige', name: 'Neige', ach: 'endless5' },
+    { id: 'terre', name: 'Terre battue', ach: 'block10' },
+    { id: 'espace', name: 'Espace', ach: 'online' }
+  ],
+  jersey: [
+    { id: 'uni', name: 'Uni' },
+    { id: 'rayures', name: 'Rayures' },
+    { id: 'bande', name: 'Bande', ach: 'tuto' },
+    { id: 'damier', name: 'Damier', ach: 'tuto2' },
+    { id: 'pois', name: 'Pois', ach: 'wins10' },
+    { id: 'eclair', name: 'Éclair', ach: 'huck40' }
+  ],
+  hair: [
+    { id: 'naturel', name: 'Naturels' },
+    { id: 'rose', name: 'Rose', ach: 'pass100' },
+    { id: 'bleu', name: 'Bleu électrique', ach: 'block10' },
+    { id: 'vert', name: 'Vert fluo', ach: 'matches10' },
+    { id: 'platine', name: 'Blond platine', ach: 'win' },
+    { id: 'arcenciel', name: 'Arc-en-ciel', ach: 'champion' }
   ],
   acc: [
     { id: 'aucun', name: 'Rien', icon: '🙂' },
@@ -31,20 +53,24 @@ const STYLES = {
   cele: [
     { id: 'confettis', name: 'Confettis', icon: '🎉' },
     { id: 'feu', name: 'Feu d’artifice', icon: '🎆', ach: 'skyblock' },
-    { id: 'etoiles', name: 'Pluie d’étoiles', icon: '⭐', ach: 'practice10' }
+    { id: 'etoiles', name: 'Pluie d’étoiles', icon: '⭐', ach: 'practice10' },
+    { id: 'coeurs', name: 'Cœurs', icon: '💖', ach: 'tuto' },
+    { id: 'bulles', name: 'Bulles', icon: '🫧', ach: 'pass100' }
   ]
 };
-const STYLE_CAT = { disc: 'Disque', field: 'Terrain', acc: 'Tenue de ton équipe', cele: 'Célébration après un point' };
+const STYLE_CAT = { disc: 'Disque', field: 'Terrain', jersey: 'Maillot de ton équipe', hair: 'Cheveux de ton équipe', acc: 'Accessoire de ton équipe', cele: 'Célébration après un point' };
 // couleurs des terrains : fond, bandes, lignes, ciel (vue inclinée), opacité des en-buts
 const FIELDS = {
   gazon: { bg: '#1a6b35', s: ['#1f7a3d', '#22843f'], line: 'rgba(255,255,255,.85)', sky: ['#0b1220', '#14301f'], ez: 0.22, txt: 'rgba(255,255,255,.35)', vg: 0.22 },
   stade: { bg: '#0b2a17', s: ['#14532d', '#166534'], line: 'rgba(255,255,255,.95)', sky: ['#020617', '#0b1a12'], ez: 0.25, txt: 'rgba(255,255,255,.4)', vg: 0.5, lights: true },
   plage: { bg: '#0ea5e9', s: ['#d6b77c', '#cfae70'], line: 'rgba(30,58,138,.75)', sky: ['#7dd3fc', '#bae6fd'], ez: 0.28, txt: 'rgba(30,41,59,.45)', vg: 0.12 },
   salle: { bg: '#334155', s: ['#b9783f', '#c4844a'], line: 'rgba(255,255,255,.9)', sky: ['#1e293b', '#334155'], ez: 0.3, txt: 'rgba(255,255,255,.45)', vg: 0.18, planks: true },
+  terre: { bg: '#7c2d12', s: ['#c2410c', '#b8400f'], line: 'rgba(255,255,255,.9)', sky: ['#431407', '#7c2d12'], ez: 0.26, txt: 'rgba(255,255,255,.4)', vg: 0.2 },
+  espace: { bg: '#020617', s: ['#0f172a', '#111c33'], line: 'rgba(165,243,252,.85)', sky: ['#000000', '#020617'], ez: 0.32, txt: 'rgba(255,255,255,.4)', vg: 0.3, stars: true },
   neige: { bg: '#cbd5e1', s: ['#e2e8f0', '#f1f5f9'], line: 'rgba(30,58,138,.8)', sky: ['#94a3b8', '#cbd5e1'], ez: 0.3, txt: 'rgba(30,41,59,.45)', vg: 0.1 }
 };
 
-const STYLE0 = { disc: 'blanc', field: 'gazon', acc: 'aucun', cele: 'confettis' };
+const STYLE0 = { disc: 'blanc', field: 'gazon', jersey: 'uni', hair: 'naturel', acc: 'aucun', cele: 'confettis' };
 function styleGet() { const s = storeGet('uf-style', null); return Object.assign({}, STYLE0, s && typeof s === 'object' ? s : {}); }
 function styleSet(s) { storeSet('uf-style', s); }
 const styleItem = (cat, id) => STYLES[cat].find(x => x.id === id) || STYLES[cat][0];
@@ -85,6 +111,24 @@ function paintDisc(c, x, y, R, skin) {
       g.addColorStop(0, '#fef9c3'); g.addColorStop(0.5, '#facc15'); g.addColorStop(1, '#a16207');
       c.fillStyle = g; c.fill(); break;
     }
+    case 'cible': {
+      const g = c.createRadialGradient(x, y, 0, x, y, R);
+      [['#ef4444', 0], ['#ef4444', 0.25], ['#fff', 0.25], ['#fff', 0.5], ['#ef4444', 0.5], ['#ef4444', 0.75], ['#fff', 0.75], ['#fff', 1]].forEach(([col, s]) => g.addColorStop(s, col));
+      c.fillStyle = g; c.fill(); break;
+    }
+    case 'pasteque': {
+      const g = c.createRadialGradient(x, y, 0, x, y, R);
+      g.addColorStop(0, '#f43f5e'); g.addColorStop(0.68, '#fb7185'); g.addColorStop(0.72, '#f0fdf4'); g.addColorStop(0.8, '#22c55e'); g.addColorStop(1, '#15803d');
+      c.fillStyle = g; c.fill(); c.clip(); c.fillStyle = '#1f2937';
+      for (const [a, b] of [[-0.3, -0.15], [0.25, -0.2], [0, 0.25], [-0.15, 0.1], [0.3, 0.15]]) { c.beginPath(); c.arc(x + a * R, y + b * R, Math.max(0.7, R * 0.06), 0, Math.PI * 2); c.fill(); }
+      break;
+    }
+    case 'damier': {
+      c.fillStyle = '#fff'; c.fill(); c.clip(); c.fillStyle = '#0f172a';
+      const q = R / 2;
+      for (let i = -2; i < 2; i++) for (let j = -2; j < 2; j++) if ((i + j) & 1) c.fillRect(x + i * q, y + j * q, q, q);
+      break;
+    }
     default: c.fillStyle = '#fff'; c.fill();
   }
   c.restore();
@@ -98,7 +142,35 @@ function trailColor(a) {
     case 'flamme': return `rgba(249,115,22,${a})`;
     case 'neon': return `rgba(34,211,238,${a})`;
     case 'or': return `rgba(250,204,21,${a})`;
+    case 'cible': return `rgba(239,68,68,${a})`;
+    case 'pasteque': return `rgba(34,197,94,${a})`;
     default: return `rgba(255,255,255,${a})`;
+  }
+}
+
+// ---------- maillot et cheveux de ton équipe ----------
+const mineStyle = p => !G.attract && !G.spectator && p.team === G.me && !!meH();
+// motif du maillot, dans le rectangle (x, y, w, h) déjà tracé (on le découpe) ; light : maillot clair
+function jerseyPattern(c, x, y, w, h, light, kind) {
+  const k = kind || styleOf('jersey'); if (k === 'uni') return;
+  c.save(); c.clip(); c.fillStyle = light ? 'rgba(15,23,42,.5)' : 'rgba(255,255,255,.8)';
+  if (k === 'rayures') { const n = 5, st = h / n; for (let i = 1; i < n; i += 2) c.fillRect(x, y + i * st, w, st * 0.8); }
+  else if (k === 'bande') c.fillRect(x + w * 0.38, y, w * 0.24, h);
+  else if (k === 'damier') { const q = Math.min(w, h) / 3; for (let i = 0; i * q < w; i++) for (let j = 0; j * q < h; j++) if ((i + j) & 1) c.fillRect(x + i * q, y + j * q, q, q); }
+  else if (k === 'pois') { const q = Math.min(w, h) / 3; for (let i = 0; i * q < w; i++) for (let j = 0; j * q < h; j++) { c.beginPath(); c.arc(x + (i + 0.5) * q, y + (j + 0.5) * q, q * 0.22, 0, Math.PI * 2); c.fill(); } }
+  else if (k === 'eclair') { c.fillStyle = '#facc15'; c.beginPath(); c.moveTo(x + w * 0.58, y); c.lineTo(x + w * 0.3, y + h * 0.55); c.lineTo(x + w * 0.52, y + h * 0.5); c.lineTo(x + w * 0.4, y + h); c.lineTo(x + w * 0.75, y + h * 0.4); c.lineTo(x + w * 0.52, y + h * 0.45); c.closePath(); c.fill(); }
+  c.restore();
+}
+// couleur des cheveux (base : celle du joueur)
+function hairOf(p, base) {
+  if (!mineStyle(p)) return base;
+  switch (styleOf('hair')) {
+    case 'rose': return '#f472b6';
+    case 'bleu': return '#3b82f6';
+    case 'vert': return '#84cc16';
+    case 'platine': return '#fef3c7';
+    case 'arcenciel': return `hsl(${Math.round(G.time * 120 + p.i * 60) % 360},85%,58%)`;
+    default: return base;
   }
 }
 
@@ -112,7 +184,7 @@ function accTop(c, hx, hy, hr) {
   else if (a === 'casquette') {
     c.fillStyle = '#1e293b'; c.beginPath(); c.arc(hx, hy, hr * 0.95, 0, Math.PI * 2); c.fill();
     c.fillStyle = '#ef4444'; c.beginPath(); c.ellipse(hx + hr * 0.95, hy, hr * 0.55, hr * 0.8, 0, -Math.PI / 2, Math.PI / 2); c.fill();   // visière vers l'avant
-  } else if (a === 'lunettes') { c.fillStyle = '#0f172a'; c.fillRect(hx + hr * 0.55, hy - hr * 0.7, hr * 0.3, hr * 1.4); }
+  } else if (a === 'lunettes') { c.fillStyle = '#0f172a'; c.fillRect(hx + hr * 0.45, hy - hr * 0.95, hr * 0.42, hr * 1.9); c.fillStyle = '#38bdf8'; c.fillRect(hx + hr * 0.55, hy - hr * 0.8, hr * 0.2, hr * 0.55); c.fillRect(hx + hr * 0.55, hy + hr * 0.25, hr * 0.2, hr * 0.55); }
   else if (a === 'couronne') {
     c.fillStyle = '#facc15'; c.strokeStyle = '#a16207'; c.lineWidth = 1;
     c.beginPath();
@@ -164,7 +236,19 @@ function celebrate(team, ex) {
     }
     return true;
   }
+  if (k === 'coeurs' || k === 'bulles') {
+    for (let i = 0; i < 40; i++) {
+      FX.parts.push({ x: ex + (Math.random() - 0.5) * EZ, y: 2 + Math.random() * (H - 4), vx: (Math.random() - 0.5) * 1.5, vy: -1.5 - Math.random() * 2.5, t: -Math.random() * 0.4, life: 1.5 + Math.random() * 0.8,
+        color: k === 'coeurs' ? ['#f43f5e', '#fb7185', '#fda4af'][i % 3] : 'rgba(186,230,253,.85)', size: 0.8 + Math.random() * 0.5, kind: k === 'coeurs' ? 'heart' : 'bubble', drag: 0.3, grav: 0 });
+    }
+    return true;
+  }
   return false;
+}
+function drawHeart(c, x, y, r) {
+  c.beginPath(); c.moveTo(x, y + r * 0.7);
+  c.bezierCurveTo(x - r * 1.2, y - r * 0.1, x - r * 0.6, y - r * 1.0, x, y - r * 0.35);
+  c.bezierCurveTo(x + r * 0.6, y - r * 1.0, x + r * 1.2, y - r * 0.1, x, y + r * 0.7); c.closePath();
 }
 function drawStar(c, x, y, r) {
   c.beginPath();
@@ -185,6 +269,8 @@ function renderStyle() {
     const ok = styleUnlocked(it), on = styleOf(cat) === it.id, A = it.ach && ACH.find(x => x.id === it.ach);
     const prev = cat === 'disc' ? `<canvas class="sprev" width="44" height="44" data-skin="${it.id}"></canvas>`
       : cat === 'field' ? `<span class="sfield" style="background:repeating-linear-gradient(90deg,${FIELDS[it.id].s[0]} 0 8px,${FIELDS[it.id].s[1]} 8px 16px)"></span>`
+      : cat === 'jersey' ? `<canvas class="sprev" width="44" height="44" data-jersey="${it.id}"></canvas>`
+      : cat === 'hair' ? `<span class="shair" style="background:${it.id === 'arcenciel' ? 'conic-gradient(#ef4444,#facc15,#22c55e,#3b82f6,#a855f7,#ef4444)' : ({ naturel: '#3b2f2a', rose: '#f472b6', bleu: '#3b82f6', vert: '#84cc16', platine: '#fef3c7' })[it.id]}"></span>`
       : `<span class="sicon">${it.icon}</span>`;
     return `<button class="stile${on ? ' on' : ''}${ok ? '' : ' locked'}" data-cat="${cat}" data-id="${it.id}">${prev}<b>${esc(it.name)}</b>`
       + (ok ? (on ? '<small>✓ choisi</small>' : '') : `<small>🔒 ${A ? esc(A.icon + ' ' + A.name) : ''}<br>${A ? esc(A.desc) : ''}</small>`) + '</button>';
@@ -192,6 +278,12 @@ function renderStyle() {
   for (const cv of document.querySelectorAll('#styleBody canvas.sprev')) {
     const c = cv.getContext('2d'); c.beginPath(); c.ellipse(22, 22, 16, 13, -0.2, 0, Math.PI * 2);
     paintDisc(c, 22, 22, 16, cv.dataset.skin); c.strokeStyle = '#0f172a'; c.lineWidth = 2; c.stroke();
+  }
+  for (const cv of document.querySelectorAll('#styleBody canvas[data-jersey]')) {
+    const c = cv.getContext('2d');
+    c.beginPath(); c.roundRect ? c.roundRect(10, 6, 24, 32, 8) : c.rect(10, 6, 24, 32); c.fillStyle = '#3b82f6'; c.fill();
+    jerseyPattern(c, 10, 6, 24, 32, false, cv.dataset.jersey);
+    c.beginPath(); c.roundRect ? c.roundRect(10, 6, 24, 32, 8) : c.rect(10, 6, 24, 32); c.strokeStyle = '#1e3a8a'; c.lineWidth = 2; c.stroke();
   }
   const n = Object.values(STYLES).flat().filter(styleUnlocked).length, tot = Object.values(STYLES).flat().length;
   $('styleCount').textContent = `${n} / ${tot} débloqués · les succès du Profil en débloquent d’autres`;

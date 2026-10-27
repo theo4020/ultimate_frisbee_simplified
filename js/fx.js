@@ -211,6 +211,11 @@ function drawParticles() {
       if (p.kind === 'pop') { ctx.globalAlpha = Math.max(0, a * 0.75); ctx.fillStyle = p.color; circle(X(p.x), Y(p.y), (0.25 + g * p.maxR) * S); ctx.fill(); continue; }
       ctx.strokeStyle = p.color; ctx.lineWidth = 3 * a + 1;
       circle(X(p.x), Y(p.y), (0.4 + g * p.maxR) * S); ctx.stroke();
+    } else if (p.kind === 'heart') {
+      ctx.fillStyle = p.color; drawHeart(ctx, X(p.x), Y(p.y), p.size * S * 0.55); ctx.fill();
+    } else if (p.kind === 'bubble') {
+      ctx.strokeStyle = p.color; ctx.lineWidth = 1.5; circle(X(p.x), Y(p.y), p.size * S * 0.5); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,.5)'; circle(X(p.x) - p.size * S * 0.18, Y(p.y) - p.size * S * 0.18, p.size * S * 0.1); ctx.fill();
     } else if (p.kind === 'star') {
       ctx.save(); ctx.translate(X(p.x), Y(p.y)); ctx.rotate(p.rot); ctx.fillStyle = p.color; drawStar(ctx, 0, 0, p.size * S * 0.55); ctx.fill(); ctx.restore();
     } else if (p.kind === 'confetti') {

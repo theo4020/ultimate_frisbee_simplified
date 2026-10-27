@@ -34,14 +34,16 @@ function drawChibi(p, sx, sy, r, face, o) {
   else if (o.throwing) { arm(-0.45 * fx, 0.9, -0.62 * fx, 0.55); arm(0.45 * fx, 0.9, 1.05 * fx, 0.85); }
   else { arm(-0.48, 0.9, -0.62 - sw * 0.2, 0.5); arm(0.48, 0.9, 0.62 + sw * 0.2, 0.5); }
   ctx.fillStyle = tcol(p.team); ctx.strokeStyle = tdark(p.team); ctx.lineWidth = 2;   // maillot arrondi
-  roundRectPath(sx - u * 0.52, sy - u * 1.18, u * 1.04, u * 0.86, u * 0.4); ctx.fill(); ctx.stroke();
+  roundRectPath(sx - u * 0.52, sy - u * 1.18, u * 1.04, u * 0.86, u * 0.4); ctx.fill();
+  if (mineStyle(p)) jerseyPattern(ctx, sx - u * 0.52, sy - u * 1.18, u * 1.04, u * 0.86, light);
+  roundRectPath(sx - u * 0.52, sy - u * 1.18, u * 1.04, u * 0.86, u * 0.4); ctx.stroke();
   if (u >= 8) {                                              // numéro (dans le dos, ou sur le ventre)
     ctx.fillStyle = light ? 'rgba(15,23,42,.75)' : 'rgba(255,255,255,.9)'; ctx.font = `800 ${Math.round(u * 0.5)}px system-ui`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(p.i + 1), sx, sy - u * 0.74); ctx.textBaseline = 'alphabetic';
   }
   const hy = sy - u * 1.62, hr = u * 0.56;                   // grosse tête
   ctx.fillStyle = SKIN[k]; circle(sx, hy, hr); ctx.fill();
-  ctx.fillStyle = HAIR[k];
+  ctx.fillStyle = hairOf(p, HAIR[k]);
   if (back) { circle(sx, hy - u * 0.04, hr * 0.98); ctx.fill(); }                    // de dos : les cheveux
   else {
     ctx.beginPath(); ctx.arc(sx, hy - u * 0.05, hr * 1.0, Math.PI * 1.05, Math.PI * 1.95); ctx.closePath(); ctx.fill();

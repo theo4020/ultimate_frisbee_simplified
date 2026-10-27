@@ -36,8 +36,8 @@ export default async function (t) {
       const out = [], wait = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
       for (const v of ['top', 'iso']) {
         CTRL.view = v; resize();
-        for (let k = 0; k < 7; k++) {
-          styleSet({ disc: STYLES.disc[k % 7].id, field: STYLES.field[k % 5].id, acc: STYLES.acc[k % 5].id, cele: STYLES.cele[k % 3].id });
+        for (let k = 0; k < 10; k++) {
+          styleSet({ disc: STYLES.disc[k % STYLES.disc.length].id, field: STYLES.field[k % STYLES.field.length].id, jersey: STYLES.jersey[k % STYLES.jersey.length].id, hair: STYLES.hair[k % STYLES.hair.length].id, acc: STYLES.acc[k % STYLES.acc.length].id, cele: STYLES.cele[k % STYLES.cele.length].id });
           G.off = G.me; G.pickup = null; const h = TEAMS[G.me][0]; holdDisc(h); h.think = 99;
           throwDisc(h, TEAMS[G.me][2].x, TEAMS[G.me][2].y, 0.4, 1, 0.5);
           fxPlay('score', 0, 0, G.me);
@@ -47,7 +47,7 @@ export default async function (t) {
       CTRL.view = 'top'; resize();
       return { out, snowDisc: (styleSet({ disc: 'blanc', field: 'neige' }), discSkin()) };
     });
-    t.ok(drawn.out.length === 14, 'chaque combinaison est dessinée (vue de dessus et inclinée)', drawn.out.length);
+    t.ok(drawn.out.length === 20, 'chaque combinaison est dessinée (vue de dessus et inclinée)', drawn.out.length);
     t.ok(drawn.snowDisc === 'orange', 'lisibilité : sur la neige, le disque blanc devient orange', drawn.snowDisc);
 
     t.ok(!errs.length, 'aucune erreur', errs);

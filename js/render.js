@@ -185,22 +185,26 @@ function drawBody(p, x, y, r, face, o) {
   if (o.lying) {                                            // allongé, bras tendus vers l'avant
     arm(r * 0.5, -r * 0.45, r * 1.9, -r * 0.35); arm(r * 0.5, r * 0.45, r * 1.9, r * 0.35);
     ctx.fillStyle = tcol(p.team); ctx.strokeStyle = tdark(p.team); ctx.lineWidth = 2;
-    roundRectPath(-r * 1.3, -r * 0.62, r * 2.2, r * 1.24, r * 0.6); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = HAIR[k]; circle(r * 1.05, 0, r * 0.45); ctx.fill();
+    roundRectPath(-r * 1.3, -r * 0.62, r * 2.2, r * 1.24, r * 0.6); ctx.fill();
+    if (mineStyle(p)) jerseyPattern(ctx, -r * 1.3, -r * 0.62, r * 2.2, r * 1.24, light);   // maillot de ton équipe (Mon style)
+    roundRectPath(-r * 1.3, -r * 0.62, r * 2.2, r * 1.24, r * 0.6); ctx.stroke();
+    ctx.fillStyle = hairOf(p, HAIR[k]); circle(r * 1.05, 0, r * 0.45); ctx.fill();
   } else {
     const sw = o.swing || 0;                                // balancement des bras en courant
     if (o.throwing) { arm(0, r * 0.85, r * 1.75, r * 0.55); arm(0, -r * 0.85, -r * 0.3, -r * 1.15); }
     else if (o.jumping) { arm(0, r * 0.8, r * 0.5, r * 1.5); arm(0, -r * 0.8, r * 0.5, -r * 1.5); }
     else { arm(0, r * 0.85, sw * r * 0.75, r * 1.12); arm(0, -r * 0.85, -sw * r * 0.75, -r * 1.12); }
     ctx.fillStyle = tcol(p.team); ctx.strokeStyle = tdark(p.team); ctx.lineWidth = 2;
-    roundRectPath(-r * 0.58, -r * 1.05, r * 1.16, r * 2.1, r * 0.56); ctx.fill(); ctx.stroke();
+    roundRectPath(-r * 0.58, -r * 1.05, r * 1.16, r * 2.1, r * 0.56); ctx.fill();
+    if (mineStyle(p)) jerseyPattern(ctx, -r * 0.58, -r * 1.05, r * 1.16, r * 2.1, light);   // maillot de ton équipe (Mon style)
+    roundRectPath(-r * 0.58, -r * 1.05, r * 1.16, r * 2.1, r * 0.56); ctx.stroke();
     if (r >= 8) {                                           // numéro dans le dos
       ctx.save(); ctx.rotate(-face); ctx.fillStyle = light ? 'rgba(15,23,42,.75)' : 'rgba(255,255,255,.85)';
       ctx.font = `800 ${Math.round(r * 0.78)}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       const bx = -Math.cos(face) * r * 0.62, by = -Math.sin(face) * r * 0.62;
       ctx.fillText(String(p.i + 1), bx, by); ctx.restore();
     }
-    ctx.fillStyle = HAIR[k]; circle(r * 0.12, 0, r * 0.5); ctx.fill();
+    ctx.fillStyle = hairOf(p, HAIR[k]); circle(r * 0.12, 0, r * 0.5); ctx.fill();
     if (accOn(p)) accTop(ctx, r * 0.12, 0, r * 0.5);            // tenue de ton équipe (Mon style)
   }
   ctx.restore();
@@ -223,6 +227,7 @@ function drawField() {
   ctx.fillStyle = F.bg; ctx.fillRect(0, 0, cw, ch);
   if (FX.shake > 0) ctx.translate((Math.random() - 0.5) * FX.shake, (Math.random() - 0.5) * FX.shake);   // secousse
   for (let i = 0; i < 10; i++) { ctx.fillStyle = F.s[i % 2 ? 0 : 1]; ctx.fillRect(X(i * 10), Y(0), 10 * S, H * S); }
+  if (F.stars) { ctx.fillStyle = 'rgba(255,255,255,.7)'; for (let i = 0; i < 90; i++) { const sx = (i * 37.3) % W, sy = (i * 23.7 + (i % 7) * 5.1) % H; circle(X(sx), Y(sy), Math.max(0.6, S * (0.06 + (i % 3) * 0.04))); ctx.fill(); } }   // espace : étoiles
   if (F.planks) { ctx.strokeStyle = 'rgba(0,0,0,.12)'; ctx.lineWidth = 1; for (let y = 1.5; y < H; y += 1.5) { ctx.beginPath(); ctx.moveTo(X(0), Y(y)); ctx.lineTo(X(W), Y(y)); ctx.stroke(); } }   // lattes du parquet
   // l'équipe qui attaque vers la droite (on change de côté à chaque point ; pendant la célébration, on garde les zones
   // du point qui vient d'être marqué)

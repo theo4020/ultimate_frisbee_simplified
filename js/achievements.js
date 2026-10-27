@@ -17,7 +17,11 @@ const ACH = [
   { id: 'online', icon: '🌐', name: 'Esprit d’équipe', desc: 'Gagner un match en ligne' },
   { id: 'champion', icon: '🏆', name: 'Champion', desc: 'Remporter le mini-tournoi' },
   { id: 'start', icon: '🚦', name: 'Départ canon', desc: 'Réussir un départ parfait au pull (pile au feu vert)' },
-  { id: 'endless5', icon: '♾️', name: 'Increvable', desc: 'Atteindre le 5e match du mode infini' }
+  { id: 'endless5', icon: '♾️', name: 'Increvable', desc: 'Atteindre le 5e match du mode infini' },
+  { id: 'matches10', icon: '🏃', name: 'Marathonien', desc: 'Jouer 10 matchs' },
+  { id: 'wins10', icon: '🔟', name: 'Habitué des victoires', desc: 'Gagner 10 matchs' },
+  { id: 'pass100', icon: '🤝', name: 'Passeur', desc: 'Réussir 100 passes (en carrière)' },
+  { id: 'block10', icon: '🛡️', name: 'Mur', desc: 'Réussir 10 blocks ou interceptions (en carrière)' }
 ];
 const CAREER0 = { matches: 0, wins: 0, scored: 0, conceded: 0, passes: 0, throws: 0, blocks: 0, longest: 0, hucks: 0, high: 0, duels: 0, pulls: 0, practiceBest: 0, titles: 0 };
 function careerGet() { const c = storeGet('uf-career', null); return Object.assign({}, CAREER0, c && typeof c === 'object' ? c : {}); }
@@ -78,6 +82,10 @@ function achMatchOver() {
   if (G.ms) { const T = G.ms.team[me]; c.passes += T.comp; c.throws += T.thr; c.blocks += T.blk + T.int; }
   if (won && G.series && !G.series.endless && G.series.cur === SERIES.length - 1) c.titles++;
   careerSet(c);
+  if (c.matches >= 10) unlock('matches10');
+  if (c.wins >= 10) unlock('wins10');
+  if (c.passes >= 100) unlock('pass100');
+  if (c.blocks >= 10) unlock('block10');
   if (won) unlock('win');
   if (won && G.score[op] === 0) unlock('shutout');
   if (won && G.net) unlock('online');
@@ -89,6 +97,7 @@ function achGuestOver(score) {
   if (G.spectator || !meH()) return;
   const me = G.me, op = 1 - me, won = score[me] > score[op], c = careerGet();
   c.matches++; if (won) c.wins++; c.scored += score[me]; c.conceded += score[op]; careerSet(c);
+  if (c.matches >= 10) unlock('matches10'); if (c.wins >= 10) unlock('wins10');
   if (won) { unlock('win'); unlock('online'); if (score[op] === 0) unlock('shutout'); }
 }
 // ---------- carte Profil ----------

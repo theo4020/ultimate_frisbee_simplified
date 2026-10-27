@@ -10,11 +10,12 @@ const NEW_URL = 'https://' + NEW_HOST + '/';
 const NEWS = [
   { id: 32, date: '2026-10-27', tag: 'Style', title: 'Mon style : choisis ton disque, ton terrain, ta tenue 🎨',
     body: `Nouveau bouton <b>🎨 Mon style</b> dans le menu principal. Choisis :<br>
-      • ton <b>disque</b> : fluo, arc-en-ciel, galaxie, flamme, néon, or (avec sa traînée assortie) ;<br>
-      • ton <b>terrain</b> : gazon, stade de nuit, plage, salle, neige ;<br>
-      • la <b>tenue</b> de ton équipe : bandeau, casquette, lunettes de soleil, couronne ;<br>
-      • ta <b>célébration</b> quand ton équipe marque : confettis, feu d'artifice, pluie d'étoiles.<br>
-      La plupart se débloquent avec les <b>succès</b> du Profil, dont deux nouveaux : « Départ canon » et « Increvable ».
+      • ton <b>disque</b> : fluo, arc-en-ciel, galaxie, flamme, néon, or, cible, pastèque, damier (avec sa traînée assortie) ;<br>
+      • ton <b>terrain</b> : gazon, stade de nuit, plage, salle, neige, terre battue, espace ;<br>
+      • le <b>maillot</b> de ton équipe (rayures, bande, damier, pois, éclair), ses <b>cheveux</b> (rose, bleu, vert, platine, arc-en-ciel)
+      et un <b>accessoire</b> : bandeau, casquette, lunettes de soleil, couronne ;<br>
+      • ta <b>célébration</b> quand ton équipe marque : confettis, feu d'artifice, pluie d'étoiles, cœurs, bulles.<br>
+      La plupart se débloquent avec les <b>succès</b> du Profil, dont six nouveaux (« Départ canon », « Increvable », « Marathonien », « Passeur », « Mur », « Habitué des victoires »).
       C'est purement visuel, et chacun voit ses propres choix.` },
   { id: 31, date: '2026-10-27', tag: 'Jeu', title: 'Départ au pull et mark aimantée 🚦',
     body: `<b>Départ au pull</b> : quand l'IA pulle, trois feux s'allument. Appuie (clic, Espace, tape ou A) pile au
