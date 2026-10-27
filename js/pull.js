@@ -266,7 +266,7 @@ function afterPull(p) {
 //      – équipe qui reçoit : reprise arrêtée (check) : la défense a le temps de se placer avant le premier lancer ;
 //  • ne rien faire : départ normal, comme avant.
 // Une équipe IA (sans humain) part parfois trop tôt, plus souvent en facile.
-const START = { LIGHT: 0.5, N: 3, GOOD: 0.25, BOOST_T: 1.3, BOOST_K: 1.25, CHECK_T: 2.5, AI_OFF: 0.045 };
+const START = { LIGHT: 0.5, N: 3, GOOD: 0.25, BOOST_T: 1.8, BOOST_K: 1.35, CHECK_T: 2.5, AI_OFF: 0.045 };
 const startOn = () => !G.attract && !G.tuto && !G.practice && !!G.pull && G.pull.by == null && G.humans.some(h => h.team === 0 || h.team === 1);
 const lightsOn = cd => (cd == null || cd < 0 ? 0 : Math.min(START.N, Math.floor(cd / START.LIGHT) + 1));
 const pullerOffside = () => !!G.offside && G.offside.team === 1 - G.receiving;

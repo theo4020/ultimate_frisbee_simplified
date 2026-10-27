@@ -165,6 +165,17 @@ function fxUpdate(dt) {
   const me = typeof meH === 'function' && !G.attract ? meH() : null, sel = me && me.sel;
   if (sel && FX.lastSel && sel !== FX.lastSel && G.phase === 'play' && disc.holder !== sel && G.time - (FX.manualSel || -9) < 0.5) ring(sel.x, sel.y, '#facc15', 1.6, 0.35);
   FX.lastSel = sel || null;
+  // départ parfait : une traînée de petites bouffées blanches derrière les joueurs qui partent en trombe
+  FX.boostAcc = (FX.boostAcc || 0) + dt;
+  if (FX.boostAcc >= 0.035) {
+    FX.boostAcc = 0;
+    for (const p of players) {
+      const v = Math.hypot(p.vx, p.vy);
+      if (!(p.boostT > 0) || v < 1.5) continue;
+      FX.parts.push({ x: p.x - p.vx / v * 0.5, y: p.y - p.vy / v * 0.5, vx: -p.vx * 0.15 + (Math.random() - 0.5), vy: -p.vy * 0.15 + (Math.random() - 0.5),
+        t: 0, life: 0.55, color: 'rgba(255,255,255,.9)', size: 0.5, drag: 3 });
+    }
+  }
   FX.shake = Math.max(0, FX.shake - dt * 30);
   if (FX.celebrate) FX.celebrate.t += dt;
   FX.pop = Math.max(0, FX.pop - dt * 1.5);

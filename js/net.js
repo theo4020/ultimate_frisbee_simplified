@@ -297,7 +297,7 @@ function snapshot() {
     d: [disc.mode, idx(disc.holder), r1(disc.x), r1(disc.y), r1(disc.sx), r1(disc.sy), r1(disc.cx), r1(disc.cy), r1(disc.ex), r1(disc.ey), r2(disc.t), r2(disc.dur), idx(disc.intended), r2(disc.loft), r2(disc.curveV || 0), r2(disc.cone || 0), disc.coneOff ? disc.coneOff.map(r2) : 0],
     g: { score: G.score, off: G.off, phase: G.phase, stall: r1(G.stall), mk: idx(G.marker), msg: G.msg, mid: G.msgId, mt: G.msgTeam, ma: G.msgAlt,
       dbl: idx(G.dbl), gt: r1(G.gt), carry: G.carryTo,
-      pull: G.phase === 'pull' && G.pull ? G.pull.team : -1, pullBy: G.pull ? G.pull.by : null, pready: G.phase === 'pull' && pullReady(), pleft: pullLeft(), tell: r2(holderLoft()), pz: G.pz || null, st: startNet(), ofs: G.offside ? G.offside.team : -1, ck: G.checkT > 0 ? r1(G.checkT) : 0, aim: netAimOut(), piv: disc.holder ? r2(disc.holder.pivY || 0) : 0 }
+      pull: G.phase === 'pull' && G.pull ? G.pull.team : -1, pullBy: G.pull ? G.pull.by : null, pready: G.phase === 'pull' && pullReady(), pleft: pullLeft(), tell: r2(holderLoft()), pz: G.pz || null, st: startNet(), ofs: G.offside ? G.offside.team : -1, bst: players.some(p => p.boostT > 0) ? players.filter(p => p.boostT > 0).map(idx) : 0, ck: G.checkT > 0 ? r1(G.checkT) : 0, aim: netAimOut(), piv: disc.holder ? r2(disc.holder.pivY || 0) : 0 }
   };
 }
 // l'invité qui reprendrait la partie si l'hôte partait : le plus ancien encore connecté ([id, adresse de son navigateur])
@@ -540,6 +540,7 @@ function applySnapshot(m) {
   }
   if (g.phase === 'pull' && (G.phase !== 'pull' || !G.pull)) { G.pull = { team: g.pull, t: 0, by: g.pullBy }; G.pullUI = { stage: 'aim', t0: 0, x: 0, y: 0, q: 0 }; const me = meH(); if (me) me.startDone = false; }
   G.netStart = g.st || 0; G.netCheck = g.ck || 0; G.netOffside = g.ofs;
+  const bs = g.bst || []; players.forEach((p, i) => { p.boostT = bs.includes(i) ? 0.3 : 0; });   // traînée du départ parfait
   if (g.phase === 'pull' && G.pull) G.pull.by = g.pullBy;
   G.netPullReady = !!g.pready; G.netPullLeft = g.pleft == null ? null : g.pleft;
   if (g.phase !== G.phase) { G.phase = g.phase; if (g.phase !== 'play') G.aiming = false; }
