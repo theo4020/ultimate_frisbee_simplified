@@ -351,7 +351,7 @@ function drawStartUI() {
     const pt = G.pull ? G.pull.team : 1 - G.receiving;
     const t = `Hors-jeu des ${tn(off)} : ` + (off === pt ? `les ${tn(1 - off)} repartiront du brick` : 'check à la réception');
     ctx.font = `700 ${fs * 0.85}px system-ui`; ctx.textAlign = 'center';
-    const w = ctx.measureText(t).width + fs * 1.4, y = SY(H - 2.5);
+    const w = ctx.measureText(t).width + fs * 1.4, y = SY(10.5);   // sous les feux (le bas est pour les conseils du coach)
     ctx.fillStyle = 'rgba(127,29,29,.85)'; ctx.fillRect(X(W / 2) - w / 2, y - fs * 1.0, w, fs * 1.5);
     ctx.fillStyle = '#fee2e2'; ctx.fillText(t, X(W / 2), y);
   });

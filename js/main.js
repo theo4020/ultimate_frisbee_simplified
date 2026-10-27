@@ -27,7 +27,9 @@ function loop(now) {
 // mesure des performances (option admin dans Commandes) : images par seconde, calcul du jeu et dessin (ms)
 const PERF = { n: 0, t: 0, sim: 0, draw: 0, txt: '', at: 0 };
 function frame(now, visible) {
-  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  // jamais négatif : l'heure d'une image (requestAnimationFrame) peut être un peu antérieure au dernier tic du Worker
+  // (hôte qui revient sur l'onglet) ; un pas de temps négatif rendait des positions invalides (NaN) pour tout le monde
+  const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = Math.max(last, now);
   const t0 = CTRL.perf ? performance.now() : 0;
   G.time += dt;
   computeTeams();
@@ -64,6 +66,7 @@ function frame(now, visible) {
   joyFrame();
   netHeartbeat(dt);
   if (G.msgT > 0) G.msgT -= dt;
+  tipsFrame(dt);                                             // conseils de Coach Disco (première fois)
   if (G.phase !== 'play') G.gt += dt * 0.5;            // les rafales continuent dans le menu
   updateStreaks(dt);
   fxUpdate(dt);

@@ -14,6 +14,33 @@ const COACH = {
 };
 const pickLine = a => a[Math.floor(Math.random() * a.length)];
 
+// ---------- conseils de Coach Disco, la première fois qu'on rencontre un petit jeu ----------
+// une bulle en haut de l'écran, sans mettre le jeu en pause ni bloquer de clic (elle part seule) ; une seule fois par conseil
+const TIPS = {
+  start: () => `Trois feux rouges, puis le vert : ${isTouchUI() ? 'tape l’écran' : 'clic ou Espace'} pile au vert et ton équipe part en trombe. Trop tôt ? Hors-jeu, et je siffle.`,
+  offside: () => 'Hors-jeu ! Quand ton équipe pulle, l’adversaire repart du brick ; quand elle reçoit, elle attend que la défense se place. On ne vole pas le départ !',
+  mark: () => `Te voilà en mark ! ${isTouchUI() ? 'Gauche, droite' : 'Souris à gauche, à droite'} : tu fermes un côté du porteur. Pour la quitter, vise plus loin, je ne te retiens pas.`
+};
+let tipT = 0;
+function coachTip(k) {
+  const seen = storeGet('uf-tips', {}) || {};
+  if (seen[k] || tipT > 0) return;
+  seen[k] = 1; storeSet('uf-tips', seen);
+  $('ctText').textContent = '« ' + TIPS[k]() + ' »'; $('coachTip').style.display = '';
+  tipT = 7;
+}
+function tipsFrame(dt) {
+  if (tipT > 0) { tipT -= dt; if (tipT <= 0) $('coachTip').style.display = 'none'; }
+  if (G.attract || G.tuto || G.practice || G.spectator || G.replay || !$('overlay').classList.contains('hidden')) return;
+  const me = meH(); if (!me || (me.team !== 0 && me.team !== 1)) return;
+  const st = G.net === 'guest' ? G.netStart : startNet();
+  if (st && st[0] >= 1) coachTip('start');
+  const off = G.net === 'guest' ? G.netOffside : G.offside && G.offside.team;
+  if (off === me.team) coachTip('offside');
+  const s = me.sel, h = disc.holder;
+  if (CTRL.markAssist && s && h && disc.mode === 'held' && G.phase === 'play' && h.team !== me.team && dist(s.x, s.y, h.x, h.y) < STALL_R) coachTip('mark');
+}
+
 const TUTO_STEPS = [
   {
     title: 'Se déplacer',

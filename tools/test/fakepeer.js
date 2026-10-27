@@ -27,3 +27,23 @@
   };
   window.Peer = Peer;
 })();
+
+// garde-fou des tests : une position ou une vitesse invalide (NaN) chez un joueur ou le disque devient une erreur de la
+// page, avec ce qu'il faut pour en trouver la cause (une seule fois par page)
+window.addEventListener('load', () => {
+  if (typeof update !== 'function') return;
+  const bad = v => typeof v === 'number' && !Number.isFinite(v);
+  let done = false;
+  const check = where => {
+    if (done || typeof players === 'undefined') return;
+    const p = players.find(q => [q.x, q.y, q.vx, q.vy].some(v => !Number.isFinite(v)) || [q.tx, q.ty].some(bad));
+    const d = [disc.x, disc.y].some(v => !Number.isFinite(v)) || [disc.ex, disc.ey].some(bad);
+    if (!p && !d) return;
+    done = true;
+    const info = { where, net: G.net, phase: G.phase, mode: disc.mode, holder: disc.holder && players.indexOf(disc.holder), p: p && { i: players.indexOf(p), team: p.team, x: p.x, y: p.y, vx: p.vx, vy: p.vy, tx: p.tx, ty: p.ty, sp: p.sp, state: p.state, role: p.role, ctl: !!(typeof controllerOf === 'function' && controllerOf(p)) },
+      disc: { x: disc.x, y: disc.y, ex: disc.ex, ey: disc.ey, t: disc.t, dur: disc.dur } };
+    setTimeout(() => { throw new Error('position invalide : ' + JSON.stringify(info)); }, 0);
+  };
+  const u = update; update = function (dt) { u(dt); check('update'); };
+  if (typeof guestFrame === 'function') { const g = guestFrame; guestFrame = function (dt) { g(dt); check('guestFrame'); }; }
+});
