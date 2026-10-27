@@ -28,6 +28,10 @@ export default async function (t) {
     await p.evaluate(() => storeSet('uf-ach', {}));
     t.ok(await p.evaluate(() => styleOf('disc') === 'blanc'), 'succès effacés : on revient au style de base');
 
+    await p.evaluate(() => storeSet('uf-acc', { name: 'Admin', token: 'x', admin: true }));
+    t.ok(await p.evaluate(() => Object.values(STYLES).flat().every(styleUnlocked) && styleOf('disc') === 'arcenciel'), 'compte admin : tous les visuels sont débloqués');
+    await p.evaluate(() => { try { localStorage.removeItem('uf-acc'); } catch (e) { } });
+
     t.group('Mon style : le jeu se dessine avec chaque visuel');
     await p.evaluate(() => { const a = {}; ACH.forEach(x => a[x.id] = 1); storeSet('uf-ach', a); });
     await p.evaluate(() => { document.getElementById('soloMenuB').click(); document.getElementById('soloB').click(); G.form.first = String(G.me); document.getElementById('go').click(); });

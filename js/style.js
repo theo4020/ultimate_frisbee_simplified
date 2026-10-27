@@ -74,7 +74,9 @@ const STYLE0 = { disc: 'blanc', field: 'gazon', jersey: 'uni', hair: 'naturel', 
 function styleGet() { const s = storeGet('uf-style', null); return Object.assign({}, STYLE0, s && typeof s === 'object' ? s : {}); }
 function styleSet(s) { storeSet('uf-style', s); }
 const styleItem = (cat, id) => STYLES[cat].find(x => x.id === id) || STYLES[cat][0];
-const styleUnlocked = it => !it.ach || !!achGet()[it.ach];
+// compte admin : tout est débloqué
+const styleAdmin = () => typeof accGet === 'function' && !!(accGet() || {}).admin;
+const styleUnlocked = it => !it.ach || styleAdmin() || !!achGet()[it.ach];
 // le choix en vigueur (un choix plus disponible, ex. profil effacé, revient au style de base)
 function styleOf(cat) { const it = styleItem(cat, styleGet()[cat]); return styleUnlocked(it) ? it.id : STYLES[cat][0].id; }
 const fieldTheme = () => FIELDS[styleOf('field')] || FIELDS.gazon;
@@ -286,7 +288,7 @@ function renderStyle() {
     c.beginPath(); c.roundRect ? c.roundRect(10, 6, 24, 32, 8) : c.rect(10, 6, 24, 32); c.strokeStyle = '#1e3a8a'; c.lineWidth = 2; c.stroke();
   }
   const n = Object.values(STYLES).flat().filter(styleUnlocked).length, tot = Object.values(STYLES).flat().length;
-  $('styleCount').textContent = `${n} / ${tot} débloqués · les succès du Profil en débloquent d’autres`;
+  $('styleCount').textContent = styleAdmin() ? `${tot} / ${tot} débloqués (compte admin)` : `${n} / ${tot} débloqués · les succès du Profil en débloquent d’autres`;
 }
 if (typeof document !== 'undefined' && document.getElementById('styleCard')) {
   $('styleB').addEventListener('click', showStyle);
