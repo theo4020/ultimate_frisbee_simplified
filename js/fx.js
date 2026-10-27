@@ -161,9 +161,9 @@ function fxUpdate(dt) {
       p.x += p.vx * dt; p.y += p.vy * dt; if (p.vr) p.rot += p.vr * dt;
     }
   }
-  // ton joueur change (switch, clic, touche 1 à 5…) : un rond jaune sous le nouveau, pour le repérer tout de suite
+  // ton joueur change parce que tu l'as demandé (switch, clic, touche 1 à 5 : FX.manualSel) : un rond jaune sous le nouveau, pour le repérer tout de suite
   const me = typeof meH === 'function' && !G.attract ? meH() : null, sel = me && me.sel;
-  if (sel && FX.lastSel && sel !== FX.lastSel && G.phase === 'play' && disc.holder !== sel) ring(sel.x, sel.y, '#facc15', 1.6, 0.35);
+  if (sel && FX.lastSel && sel !== FX.lastSel && G.phase === 'play' && disc.holder !== sel && G.time - (FX.manualSel || -9) < 0.5) ring(sel.x, sel.y, '#facc15', 1.6, 0.35);
   FX.lastSel = sel || null;
   FX.shake = Math.max(0, FX.shake - dt * 30);
   if (FX.celebrate) FX.celebrate.t += dt;

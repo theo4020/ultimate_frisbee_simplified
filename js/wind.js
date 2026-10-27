@@ -83,7 +83,7 @@ function closedOf(defT) {
   if (f === 'haut') return 1;                               // force haut : on bloque le bas
   if (f === 'bas') return -1;
   // force middle (et straight up) : le côté de la ligne la plus proche
-  const y = disc.mode === 'air' ? disc.ey : disc.y;
+  const y = disc.mode === 'air' ? anchorFor(defT)[1] : disc.y;   // pendant une passe : là où la défense croit qu'elle arrive
   return y < H / 2 ? -1 : 1;
 }
 // où se place la mark : côté fermé, ou pile devant en straight up
@@ -101,9 +101,17 @@ function markSpotFor(defT, ax, ay, shade) {
   return [ax + dir * 1.0 * k, ay + c * (1.0 + 0.6 * Math.max(0, sc) + 0.25 * Math.min(0, sc)) * k];
 }
 function anchor() {
-  if (disc.mode === 'air') return [disc.ex, disc.ey];
+  if (disc.mode === 'air') return [disc.ex, disc.ey];   // (la vraie arrivée : pour les règles et l'affichage, pas pour les IA)
   if (disc.mode === 'carry' && G.carryTo) return [G.carryTo.x, G.carryTo.y];   // le jeu reprendra à cet endroit
   return [disc.x, disc.y];
+}
+// là où l'équipe t croit que le jeu va reprendre : pendant une passe, la moyenne des arrivées que ses joueurs devinent
+// dans le cône (predict.js) ; personne ne connaît la vraie arrivée avant que le disque ne s'en approche
+function anchorFor(t) {
+  if (disc.mode !== 'air' || disc.pull || !players.some(p => p.guess)) return anchor();
+  let x = 0, y = 0, n = 0;
+  for (const p of TEAMS[t]) { const [gx, gy] = seenEnd(p); x += gx; y += gy; n++; }
+  return n ? [x / n, y / n] : anchor();
 }
 // team / alt : message réservé à une équipe ; en ligne, ses adversaires voient « alt » à la place (ex. « Play appelé ! »)
 function flash(m, localOnly, team, alt) { if (G.attract) return; G.msg = m; G.msgTeam = team === undefined ? null : team; G.msgAlt = alt || ''; G.msgT = 1.8; if (!localOnly) G.msgId++; }

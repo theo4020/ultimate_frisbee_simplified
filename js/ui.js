@@ -407,10 +407,12 @@ function doJump() {
 }
 const canJump = () => !!jumpTarget(meH());
 function doSelect(p) {
+  FX.manualSel = G.time;
   if (G.net === 'guest') { netSend({ t: 'select', i: players.indexOf(p) }); return; }
   selectFor(meH(), p);
 }
 function doSwitch() {
+  FX.manualSel = G.time;
   if (G.net === 'guest') { netSend({ t: 'switch' }); G.pointer.last = -1e9; return; }
   const h = meH(), n = switchTarget(h);
   if (n) selectFor(h, n);

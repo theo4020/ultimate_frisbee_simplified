@@ -14,7 +14,7 @@ const mk = () => new Proxy(function () {}, {
   apply: () => mk(), set: () => true
 });
 const sandbox = {
-  console, Math, JSON, Date, Set, Map, Array, Object, Number, String, Promise, setTimeout: () => 0, clearTimeout() {},
+  console, Math, JSON, Date, Set, Map, Array, Object, Number, String, Promise, setTimeout: () => 0, clearTimeout() {}, setInterval: () => 0, clearInterval() {},
   document: { getElementById: () => mk(), querySelectorAll: () => [], body: mk(), documentElement: mk(), head: mk(), addEventListener() {} },
   window: { addEventListener() {}, devicePixelRatio: 1, innerHeight: 800, innerWidth: 1200 },
   location: { hash: '', href: 'http://x/' }, navigator: {}, localStorage: { getItem() { return null; }, setItem() {} },
@@ -31,9 +31,9 @@ vm.runInContext(code + `
   const kinds = {}, strat = {};
   const sk = () => formOf(G.off) + '/' + defFormOf(1 - G.off) + (defFormOf(1 - G.off) !== 'zone' ? '-' + forceOf(1 - G.off) : '');
   const _td = throwDisc; throwDisc = function (h, x, y, c, e, k) { const d = dist(h.x, h.y, x, y); thrDist += d; thrN++; pendingLong = d > 25; if (d > 25) longN++;
-    k = k || 'normal'; (kinds[k] = kinds[k] || [0, 0])[0]++; const st = sk(); (strat[st] = strat[st] || [0, 0])[0]++; return _td(h, x, y, c, e, k); };
+    const st = sk(); (strat[st] = strat[st] || [0, 0])[0]++; const r = _td(h, x, y, c, e, k); const kk = disc.kind || 'normal'; (kinds[kk] = kinds[kk] || [0, 0])[0]++; return r; };
   const _cd = catchDisc; catchDisc = function (p) { if (pendingLong && !disc.pull && p.team === disc.team) longOk++; pendingLong = false;
-    if (!disc.pull && p.team === disc.team) { kinds[disc.kind][1]++; const st = sk(); (strat[st] = strat[st] || [0, 0])[1]++; } return _cd(p); };
+    if (!disc.pull && p.team === disc.team) { (kinds[disc.kind] = kinds[disc.kind] || [0, 0])[1]++; const st = sk(); (strat[st] = strat[st] || [0, 0])[1]++; } return _cd(p); };
   const _to = turnover; turnover = function (...a) { pendingLong = false; return _to(...a); };
   let pts = 0, secs = [], stuck = 0, pullPerfect = 0, pulls = 0, dbl = 0;
   const _lp = launchPull; launchPull = function (x, y, c, q) { pulls++; if (q >= 0.82 && q <= 0.95) pullPerfect++; return _lp(x, y, c, q); };

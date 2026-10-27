@@ -199,7 +199,8 @@ function launchPull(ax, ay, curve, q) {
   updateSelected();
   players.forEach(p => { p.react = 0; p.diveTried = true; });
   fxEvent('pull', h.x, h.y, d);
-  flash(q > p1 ? 'Pull trop fort !' : q >= p0 ? 'Pull parfait !' : 'Pull court');
+  if (G.offside) G.msgT = Math.max(G.msgT, 1.8);               // hors-jeu annoncé : on le laisse affiché (pas écrasé par la qualité du pull)
+  else flash(q > p1 ? 'Pull trop fort !' : q >= p0 ? 'Pull parfait !' : 'Pull court');
   if (G.tuto) tutoEvent('pull', q);
   if (q >= p0 && q <= p1 && pulledBy === G.myId) achEvent('pull', d);
 }
@@ -318,7 +319,7 @@ function startPress(h) {
     return true;
   }
   h.startDone = true;                                          // au vert : départ parfait pour son équipe
-  for (const p of TEAMS[h.team]) if (!controllerOf(p) || controllerOf(p) === h) { p.boostT = START.BOOST_T; ring(p.x, p.y, '#facc15', 1.5, 0.35); }
+  for (const p of TEAMS[h.team]) if (!controllerOf(p) || controllerOf(p) === h) p.boostT = START.BOOST_T;
   if (h.id === G.myId) flash('Départ parfait ! 🚀', true); else flash(`${humanLabel(h)} : départ parfait ! 🚀`, true);
   try { SOUNDS.qte(0.9); } catch (e) { }
   return true;
@@ -343,6 +344,16 @@ function drawStartUI() {
       ctx.font = `600 ${fs * 0.75}px system-ui`; ctx.textAlign = 'center'; ctx.fillStyle = '#f8fafc';
       ctx.fillText(isTouchUI() ? 'Tape au vert : départ parfait · trop tôt = hors-jeu' : 'Clic ou Espace au vert : départ parfait · trop tôt = hors-jeu', cx, cy + r * 3.2);
     }
+  });
+  // hors-jeu : bandeau jusqu'à la reprise (le message central passe vite)
+  const off = G.net === 'guest' ? G.netOffside : G.offside && G.offside.team;
+  if (off === 0 || off === 1) inScreen(() => {
+    const pt = G.pull ? G.pull.team : 1 - G.receiving;
+    const t = `Hors-jeu des ${tn(off)} : ` + (off === pt ? `les ${tn(1 - off)} repartiront du brick` : 'check à la réception');
+    ctx.font = `700 ${fs * 0.85}px system-ui`; ctx.textAlign = 'center';
+    const w = ctx.measureText(t).width + fs * 1.4, y = SY(H - 2.5);
+    ctx.fillStyle = 'rgba(127,29,29,.85)'; ctx.fillRect(X(W / 2) - w / 2, y - fs * 1.0, w, fs * 1.5);
+    ctx.fillStyle = '#fee2e2'; ctx.fillText(t, X(W / 2), y);
   });
   const ck = G.net === 'guest' ? G.netCheck : G.checkT;
   if (ck > 0 && G.phase === 'play') inScreen(() => {

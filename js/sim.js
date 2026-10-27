@@ -84,7 +84,7 @@ function update(dt) {
   if (G.ms) G.ms.ptT += dt;
   const off = G.off, def = 1 - off, dir = dirOf(off);
   const atk = TEAMS[off], dfn = TEAMS[def];
-  const [ax, ay] = anchor();
+  const [ax, ay] = anchorFor(off), [dax, day] = anchorFor(def);   // chaque équipe se place selon l'arrivée qu'elle devine
   const oform = formOf(off), dform = defFormOf(def), closed = closedOf(def), open = -closed;
 
   visTick(dt);                                              // coups d'œil des joueurs IA (vision.js)
@@ -113,7 +113,7 @@ function update(dt) {
     attackerAI(p, off, ax, ay, dir, open, oform, dt);
   }
   defenseBrain(def, dt);
-  const slots = zoneSlots(def, ax, ay, dir, closed);
+  const slots = zoneSlots(def, dax, day, dir, closed);
   for (const d of dfn) {
     d.avoid = false;
     if (G.tuto && tutoPin(d)) continue;
@@ -121,13 +121,13 @@ function update(dt) {
     if (userControls(d)) {
       const inp = inputOf(controllerOf(d)); [d.tx, d.ty] = braking(inp) ? brakeTarget(d) : [inp.x, inp.y];
       const mk = markAssist(d, inp); if (mk) [d.tx, d.ty] = mk;     // mark aimantée : il se cale face au porteur
-      if (!!mk !== !!d.markOn) { d.markOn = !!mk; if (mk && controllerOf(d).id === G.myId) ring(d.x, d.y, '#facc15', 1.3, 0.3); }   // petit signal quand l'aimant prend
+      d.markOn = !!mk;
       d.sp = SPD.user; continue;
     }
     d.react -= dt;
     if (d.react > 0) continue;                             // temps de réaction : c'est ce qui crée des démarquages
     d.react = (dform !== 'man' ? rand(...DEF_TUNE.reactZone) : rand(...DEF_TUNE.reactMan)) * aiLvl(def).react;
-    defenderAI(d, ax, ay, dir, closed, defFormOf(def), slots);
+    defenderAI(d, dax, day, dir, closed, defFormOf(def), slots);
   }
   unmarkedGuard(dfn, def);
   holdOffMark(dfn);
@@ -235,9 +235,9 @@ function update(dt) {
       // duel : pas de hasard, seul le placement compte — le plus haut au bon moment et le plus près du disque gagne
       // (à égalité, le receveur : il sait où va le disque)
       const pos = q => jumpLift(q) - dist(q.x, q.y, disc.x, disc.y) * 0.6;
-      if (pos(catcher) >= pos(b)) { achEvent('duel', catcher.team); flash('Duel gagné !'); fxEvent('duel', disc.x, disc.y, catcher.team); catchDisc(catcher); return; }
+      if (pos(catcher) >= pos(b)) { achEvent('duel', catcher.team); flash('Duel : attrapé !'); fxEvent('duel', disc.x, disc.y, catcher.team); catchDisc(catcher); return; }
       fxEvent('duel', disc.x, disc.y, b.team);
-      defStop(b, 'Duel perdu ! Block'); return;
+      defStop(b, 'Duel : défendu !'); return;
     }
     for (const p of blockers) {
       disc.rolled.add(p);
