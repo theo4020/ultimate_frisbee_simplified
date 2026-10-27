@@ -15,7 +15,9 @@ const ACH = [
   { id: 'pull', icon: '🎯', name: 'Pull parfait', desc: 'Arrêter la jauge du pull dans le vert' },
   { id: 'practice10', icon: '🏹', name: 'Tireur d’élite', desc: 'Enchaîner 10 cibles à l’entraînement' },
   { id: 'online', icon: '🌐', name: 'Esprit d’équipe', desc: 'Gagner un match en ligne' },
-  { id: 'champion', icon: '🏆', name: 'Champion', desc: 'Remporter le mini-tournoi' }
+  { id: 'champion', icon: '🏆', name: 'Champion', desc: 'Remporter le mini-tournoi' },
+  { id: 'start', icon: '🚦', name: 'Départ canon', desc: 'Réussir un départ parfait au pull (pile au feu vert)' },
+  { id: 'endless5', icon: '♾️', name: 'Increvable', desc: 'Atteindre le 5e match du mode infini' }
 ];
 const CAREER0 = { matches: 0, wins: 0, scored: 0, conceded: 0, passes: 0, throws: 0, blocks: 0, longest: 0, hucks: 0, high: 0, duels: 0, pulls: 0, practiceBest: 0, titles: 0 };
 function careerGet() { const c = storeGet('uf-career', null); return Object.assign({}, CAREER0, c && typeof c === 'object' ? c : {}); }

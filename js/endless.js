@@ -91,6 +91,7 @@ function endlessNext() {
   const S = G.series;
   if (S.done) { showEndless(S); return; }
   S.cur++; S.opp = endlessOpp(S.cur);
+  if (S.cur >= 4) unlock('endless5');                          // 5e match atteint
   G.phase = 'menu';                                            // sinon « Jouer le point » croirait le match encore fini et sauterait au suivant
   newMatch();
   showMenu('first');

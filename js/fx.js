@@ -124,7 +124,7 @@ function fxPlay(name, x, y, team) {
     case 'turn': burst(x, y, 8, { color: ['#cbd5e1', '#94a3b8'], speed: 3, life: 0.5, size: 0.28 }); ring(x, y, 'rgba(226,232,240,.7)', 1.8, 0.35); break;
     case 'score': {
       const ex = dirOf(team) > 0 ? W - EZ / 2 : EZ / 2;
-      for (let i = 0; i < 70; i++) {
+      if (!celebrate(team, ex)) for (let i = 0; i < 70; i++) {
         FX.parts.push({ x: ex + (Math.random() - 0.5) * EZ, y: Math.random() * H, vx: (Math.random() - 0.5) * 4, vy: -2 - Math.random() * 5,
           t: 0, life: 1.2 + Math.random() * 0.8, color: [c, '#facc15', '#fff'][i % 3], size: 0.85, kind: 'confetti', rot: Math.random() * 6, vr: (Math.random() - 0.5) * 14, drag: 0.6, grav: 5 });
       }
@@ -155,6 +155,7 @@ function fxUpdate(dt) {
     const p = FX.parts[i];
     p.t += dt;
     if (p.t >= p.life) { FX.parts.splice(i, 1); continue; }
+    if (p.t < 0) continue;                                    // effet en attente (feu d'artifice en plusieurs bouquets)
     if (p.kind !== 'ring' && p.kind !== 'pop') {
       const k = Math.max(0, 1 - (p.drag || 0) * dt);
       p.vx *= k; p.vy = p.vy * k + (p.grav || 0) * dt;
@@ -191,7 +192,7 @@ function drawTrail() {
   ctx.save(); ctx.lineCap = 'round';
   for (let i = 1; i < tr.length; i++) {
     const a = i / tr.length;
-    ctx.strokeStyle = `rgba(255,255,255,${(a * 0.5).toFixed(3)})`; ctx.lineWidth = Math.max(1, a * 0.5 * S);
+    ctx.strokeStyle = trailColor((a * 0.5).toFixed(3)); ctx.lineWidth = Math.max(1, a * 0.5 * S);
     ctx.beginPath();
     ctx.moveTo(X(tr[i - 1][0]), Y(tr[i - 1][1]) - tr[i - 1][2] * S * 1.2);
     ctx.lineTo(X(tr[i][0]), Y(tr[i][1]) - tr[i][2] * S * 1.2);
@@ -202,6 +203,7 @@ function drawTrail() {
 function drawParticles() {
   ctx.save();
   for (const p of FX.parts) {
+    if (p.t < 0) continue;
     const a = 1 - p.t / p.life;
     ctx.globalAlpha = Math.max(0, a);
     if (p.kind === 'ring' || p.kind === 'pop') {
@@ -209,6 +211,8 @@ function drawParticles() {
       if (p.kind === 'pop') { ctx.globalAlpha = Math.max(0, a * 0.75); ctx.fillStyle = p.color; circle(X(p.x), Y(p.y), (0.25 + g * p.maxR) * S); ctx.fill(); continue; }
       ctx.strokeStyle = p.color; ctx.lineWidth = 3 * a + 1;
       circle(X(p.x), Y(p.y), (0.4 + g * p.maxR) * S); ctx.stroke();
+    } else if (p.kind === 'star') {
+      ctx.save(); ctx.translate(X(p.x), Y(p.y)); ctx.rotate(p.rot); ctx.fillStyle = p.color; drawStar(ctx, 0, 0, p.size * S * 0.55); ctx.fill(); ctx.restore();
     } else if (p.kind === 'confetti') {
       ctx.save(); ctx.translate(X(p.x), Y(p.y)); ctx.rotate(p.rot); ctx.fillStyle = p.color;
       ctx.fillRect(-p.size * S / 2, -p.size * S / 4, p.size * S, p.size * S / 2); ctx.restore();

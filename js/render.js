@@ -201,6 +201,7 @@ function drawBody(p, x, y, r, face, o) {
       ctx.fillText(String(p.i + 1), bx, by); ctx.restore();
     }
     ctx.fillStyle = HAIR[k]; circle(r * 0.12, 0, r * 0.5); ctx.fill();
+    if (accOn(p)) accTop(ctx, r * 0.12, 0, r * 0.5);            // tenue de ton équipe (Mon style)
   }
   ctx.restore();
 }
@@ -218,37 +219,44 @@ function arrow(x1, y1, x2, y2, color) {
 
 function drawField() {
   const cw = canvas.width / dpr, ch = canvas.height / dpr;
-  ctx.fillStyle = '#1a6b35'; ctx.fillRect(0, 0, cw, ch);
+  const F = fieldTheme();                                    // thème du terrain (Mon style)
+  ctx.fillStyle = F.bg; ctx.fillRect(0, 0, cw, ch);
   if (FX.shake > 0) ctx.translate((Math.random() - 0.5) * FX.shake, (Math.random() - 0.5) * FX.shake);   // secousse
-  for (let i = 0; i < 10; i++) { ctx.fillStyle = i % 2 ? '#1f7a3d' : '#22843f'; ctx.fillRect(X(i * 10), Y(0), 10 * S, H * S); }
+  for (let i = 0; i < 10; i++) { ctx.fillStyle = F.s[i % 2 ? 0 : 1]; ctx.fillRect(X(i * 10), Y(0), 10 * S, H * S); }
+  if (F.planks) { ctx.strokeStyle = 'rgba(0,0,0,.12)'; ctx.lineWidth = 1; for (let y = 1.5; y < H; y += 1.5) { ctx.beginPath(); ctx.moveTo(X(0), Y(y)); ctx.lineTo(X(W), Y(y)); ctx.stroke(); } }   // lattes du parquet
   // l'équipe qui attaque vers la droite (on change de côté à chaque point ; pendant la célébration, on garde les zones
   // du point qui vient d'être marqué)
   const cele = (G.phase === 'between' || G.phase === 'over') && G.celebrate && (!G.menuShown || G.attract) && G.betweenT > 0 && !G.tuto && !G.practice;
   const tR = (dirOf(0) > 0) !== !!cele ? 0 : 1;
-  ctx.fillStyle = rgba(tcol(tR), 0.22); ctx.fillRect(X(W - EZ), Y(0), EZ * S, H * S);
-  ctx.fillStyle = rgba(tcol(1 - tR), 0.22); ctx.fillRect(X(0), Y(0), EZ * S, H * S);
-  ctx.fillStyle = 'rgba(255,255,255,.35)'; ctx.font = `600 ${Math.max(10, S * 1.6)}px system-ui`; ctx.textAlign = 'center';
+  ctx.fillStyle = rgba(tcol(tR), F.ez); ctx.fillRect(X(W - EZ), Y(0), EZ * S, H * S);
+  ctx.fillStyle = rgba(tcol(1 - tR), F.ez); ctx.fillRect(X(0), Y(0), EZ * S, H * S);
+  ctx.fillStyle = F.txt; ctx.font = `600 ${Math.max(10, S * 1.6)}px system-ui`; ctx.textAlign = 'center';
   ctx.fillText('Les ' + tn(tR), X(W - EZ / 2), Y(H / 2 - 1)); ctx.fillText('marquent ici', X(W - EZ / 2), Y(H / 2 + 1.5));
   ctx.fillText('Les ' + tn(1 - tR), X(EZ / 2), Y(H / 2 - 1)); ctx.fillText('marquent ici', X(EZ / 2), Y(H / 2 + 1.5));
-  ctx.strokeStyle = 'rgba(255,255,255,.85)'; ctx.lineWidth = 2;
+  ctx.strokeStyle = F.line; ctx.lineWidth = 2;
   ctx.strokeRect(X(0), Y(0), W * S, H * S);
   ctx.beginPath(); ctx.moveTo(X(EZ), Y(0)); ctx.lineTo(X(EZ), Y(H)); ctx.moveTo(X(W - EZ), Y(0)); ctx.lineTo(X(W - EZ), Y(H)); ctx.stroke();
   // points de brick (croix) et plots orange aux coins des en-buts
-  ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 2; const kx = 0.6 * S;
+  ctx.strokeStyle = F.line; ctx.lineWidth = 2; const kx = 0.6 * S;
   for (const bx of [EZ + 12, W - EZ - 12]) { ctx.beginPath(); ctx.moveTo(X(bx) - kx, Y(H / 2) - kx); ctx.lineTo(X(bx) + kx, Y(H / 2) + kx); ctx.moveTo(X(bx) + kx, Y(H / 2) - kx); ctx.lineTo(X(bx) - kx, Y(H / 2) + kx); ctx.stroke(); }
   for (const cx of [0, EZ, W - EZ, W]) for (const cy of [0, H]) {
     ctx.fillStyle = '#f97316'; ctx.beginPath(); ctx.moveTo(X(cx), Y(cy) - 0.7 * S); ctx.lineTo(X(cx) + 0.55 * S, Y(cy) + 0.4 * S); ctx.lineTo(X(cx) - 0.55 * S, Y(cy) + 0.4 * S); ctx.closePath(); ctx.fill();
   }
   // léger vignettage
   const vg = ctx.createRadialGradient(cw / 2, ch / 2, Math.min(cw, ch) * 0.35, cw / 2, ch / 2, Math.max(cw, ch) * 0.7);
-  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.22)');
+  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(0,0,0,${F.vg})`);
   ctx.fillStyle = vg; ctx.fillRect(-20, -20, cw + 40, ch + 40);
+  if (F.lights) for (const [lx, ly] of [[0, 0], [W, 0], [0, H], [W, H], [W / 2, 0], [W / 2, H]]) {   // stade de nuit : halos des projecteurs
+    const g = ctx.createRadialGradient(X(lx), Y(ly), 0, X(lx), Y(ly), 30 * S);
+    g.addColorStop(0, 'rgba(254,249,195,.22)'); g.addColorStop(1, 'rgba(254,249,195,0)');
+    ctx.fillStyle = g; ctx.fillRect(X(lx) - 30 * S, Y(ly) - 30 * S, 60 * S, 60 * S);
+  }
 }
 function draw() {
   const cw = canvas.width / dpr, ch = canvas.height / dpr, iso = isoView();
   screenT();
   if (iso) {                                                 // vue inclinée : au fond, la tribune d'en face
-    const g = ctx.createLinearGradient(0, 0, 0, ISO_HEAD * S); g.addColorStop(0, '#0b1220'); g.addColorStop(1, '#14301f');
+    const sk = fieldTheme().sky, g = ctx.createLinearGradient(0, 0, 0, ISO_HEAD * S); g.addColorStop(0, sk[0]); g.addColorStop(1, sk[1]);
     ctx.fillStyle = g; ctx.fillRect(0, 0, cw, ch);
   }
   groundT();
@@ -472,12 +480,14 @@ function draw() {
     if (shown) drawLoftGauge(disc.holder, X(disc.holder.x), Y(disc.holder.y), lf);
     if (disc.mode === 'air') {                                // ombre + anneau coloré = hauteur, trait = altitude
       ctx.fillStyle = 'rgba(0,0,0,.3)'; circle(X(dx), Y(dy), 0.45 * S); ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.lineWidth = 4.5; circle(X(dx), Y(dy), 1.05 * S); ctx.stroke();   // contour sombre : lisible sur tous les terrains
       ctx.strokeStyle = heightColor(disc.z, 0.95); ctx.lineWidth = 2.5; circle(X(dx), Y(dy), 1.05 * S); ctx.stroke();
       ctx.strokeStyle = heightColor(disc.z, 0.7); ctx.lineWidth = 1.5;
       ctx.beginPath(); ctx.moveTo(X(dx), Y(dy)); ctx.lineTo(X(dx), Y(dy) - lift); ctx.stroke();
     }
-    discShape(X(dx), Y(dy) - lift, 0.5 * S * (1 + disc.z * 0.12), false);   // penché selon sa courbe : vu d'en haut, il s'amincit
-    ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5; ctx.stroke();
+    const dR = 0.5 * S * (1 + disc.z * 0.12);
+    discShape(X(dx), Y(dy) - lift, dR, false);               // penché selon sa courbe : vu d'en haut, il s'amincit
+    paintDisc(ctx, X(dx), Y(dy) - lift, dR); ctx.strokeStyle = '#475569'; ctx.lineWidth = 1.5; ctx.stroke();
     }
   }
 

@@ -47,6 +47,7 @@ Les scripts sont chargés dans cet ordre par `index.html` et partagent le même 
 | `js/series.js` | Mini-tournoi (3 adversaires avec chacun leur style, progression mémorisée) |
 | `js/practice.js` | Mode entraînement (cibles, vent, défenseur) |
 | `js/achievements.js` | Profil : statistiques de carrière et succès |
+| `js/style.js` | « Mon style » : disques, terrains, tenues et célébrations, débloqués par les succès (visuel seulement) |
 | `js/tuto.js` | Tutoriel avec Coach Disco : deux parcours de défis (débutant, avancé), étoiles |
 | `js/ctrl.js` | Réglages des commandes (touches, gestes, vue), options admin |
 | `js/controls.js` | Souris, clavier, tactile, joystick virtuel, plein écran |

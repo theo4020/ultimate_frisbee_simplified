@@ -132,7 +132,7 @@ function showLobby(err, view) {
   if (typeof endlessCfgOut === 'function') endlessCfgOut();
   if (typeof repPoll === 'function') repPoll(true);              // admin : nouveaux signalements ?
   G.menuShown = true; G.teamsOpen = null; G.series = null;
-  $('lobbyCard').style.display = ''; for (const id of ['stratCard', 'seriesCard', 'profileCard', 'endlessCard']) $(id).style.display = 'none';
+  $('lobbyCard').style.display = ''; for (const id of ['stratCard', 'seriesCard', 'profileCard', 'endlessCard', 'styleCard']) $(id).style.display = 'none';
   const tutoDone = storeGet('uf-tuto', false), tuto2 = storeGet('uf-tuto2', false), s = seriesState();
   $('tutoTxt').textContent = !tutoDone ? 'Nouveau ? Coach Disco t’attend : les commandes en petits défis'
     : tuto2 ? 'Revoir les commandes, débutant ou avancé' : 'Débutant fait : passe à l’avancé (mark, passe haute, plays…)';
@@ -161,7 +161,7 @@ function showMenu(kind) {
   if (G.net !== 'guest') newWind();
   hudKey = ''; G.lastMenu = kind;
   computeTeams();
-  for (const id of ['lobbyCard', 'seriesCard', 'profileCard', 'endlessCard']) $(id).style.display = 'none';
+  for (const id of ['lobbyCard', 'seriesCard', 'profileCard', 'endlessCard', 'styleCard']) $(id).style.display = 'none';
   $('stratCard').style.display = '';
   const ME = G.me, side = `les ${tn(ME)} et tu attaques vers la ${dirOf(ME) > 0 ? 'droite' : 'gauche'}`;
   const S_ = G.series;

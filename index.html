@@ -86,6 +86,7 @@
       <button class="bigbtn" id="onlineMenuB">🌐 En ligne<small>Mode infini à plusieurs, parties entre amis, rejoindre avec un code</small></button>
       <button class="bigbtn" id="sysB">📋 Mes systèmes<small>Crée tes propres attaques et défenses</small></button>
       <button class="bigbtn" id="ctrlB">⚙️ Commandes<small>Gestes ou joystick sur téléphone, touches du clavier</small></button>
+      <button class="bigbtn" id="styleB">🎨 Mon style<small>Disque, terrain, tenue, célébration : débloqués par tes succès</small></button>
       <button class="bigbtn" id="profileB">🏅 Profil<small>Tes statistiques de carrière et tes succès</small></button>
       <button class="bigbtn" id="repAdminB" style="display:none">🐞 Signalements <span id="repBadge" class="badge" style="display:none"></span><small>Admin : les rapports envoyés par les joueurs</small></button>
       <button class="bigbtn" id="newsB">📰 Nouveautés <span id="newsBadge" class="badge" style="display:none"></span><small>Ce qui a changé dans le jeu</small></button>
@@ -258,6 +259,12 @@
     <h2 id="profileAchTitle">Succès</h2>
     <div class="agrid" id="profileAch"></div>
     <div class="row back" style="justify-content:space-between"><button id="profileBack">← Menu principal</button><button id="profileReset">Effacer mon profil</button></div>
+  </div>
+  <div class="card" id="styleCard" style="display:none">
+    <h1>🎨 Mon style</h1>
+    <p id="styleCount" style="color:var(--muted);margin-top:0"></p>
+    <div id="styleBody"></div>
+    <div class="row back"><button id="styleBack">← Menu principal</button></div>
   </div>
   <div class="card" id="seriesCard" style="display:none">
     <h1>🏆 Mini-tournoi</h1>
@@ -437,6 +444,7 @@
 <script src="js/coop.js"></script>
 <script src="js/practice.js"></script>
 <script src="js/achievements.js"></script>
+<script src="js/style.js"></script>
 <script src="js/tuto.js"></script>
 <script src="js/ctrl.js"></script>
 <script src="js/controls.js"></script>

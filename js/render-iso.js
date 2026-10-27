@@ -48,6 +48,7 @@ function drawChibi(p, sx, sy, r, face, o) {
     const ex = sx + fx * hr * 0.32, ey = hy + hr * 0.12;     // les yeux, tournés vers où il regarde
     ctx.fillStyle = '#0f172a'; circle(ex - hr * 0.25, ey, Math.max(1, hr * 0.11)); ctx.fill(); circle(ex + hr * 0.25, ey, Math.max(1, hr * 0.11)); ctx.fill();
   }
+  if (accOn(p)) accChibi(ctx, sx, hy, hr, back, fx);          // tenue de ton équipe (Mon style)
   ctx.restore();
 }
 
@@ -93,7 +94,7 @@ function drawIsoDisc(dx, dy, tell, lf) {
     if (held && disc.holder && Math.abs(l - LOFT.N) > 0.04) drawLoftGauge(disc.holder, X(disc.holder.x), IY(disc.holder.y, 0), l);
     const rd = 0.6 * S * (1 + Math.min(z, 6) * 0.05);
     discShape(sx, sy, rd * 1.3, true);                       // vu de biais, penché selon sa courbe
-    ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 2; ctx.stroke();
+    paintDisc(ctx, sx, sy, rd * 1.3); ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 2; ctx.stroke();
   });
 }
 

@@ -70,11 +70,11 @@ function drawReplay() {
     if (d[0] === 'air') { ctx.fillStyle = 'rgba(0,0,0,.3)'; circle(X(x), Y(y), 0.45 * S); ctx.fill(); }
     if (iso) inScreen(() => {
       ctx.beginPath(); ctx.ellipse(X(x), IY(y, z), 0.6 * S * 1.3, 0.6 * S * 0.65, 0, 0, Math.PI * 2);
-      ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 2; ctx.stroke();
+      paintDisc(ctx, X(x), IY(y, z), 0.6 * S * 1.3); ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 2; ctx.stroke();
     });
     else {
       circle(X(x), Y(y) - z * S * 1.2, 0.5 * S * (1 + z * 0.12));
-      ctx.fillStyle = '#fff'; ctx.fill(); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5; ctx.stroke();
+      paintDisc(ctx, X(x), Y(y) - z * S * 1.2, 0.5 * S * (1 + z * 0.12)); ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 1.5; ctx.stroke();
     }
   }
   // bandeau « ralenti »

@@ -572,7 +572,7 @@ function guestFrame(dt) {
 function showRoom() {
   if (G.started && !G.teamsOpen) G.teamsOpen = { menu: G.menuShown };
   G.menuShown = true;
-  for (const id of ['stratCard', 'seriesCard', 'profileCard', 'endlessCard']) $(id).style.display = 'none';
+  for (const id of ['stratCard', 'seriesCard', 'profileCard', 'endlessCard', 'styleCard']) $(id).style.display = 'none';
   $('lobbyCard').style.display = '';
   for (const id of ['lobbyHome', 'lobbyJoin', 'lobbySolo', 'lobbyTuto', 'lobbyOnline']) $(id).style.display = 'none';
   $('lobbyRoom').style.display = '';

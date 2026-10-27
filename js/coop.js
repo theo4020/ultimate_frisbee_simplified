@@ -22,6 +22,7 @@ function coopNext() {
   const S = G.series;
   if (S.done) { coopEnd(); return; }
   S.cur++; S.opp = endlessOpp(S.cur);
+  if (S.cur >= 4) unlock('endless5');
   G.phase = 'menu';
   newMatch();
   showMenu('first');

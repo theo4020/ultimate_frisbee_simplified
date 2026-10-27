@@ -310,7 +310,10 @@ function startWindow() {
 function startPress(h) {
   h = h || meH();
   if (!h || (h.team !== 0 && h.team !== 1) || (h.id === G.myId && G.spectator) || !startWindow()) return false;
-  if (G.net === 'guest') { if (!h.startDone) { h.startDone = true; netSend({ t: 'start' }); } return true; }
+  if (G.net === 'guest') {
+    if (!h.startDone) { h.startDone = true; netSend({ t: 'start' }); const s = G.netStart; if (s && s[0] === 0 && s[1] >= 0 && s[1] <= START.GOOD) unlock('start'); }
+    return true;
+  }
   if (h.startDone) return true;
   if (G.phase === 'pull') {
     if (lightsOn(G.pull.cd) < 2) return true;                   // 1er feu : trop tôt pour compter (l'appui ne fait rien)
@@ -320,7 +323,7 @@ function startPress(h) {
   }
   h.startDone = true;                                          // au vert : départ parfait pour son équipe
   for (const p of TEAMS[h.team]) if (!controllerOf(p) || controllerOf(p) === h) p.boostT = START.BOOST_T;
-  if (h.id === G.myId) flash('Départ parfait ! 🚀', true); else flash(`${humanLabel(h)} : départ parfait ! 🚀`, true);
+  if (h.id === G.myId) { flash('Départ parfait ! 🚀', true); if (!G.tuto) unlock('start'); } else flash(`${humanLabel(h)} : départ parfait ! 🚀`, true);
   try { SOUNDS.qte(0.9); } catch (e) { }
   return true;
 }
