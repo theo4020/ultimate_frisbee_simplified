@@ -183,7 +183,13 @@ function update(dt) {
     h.pivY = pv + clamp(pt - pv, -dt / pT, dt / pT);
     // la mark suit le pivot avec son temps de réaction (une feinte la décale du mauvais côté)
     const mk = G.marker;
-    if (mk && !userControls(mk)) { const tau = 0.22 * aiLvl(mk.team).react; G.mkShade = (G.mkShade || 0) + (h.pivY - (G.mkShade || 0)) * Math.min(1, dt / tau); }
+    // feinte : la mark IA réagit à l'intention du porteur (le pivot qui commence) plus qu'au pivot réel, d'autant plus
+    // qu'elle lit mal le jeu ; un aller-retour rapide de pivot (feinte) la fait partir du mauvais côté, une bonne mark mord moins
+    if (mk && !userControls(mk)) {
+      const Lm = aiLvl(mk.team), rd = Lm.k ? Lm.k.read : 0.5, bite = clamp(1.15 - rd, 0.2, 1);
+      const want = h.pivY + ((h.pivTo ?? h.pivY) - h.pivY) * bite, tau = 0.16 * Lm.react;
+      G.mkShade = (G.mkShade || 0) + (want - (G.mkShade || 0)) * Math.min(1, dt / tau);
+    }
     if (!throwerHuman() && !(G.checkT > 0)) {               // porteur sans humain : l'IA lance (pas pendant un check)
       if (G.tuto && tutoHold(h, dt)) { /* tutoriel : lanceur scénarisé */ }
       else if (h.windup) {                                       // passe haute armée : il choisit son moment

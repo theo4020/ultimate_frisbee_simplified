@@ -93,6 +93,20 @@ export default async function (t) {
     t.ok(!m4.on && m4.dy > 2.3, 'réglage coupé : ton joueur va simplement où tu vises (sans se caler à 1,6 m)', m4);
     await p.evaluate(() => { CTRL.markAssist = true; });
 
+    t.group('Feinte de pivot contre une mark IA');
+    const fe = await p.evaluate(async () => {
+      closeAllCards(); document.getElementById('overlay').classList.add('hidden'); G.menuShown = false; G.paused = false;
+      G.phase = 'play'; G.off = G.me; G.pickup = null; G.oplay = null; G.dplay = null; G.checkT = 0;
+      const h = TEAMS[G.me][0]; h.x = 50; h.y = 18; h.vx = h.vy = 0; holdDisc(h); h.think = 99;
+      const d = TEAMS[1 - G.me][0]; d.x = h.x + dirOf(G.me) * 1.4; d.y = 18.5;
+      const fr = n => new Promise(r => { let k = 0; const f = () => (++k >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); });
+      await fr(40); const s0 = G.mkShade;
+      togglePivot(); await fr(5); togglePivot();                 // aller-retour rapide : la feinte
+      let peak = s0; for (let k = 0; k < 20; k++) { await fr(1); peak = Math.max(peak, G.mkShade); }
+      return { s0: +s0.toFixed(2), peak: +peak.toFixed(2), piv: +h.pivY.toFixed(2) };
+    });
+    t.ok(fe.peak - fe.s0 > 0.25 && fe.piv < -0.9, 'un aller-retour rapide de pivot décale la mark du mauvais côté (le porteur, lui, est revenu)', fe);
+
     t.ok(!errs.length, 'aucune erreur', errs);
   } finally { await browser.close(); await srv.close(); }
 }
