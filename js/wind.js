@@ -100,9 +100,15 @@ function markSpotFor(defT, ax, ay, shade) {
   if (forceOf(defT) === 'straight') return [ax + dir * 1.2 * k, ay + 0.9 * shade * c * k];
   return [ax + dir * 1.0 * k, ay + c * (1.0 + 0.6 * Math.max(0, sc) + 0.25 * Math.min(0, sc)) * k];
 }
+// là où le jeu va reprendre (c'est autour de ce point que les équipes se placent)
 function anchor() {
-  if (disc.mode === 'air') return [disc.ex, disc.ey];   // (la vraie arrivée : pour les règles et l'affichage, pas pour les IA)
-  if (disc.mode === 'carry' && G.carryTo) return [G.carryTo.x, G.carryTo.y];   // le jeu reprendra à cet endroit
+  if (disc.mode === 'air') {                                   // (la vraie arrivée : pour les règles et l'affichage, pas pour les IA)
+    if (!disc.pull) return [disc.ex, disc.ey];
+    const out = disc.ex < 0 || disc.ex > W || disc.ey < 0 || disc.ey > H;   // pull : sorti → brick ; dans l'en-but → ramené à la ligne
+    if (out) return [brickX(G.receiving), H / 2];
+    const L = lineSpot(disc.ex, disc.ey); return L ? [L.x, L.y] : [disc.ex, disc.ey];
+  }
+  if ((disc.mode === 'carry' || disc.mode === 'ground') && G.carryTo) return [G.carryTo.x, G.carryTo.y];   // ramené à la ligne / au brick : le jeu reprendra là
   return [disc.x, disc.y];
 }
 // là où l'équipe t croit que le jeu va reprendre : pendant une passe, la moyenne des arrivées que ses joueurs devinent
@@ -111,7 +117,7 @@ function anchorFor(t) {
   if (disc.mode !== 'air' || disc.pull || !players.some(p => p.guess)) return anchor();
   let x = 0, y = 0, n = 0;
   for (const p of TEAMS[t]) { const [gx, gy] = seenEnd(p); x += gx; y += gy; n++; }
-  return n ? [x / n, y / n] : anchor();
+  return n ? [clamp(x / n, 0, W), clamp(y / n, 0, H)] : anchor();   // (une passe qui sort : le jeu reprendra sur la ligne de touche)
 }
 // team / alt : message réservé à une équipe ; en ligne, ses adversaires voient « alt » à la place (ex. « Play appelé ! »)
 function flash(m, localOnly, team, alt) { if (G.attract) return; G.msg = m; G.msgTeam = team === undefined ? null : team; G.msgAlt = alt || ''; G.msgT = 1.8; if (!localOnly) G.msgId++; }

@@ -98,7 +98,8 @@ function firstTouch(d) {
 // disque en vol : premier point de la trajectoire où ce receveur arrive à temps (dans le terrain), debout ou en sautant
 // (en sautant : il lui faut en plus le temps de s'accroupir et de monter ; il saute tout seul, voir aiJumps)
 function catchPoint(p) {
-  const u0 = disc.t / disc.dur, jmax = REACH_STAND + 0.85 * jumpH(p), len = discLen();
+  // (pull : on ne saute pas pour le rattraper, voir aiJumps ; il vise un point où le disque est à portée debout)
+  const u0 = disc.t / disc.dur, jmax = disc.pull ? REACH_STAND - 0.1 : REACH_STAND + 0.85 * jumpH(p), len = discLen();
   for (let u = u0 + 0.02; u <= 1.001; u += 0.025) {
     const z = discZ(u); if (z > jmax) continue;
     const [x, y] = seenAt(p, u);

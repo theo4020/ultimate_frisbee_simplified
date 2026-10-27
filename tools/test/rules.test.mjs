@@ -543,4 +543,20 @@ export default async function (t, { quick }) {
     return { pop, ring, gone: !FX.parts.some(q => q.kind === 'pop') };
   })()`);
   t.ok(fxr.pop && fxr.ring && fxr.gone, 'une réception : petit rond blanc + onde, effacés en moins d’une demi-seconde', fxr);
+
+  t.group('Pull : le receveur le rattrape, les autres se placent là où le jeu reprendra');
+  const pullCk = R(`(() => { let caught = 0, landedIn = 0, ezOk = 0, ez = 0;
+    const _pc = pullCaught; pullCaught = function () { caught++; return _pc.apply(this, arguments); };
+    const _pl = pullLanded; pullLanded = function (ex, ey) { if (inField(ex, ey)) landedIn++; return _pl.apply(this, arguments); };
+    for (let k = 0; k < 30; k++) {
+      G.score = [k % 2, 0]; G.receiving = k % 2; newWind(); startPoint(); let f = 0; while (G.phase === 'pull' && f < 4000) { __tick(); f++; }
+      const L = disc.mode === 'air' ? lineSpot(disc.ex, disc.ey) : null, r = G.receiving;
+      for (let i = 0; i < 400 && disc.mode === 'air'; i++) __tick();
+      if (L) { ez++; const o = TEAMS[r].filter(p => p !== disc.holder && p !== disc.intended), mx = o.reduce((a, p) => a + p.x, 0) / o.length; if (dirOf(r) * (mx - L.x) > 3) ezOk++; }
+    }
+    pullCaught = _pc; pullLanded = _pl;
+    return { caught, landedIn, ez, ezOk };
+  })()`);
+  t.ok(pullCk.caught >= 0.8 * (pullCk.caught + pullCk.landedIn), 'les pulls dans le terrain sont presque tous rattrapés (le receveur ne court plus sous un disque hors de portée)', pullCk);
+  t.ok(pullCk.ezOk === pullCk.ez, 'pull dans l’en-but : les coéquipiers se placent devant la ligne, là où le jeu reprendra', pullCk);
 }
