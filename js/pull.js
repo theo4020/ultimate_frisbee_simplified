@@ -75,6 +75,8 @@ function startPull() {
   G.pullCount = G.pullCount || [0, 0]; G.pullCount[pt]++;
   G.pullUI = { stage: 'aim', t0: 0, x: 0, y: 0, q: 0 };
   G.pullPending = false;
+  G.offside = null; G.startGo = null; G.checkT = 0;
+  for (const h of G.humans) h.startDone = false;
   G.curve = 0; const cr = document.getElementById('curveRange'); if (cr) cr.value = 0;
 }
 
@@ -140,7 +142,10 @@ function pullTick(dt, gdt) {
   if (!pullReady()) return;                                    // on attend que tout le monde soit en place
   G.pull.t += dt;                                              // temps réel : pull automatique au bout de 60 s
   if (G.pull.by != null && !humanById(G.pull.by)) G.pull.by = null;   // le pulleur choisi est parti : l'IA prend le relais
-  if (G.pull.by == null) { G.pull.aiT -= gdt || dt; if (G.pull.aiT <= 0) aiPull(); }
+  if (G.pull.by == null) {
+    if (startOn()) startTick(dt);                              // départ façon course : le pull part au feu vert
+    else { G.pull.aiT -= gdt || dt; if (G.pull.aiT <= 0) aiPull(); }
+  }
   else if (G.pull.t > PULL.AUTO_T) aiPull();                    // personne ne pulle : pull automatique
 }
 // secondes avant le pull automatique (pulleur humain qui tarde) ; null si l'IA pulle elle-même
@@ -202,6 +207,8 @@ function launchPull(ax, ay, curve, q) {
 // réception du pull à la volée
 function pullCaught(p) {
   disc.pull = false;
+  const off = pullerOffside();
+  if (off) { const b = offsideSpot(p.x, p.y); startCarry(p, b.x, b.y, ''); return; }   // hors-jeu de l'équipe qui pulle : brick (ou mieux)
   // un pull se droppe (3 fois moins souvent qu'une passe) : l'équipe qui a pullé récupère le disque là où il tombe
   if (Math.random() < dropChance() * PULL_DROP) { G.pullPending = false; G.dplay = null; G.stats.drops = (G.stats.drops || 0) + 1; msTurnover(p, 'drop'); turnover(p.x, p.y, 'Pull droppé ! Turnover'); return; }
   fxEvent('catch', p.x, p.y, p.team);
@@ -229,6 +236,7 @@ function pullLanded(ex, ey) {
   // le disque est ramassé là où il s'arrête (ou là où il est sorti), puis ramené si besoin
   const x = clamp(ex, 0.5, W - 0.5), y = clamp(ey, 0.5, H - 0.5);
   G.carryTo = out ? { x: brickX(r), y: H / 2 } : lineSpot(x, y);
+  if (pullerOffside()) { const b = offsideSpot(x, y); G.carryTo = b.x === x && b.y === y ? null : b; }   // hors-jeu : brick (ou mieux)
   pullToSpot(x, y, null, out ? 'Out ! Brick' : '');
 }
 function pullToSpot(x, y, catcher, msg) {
@@ -243,8 +251,106 @@ function pullToSpot(x, y, catcher, msg) {
 }
 // première possession après le pull : les plays démarrent maintenant
 function afterPull(p) {
+  if (G.offside && G.offside.team === p.team) { G.checkT = START.CHECK_T; flash('Check : la défense se place', true); }   // l'équipe qui reçoit était hors-jeu
+  G.offside = null;
   if (G.dplay) { G.dplay.t = 0; startDPlay(); }
   G.aiPlayTried = false;                                      // nouvelle possession : l'IA pourra appeler un play
+}
+
+// ---------- départ au pull, façon départ de course (facultatif) ----------
+// Quand l'IA pulle (hors tutoriel), trois feux rouges s'allument puis passent au vert : le pull part au vert.
+//  • appuyer (clic, tape, Espace, A) dans les START.GOOD s après le vert : départ parfait, ton équipe part en trombe ;
+//  • appuyer pendant les feux (dès le 2e) : faux départ = hors-jeu (règles WFDF 7.3 à 7.5) :
+//      – équipe qui pulle : l'équipe qui reçoit joue comme si elle avait appelé « brick » (le brick, ou mieux) ;
+//      – équipe qui reçoit : reprise arrêtée (check) : la défense a le temps de se placer avant le premier lancer ;
+//  • ne rien faire : départ normal, comme avant.
+// Une équipe IA (sans humain) part parfois trop tôt, plus souvent en facile.
+const START = { LIGHT: 0.5, N: 3, GOOD: 0.25, BOOST_T: 1.3, BOOST_K: 1.25, CHECK_T: 2.5, AI_OFF: 0.045 };
+const startOn = () => !G.attract && !G.tuto && !G.practice && !!G.pull && G.pull.by == null && G.humans.some(h => h.team === 0 || h.team === 1);
+const lightsOn = cd => (cd == null || cd < 0 ? 0 : Math.min(START.N, Math.floor(cd / START.LIGHT) + 1));
+const pullerOffside = () => !!G.offside && G.offside.team === 1 - G.receiving;
+function startTick(dt) {
+  const P = G.pull;
+  if (P.cd == null) {                                          // un court temps avant le 1er feu ; l'IA tire son éventuel faux départ
+    P.cd = -0.5;
+    const d = P.team, L = aiLvl(d);
+    if (!teamHumans(d).length && Math.random() < START.AI_OFF * (L.react || 1) ** 2) {
+      const c = TEAMS[d].filter(p => p !== disc.holder);
+      P.aiOff = { at: rand(0.7, 1.35), p: c[Math.floor(Math.random() * c.length)] };
+    }
+  }
+  const was = lightsOn(P.cd); P.cd += dt; const now = lightsOn(P.cd);
+  if (now > was) try { SOUNDS.tick(); } catch (e) { }
+  if (P.aiOff && !G.offside && P.cd >= P.aiOff.at) offside(P.team, P.aiOff.p, false);
+  if (P.cd >= START.N * START.LIGHT) { try { SOUNDS.tickHi(); } catch (e) { } G.startGo = G.time; aiPull(); }
+}
+// hors-jeu de l'équipe t (p : le joueur qui est parti trop tôt, il fait un pas au-delà de sa ligne)
+function offside(t, p, human) {
+  if (G.offside) return;
+  G.offside = { team: t };
+  if (p) { p.tx = p.x + dirOf(t) * 1.8; p.ty = p.y; }
+  const pt = G.pull ? G.pull.team : 1 - G.receiving;
+  flash((human ? 'Faux départ ! ' : '') + `Hors-jeu des ${tn(t)} : ` + (t === pt ? `les ${tn(1 - t)} repartiront du brick` : 'reprise arrêtée à la réception'), true);
+  try { whistle(); } catch (e) { }
+}
+// le meilleur endroit pour l'équipe qui reçoit après un hors-jeu de l'équipe qui pulle : le brick, ou là où elle a le disque s'il est plus loin
+function offsideSpot(x, y) {
+  const r = G.receiving, b = { x: brickX(r), y: H / 2 }, L = lineSpot(x, y);
+  const here = L || { x, y };
+  return dirOf(r) * (here.x - b.x) > 0 ? here : b;
+}
+// fenêtre où un appui sert au départ (pendant les feux, ou juste après le vert)
+function startWindow() {
+  if (G.net === 'guest') { const s = G.netStart; return !!s && (s[0] > 0 || (s[1] >= 0 && s[1] <= START.GOOD + 0.1)); }
+  if (G.phase === 'pull' && G.pull && G.pull.cd != null) return G.pull.cd >= 0;
+  return G.phase === 'play' && G.startGo != null && G.time - G.startGo <= START.GOOD;
+}
+// appui d'un joueur (clic, tape, Espace, A, ou message d'un invité) : true s'il a servi au départ (il ne fait alors rien d'autre)
+function startPress(h) {
+  h = h || meH();
+  if (!h || (h.team !== 0 && h.team !== 1) || (h.id === G.myId && G.spectator) || !startWindow()) return false;
+  if (G.net === 'guest') { if (!h.startDone) { h.startDone = true; netSend({ t: 'start' }); } return true; }
+  if (h.startDone) return true;
+  if (G.phase === 'pull') {
+    if (lightsOn(G.pull.cd) < 2) return true;                   // 1er feu : trop tôt pour compter (l'appui ne fait rien)
+    h.startDone = true;
+    offside(h.team, h.sel || nearest(TEAMS[h.team].filter(p => p !== disc.holder), goalLine(h.team), H / 2), true);
+    return true;
+  }
+  h.startDone = true;                                          // au vert : départ parfait pour son équipe
+  for (const p of TEAMS[h.team]) if (!controllerOf(p) || controllerOf(p) === h) { p.boostT = START.BOOST_T; ring(p.x, p.y, '#facc15', 1.5, 0.35); }
+  if (h.id === G.myId) flash('Départ parfait ! 🚀', true); else flash(`${humanLabel(h)} : départ parfait ! 🚀`, true);
+  try { SOUNDS.qte(0.9); } catch (e) { }
+  return true;
+}
+// état pour les invités : [feux allumés (0 à 3), secondes depuis le vert (-1 : pas de vert)]
+function startNet() {
+  const n = G.phase === 'pull' && G.pull ? lightsOn(G.pull.cd) : 0, go = G.startGo != null && G.phase === 'play' ? G.time - G.startGo : -1;
+  return n || (go >= 0 && go < 1) ? [n, go >= 0 && go < 1 ? +go.toFixed(2) : -1] : 0;
+}
+// feux de départ (au-dessus du terrain) et bandeau du check
+function drawStartUI() {
+  const st = G.net === 'guest' ? G.netStart : startNet();
+  const fs = Math.max(11, S * 1.5);
+  if (st) inScreen(() => {
+    const [n, go] = st, green = go >= 0 && go < 0.6, r = Math.max(8, S * 1.1), cx = X(W / 2), cy = SY(7);
+    ctx.fillStyle = 'rgba(15,23,42,.8)'; ctx.fillRect(cx - r * 5, cy - r * 1.7, r * 10, r * 3.4);
+    for (let k = 0; k < START.N; k++) {
+      ctx.fillStyle = green ? '#22c55e' : k < n ? '#ef4444' : '#334155';
+      circle(cx + (k - 1) * r * 3, cy, r); ctx.fill();
+    }
+    if (n > 0) {
+      ctx.font = `600 ${fs * 0.75}px system-ui`; ctx.textAlign = 'center'; ctx.fillStyle = '#f8fafc';
+      ctx.fillText(isTouchUI() ? 'Tape au vert : départ parfait · trop tôt = hors-jeu' : 'Clic ou Espace au vert : départ parfait · trop tôt = hors-jeu', cx, cy + r * 3.2);
+    }
+  });
+  const ck = G.net === 'guest' ? G.netCheck : G.checkT;
+  if (ck > 0 && G.phase === 'play') inScreen(() => {
+    ctx.font = `700 ${fs}px system-ui`; ctx.textAlign = 'center';
+    const t = `Check… ${Math.ceil(ck)}`, w = ctx.measureText(t).width + fs * 1.4;
+    ctx.fillStyle = 'rgba(15,23,42,.75)'; ctx.fillRect(X(W / 2) - w / 2, SY(2.5) - fs * 1.1, w, fs * 1.6);
+    ctx.fillStyle = '#fde68a'; ctx.fillText(t, X(W / 2), SY(2.5));
+  });
 }
 
 // ---------- affichage (visée, jauge) ----------

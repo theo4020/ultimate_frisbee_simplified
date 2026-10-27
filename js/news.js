@@ -8,6 +8,13 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
+  { id: 31, date: '2026-10-27', tag: 'Jeu', title: 'Départ au pull et mark aimantée 🚦',
+    body: `<b>Départ au pull</b> : quand l'IA pulle, trois feux s'allument. Appuie (clic, Espace, tape ou A) pile au
+      <b>vert</b> : ton équipe part en trombe. Trop tôt, c'est <b>hors-jeu</b>, comme en vrai : si ton équipe pulle,
+      l'adversaire repart du brick ; si elle reçoit, la reprise est arrêtée le temps que la défense se place. L'IA aussi
+      part parfois trop tôt… Et si tu ne fais rien, tout se passe comme avant.<br>
+      <b>Mark aimantée</b> : en défense, entre dans le cercle du porteur et ton joueur se cale face à lui ; à gauche ou à
+      droite, tu fermes un côté. Vise plus loin pour quitter la mark quand tu veux (réglable dans Commandes).` },
   { id: 30, date: '2026-10-26', tag: 'En ligne', title: 'La partie continue même si l’hôte part 🔁',
     body: `En ligne, si l'hôte quitte la partie (onglet fermé, réseau coupé…), un autre joueur la <b>reprend
       automatiquement</b> là où elle en était : même score, mêmes équipes, chacun garde sa place. Plus besoin de tout

@@ -63,7 +63,7 @@ function updateHud() {
   const K = a => keysOf(a).map(keyName).join('/');            // touches réglées dans le panneau Commandes
   $('hint').innerHTML = G.spectator ? '<i>Mode spectateur</i> : tu regardes la partie. Bouton <b>👥 Équipes</b> (en haut) pour rejoindre une équipe s’il reste une place. Les émojis permettent d’encourager les joueurs.'
     : G.phase === 'pull'
-    ? (pulling ? '<i>Pull</i> : clique sur la zone visée (' + K('curveL') + ' / ' + K('curveR') + ' ou molette pour la courbe), puis arrête la jauge dans le vert (clic ou Espace). Échap pour revenir à la visée. Un pull long et haut laisse le temps à ta défense de monter.' : '<i>Pull</i> : le disque arrive, ton équipe se met en place.')
+    ? (pulling ? '<i>Pull</i> : clique sur la zone visée (' + K('curveL') + ' / ' + K('curveR') + ' ou molette pour la courbe), puis arrête la jauge dans le vert (clic ou Espace). Échap pour revenir à la visée. Un pull long et haut laisse le temps à ta défense de monter.' : '<i>Pull</i> : les équipes se mettent en place.' + (startOn() ? ' Quand l’IA pulle, trois feux s’allument : <i>clic ou Espace au vert</i> = départ parfait pour ton équipe ; trop tôt = hors-jeu (l’équipe qui pulle donne le brick, celle qui reçoit subit un check).' : ''))
     : att
     ? (multi ? '<i>Attaque à plusieurs</i> : ton joueur (anneau jaune) suit la souris ; avec le disque, vise et relâche pour lancer · <i>' + K('switch') + ' / 1 à 5</i> prendre un joueur de l’IA'
              : '<i>Attaque</i> : vise et relâche pour lancer (relâche sur ton joueur pour annuler)')
@@ -73,7 +73,7 @@ function updateHud() {
     + ' · pendant le vol : <i>' + K('jump') + ' / clic droit</i> saut, <i>' + K('dive') + ' / clic</i> layout du receveur.'
     + ' Anneau vert = coéquipier démarqué ; pointillés = zone de stall.'
     : '<i>Défense</i> : ton joueur (anneau jaune) suit la souris · <i>clic / ' + K('dive') + '</i> layout · <i>' + K('jump') + ' / clic droit</i> saut (contre au lâcher ou à l’arrivée)'
-    + ' · <i>' + K('switch') + '</i> switch vers le joueur en gris, <i>1 à 5</i> prendre ce joueur.'
+    + ' · <i>' + K('switch') + '</i> switch vers le joueur en gris, <i>1 à 5</i> prendre ce joueur.' + (CTRL.markAssist ? ' En mark (dans le cercle du porteur), ton joueur se cale face à lui : gauche / droite pour fermer un côté, vise plus loin pour la quitter.' : '')
     + ' Entre dans le cercle du porteur pour lancer le compte (un seul défenseur dedans, sinon double team).';
   if (G.gpActive) $('hint').innerHTML = '🎮 <i>Manette</i> : stick gauche = déplacer le curseur de visée / courir (stick droit = visée fine) · A ou RT = lancer au curseur (sans le disque : saut) · B = layout · X = appel de cut au curseur (sans le disque : switch) · Y = pivot · croix ↑/↓ = hauteur de passe · LB/RB = courbe · Start = menu. ' + $('hint').innerHTML;
   $('emoBar').style.display = G.net && G.started ? '' : 'none';

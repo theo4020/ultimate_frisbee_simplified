@@ -40,7 +40,7 @@ if (JOBS === 1 || files.length === 1) {
 } else {
   const { spawn } = await import('node:child_process');
   // les plus longs d'abord, pour bien remplir les processus
-  const COST = { systems: 48, ui: 41, rules: 40, online: 30, 'ui-account': 10, account: 8, 'ui-systems': 6, 'ui-gallery': 6 };   // secondes environ
+  const COST = { systems: 48, ui: 41, rules: 40, online: 30, 'ui-account': 10, account: 8, 'ui-systems': 6, 'ui-gallery': 6, 'ui-minigames': 40 };   // secondes environ
   const order = files.slice().sort((a, b) => (COST[b.replace('.test.mjs', '')] || 1) - (COST[a.replace('.test.mjs', '')] || 1));
   const out = new Map(); let next = 0;
   const work = () => new Promise(done => {

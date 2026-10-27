@@ -45,7 +45,7 @@ function sendInput(force) {
   if (!force && G.time - inT < 0.033) return;
   inT = G.time;
   const aim = canThrow() && G.pointer.active;                  // il vise : ses coéquipiers voient l'aperçu de sa passe
-  netSend({ t: 'in', x: +G.pointer.x.toFixed(2), y: +G.pointer.y.toFixed(2), down: G.pointer.down, brake: braking(G.pointer), loft: canThrow() ? +G.loft.toFixed(2) : LOFT.N, aim, aiming: aim && !!G.aiming, curve: aim ? +(+G.curve || 0).toFixed(2) : 0, piv: canThrow() && G.pivHolder === disc.holder ? G.pivSel : -1 });
+  netSend({ t: 'in', x: +G.pointer.x.toFixed(2), y: +G.pointer.y.toFixed(2), down: G.pointer.down, brake: braking(G.pointer), loft: canThrow() ? +G.loft.toFixed(2) : LOFT.N, aim, aiming: aim && !!G.aiming, curve: aim ? +(+G.curve || 0).toFixed(2) : 0, piv: canThrow() && G.pivHolder === disc.holder ? G.pivSel : -1, ma: CTRL.markAssist ? 1 : 0 });
 }
 function netError(msg) {
   for (const c of conns.values()) { try { c.close(); } catch (e) { } }
@@ -252,7 +252,7 @@ function hostOnData(id, m) {
     case 'team': setTeam(id, m.team === 1 ? 1 : m.team === -1 ? -1 : 0); break;
     case 'emo': hostEmote(id, m.e | 0); break;
     case 'name': h.name = cleanName(m.name); broadcastRoom(); break;
-    case 'in': Object.assign(inputOf(h), { x: +m.x || 0, y: +m.y || 0, bx: m.brake ? +m.x || 0 : undefined, by: m.brake ? +m.y || 0 : undefined, down: !!m.down, loft: loftOf(+m.loft), aim: !!m.aim, aiming: !!m.aiming, curve: clamp(+m.curve || 0, -1, 1), piv: m.piv === 1 ? 1 : -1, last: G.time }); break;
+    case 'in': Object.assign(inputOf(h), { x: +m.x || 0, y: +m.y || 0, bx: m.brake ? +m.x || 0 : undefined, by: m.brake ? +m.y || 0 : undefined, down: !!m.down, loft: loftOf(+m.loft), aim: !!m.aim, aiming: !!m.aiming, curve: clamp(+m.curve || 0, -1, 1), piv: m.piv === 1 ? 1 : -1, ma: m.ma !== 0, last: G.time }); break;
     case 'callplay': if (G.phase === 'play' && throwerHuman() === h) callPlay(h.team, m.n === 2 ? 2 : 1); break;
     case 'throw': if (G.phase === 'play' && throwerHuman() === h) throwDisc(disc.holder, +m.x, +m.y, clamp(+m.curve || 0, -1, 1), 1, loftOf(typeof m.kind === 'string' ? m.kind : +m.kind)); break;
     case 'dive': diveFor(h, +m.x, +m.y); break;
@@ -261,6 +261,7 @@ function hostOnData(id, m) {
     case 'select': selectFor(h, players[m.i | 0]); break;
     case 'call': callFor(h, +m.x, +m.y); break;
     case 'pause': setPause(id, !!m.on); break;
+    case 'start': startPress(h); break;
     case 'pull': if (G.phase === 'pull' && G.pull && G.pull.by === h.id) launchPull(+m.x, +m.y, m.curve, m.q); break;
     case 'cfg': if (captain(h.team) === h) takeCfg(h, m.cfg); break;   // le capitaine change sa stratégie : ses coéquipiers la voient
     case 'ready':
@@ -296,7 +297,7 @@ function snapshot() {
     d: [disc.mode, idx(disc.holder), r1(disc.x), r1(disc.y), r1(disc.sx), r1(disc.sy), r1(disc.cx), r1(disc.cy), r1(disc.ex), r1(disc.ey), r2(disc.t), r2(disc.dur), idx(disc.intended), r2(disc.loft), r2(disc.curveV || 0), r2(disc.cone || 0), disc.coneOff ? disc.coneOff.map(r2) : 0],
     g: { score: G.score, off: G.off, phase: G.phase, stall: r1(G.stall), mk: idx(G.marker), msg: G.msg, mid: G.msgId, mt: G.msgTeam, ma: G.msgAlt,
       dbl: idx(G.dbl), gt: r1(G.gt), carry: G.carryTo,
-      pull: G.phase === 'pull' && G.pull ? G.pull.team : -1, pullBy: G.pull ? G.pull.by : null, pready: G.phase === 'pull' && pullReady(), pleft: pullLeft(), tell: r2(holderLoft()), pz: G.pz || null, aim: netAimOut(), piv: disc.holder ? r2(disc.holder.pivY || 0) : 0 }
+      pull: G.phase === 'pull' && G.pull ? G.pull.team : -1, pullBy: G.pull ? G.pull.by : null, pready: G.phase === 'pull' && pullReady(), pleft: pullLeft(), tell: r2(holderLoft()), pz: G.pz || null, st: startNet(), ck: G.checkT > 0 ? r1(G.checkT) : 0, aim: netAimOut(), piv: disc.holder ? r2(disc.holder.pivY || 0) : 0 }
   };
 }
 // l'invité qui reprendrait la partie si l'hôte partait : le plus ancien encore connecté ([id, adresse de son navigateur])
@@ -537,7 +538,8 @@ function applySnapshot(m) {
   if ((g.phase === 'play' || g.phase === 'pull') && G.started && !G.teamsOpen && !cardStack.length && !$('overlay').classList.contains('hidden') && $('stratCard').style.display === 'none') {
     $('overlay').classList.add('hidden'); G.menuShown = false;          // arrivée en cours de point : on montre le terrain
   }
-  if (g.phase === 'pull' && (G.phase !== 'pull' || !G.pull)) { G.pull = { team: g.pull, t: 0, by: g.pullBy }; G.pullUI = { stage: 'aim', t0: 0, x: 0, y: 0, q: 0 }; }
+  if (g.phase === 'pull' && (G.phase !== 'pull' || !G.pull)) { G.pull = { team: g.pull, t: 0, by: g.pullBy }; G.pullUI = { stage: 'aim', t0: 0, x: 0, y: 0, q: 0 }; const me = meH(); if (me) me.startDone = false; }
+  G.netStart = g.st || 0; G.netCheck = g.ck || 0;
   if (g.phase === 'pull' && G.pull) G.pull.by = g.pullBy;
   G.netPullReady = !!g.pready; G.netPullLeft = g.pleft == null ? null : g.pleft;
   if (g.phase !== G.phase) { G.phase = g.phase; if (g.phase !== 'play') G.aiming = false; }

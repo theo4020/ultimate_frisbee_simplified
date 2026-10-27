@@ -68,6 +68,7 @@ canvas.addEventListener('pointerdown', fieldDown);
 function fieldDown(e) {
   e.preventDefault();
   G.gpActive = false;
+  if (e.button !== 2 && startPress()) return;                // départ au pull (feux) : l'appui sert au départ
   if (G.replay) { stopReplay(); return; }
   if (touchUI(e)) {                                          // téléphone : gestures.js ; ici, seulement le tap qui arrête la jauge du pull
     if (G.phase === 'pull' && G.pullUI && G.pullUI.stage === 'power') pullStop();
@@ -120,6 +121,7 @@ window.addEventListener('keydown', e => {
   if (keyWait) { e.preventDefault(); captureKey(k); return; }   // réglage d'une touche (panneau Commandes)
   if (coachOpen()) { if (k === 'enter' || k === ' ') { e.preventDefault(); tutoPlayStep(); } return; }   // carte du coach : Entrée / Espace lance l'étape
   if (G.replay) { if (k === 'escape' || k === ' ' || k === 'enter') { e.preventDefault(); stopReplay(); } return; }
+  if ((k === ' ' || k === 'enter' || keyIs('jump', k) || keyIs('switch', k)) && !localPuller() && startPress()) { e.preventDefault(); return; }   // départ au pull
   if (keyIs('play1', k)) { doPlay(1); return; }
   if (keyIs('play2', k)) { doPlay(2); return; }
   if (keyIs('pivot', k)) { if (!e.repeat) pivotBtnDown(); return; }

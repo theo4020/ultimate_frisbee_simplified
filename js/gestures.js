@@ -23,6 +23,7 @@ const gsAimCtx = () => canThrow() || fdPull();
 
 window.addEventListener('pointerdown', e => {
   if (!gsReady(e)) return;
+  if (startWindow()) return;                                  // départ au pull : le tap sert au départ (controls.js)
   if (G.phase === 'pull' && !fdPull()) return;                // pendant la jauge, le tap l'arrête (controls.js)
   const F = { id: e.pointerId, x0: e.clientX, y0: e.clientY, t: G.time, len: 0, role: null };
   if (G.phase === 'play' && canThrow()) { const w = toWorld(e), h = disc.holder; if (h && pickDist(w, h) < 2.5) { F.pb = true; pivotBtnDown(); } }   // doigt sur ton porteur : pied de pivot

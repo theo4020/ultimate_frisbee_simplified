@@ -37,7 +37,7 @@ function drawAim(h, px, py, curve, kind, aiming, ally) {
   }
   ctx.restore();
 }
-function canThrow() { const h = throwerHuman(); return G.phase === 'play' && !!h && h.id === G.myId; }
+function canThrow() { const h = throwerHuman(); return G.phase === 'play' && !!h && h.id === G.myId && !((G.net === 'guest' ? G.netCheck : G.checkT) > 0); }
 function defending() { return G.phase === 'play' && G.off !== G.me; }
 // couleur selon la hauteur : rouge = contrable (même en plongeon), jaune = contrable debout,
 // rose = seulement en sautant, bleu = trop haut
@@ -484,6 +484,7 @@ function draw() {
   drawParticles();
   drawHalloween();                                          // mode Halloween : le noir, sauf dans son cône de vision
   drawPullUI();
+  drawStartUI();                                            // feux du départ au pull, bandeau du check
   screenT();                                                // la suite (messages) se dessine à l'écran, pas au sol
   const hw = typeof hostWaitMsg === 'function' ? hostWaitMsg() : '';
   if (hw) {                                                   // en ligne : l'hôte ne répond plus pour l'instant

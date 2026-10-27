@@ -51,6 +51,7 @@ function gpPlay(sx, sy, m, press) {
   if (press(5)) adjustCurve(0.25);
   if (press(3)) pivotBtnDown();                               // Y : changer de pied de pivot
   if (!btn(3) && GP.prev[3]) pivotBtnUp();
+  if (press(0) && startWindow() && startPress()) return;     // A au feu vert : départ au pull
   // pull
   if (G.phase === 'pull') {
     if (!localPuller()) return;

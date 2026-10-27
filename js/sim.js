@@ -35,13 +35,15 @@ function steer(p, dt) {
   }
   const dx = p.tx - p.x, dy = p.ty - p.y, l = Math.hypot(dx, dy);
   // il ralentit en arrivant (assez tôt pour s'arrêter avec son freinage)
-  let want = Math.min(p.sp * (controllerOf(p) ? 1 : aiLvl(p.team).speed), Math.sqrt(2 * RUN.dec * 0.8 * l), l * 6);
+  const bst = p.boostT > 0 ? START.BOOST_K : 1;             // départ parfait au pull : il part en trombe
+  if (p.boostT > 0) p.boostT -= dt;
+  let want = Math.min(p.sp * (controllerOf(p) ? 1 : aiLvl(p.team).speed) * bst, Math.sqrt(2 * RUN.dec * 0.8 * l), l * 6);
   if (p.jrec > 0) { p.jrec -= dt; want *= 0.5; }            // réception d'un saut : il repart lentement
   let ux = l > 0.01 ? dx / l : 0, uy = l > 0.01 ? dy / l : 0;
   if (p.avoid && l > 0.8) [ux, uy] = avoidDir(p, ux, uy, l);  // pas d'écran : il contourne les autres joueurs
   // accélération réaliste : on accélère doucement (RUN.acc), on freine et on tourne plus vite (RUN.dec, RUN.lat)
   let dvx = ux * want - p.vx, dvy = uy * want - p.vy;
-  const sp = Math.hypot(p.vx, p.vy), kT = (p.team === G.off ? 1 : RUN.defK) * (p === G.marker && disc.mode === 'held' ? 2.5 : 1);   // la mark se déplace en pas chassés, très vite sur 1 m
+  const sp = Math.hypot(p.vx, p.vy), kT = (p.team === G.off ? 1 : RUN.defK) * (p === G.marker && disc.mode === 'held' ? 2.5 : 1) * (bst > 1 ? 1.6 : 1);   // la mark se déplace en pas chassés, très vite sur 1 m
   if (sp < 0.5) {
     const dl = Math.hypot(dvx, dvy), maxd = RUN.acc * kT * dt;
     if (dl > maxd) { dvx *= maxd / dl; dvy *= maxd / dl; }
@@ -116,7 +118,12 @@ function update(dt) {
     d.avoid = false;
     if (G.tuto && tutoPin(d)) continue;
     if (G.practice && practicePin(d)) continue;
-    if (userControls(d)) { const inp = inputOf(controllerOf(d)); [d.tx, d.ty] = braking(inp) ? brakeTarget(d) : [inp.x, inp.y]; d.sp = SPD.user; continue; }
+    if (userControls(d)) {
+      const inp = inputOf(controllerOf(d)); [d.tx, d.ty] = braking(inp) ? brakeTarget(d) : [inp.x, inp.y];
+      const mk = markAssist(d, inp); if (mk) [d.tx, d.ty] = mk;     // mark aimantée : il se cale face au porteur
+      if (!!mk !== !!d.markOn) { d.markOn = !!mk; if (mk && controllerOf(d).id === G.myId) ring(d.x, d.y, '#facc15', 1.3, 0.3); }   // petit signal quand l'aimant prend
+      d.sp = SPD.user; continue;
+    }
     d.react -= dt;
     if (d.react > 0) continue;                             // temps de réaction : c'est ce qui crée des démarquages
     d.react = (dform !== 'man' ? rand(...DEF_TUNE.reactZone) : rand(...DEF_TUNE.reactMan)) * aiLvl(def).react;
@@ -164,7 +171,8 @@ function update(dt) {
     const dbl = dfn.find(d => d.inT > 1.5) || null;
     if (dbl && !G.dbl && G.marker) { G.stall = Math.max(0, Math.floor(G.stall) - 1); flash('Double team !'); fxEvent('double', h.x, h.y, def); }
     G.dbl = G.marker ? dbl : null;
-    if (G.marker && !G.dbl) G.stall += dt * STALL_RATE;
+    if (G.checkT > 0) G.checkT = Math.max(0, G.checkT - dt);   // check après un hors-jeu : le compte attend
+    else if (G.marker && !G.dbl) G.stall += dt * STALL_RATE;
     if (G.stall >= 10) { G.stats.stalls++; msTurnover(h, 'stall'); turnover(h.x, h.y, 'Stall 10 ! Turnover', 'stall'); return; }
     // pivot du porteur : humain, vers le côté où il vise ; IA, choisi dans aiThrow (passe ou feinte)
     // pivot du porteur : un humain le choisit (bouton pivot, côté open au départ) ; l'IA, dans aiThrow (passe ou feinte)
@@ -176,7 +184,7 @@ function update(dt) {
     // la mark suit le pivot avec son temps de réaction (une feinte la décale du mauvais côté)
     const mk = G.marker;
     if (mk && !userControls(mk)) { const tau = 0.22 * aiLvl(mk.team).react; G.mkShade = (G.mkShade || 0) + (h.pivY - (G.mkShade || 0)) * Math.min(1, dt / tau); }
-    if (!throwerHuman()) {                                  // porteur sans humain : l'IA lance
+    if (!throwerHuman() && !(G.checkT > 0)) {               // porteur sans humain : l'IA lance (pas pendant un check)
       if (G.tuto && tutoHold(h, dt)) { /* tutoriel : lanceur scénarisé */ }
       else if (h.windup) {                                       // passe haute armée : il choisit son moment
         const w = h.windup, mk = G.marker, L = aiLvl(h.team);
@@ -309,6 +317,32 @@ function pickupSpeed(p) {
   for (const q of players) if (q !== p) need = Math.max(need, Math.max(0, dist(q.x, q.y, q.tx, q.ty) - 1.5) / (SPD.cut * 0.9));
   return clamp(left / Math.max(need, 0.05), 2.5, SPD.cut);
 }
+// mark aimantée (réglage Commandes, activée par défaut) : le défenseur d'un humain qui entre dans le cercle du porteur se
+// cale tout seul face à lui, entre le porteur et sa zone d'en-but ; l'humain ne choisit plus que le côté qu'il ferme (où il
+// vise, à 1,6 m au plus de chaque côté). Dès qu'il vise plus loin (ou change de joueur), l'aimant lâche : il court où il veut,
+// et le compte repart comme en vrai (règle de la mark qui sort des 4 m, plus bas). Un coéquipier IA déjà en mark te la
+// laisse et prend ton attaquant ; un autre humain déjà en mark : rien (pas de double team).
+const MARK_AS = { IN: STALL_R + 0.5, OUT: STALL_R + 1.8, AWAY: 2.2, SIDE: 1.6, FRONT: 1.1 };
+function markAssist(d, inp) {
+  const h = disc.holder, ctl = controllerOf(d);
+  if (G.phase !== 'play' || disc.mode !== 'held' || !h || h.team === d.team || !ctl || G.tuto || G.practice) return null;
+  if (ctl.id === G.myId ? !CTRL.markAssist : inp.ma === false) return null;
+  if (dist(d.x, d.y, h.x, h.y) > MARK_AS.IN) return null;        // il faut d'abord entrer dans le cercle
+  const br = braking(inp), px = br ? d.x : inp.x, py = br ? d.y : inp.y;
+  const pd = dist(px, py, h.x, h.y);                           // il vise ailleurs (loin, ou nettement plus loin que lui, ex. joystick
+  if (pd > MARK_AS.OUT || pd - dist(d.x, d.y, h.x, h.y) > MARK_AS.AWAY) return null;   // poussé vers l'extérieur) : il quitte la mark
+  const o = G.marker;
+  if (o && o !== d && o.team === d.team && dist(o.x, o.y, h.x, h.y) < STALL_R) {
+    if (controllerOf(o)) return null;                            // un autre humain marque déjà : pas de double team
+    // un coéquipier IA marque : tu prends la mark, il prend ton attaquant (un « switch », comme en match)
+    [d.match, o.match] = [o.match, d.match]; [d.zslot, o.zslot] = [o.zslot, d.zslot]; [d.mission, o.mission] = [o.mission, d.mission];
+    G.marker = d; G.stall = 0; o.react = 0;
+  }
+  const off = clamp(py - h.y, -MARK_AS.SIDE, MARK_AS.SIDE);
+  G.mkShade = off * closedOf(d.team) / MARK_AS.SIDE;           // la mark humaine choisit son côté (dessin, lecture du porteur)
+  d.markAs = G.time;
+  return [clamp(h.x + dirOf(h.team) * MARK_AS.FRONT, 0.5, W - 0.5), clamp(h.y + off, 0.5, H - 0.5)];
+}
 // filet de sécurité : porteur laissé sans mark plus de 2 s (son défenseur pris ailleurs, mémoire fausse…) et personne qui
 // arrive : le défenseur IA le plus proche vient le marquer (sinon le compte ne démarre jamais et le porteur peut attendre)
 function unmarkedGuard(dfn, def) {
@@ -316,7 +350,7 @@ function unmarkedGuard(dfn, def) {
   const h = disc.holder;
   if (dfn.some(d => dist(d.x, d.y, h.x, h.y) < STALL_R || dist(d.tx, d.ty, h.x, h.y) < STALL_R + 0.5)) return;
   const ai = dfn.filter(d => !userControls(d)); if (!ai.length) return;
-  const d = nearest(ai, h.x, h.y);
+  const d = nearest(ai, h.x, h.y); if (!d) return;   // (positions invalides : on ne fait rien)
   [d.tx, d.ty] = markSpot(def, h.x, h.y);
 }
 // reprise posée (et disque ramené à pied) : la défense ne marque pas avant que le lanceur ait le disque

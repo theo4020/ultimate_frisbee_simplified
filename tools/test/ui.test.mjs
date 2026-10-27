@@ -105,7 +105,7 @@ export default async function (t) {
     await p.evaluate(() => { G.form.first = String(G.me); });  // on reçoit : l'IA pulle
     await p.click('#go');
     await p.waitForFunction(() => G.phase === 'pull' || G.phase === 'play');
-    await p.waitForFunction(() => G.phase === 'play', null, { timeout: 30000 });
+    await p.waitForFunction(() => G.phase === 'play' && !startWindow(), null, { timeout: 30000 });
     await p.evaluate(() => { G.off = G.me; G.oplay = null; holdDisc(TEAMS[G.me][0]); TEAMS[G.me][0].x = W / 2; disc.x = W / 2; });
     await p.waitForFunction(() => canThrow() && document.getElementById('play1B').style.display !== 'none', null, { timeout: 5000 }).catch(() => {});
     t.ok(await vis(p, '#play1B') && await vis(p, '#play2B'), 'avec le disque : boutons ▶ Play 1 / Play 2');
@@ -264,7 +264,7 @@ export default async function (t) {
     await q.click('#soloMenuB'); await q.click('#soloB');
     await q.evaluate(() => { G.form.first = String(G.me); });  // l'IA adverse pulle : on reçoit le disque
     await q.click('#go');
-    await q.waitForFunction(() => G.phase === 'play', null, { timeout: 30000 });
+    await q.waitForFunction(() => G.phase === 'play' && !startWindow(), null, { timeout: 30000 });   // (juste après le vert, un tap sert au départ)
     await q.evaluate(() => { G.off = G.me; G.pickup = null; holdDisc(TEAMS[G.me][0]); });   // on donne le disque à notre équipe
     await q.waitForFunction(() => canThrow(), null, { timeout: 5000 });
     const before = await q.evaluate(() => G.stats.throws);
