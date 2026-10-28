@@ -106,15 +106,14 @@ function vibrate(p) { try { if (navigator.vibrate && document.body.classList.con
 function fxPlay(name, x, y, team) {
   if (name === 'call' && hiddenFromMe(team)) return;          // en ligne : un appel de cut reste secret pour l'adversaire
   if (!G.attract) try {
-    const au = typeof crowdSwell === 'function';                // audio.js chargé (enregistrements, sinon sons fabriqués)
+    const au = typeof crowdSample === 'function';                // audio.js chargé (enregistrements, sinon sons fabriqués)
     if (au && SAMPLE_SFX[name] && sfxSample(...SAMPLE_SFX[name])) { /* enregistrement joué à la place du son fabriqué */ }
     else if (SOUNDS[name]) SOUNDS[name](team);
-    if (name === 'score') { if (!au || !crowdSample('cheer', { vol: 0.55 })) SOUNDS.cheer(); if (au) { crowdSwell(1); if (!SAMPLES.cheer) { crowdVoices('ouais', 2.2, 1); crowdClap(45, 2.5); } } }
-    else if (name === 'block' || name === 'int') { if (!au || !crowdSample('ooh', { vol: 0.45 })) SOUNDS.ooh(); if (au) { crowdSwell(0.7); if (!SAMPLES.ooh) crowdVoices('ooh', 1.1, 0.8); } }
-    else if ((name === 'layout' || name === 'duel') && au) { crowdSwell(0.6); if (!crowdSample('cheer-short', { vol: 0.4 })) { crowdVoices('ouais', 1.0, 0.5); crowdClap(14, 1.0); } }
+    if (name === 'score') { if (!au || !crowdSample('cheer', { vol: 0.55 })) SOUNDS.cheer(); if (au) { if (!SAMPLES.cheer) { crowdVoices('ouais', 2.2, 1); crowdClap(45, 2.5); } } }
+    else if (name === 'block' || name === 'int') { if (!au || !crowdSample('ooh', { vol: 0.45 })) SOUNDS.ooh(); if (au) { if (!SAMPLES.ooh) crowdVoices('ooh', 1.1, 0.8); } }
+    else if ((name === 'layout' || name === 'duel') && au) { if (!crowdSample('cheer-short', { vol: 0.4 })) { crowdVoices('ouais', 1.0, 0.5); crowdClap(14, 1.0); } }
     else if (name === 'turn' && au) crowdSample('sigh', { vol: 0.32 });   // drop, passe dehors : le public est déçu
-    else if (name === 'callahan' && au) { crowdSwell(1); crowdSample('cheer-short', { vol: 0.55 }); crowdSample('cheer', { vol: 0.35, delay: 0.15 }); }   // le stade explose
-    else if (name === 'throw' && typeof crowdSwell === 'function' && disc.mode === 'air' && !disc.pull && discLen() > 28) crowdSwell(0.45);   // un long huck part
+    else if (name === 'callahan' && au) { crowdSample('cheer-short', { vol: 0.55 }); crowdSample('cheer', { vol: 0.35, delay: 0.15 }); }   // le stade explose
   } catch (e) { }
   const c = teamColor(team);
   switch (name) {

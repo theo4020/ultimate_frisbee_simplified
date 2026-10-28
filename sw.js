@@ -45,7 +45,6 @@ const FILES = [
   'sounds/cheer-short.mp3',
   'sounds/ooh.mp3',
   'sounds/sigh.mp3',
-  'sounds/murmur.mp3',
   'sounds/whistle.mp3',
   'sounds/catch.mp3',
   'sounds/throw.mp3',

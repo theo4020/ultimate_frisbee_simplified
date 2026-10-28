@@ -66,7 +66,7 @@ function renderCtrl() {
     <h2>Son</h2>
     <div class="row"><span>Musique</span>${b('music', 'off', 'Coupée')}${b('music', 'menus', 'Menus')}${b('music', 'tout', 'Menus et matchs')}</div>
     ${[['fx', '🔉 Effets'], ['music', '🔉 Musique'], ['crowd', '🔉 Public']].map(([k, l]) => `<div class="row"><span>${l}</span><input type="range" class="vol" data-k="${k}" min="0" max="100" step="5" value="${CTRL.vol[k]}" aria-label="${l}"><b class="volv" id="volv-${k}">${CTRL.vol[k] ? CTRL.vol[k] + ' %' : 'Coupé'}</b></div>`).join('')}
-    <div class="desc">Effets : lancers, réceptions, sifflet… Une petite musique dans les menus (et en fond pendant les matchs si tu veux). Le public murmure, retient son souffle sur les longues passes, applaudit les beaux gestes (à 0 : plus de public). Le bouton 🔊 en haut coupe tout.</div>
+    <div class="desc">Effets : lancers, réceptions, sifflet… Une petite musique dans les menus (et en fond pendant les matchs si tu veux). Le public applaudit les points et les beaux gestes, réagit aux blocks et aux drops (à 0 : plus de public). Le bouton 🔊 en haut coupe tout.</div>
     <h2>Défense</h2>
     <div class="row"><span>Mark aimantée</span>${b('markAssist', true, 'Oui')}${b('markAssist', false, 'Non')}</div>
     <div class="desc">${CTRL.markAssist ? 'Dans le cercle du porteur, ton joueur se cale tout seul face à lui : déplace-toi à gauche ou à droite pour fermer un côté. Vise plus loin (ou change de joueur) pour quitter la mark, comme en match.' : 'Ton joueur suit toujours ta souris ou ton doigt, même en mark.'}</div>

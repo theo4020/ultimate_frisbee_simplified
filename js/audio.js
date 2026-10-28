@@ -1,18 +1,18 @@
 // audio.js — Musique et ambiance, entièrement synthétisées (aucun fichier) : une petite boucle entraînante dans les menus
-// (et en match si on le veut), et un public qui murmure, s'emballe sur un long huck et réagit aux beaux gestes.
+// (et en match si on le veut), et un public qui réagit aux beaux gestes (pas de murmure de fond : jugé désagréable).
 // Tout passe par trois volumes (effets, musique, public) branchés sur le même contexte audio que fx.js ; le bouton 🔊
 // coupe tout. Réglages dans Commandes (CTRL.music : 'off' | 'menus' | 'tout', volumes CTRL.vol : fx, music, crowd de 0 à 100).
 
-const AU = { bus: null, music: null, crowd: null, crowdF: null, crowdSrc: null, next: 0, step: 0, bar: 0, playing: false, swell: 0, timer: null, mLevel: 0 };
-const MUSIC_VOL = 0.45, CROWD_VOL = 0.16;
+const AU = { bus: null, next: 0, step: 0, bar: 0, playing: false, timer: null, mLevel: 0 };
+const MUSIC_VOL = 0.45;
 
 // sorties : les effets (fx.js) passent par AU.bus.sfx ; la musique et le public ont leur propre volume
 function auBuses(a) {
   if (AU.bus && AU.bus.ctx === a) return AU.bus;
-  const sfx = a.createGain(), music = a.createGain(), crowd = a.createGain(), crowdFx = a.createGain();
-  sfx.connect(a.destination); music.connect(a.destination); crowd.connect(a.destination); crowdFx.connect(a.destination);
-  music.gain.value = 0; crowd.gain.value = 0; sfx.gain.value = volOf('fx'); crowdFx.gain.value = volOf('crowd');
-  AU.bus = { ctx: a, sfx, music, crowd, crowdFx };            // crowd : le murmure (niveau qui varie) ; crowdFx : ses réactions
+  const sfx = a.createGain(), music = a.createGain(), crowdFx = a.createGain();
+  sfx.connect(a.destination); music.connect(a.destination); crowdFx.connect(a.destination);
+  music.gain.value = 0; sfx.gain.value = volOf('fx'); crowdFx.gain.value = volOf('crowd');
+  AU.bus = { ctx: a, sfx, music, crowdFx };                    // crowdFx : les réactions du public
   return AU.bus;
 }
 const sfxOut = a => auBuses(a).sfx;
@@ -77,31 +77,7 @@ function musicTick() {
 function musicStart() { if (AU.playing) return; AU.playing = true; AU.step = 0; AU.bar = 0; AU.next = 0; AU.timer = setInterval(musicTick, 40); }
 function musicStop() { AU.playing = false; if (AU.timer) clearInterval(AU.timer); AU.timer = null; }
 
-// ---------- le public : un murmure continu qui s'emballe ----------
-function crowdStart(a) {
-  if (AU.crowdSrc) return;
-  const mb = SAMPLES.murmur;
-  if (mb) {                                                    // vraie foule : deux lectures décalées de la même boucle (on n'entend pas qu'elle se répète)
-    const d = mb.getChannelData(0); let st = 0; while (st < d.length && Math.abs(d[st]) < 1e-4) st++;
-    const ls = st / mb.sampleRate, le = Math.min(mb.duration, ls + MURMUR_LEN), out = auBuses(a).crowd, srcs = [];
-    [[1, 0], [0.94, MURMUR_LEN / 2]].forEach(([rate, off]) => {
-      const src = a.createBufferSource(), g = a.createGain(); src.buffer = mb; src.loop = true; src.loopStart = ls; src.loopEnd = le;
-      src.playbackRate.value = rate; g.gain.value = 0.4; src.connect(g).connect(out); src.start(0, ls + off); srcs.push(src);
-    });
-    AU.crowdSrc = { sample: true, stop: () => srcs.forEach(x => { try { x.stop(); } catch (e) { } }) }; AU.crowdF = null;
-    return;
-  }
-  if (!noiseBuf) noise(0.001, { vol: 0.0001 });
-  const src = a.createBufferSource(), f = a.createBiquadFilter(), f2 = a.createBiquadFilter();
-  src.buffer = noiseBuf; src.loop = true;
-  f.type = 'bandpass'; f.frequency.value = 650; f.Q.value = 0.7;   // voix lointaines
-  f2.type = 'lowpass'; f2.frequency.value = 2200;
-  src.connect(f).connect(f2).connect(auBuses(a).crowd); src.start();
-  AU.crowdSrc = src; AU.crowdF = f;
-}
-function crowdStop() { if (AU.crowdSrc) { try { AU.crowdSrc.stop(); } catch (e) { } AU.crowdSrc = null; } }
-// le public réagit : k de 0 à 1 (un huck qui part : 0,6 ; un point : 1)
-function crowdSwell(k) { AU.swell = Math.max(AU.swell, k); }
+// ---------- le public : il réagit aux beaux gestes (enregistrements, sinon sons fabriqués) ----------
 const crowdOn = () => volOf('crowd') > 0 && !!FX.ctx && !FX.muted;
 // applaudissements : n personnes frappent dans leurs mains pendant « spread » s (plus dense au début). Un clap = 3 petits
 // éclats de bruit très rapprochés (8 ms), filtrés autour de 1 à 2 kHz, qui retombent en 60 ms
@@ -142,17 +118,13 @@ function crowdVoices(kind, dur, k, delay) {
 
 // ---------- vrais enregistrements (sounds/, licences Pixabay) ----------
 // chargés une fois quand le son démarre ; tant qu'ils ne sont pas là (ou hors ligne sans cache), on garde les sons fabriqués
-// public : cheer (point), cheer-short (layout, duel), ooh (block, interception), sigh (turnover), murmur (fond, en boucle)
+// public : cheer (point), cheer-short (layout, duel), ooh (block, interception), sigh (turnover)
 // jeu : whistle (pull, stall, hors-jeu), catch, throw
-const SAMPLES = { cheer: null, 'cheer-short': null, ooh: null, sigh: null, murmur: null, whistle: null, catch: null, throw: null }; let samplesAsked = false;
-const MURMUR_LEN = 3.7;                                        // durée de la boucle du murmure (s), sans le silence ajouté par le mp3
+const SAMPLES = { cheer: null, 'cheer-short': null, ooh: null, sigh: null, whistle: null, catch: null, throw: null }; let samplesAsked = false;
 function loadSamples(a) {
   if (samplesAsked || typeof fetch !== 'function' || !a.decodeAudioData) return; samplesAsked = true;
   for (const k of Object.keys(SAMPLES))
-    fetch('sounds/' + k + '.mp3').then(r => r.ok ? r.arrayBuffer() : Promise.reject()).then(b => new Promise((ok, ko) => a.decodeAudioData(b, ok, ko))).then(buf => {
-      SAMPLES[k] = buf;
-      if (k === 'murmur' && AU.crowdSrc && !AU.crowdSrc.sample) crowdStop();   // le murmure enregistré remplace le bruit fabriqué
-    }).catch(() => { });
+    fetch('sounds/' + k + '.mp3').then(r => r.ok ? r.arrayBuffer() : Promise.reject()).then(b => new Promise((ok, ko) => a.decodeAudioData(b, ok, ko))).then(buf => { SAMPLES[k] = buf; }).catch(() => { });
 }
 // joue un enregistrement : vol, à partir de « from » s, pendant « dur » s (fondu de sortie), après « delay » s. Faux s'il n'est pas chargé.
 function crowdSample(name, o) { return crowdOn() && playSample(name, o, crowdOut(FX.ctx)); }
@@ -179,7 +151,7 @@ const inMatch = () => !G.attract && (G.phase === 'play' || G.phase === 'pull' ||
 function audioFrame(dt) {
   const a = FX.ctx;
   if (a && !FX.muted) loadSamples(a);
-  if (!a || FX.muted || (typeof document !== 'undefined' && document.hidden)) { musicStop(); crowdStop(); if (AU.bus) { AU.bus.music.gain.value = 0; AU.bus.crowd.gain.value = 0; } return; }
+  if (!a || FX.muted || (typeof document !== 'undefined' && document.hidden)) { musicStop(); if (AU.bus) AU.bus.music.gain.value = 0; return; }
   const B = auBuses(a), match = inMatch(), mode = CTRL.music || 'menus';
   const wantMusic = mode === 'tout' || (mode === 'menus' && !match);
   const target = wantMusic ? MUSIC_VOL * (match ? 0.45 : 1) : 0;   // en match, la musique se fait discrète
@@ -187,13 +159,4 @@ function audioFrame(dt) {
   B.music.gain.value = AU.mLevel * volOf('music');
   B.sfx.gain.value = volOf('fx'); B.crowdFx.gain.value = volOf('crowd');
   if (target > 0) musicStart(); else if (AU.mLevel < 0.02) { musicStop(); AU.mLevel = 0; }
-  // public
-  const wantCrowd = volOf('crowd') > 0 && match;
-  if (wantCrowd) crowdStart(a);
-  AU.swell = Math.max(0, AU.swell - dt * 0.35);
-  const air = disc.mode === 'air' && !disc.pull ? Math.min(1, discLen() / 40) * (1 - Math.abs(disc.t / disc.dur - 0.6)) : 0;   // il retient son souffle sur un long vol
-  const lvl = wantCrowd ? CROWD_VOL * volOf('crowd') * (1 + 2.5 * Math.max(AU.swell, air * 0.8)) : 0;
-  B.crowd.gain.value += (lvl - B.crowd.gain.value) * Math.min(1, dt * 4);
-  if (AU.crowdF) AU.crowdF.frequency.value = 600 + 500 * Math.max(AU.swell, air);
-  if (!wantCrowd && B.crowd.gain.value < 0.002) crowdStop();
 }

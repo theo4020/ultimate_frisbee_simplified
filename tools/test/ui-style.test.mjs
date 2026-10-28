@@ -58,27 +58,25 @@ export default async function (t) {
     const au = await p.evaluate(async () => {
       const wait = ms => new Promise(r => setTimeout(r, ms));
       FX.muted = false; audioCtx(); CTRL.music = 'menus'; CTRL.vol.crowd = 100;
-      await wait(1200); const match = { playing: AU.playing, crowd: !!AU.crowdSrc };       // (on est en match ici)
+      await wait(1200); const match = { playing: AU.playing, murmur: !!(AU.bus && AU.bus.crowd) || typeof crowdStart === 'function' };       // (on est en match ici)
       goMainMenu && showLobby(); await wait(1500); const menu = { playing: AU.playing, step: AU.step };
       CTRL.music = 'off'; await wait(2500); const off = { playing: AU.playing };
       CTRL.music = 'menus'; toggleMute(); await wait(300); const muted = { playing: AU.playing }; toggleMute();
       return { match, menu, off, muted, ctx: !!FX.ctx };
     });
     t.ok(!au.ctx || (au.menu.playing && au.menu.step > 0), 'dans les menus, la musique joue', au);
-    t.ok(!au.ctx || (!au.match.playing && au.match.crowd), 'en match (réglage « Menus ») : pas de musique, le public murmure', au);
+    t.ok(!au.ctx || (!au.match.playing && !au.match.murmur), 'en match (réglage « Menus ») : pas de musique, et pas de murmure de fond', au);
     t.ok(!au.ctx || (!au.off.playing && !au.muted.playing), 'musique coupée dans Commandes, ou bouton 🔊 : silence', au);
     const smp = await p.evaluate(async () => {
       for (let k = 0; k < 50 && !Object.values(SAMPLES).every(Boolean); k++) await new Promise(r => setTimeout(r, 100));
       if (!FX.ctx) return { ctx: false };
       const r = { ctx: true, loaded: Object.keys(SAMPLES).filter(k => SAMPLES[k]), app: SAMPLES.cheer && +SAMPLES.cheer.duration.toFixed(1), ooh: SAMPLES.ooh && +SAMPLES.ooh.duration.toFixed(1) };
       r.plays = crowdSample('cheer', { vol: 0.5 }) && crowdSample('ooh', { vol: 0.5 }) && sfxSample('whistle', { vol: 0.3 });
-      crowdStop(); crowdStart(FX.ctx); r.murmur = !!(AU.crowdSrc && AU.crowdSrc.sample);
       CTRL.vol.crowd = 0; r.offSilent = !crowdSample('ooh'); r.sfxStill = sfxSample('catch'); CTRL.vol.crowd = 100;
       ['score', 'block', 'layout', 'turn', 'throw', 'catch', 'stall'].forEach(n => fxPlay(n, 0, 0, G.me));
       return r;
     });
-    t.ok(!smp.ctx || (smp.loaded.length === 8 && smp.app > 6 && smp.ooh > 1.5 && smp.plays), 'les 8 enregistrements sont chargés (public, sifflet, réception, lancer) et joués', smp);
-    t.ok(!smp.ctx || smp.murmur, 'le murmure de fond est la vraie foule (en boucle)', smp);
+    t.ok(!smp.ctx || (smp.loaded.length === 7 && smp.app > 6 && smp.ooh > 1.5 && smp.plays), 'les 7 enregistrements sont chargés (public, sifflet, réception, lancer) et joués', smp);
     t.ok(!smp.ctx || (smp.offSilent && smp.sfxStill), 'volume du public à 0 : plus de public, mais les bruits du jeu restent', smp);
 
     t.group('Son : volumes');
