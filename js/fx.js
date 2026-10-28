@@ -58,9 +58,11 @@ function noise(dur, opt = {}) {
   src.start(t0); src.stop(t0 + dur + 0.05);
 }
 
+// enregistrements qui remplacent un son fabriqué : [nom, réglages] (voir sfxSample dans audio.js)
+const SAMPLE_SFX = { throw: ['throw', { vol: 0.22, jit: 0.25 }], catch: ['catch', { vol: 0.5, jit: 0.2 }] };
 const SOUNDS = {
   throw: () => noise(0.28, { freq: 700, to: 2600, q: 1.4, vol: 0.18 }),
-  pull: () => { whistle(); noise(0.6, { freq: 500, to: 2200, q: 1.2, vol: 0.2, delay: 0.25 }); },
+  pull: () => { whistle(); if (!(typeof sfxSample === 'function' && sfxSample('throw', { vol: 0.45, delay: 0.25, rate: 0.8 }))) noise(0.6, { freq: 500, to: 2200, q: 1.2, vol: 0.2, delay: 0.25 }); },
   catch: () => { tone(240, 0.09, { type: 'triangle', vol: 0.22 }); noise(0.04, { filter: 'highpass', freq: 3000, vol: 0.12 }); },
   block: () => { noise(0.18, { filter: 'lowpass', freq: 1200, vol: 0.4 }); tone(140, 0.18, { type: 'square', to: 60, vol: 0.12 }); },
   int: () => { noise(0.15, { filter: 'lowpass', freq: 1500, vol: 0.35 }); tone(392, 0.12, { type: 'triangle', vol: 0.18, delay: 0.05 }); tone(587, 0.16, { type: 'triangle', vol: 0.18, delay: 0.14 }); },
@@ -83,7 +85,7 @@ const SOUNDS = {
   qte: q => q >= 0.82 && q <= 0.95 ? [1047, 1568].forEach((f, i) => tone(f, 0.16, { type: 'triangle', vol: 0.2, delay: i * 0.07 }))
     : tone(q > 0.95 ? 300 : 520, 0.14, { type: 'square', vol: 0.08 })
 };
-function whistle() { tone(2300, 0.32, { type: 'sine', vol: 0.12 }); tone(2450, 0.32, { type: 'sine', vol: 0.06 }); }
+function whistle() { if (typeof sfxSample === 'function' && sfxSample('whistle', { vol: 0.4 })) return; tone(2300, 0.32, { type: 'sine', vol: 0.12 }); tone(2450, 0.32, { type: 'sine', vol: 0.06 }); }
 
 // ---------- particules ----------
 const teamColor = t => (t === 0 || t === 1 ? tcol(t) : '#fff');
@@ -104,10 +106,13 @@ function vibrate(p) { try { if (navigator.vibrate && document.body.classList.con
 function fxPlay(name, x, y, team) {
   if (name === 'call' && hiddenFromMe(team)) return;          // en ligne : un appel de cut reste secret pour l'adversaire
   if (!G.attract) try {
-    if (SOUNDS[name]) SOUNDS[name](team);
-    if (name === 'score') { SOUNDS.cheer(); if (typeof crowdSwell === 'function') { crowdSwell(1); if (!crowdSample('applause', { vol: 0.55 })) { crowdVoices('ouais', 2.2, 1); crowdClap(45, 2.5); } } }
-    else if (name === 'block' || name === 'int') { SOUNDS.ooh(); if (typeof crowdSwell === 'function') { crowdSwell(0.7); if (!crowdSample('ooh', { vol: 0.5 })) crowdVoices('ooh', 1.1, 0.8); } }
-    else if ((name === 'layout' || name === 'duel') && typeof crowdSwell === 'function') { crowdSwell(0.6); if (!crowdSample('applause', { vol: 0.3, from: 0.4, dur: 1.6 })) { crowdVoices('ouais', 1.0, 0.5); crowdClap(14, 1.0); } }
+    const au = typeof crowdSwell === 'function';                // audio.js chargé (enregistrements, sinon sons fabriqués)
+    if (au && SAMPLE_SFX[name] && sfxSample(...SAMPLE_SFX[name])) { /* enregistrement joué à la place du son fabriqué */ }
+    else if (SOUNDS[name]) SOUNDS[name](team);
+    if (name === 'score') { if (!au || !crowdSample('cheer', { vol: 0.55 })) SOUNDS.cheer(); if (au) { crowdSwell(1); if (!SAMPLES.cheer) { crowdVoices('ouais', 2.2, 1); crowdClap(45, 2.5); } } }
+    else if (name === 'block' || name === 'int') { if (!au || !crowdSample('ooh', { vol: 0.45 })) SOUNDS.ooh(); if (au) { crowdSwell(0.7); if (!SAMPLES.ooh) crowdVoices('ooh', 1.1, 0.8); } }
+    else if ((name === 'layout' || name === 'duel') && au) { crowdSwell(0.6); if (!crowdSample('cheer-short', { vol: 0.4 })) { crowdVoices('ouais', 1.0, 0.5); crowdClap(14, 1.0); } }
+    else if (name === 'turn' && au) crowdSample('sigh', { vol: 0.32 });   // drop, passe dehors : le public est déçu
     else if (name === 'throw' && typeof crowdSwell === 'function' && disc.mode === 'air' && !disc.pull && discLen() > 28) crowdSwell(0.45);   // un long huck part
   } catch (e) { }
   const c = teamColor(team);

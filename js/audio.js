@@ -79,6 +79,17 @@ function musicStop() { AU.playing = false; if (AU.timer) clearInterval(AU.timer)
 // ---------- le public : un murmure continu qui s'emballe ----------
 function crowdStart(a) {
   if (AU.crowdSrc) return;
+  const mb = SAMPLES.murmur;
+  if (mb) {                                                    // vraie foule : deux lectures décalées de la même boucle (on n'entend pas qu'elle se répète)
+    const d = mb.getChannelData(0); let st = 0; while (st < d.length && Math.abs(d[st]) < 1e-4) st++;
+    const ls = st / mb.sampleRate, le = Math.min(mb.duration, ls + MURMUR_LEN), out = auBuses(a).crowd, srcs = [];
+    [[1, 0], [0.94, MURMUR_LEN / 2]].forEach(([rate, off]) => {
+      const src = a.createBufferSource(), g = a.createGain(); src.buffer = mb; src.loop = true; src.loopStart = ls; src.loopEnd = le;
+      src.playbackRate.value = rate; g.gain.value = 0.6; src.connect(g).connect(out); src.start(0, ls + off); srcs.push(src);
+    });
+    AU.crowdSrc = { sample: true, stop: () => srcs.forEach(x => { try { x.stop(); } catch (e) { } }) }; AU.crowdF = null;
+    return;
+  }
   if (!noiseBuf) noise(0.001, { vol: 0.0001 });
   const src = a.createBufferSource(), f = a.createBiquadFilter(), f2 = a.createBiquadFilter();
   src.buffer = noiseBuf; src.loop = true;
@@ -128,19 +139,28 @@ function crowdVoices(kind, dur, k, delay) {
   }
 }
 
-// ---------- vrais enregistrements du public (sounds/, licence Pixabay) ----------
+// ---------- vrais enregistrements (sounds/, licences Pixabay) ----------
 // chargés une fois quand le son démarre ; tant qu'ils ne sont pas là (ou hors ligne sans cache), on garde les sons fabriqués
-const SAMPLES = { applause: null, ooh: null }; let samplesAsked = false;
+// public : cheer (point), cheer-short (layout, duel), ooh (block, interception), sigh (turnover), murmur (fond, en boucle)
+// jeu : whistle (pull, stall, hors-jeu), catch, throw
+const SAMPLES = { cheer: null, 'cheer-short': null, ooh: null, sigh: null, murmur: null, whistle: null, catch: null, throw: null }; let samplesAsked = false;
+const MURMUR_LEN = 3.7;                                        // durée de la boucle du murmure (s), sans le silence ajouté par le mp3
 function loadSamples(a) {
   if (samplesAsked || typeof fetch !== 'function' || !a.decodeAudioData) return; samplesAsked = true;
   for (const k of Object.keys(SAMPLES))
-    fetch('sounds/' + k + '.mp3').then(r => r.ok ? r.arrayBuffer() : Promise.reject()).then(b => new Promise((ok, ko) => a.decodeAudioData(b, ok, ko))).then(buf => { SAMPLES[k] = buf; }).catch(() => { });
+    fetch('sounds/' + k + '.mp3').then(r => r.ok ? r.arrayBuffer() : Promise.reject()).then(b => new Promise((ok, ko) => a.decodeAudioData(b, ok, ko))).then(buf => {
+      SAMPLES[k] = buf;
+      if (k === 'murmur' && AU.crowdSrc && !AU.crowdSrc.sample) crowdStop();   // le murmure enregistré remplace le bruit fabriqué
+    }).catch(() => { });
 }
 // joue un enregistrement : vol, à partir de « from » s, pendant « dur » s (fondu de sortie), après « delay » s. Faux s'il n'est pas chargé.
-function crowdSample(name, o) {
-  const a = FX.ctx, buf = SAMPLES[name]; if (!crowdOn() || !buf) return false;
+function crowdSample(name, o) { return crowdOn() && playSample(name, o); }
+// bruit du jeu (sifflet, réception, lancer) : joué même si le public est coupé
+function sfxSample(name, o) { return !!FX.ctx && !FX.muted && playSample(name, o); }
+function playSample(name, o) {
+  const a = FX.ctx, buf = SAMPLES[name]; if (!a || !buf) return false;
   o = o || {}; const t0 = a.currentTime + (o.delay || 0), from = o.from || 0, dur = Math.min(o.dur || buf.duration, buf.duration - from), v = o.vol || 1;
-  const src = a.createBufferSource(), g = a.createGain(); src.buffer = buf; src.playbackRate.value = o.rate || 1;
+  const src = a.createBufferSource(), g = a.createGain(); src.buffer = buf; src.playbackRate.value = (o.rate || 1) * (o.jit ? 1 + (Math.random() - 0.5) * o.jit : 1);   // jit : petite variation à chaque fois
   g.gain.setValueAtTime(v, t0); g.gain.setValueAtTime(v, t0 + Math.max(0, dur - 0.4)); g.gain.linearRampToValueAtTime(0.0001, t0 + dur);
   src.connect(g).connect(sfxOut(a)); src.start(t0, from); src.stop(t0 + dur + 0.05);
   return true;
