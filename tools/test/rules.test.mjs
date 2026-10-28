@@ -537,7 +537,7 @@ export default async function (t, { quick }) {
   t.group('Retours visuels légers');
   const fxr = R(`(() => {
     G.score = [0, 0]; G.receiving = 0; newWind(); startPoint(); G.phase = 'play'; FX.parts.length = 0;
-    const p = TEAMS[0][1]; catchDisc(p);
+    const p = TEAMS[0][1], rnd = Math.random; Math.random = () => 0.99; catchDisc(p); Math.random = rnd;   // pas de drop au hasard
     const pop = FX.parts.some(q => q.kind === 'pop'), ring = FX.parts.some(q => q.kind === 'ring');
     for (let i = 0; i < 30; i++) fxUpdate(1 / 60);
     return { pop, ring, gone: !FX.parts.some(q => q.kind === 'pop') };
