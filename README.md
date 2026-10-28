@@ -79,6 +79,10 @@ Les scripts sont chargés dans cet ordre par `index.html` et partagent le même 
 - **En ligne** (`net.js`) : l'hôte simule, les invités envoient leurs actions et reçoivent l'état ~20 fois par seconde.
   L'hôte annonce un héritier (le plus ancien invité) : si l'hôte part, l'héritier reprend la partie depuis le dernier état
   reçu, les autres se reconnectent à lui et il reprend le code de la partie.
+  Connexion perdue (wifi coupé, passage en 4G, appli en arrière-plan) : l'invité essaie d'abord de retrouver l'hôte pendant
+  30 s et reprend sa place ; l'héritier ne reprend la partie que si le service confirme que l'hôte n'existe plus (jamais
+  deux parties parallèles). L'hôte garde 10 min la place d'un joueur parti en cours de partie (page rechargée comprise).
+  Après un trou de réseau, l'invité saute au dernier état reçu et ne rejoue que les effets des 0,6 dernière seconde.
 
 ## Hébergement et relais TURN
 
@@ -149,7 +153,7 @@ Avec un simple serveur de fichiers, le jeu retombe sur `js/secrets.js` (copie de
 | `ui-gallery.test.mjs` | Galerie dans le navigateur : publier sur un appareil, voir / aimer / ajouter sur un autre, retirer |
 | `worker.test.mjs` | Serveur : relais TURN (sécurité, erreurs), classement (tri, scores impossibles refusés, pseudos nettoyés) |
 | `ui.test.mjs` | Dans Chromium : menus, section Solo, mode infini jusqu'au classement, menu en jeu, signalement, tutoriel, entraînement, lance-pierre sur téléphone |
-| `online.test.mjs` | Onglets : salle d'attente, équipes, pull, passes de l'invité, pause pour tous, départ d'un joueur, mode infini à plusieurs, reprise par un invité si l'hôte part |
+| `online.test.mjs` | Onglets : salle d'attente, équipes, pull, passes de l'invité, pause pour tous, départ d'un joueur, mode infini à plusieurs, reprise par un invité si l'hôte part ; réseau difficile simulé par `fakepeer.js` (retard, wifi coupé, liaison perdue, page rechargée) |
 
 ```bash
 node tools/test/run.mjs --quick                 # sans navigateur (quelques secondes)

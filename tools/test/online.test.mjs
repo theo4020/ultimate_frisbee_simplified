@@ -153,6 +153,69 @@ export default async function (t) {
     await host.click('#gmResume');
     await guest.bringToFront();
 
+    t.group('Réseau difficile');
+    {
+      await guest.bringToFront();
+      const net = (p, o) => p.evaluate(o => Object.assign(FAKENET, o), o);
+      const inPlay = () => host.evaluate(() => { closeAllCards(); G.pz = null; if (G.phase !== 'play') { G.phase = 'play'; G.menuShown = false; document.getElementById('overlay').classList.add('hidden'); const p = TEAMS[0][0]; G.off = 0; p.x = W / 2; p.y = H / 2; holdDisc(p); } });
+      await inPlay();
+      // 1. lenteur et irrégularité (120 ms ± 80 ms dans chaque sens)
+      await net(host, { lag: 120, jitter: 80 }); await net(guest, { lag: 120, jitter: 80 });
+      const smooth = await guest.evaluate(async () => {
+        const fr = () => new Promise(r => requestAnimationFrame(r)); let worst = 0, n = 0, prev = players.map(p => [p.x, p.y]);
+        const t0 = performance.now();
+        while (performance.now() - t0 < 2500) { await fr(); const cur = players.map(p => [p.x, p.y]); worst = Math.max(worst, ...cur.map((c, i) => Math.hypot(c[0] - prev[i][0], c[1] - prev[i][1]))); prev = cur; n++; }
+        return { worst: +worst.toFixed(2), n, wait: hostWaitMsg(), recv: +(G.time - lastRecv).toFixed(2) };
+      });
+      t.ok(smooth.worst < 0.6 && !smooth.wait, 'réseau lent et irrégulier : chez l’invité, les joueurs avancent sans sauts', smooth);
+      await net(host, { lag: 0, jitter: 0 }); await net(guest, { lag: 0, jitter: 0 });
+
+      // 2. wifi coupé 3 s : rien ne casse, pas de rafale de 3 s d'effets d'un coup au retour
+      await inPlay();
+      await guest.evaluate(() => { window.__fx = 0; const f = fxPlay; fxPlay = function () { window.__fx++; return f.apply(this, arguments); }; });
+      await host.evaluate(() => { window.__fxi = setInterval(() => fxEvent('catch', 50, 18, 0), 100); });   // un effet toutes les 0,1 s chez l'hôte
+      await net(guest, { down: true }); await guest.waitForTimeout(3000);
+      await guest.evaluate(() => { window.__fx = 0; }); await net(guest, { down: false });
+      await guest.waitForFunction(() => G.time - lastRecv < 0.3, null, { timeout: 5000 }).catch(() => { });
+      await guest.waitForTimeout(250);
+      const blip = await guest.evaluate(() => ({ fx: window.__fx, reconn: !!G.reconn, net: G.net, me: G.me, recv: +(G.time - lastRecv).toFixed(2) }));
+      await host.evaluate(() => clearInterval(window.__fxi));
+      t.ok(blip.net === 'guest' && !blip.reconn && blip.me === 1 && blip.recv < 0.5, 'wifi coupé 3 s : la partie reprend toute seule', blip);
+      t.ok(blip.fx < 15, 'au retour, seuls les effets récents sont joués (pas 3 s d’effets d’un coup)', blip);
+
+      // 3. wifi coupé 10 s (l'invité est l'héritier) : il ne crée pas sa propre partie, il se reconnecte et garde sa place
+      await net(guest, { down: true }); await guest.waitForTimeout(9000);
+      const mid = await guest.evaluate(() => ({ net: G.net, reconn: !!G.reconn, msg: hostWaitMsg() }));
+      t.ok(mid.net === 'guest' && mid.reconn && /Reconnexion/.test(mid.msg), 'coupure longue : l’invité affiche « Reconnexion… » (et ne reprend pas la partie à son compte)', mid);
+      await net(guest, { down: false });
+      await guest.waitForFunction(() => G.net === 'guest' && hostConn && hostConn.open && !G.reconn && G.time - lastRecv < 0.5, null, { timeout: 10000 }).catch(() => { });
+      const back = await Promise.all([guest.evaluate(() => ({ net: G.net, me: G.me, spec: G.spectator, id: G.myId, reconn: !!G.reconn })), host.evaluate(() => ({ hum: G.humans.map(h => [h.id, h.team]), conns: conns.size, msg: G.msg }))]);
+      t.ok(back[0].net === 'guest' && !back[0].reconn && back[0].me === 1 && !back[0].spec, 'réseau revenu : l’invité est reconnecté et joue toujours les Rouges', back);
+      t.ok(back[1].hum.length === 2 && back[1].hum.some(([id, tm]) => id === back[0].id && tm === 1) && back[1].conns === 1, 'chez l’hôte : même joueur, même équipe, une seule connexion', back);
+
+      // 4. la liaison directe échoue (changement de réseau, wifi → 4G) : reconnexion tout de suite
+      await guest.evaluate(() => FAKENET.fail());
+      await guest.waitForFunction(() => G.net === 'guest' && hostConn && hostConn.open && !G.reconn && G.time - lastRecv < 0.5, null, { timeout: 8000 }).catch(() => { });
+      const ice = await Promise.all([guest.evaluate(() => ({ net: G.net, me: G.me, reconn: !!G.reconn })), host.evaluate(() => G.humans.map(h => [h.id, h.team]))]);
+      t.ok(ice[0].net === 'guest' && !ice[0].reconn && ice[0].me === 1 && ice[1].length === 2, 'liaison perdue (changement de réseau) : reconnexion automatique, même équipe', ice);
+
+      // 5. le service de mise en relation se reconnecte (téléphone revenu sur l'appli) : rien ne change
+      const before = await host.evaluate(() => ({ hum: G.humans.length, started: G.started }));
+      await host.evaluate(() => { peer.disconnected = true; peer.reconnect(); }); await guest.evaluate(() => { peer.disconnected = true; peer.reconnect(); });
+      await guest.waitForTimeout(600);
+      const after = await Promise.all([host.evaluate(() => ({ hum: G.humans.length, started: G.started })), guest.evaluate(() => ({ me: G.me, spec: G.spectator }))]);
+      t.ok(after[0].hum === before.hum && after[0].started && after[1].me === 1 && !after[1].spec, 'reconnexion au service : la salle n’est pas remise à zéro, l’invité ne rejoint pas une 2e fois', { before, after });
+
+      // 6. page rechargée en pleine partie : on retrouve sa place
+      const gid = await guest.evaluate(() => G.myId);
+      await guest.reload(); await guest.waitForFunction(() => typeof G !== 'undefined' && G.net === 'guest' && G.myId > 0 && G.started, null, { timeout: 15000 }).catch(() => { });
+      await guest.waitForTimeout(500);
+      const rl = await Promise.all([guest.evaluate(() => ({ id: G.myId, me: G.me, spec: G.spectator })), host.evaluate(() => G.humans.map(h => [h.id, h.team]))]);
+      t.ok(rl[0].id === gid && rl[0].me === 1 && !rl[0].spec && rl[1].length === 2, 'page rechargée : l’invité retrouve sa place chez les Rouges', { gid, rl });
+      await guest.bringToFront();
+      await guest.evaluate(() => { const o = document.getElementById('overlay'); if (o && !o.classList.contains('hidden') && G.phase === 'play') o.classList.add('hidden'); });
+    }
+
     t.group('Départ de l’invité');
     await guest.click('#menuB'); await guest.click('#gmQuit');
     if (await guest.isVisible('#askBox')) await guest.click('#askYes');
