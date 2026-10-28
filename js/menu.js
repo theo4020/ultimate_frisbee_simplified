@@ -27,6 +27,7 @@ function resetCards() { cardStack.length = 0; for (const c of ['gameMenuCard', '
 function renderGameMenu() {
   $('gmCodeBox').style.display = G.net && G.roomCode ? '' : 'none';   // en ligne : le code pour inviter d'autres joueurs
   $('gmCode').textContent = G.roomCode || '';
+  $('gmNet').textContent = typeof netQualityText === 'function' ? netQualityText() : '';
   $('gmPause').style.display = G.net && G.started ? '' : 'none';
   $('gmPause').textContent = G.pz ? (canUnpause() ? '▶ Relancer la partie' : '⏸ En pause…') : '⏸ Pause pour tout le monde';
   $('gmQuit').textContent = G.net ? '✕ Quitter la partie en ligne' : G.tuto ? '✕ Quitter le tutoriel' : G.practice ? '✕ Quitter l’entraînement' : '✕ Quitter le match';

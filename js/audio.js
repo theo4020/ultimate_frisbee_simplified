@@ -85,7 +85,7 @@ function crowdStart(a) {
     const ls = st / mb.sampleRate, le = Math.min(mb.duration, ls + MURMUR_LEN), out = auBuses(a).crowd, srcs = [];
     [[1, 0], [0.94, MURMUR_LEN / 2]].forEach(([rate, off]) => {
       const src = a.createBufferSource(), g = a.createGain(); src.buffer = mb; src.loop = true; src.loopStart = ls; src.loopEnd = le;
-      src.playbackRate.value = rate; g.gain.value = 0.6; src.connect(g).connect(out); src.start(0, ls + off); srcs.push(src);
+      src.playbackRate.value = rate; g.gain.value = 0.4; src.connect(g).connect(out); src.start(0, ls + off); srcs.push(src);
     });
     AU.crowdSrc = { sample: true, stop: () => srcs.forEach(x => { try { x.stop(); } catch (e) { } }) }; AU.crowdF = null;
     return;

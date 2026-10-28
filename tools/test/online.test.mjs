@@ -147,9 +147,11 @@ export default async function (t) {
     t.group('Code de la partie dans le menu');
     await guest.click('#menuB');
     t.ok(await guest.isVisible('#gmCodeBox') && (await guest.textContent('#gmCode')) === code, 'menu ☰ de l’invité : le code pour inviter d’autres joueurs', await guest.textContent('#gmCode'));
+    t.ok(/Connexion à l’hôte : \d+ ms \((bonne|moyenne|faible)\)/.test(await guest.textContent('#gmNet')), 'et la qualité de sa connexion (temps d’aller-retour)', await guest.textContent('#gmNet'));
     await guest.click('#gmResume');
     await host.bringToFront(); await host.click('#menuB');
     t.ok((await host.textContent('#gmCode')) === code, 'et chez l’hôte');
+    t.ok(/Connexion des joueurs : Invité \d+ ms/.test(await host.textContent('#gmNet')), 'l’hôte voit la connexion de chaque joueur', await host.textContent('#gmNet'));
     await host.click('#gmResume');
     await guest.bringToFront();
 
@@ -168,6 +170,47 @@ export default async function (t) {
         return { worst: +worst.toFixed(2), n, wait: hostWaitMsg(), recv: +(G.time - lastRecv).toFixed(2) };
       });
       t.ok(smooth.worst < 0.6 && !smooth.wait, 'réseau lent et irrégulier : chez l’invité, les joueurs avancent sans sauts', smooth);
+      // 1b. ton joueur répond tout de suite (prédiction), et reste d'accord avec l'hôte
+      const setupD = () => host.evaluate(() => {
+        closeAllCards(); G.pz = null; G.phase = 'play'; G.menuShown = false; document.getElementById('overlay').classList.add('hidden');
+        G.oplay = null; G.dplay = null; G.pickup = null; G.checkT = 0; G.off = 0;
+        const o = TEAMS[0][0]; o.x = 30; o.y = 18; o.vx = o.vy = 0; holdDisc(o); o.think = 99; G.stall = 0;
+        const gh = G.humans.find(h => h.team === 1), d = TEAMS[1][3]; selectFor(gh, d); d.x = 60; d.y = 10; d.vx = d.vy = 0; Object.assign(inputOf(gh), { x: 60, y: 10, down: false, bx: 60, by: 10 });
+      });
+      const react = () => guest.evaluate(async () => {
+        const fr = () => new Promise(r => requestAnimationFrame(r)), me = () => meH().sel;
+        Object.assign(G.pointer, { x: 60, y: 10, down: false, active: true, last: G.time }); sendInput(true);
+        await new Promise(r => setTimeout(r, 900));               // les ordres en retard sont arrivés
+        for (let k = 0; k < 60 && !(me() && me().nx !== undefined && Math.hypot(me().x - 60, me().y - 10) < 0.6 && Math.abs(me().vy) < 0.3); k++) await fr();
+        const p = me(), t0 = performance.now();
+        G.pointer.x = p.x; G.pointer.y = 30; G.pointer.active = true; G.pointer.down = true; G.pointer.last = G.time; sendInput(true);
+        let lat = -1; const iv = setInterval(() => { G.pointer.last = G.time; sendInput(true); }, 100);
+        while (performance.now() - t0 < 2200) { await fr(); if (lat < 0 && p.vy > 0.3) lat = performance.now() - t0; }
+        G.pointer.down = false; sendInput(true); clearInterval(iv);
+        return { lat: Math.round(lat), y: +p.y.toFixed(2), err: +PRED.err.toFixed(2), on: PRED.on };
+      });
+      await setupD(); const rp = await react();
+      const hy = await host.evaluate(() => +TEAMS[1][3].y.toFixed(2));
+      await guest.evaluate(() => { CTRL.netPredict = false; }); await setupD(); const rn = await react(); await guest.evaluate(() => { CTRL.netPredict = true; });
+      t.ok(rp.lat >= 0 && rp.lat < 120 && rn.lat > rp.lat + 150, 'réseau lent : avec la prédiction, ton joueur part tout de suite (sans : après l’aller-retour)', { avec: rp, sans: rn });
+      t.ok(Math.abs(rp.y - hy) < 1.6 && rp.err < 0.6, 'ton joueur prédit reste d’accord avec l’hôte (écart d’environ le retard du réseau, corrigé en douceur)', { guest: rp.y, host: hy, err: rp.err });
+      // plongeon : il part tout de suite chez toi, et finit au même endroit que chez l'hôte
+      await setupD();
+      const dv = await guest.evaluate(async () => {
+        const fr = () => new Promise(r => requestAnimationFrame(r)), me = () => meH().sel;
+        Object.assign(G.pointer, { x: 60, y: 10, down: false, active: true, last: G.time }); sendInput(true);
+        await new Promise(r => setTimeout(r, 900));
+        Object.assign(G.pointer, { x: 60, y: 30, down: true, last: G.time }); sendInput(true);
+        for (let k = 0; k < 30; k++) await fr();                  // il court
+        const p = me(), on = PRED.on && PRED.p === p; doDive(p.x, p.y + 6);
+        const now = p.dive > 0;
+        await new Promise(r => setTimeout(r, 1800));
+        G.pointer.down = false; Object.assign(G.pointer, { x: p.x, y: p.y, last: G.time }); sendInput(true);
+        await new Promise(r => setTimeout(r, 700));
+        return { on, now, y: +p.y.toFixed(2), x: +p.x.toFixed(2), err: +PRED.err.toFixed(2) };
+      });
+      const dh = await host.evaluate(() => ({ x: +TEAMS[1][3].x.toFixed(2), y: +TEAMS[1][3].y.toFixed(2), dives: G.stats.dives }));
+      t.ok(dv.on && dv.now && Math.hypot(dv.x - dh.x, dv.y - dh.y) < 1.2, 'plongeon : ton joueur plonge tout de suite chez toi, et finit au même endroit que chez l’hôte', { dv, dh });
       await net(host, { lag: 0, jitter: 0 }); await net(guest, { lag: 0, jitter: 0 });
 
       // 2. wifi coupé 3 s : rien ne casse, pas de rafale de 3 s d'effets d'un coup au retour
@@ -302,7 +345,7 @@ export default async function (t) {
       await h4.click('#go');
       await h4.waitForFunction(() => G.phase === 'play', null, { timeout: 30000 });
       await a4.waitForFunction(() => Array.isArray(G.heir) && G.heir[0] === G.myId, null, { timeout: 5000 });
-      await h4.evaluate(() => { for (const c of conns.values()) c.close(); });
+      await h4.evaluate(() => netLeave());
       await h4.close();
       await a4.waitForFunction(() => G.net === 'host', null, { timeout: 8000 });
       await b4.waitForFunction(() => G.net === 'guest' && hostConn && hostConn.open, null, { timeout: 15000 });
@@ -339,7 +382,7 @@ export default async function (t) {
       const heir = await a3.evaluate(() => [G.heir[0], G.myId]);
       t.ok(heir[0] === heir[1], 'l’héritier annoncé est le premier invité arrivé', heir);
       const score0 = await h3.evaluate(() => G.score.slice());
-      await h3.evaluate(() => { for (const c of conns.values()) c.close(); });   // l'hôte s'en va
+      await h3.evaluate(() => netLeave());   // l'hôte s'en va (page fermée)
       await h3.close();
       await a3.waitForFunction(() => G.net === 'host', null, { timeout: 8000 });
       t.ok(true, 'l’invité A reprend la partie');

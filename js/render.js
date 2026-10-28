@@ -151,7 +151,7 @@ function drawEmotes() {
   ctx.restore(); isoText = keep;
 }
 // état visuel du saut : -1 = accroupi (préparation), sinon hauteur gagnée en l'air
-const jumpVis = p => (G.net === 'guest' ? (p.lift || 0) : p.jprep > 0 ? -1 : jumpLift(p));
+const jumpVis = p => (G.net === 'guest' && !(typeof PRED !== 'undefined' && PRED.p === p) ? (p.lift || 0) : p.jprep > 0 ? -1 : jumpLift(p));   // ton joueur prédit : son propre saut
 // ---------- joueurs vus de dessus : épaules (maillot), tête, bras, numéro ----------
 const SKIN = ['#f1c7a3', '#d9a37a', '#a8714f', '#7a4b32', '#e8b88f'];
 const HAIR = ['#3b2f2a', '#1f2937', '#a16207', '#7c2d12', '#57534e'];
@@ -507,6 +507,10 @@ function draw() {
     const w = ctx.measureText(hw).width + S * 3, y = ch * 0.3;
     ctx.fillStyle = 'rgba(15,23,42,.85)'; ctx.fillRect(cw / 2 - w / 2, y - S * 2.2, w, S * 3.4);
     ctx.fillStyle = '#fde68a'; ctx.fillText(hw, cw / 2, y); ctx.restore();
+  }
+  if (!hw && G.net === 'guest' && G.started && G.rtt > 250) {   // connexion lente : petit rappel discret en haut à droite
+    ctx.save(); ctx.font = `600 ${Math.max(11, S * 1.3)}px system-ui`; ctx.textAlign = 'right';
+    ctx.fillStyle = G.rtt > 400 ? '#f87171' : '#fbbf24'; ctx.fillText('📶 ' + Math.round(G.rtt) + ' ms', cw - S * 1.2, S * 2.2); ctx.restore();
   }
   if (G.msgT > 0) {                                         // message central, avec un petit effet de « pop »
     const sc = 1 + FX.pop * 0.5 + Math.max(0, G.msgT - 1.5) * 0.6;

@@ -83,6 +83,10 @@ Les scripts sont chargés dans cet ordre par `index.html` et partagent le même 
   30 s et reprend sa place ; l'héritier ne reprend la partie que si le service confirme que l'hôte n'existe plus (jamais
   deux parties parallèles). L'hôte garde 10 min la place d'un joueur parti en cours de partie (page rechargée comprise).
   Après un trou de réseau, l'invité saute au dernier état reçu et ne rejoue que les effets des 0,6 dernière seconde.
+  Prédiction : l'invité déplace lui-même le joueur qu'il contrôle (mêmes règles de course, mark aimantée, plongeons et
+  sauts compris) ; chaque état de l'hôte dit quel ordre il a appliqué (`ak`), l'invité compare avec sa prédiction au même
+  moment et corrige l'écart en douceur. Lancer : geste et bruit tout de suite chez l'invité. Temps d'aller-retour
+  (ping / pong) affiché dans le menu ☰, et sur le terrain de l'invité au-delà de 250 ms.
 
 ## Hébergement et relais TURN
 
@@ -153,7 +157,7 @@ Avec un simple serveur de fichiers, le jeu retombe sur `js/secrets.js` (copie de
 | `ui-gallery.test.mjs` | Galerie dans le navigateur : publier sur un appareil, voir / aimer / ajouter sur un autre, retirer |
 | `worker.test.mjs` | Serveur : relais TURN (sécurité, erreurs), classement (tri, scores impossibles refusés, pseudos nettoyés) |
 | `ui.test.mjs` | Dans Chromium : menus, section Solo, mode infini jusqu'au classement, menu en jeu, signalement, tutoriel, entraînement, lance-pierre sur téléphone |
-| `online.test.mjs` | Onglets : salle d'attente, équipes, pull, passes de l'invité, pause pour tous, départ d'un joueur, mode infini à plusieurs, reprise par un invité si l'hôte part ; réseau difficile simulé par `fakepeer.js` (retard, wifi coupé, liaison perdue, page rechargée) |
+| `online.test.mjs` | Onglets : salle d'attente, équipes, pull, passes de l'invité, pause pour tous, départ d'un joueur, mode infini à plusieurs, reprise par un invité si l'hôte part ; réseau difficile simulé par `fakepeer.js` (retard, wifi coupé, liaison perdue, page rechargée), prédiction de l'invité (réactivité, accord avec l'hôte, plongeon) |
 
 ```bash
 node tools/test/run.mjs --quick                 # sans navigateur (quelques secondes)

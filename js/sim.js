@@ -330,6 +330,19 @@ function pickupSpeed(p) {
 // laisse et prend ton attaquant ; un autre humain déjà en mark : rien (pas de double team).
 const MARK_AS = { IN: STALL_R + 0.5, OUT: STALL_R + 1.8, AWAY: 2.2, SIDE: 1.6, FRONT: 1.1 };
 function markAssist(d, inp) {
+  const r = markAssistTarget(d, inp); if (!r) return null;
+  const h = disc.holder, o = r.o;
+  if (o) {                                                     // un coéquipier IA marque : tu prends la mark, il prend ton attaquant (un « switch », comme en match)
+    [d.match, o.match] = [o.match, d.match]; [d.zslot, o.zslot] = [o.zslot, d.zslot]; [d.mission, o.mission] = [o.mission, d.mission];
+    G.marker = d; G.stall = 0; o.react = 0;
+  }
+  G.mkShade = r.off * closedOf(d.team) / MARK_AS.SIDE;         // la mark humaine choisit son côté (dessin, lecture du porteur)
+  d.markAs = G.time;
+  return r.pt;
+}
+// où la mark aimantée place le défenseur, sans rien changer (sert aussi à la prédiction de l'invité en ligne, net.js) :
+// { pt : [x, y], off : côté fermé, o : coéquipier IA qui marquait (à échanger) }, ou null si l'aimant ne joue pas
+function markAssistTarget(d, inp) {
   const h = disc.holder, ctl = controllerOf(d);
   if (G.phase !== 'play' || disc.mode !== 'held' || !h || h.team === d.team || !ctl || G.tuto || G.practice) return null;
   if (ctl.id === G.myId ? !CTRL.markAssist : inp.ma === false) return null;
@@ -338,16 +351,13 @@ function markAssist(d, inp) {
   const pd = dist(px, py, h.x, h.y);                           // il vise ailleurs (loin, ou nettement plus loin que lui, ex. joystick
   if (pd > MARK_AS.OUT || pd - dist(d.x, d.y, h.x, h.y) > MARK_AS.AWAY) return null;   // poussé vers l'extérieur) : il quitte la mark
   const o = G.marker;
+  let swap = null;
   if (o && o !== d && o.team === d.team && dist(o.x, o.y, h.x, h.y) < STALL_R) {
     if (controllerOf(o)) return null;                            // un autre humain marque déjà : pas de double team
-    // un coéquipier IA marque : tu prends la mark, il prend ton attaquant (un « switch », comme en match)
-    [d.match, o.match] = [o.match, d.match]; [d.zslot, o.zslot] = [o.zslot, d.zslot]; [d.mission, o.mission] = [o.mission, d.mission];
-    G.marker = d; G.stall = 0; o.react = 0;
+    swap = o;
   }
   const off = clamp(py - h.y, -MARK_AS.SIDE, MARK_AS.SIDE);
-  G.mkShade = off * closedOf(d.team) / MARK_AS.SIDE;           // la mark humaine choisit son côté (dessin, lecture du porteur)
-  d.markAs = G.time;
-  return [clamp(h.x + dirOf(h.team) * MARK_AS.FRONT, 0.5, W - 0.5), clamp(h.y + off, 0.5, H - 0.5)];
+  return { pt: [clamp(h.x + dirOf(h.team) * MARK_AS.FRONT, 0.5, W - 0.5), clamp(h.y + off, 0.5, H - 0.5)], off, o: swap };
 }
 // filet de sécurité : porteur laissé sans mark plus de 2 s (son défenseur pris ailleurs, mémoire fausse…) et personne qui
 // arrive : le défenseur IA le plus proche vient le marquer (sinon le compte ne démarre jamais et le porteur peut attendre)

@@ -85,7 +85,7 @@ const SOUNDS = {
   qte: q => q >= 0.82 && q <= 0.95 ? [1047, 1568].forEach((f, i) => tone(f, 0.16, { type: 'triangle', vol: 0.2, delay: i * 0.07 }))
     : tone(q > 0.95 ? 300 : 520, 0.14, { type: 'square', vol: 0.08 })
 };
-function whistle() { if (typeof sfxSample === 'function' && sfxSample('whistle', { vol: 0.4 })) return; tone(2300, 0.32, { type: 'sine', vol: 0.12 }); tone(2450, 0.32, { type: 'sine', vol: 0.06 }); }
+function whistle() { if (typeof sfxSample === 'function' && sfxSample('whistle', { vol: 0.25 })) return; tone(2300, 0.32, { type: 'sine', vol: 0.12 }); tone(2450, 0.32, { type: 'sine', vol: 0.06 }); }
 
 // ---------- particules ----------
 const teamColor = t => (t === 0 || t === 1 ? tcol(t) : '#fff');

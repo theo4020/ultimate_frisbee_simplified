@@ -359,7 +359,12 @@ function doThrow(x, y, curve) {
   G.pendThrow = null;
   const kind = G.loft;
   G.loft = LOFT.N;                                          // après chaque lancer, on revient à la passe normale
-  if (G.net === 'guest') { netSend({ t: 'throw', x, y, curve, kind }); return; }
+  if (G.net === 'guest') {
+    netSend({ t: 'throw', x, y, curve, kind });
+    const h = disc.holder;                                    // geste et bruit du lancer tout de suite (le disque part chez l'hôte)
+    if (h && canThrow() && typeof PRED !== 'undefined') { PRED.echo.throw = performance.now(); h.face = Math.atan2(y - h.y, x - h.x); fxPlay('throw', h.x, h.y, h.team); }
+    return;
+  }
   if (canThrow()) throwDisc(disc.holder, x, y, curve, 1, kind);
 }
 // Bouton pivot (X, Y à la manette, bouton à l'écran, appui sur ton porteur au doigt) : changer de pied de pivot
@@ -398,11 +403,11 @@ function sendEmote(k) {
   else hostEmote(G.myId, k);
 }
 function doDive(x, y) {
-  if (G.net === 'guest') { netSend({ t: 'dive', x, y }); return; }
+  if (G.net === 'guest') { netSend({ t: 'dive', x, y }); predAction('dive', x, y); return; }
   diveFor(meH(), x, y);
 }
 function doJump() {
-  if (G.net === 'guest') { netSend({ t: 'jump' }); return; }
+  if (G.net === 'guest') { netSend({ t: 'jump' }); predAction('jump'); return; }
   jumpFor(meH());
 }
 const canJump = () => !!jumpTarget(meH());

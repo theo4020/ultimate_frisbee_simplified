@@ -46,12 +46,15 @@ function sendInput(force) {
   if (G.net !== 'guest') return;
   if (!force && G.time - inT < 0.033) return;
   inT = G.time;
+  const q = ++PRED.q; PRED.sent.set(q, performance.now());      // numéro de l'ordre : l'hôte dit lequel il a appliqué (prédiction)
+  if (PRED.sent.size > 120) PRED.sent.delete(PRED.sent.keys().next().value);
   const aim = canThrow() && G.pointer.active;                  // il vise : ses coéquipiers voient l'aperçu de sa passe
-  netSend({ t: 'in', x: +G.pointer.x.toFixed(2), y: +G.pointer.y.toFixed(2), down: G.pointer.down, brake: braking(G.pointer), loft: canThrow() ? +G.loft.toFixed(2) : LOFT.N, aim, aiming: aim && !!G.aiming, curve: aim ? +(+G.curve || 0).toFixed(2) : 0, piv: canThrow() && G.pivHolder === disc.holder ? G.pivSel : -1, ma: CTRL.markAssist ? 1 : 0 });
+  netSend({ t: 'in', x: +G.pointer.x.toFixed(2), y: +G.pointer.y.toFixed(2), down: G.pointer.down, brake: braking(G.pointer), loft: canThrow() ? +G.loft.toFixed(2) : LOFT.N, aim, aiming: aim && !!G.aiming, curve: aim ? +(+G.curve || 0).toFixed(2) : 0, piv: canThrow() && G.pivHolder === disc.holder ? G.pivSel : -1, ma: CTRL.markAssist ? 1 : 0, q });
 }
 function netError(msg) {
   if (G.net === 'guest') safeSend(hostConn, { t: 'bye' });
-  G.reconn = null; G.heirTry = false; pendSnap = null; pendFx = [];
+  else for (const c of conns.values()) safeSend(c, { t: 'bye' });
+  G.reconn = null; G.heirTry = false; pendSnap = null; pendFx = []; predReset();
   for (const c of conns.values()) { try { c.close(); } catch (e) { } }
   conns.clear(); lastSeen.clear();
   try { if (hostConn) hostConn.close(); } catch (e) { }
@@ -274,8 +277,10 @@ function hostOnData(id, m) {
     case 'team': setTeam(id, m.team === 1 ? 1 : m.team === -1 ? -1 : 0); break;
     case 'emo': hostEmote(id, m.e | 0); break;
     case 'bye': dropGuest(id, 'a quitté la partie'); break;      // départ voulu (sinon : « a perdu la connexion »)
+    case 'ping': sendTo(id, { t: 'pong', ts: m.ts }); break;
+    case 'pong': h.rtt = rttMix(h.rtt, m.ts); break;
     case 'name': h.name = cleanName(m.name); broadcastRoom(); break;
-    case 'in': Object.assign(inputOf(h), { x: +m.x || 0, y: +m.y || 0, bx: m.brake ? +m.x || 0 : undefined, by: m.brake ? +m.y || 0 : undefined, down: !!m.down, loft: loftOf(+m.loft), aim: !!m.aim, aiming: !!m.aiming, curve: clamp(+m.curve || 0, -1, 1), piv: m.piv === 1 ? 1 : -1, ma: m.ma !== 0, last: G.time }); break;
+    case 'in': Object.assign(inputOf(h), { x: +m.x || 0, y: +m.y || 0, bx: m.brake ? +m.x || 0 : undefined, by: m.brake ? +m.y || 0 : undefined, down: !!m.down, loft: loftOf(+m.loft), aim: !!m.aim, aiming: !!m.aiming, curve: clamp(+m.curve || 0, -1, 1), piv: m.piv === 1 ? 1 : -1, ma: m.ma !== 0, last: G.time }); if (m.q > 0) { h.inQ = m.q; h.inAt = performance.now(); } break;
     case 'callplay': if (G.phase === 'play' && throwerHuman() === h) callPlay(h.team, m.n === 2 ? 2 : 1); break;
     case 'throw': if (G.phase === 'play' && throwerHuman() === h) throwDisc(disc.holder, +m.x, +m.y, clamp(+m.curve || 0, -1, 1), 1, loftOf(typeof m.kind === 'string' ? m.kind : +m.kind)); break;
     case 'dive': diveFor(h, +m.x, +m.y); break;
@@ -336,6 +341,7 @@ function sendSnapshot() {
   const snap = snapshot(), fx = FX.out.splice(0), aim = snap.g.aim, aimTeam = disc.holder ? disc.holder.team : -1;
   for (const [id, c] of conns) {
     const hc = humanById(id); snap.g.aim = aim && hc && hc.team === aimTeam ? aim : null;   // visée : seulement à son équipe
+    snap.ak = hc && hc.inQ ? [hc.inQ, Math.round(performance.now() - hc.inAt)] : 0;   // son dernier ordre appliqué, et depuis combien de ms
     c.fxq = (c.fxq || []).concat(fx);
     const busy = (c.dataChannel && c.dataChannel.bufferedAmount > 48000) || c.bufferSize > 0;
     if (busy || !c.open) { if (snap.m) metaAt = -9; continue; }   // métadonnées renvoyées au prochain état
@@ -393,7 +399,7 @@ function joinGame(code) {
 }
 // liaison avec l'hôte (au début, ou avec le nouvel hôte après un changement)
 function attachHost(c) {
-  hostConn = c; lastRecv = G.time;
+  hostConn = c; lastRecv = G.time; G.hostBye = false;
   c.on('data', m => { lastRecv = G.time; if (m && typeof m === 'object') guestOnData(m); });
   c.on('close', () => { if (hostConn === c) hostLost('La connexion avec l’hôte a été perdue.'); });
   c.on('error', () => { if (hostConn === c) hostLost('Erreur de connexion avec l’hôte.'); });
@@ -407,7 +413,7 @@ function hostLost(msg) {
   const old = hostConn, hostPeer = old && (old.peer || old.other);
   try { if (old) old.close(); } catch (e) { }
   hostConn = null;
-  if (!G.started || !peer || peer.destroyed || !hostPeer) { if (G.started && G.heir && peer && !peer.destroyed) heirTakeover(msg); else connectionLost(msg); return; }
+  if (!G.started || !peer || peer.destroyed || !hostPeer || G.hostBye) { if (G.started && G.heir && peer && !peer.destroyed) heirTakeover(msg); else connectionLost(msg); return; }
   G.reconn = { until: Date.now() + 30e3, peerId: hostPeer, msg, since: Date.now() };
   flash('Connexion perdue : reconnexion…', true);
   reconnTry();
@@ -515,7 +521,9 @@ function guestOnData(m) {
     if (pendFx.length > 200) pendFx.splice(0, pendFx.length - 200);
     pendSnap = m; return;
   }
-  if (m.t === 'ping' || m.t === 'emo') { if (m.t === 'emo' && EMOTES[m.e]) G.emotes.push({ id: m.id, e: EMOTES[m.e], t: G.time }); return; }   // sans effet sur l'état
+  if (m.t === 'ping') { safeSend(hostConn, { t: 'pong', ts: m.ts }); return; }
+  if (m.t === 'pong') { G.rtt = rttMix(G.rtt, m.ts); return; }
+  if (m.t === 'emo') { if (m.t === 'emo' && EMOTES[m.e]) G.emotes.push({ id: m.id, e: EMOTES[m.e], t: G.time }); return; }   // sans effet sur l'état
   flushSnap();                                                   // les autres messages passent après l'état qui les précède
   switch (m.t) {
     case 'welcome':
@@ -532,6 +540,7 @@ function guestOnData(m) {
       else if ((G.phase === 'play' || G.phase === 'pull') && !cardStack.length) { $('overlay').classList.add('hidden'); G.menuShown = false; }
       refreshCaptainUI();
       break;
+    case 'bye': G.hostBye = true; break;                       // l'hôte part pour de bon : pas de reconnexion, l'héritier reprend
     case 'wind': G.wind = m.wind; hudKey = ''; refreshOptions(); break;
     case 'rec': G.receiving = m.rec; placeForPoint(); refreshOptions(); updateFirstText(); break;
     case 'menu':
@@ -555,6 +564,14 @@ function guestOnData(m) {
       break;
   }
 }
+// temps d'aller-retour (ms), lissé ; qualité affichée dans le menu ☰ (et sur le terrain si elle est mauvaise)
+function rttMix(old, ts) { const r = performance.now() - (+ts || 0); if (!(r >= 0 && r < 30000)) return old; return old ? old * 0.7 + r * 0.3 : r; }
+const rttLabel = r => !r ? '…' : Math.round(r) + ' ms (' + (r < 120 ? 'bonne' : r < 250 ? 'moyenne' : 'faible') + ')';
+function netQualityText() {
+  if (G.net === 'guest') return 'Connexion à l’hôte : ' + rttLabel(G.rtt);
+  if (G.net === 'host') { const l = G.humans.filter(h => h.id !== G.myId).map(h => humanLabel(h) + ' ' + rttLabel(h.rtt)); return l.length ? 'Connexion des joueurs : ' + l.join(' · ') : ''; }
+  return '';
+}
 // battement de cœur : un joueur muet pendant 30 s est considéré comme parti
 // invité : plus rien ne vient de l'hôte depuis 2 s (onglet ou appli quittée, réseau coupé) → on le dit au lieu de figer en silence
 function hostWaitMsg() {
@@ -566,7 +583,7 @@ function hostWaitMsg() {
 function netHeartbeat(dt) {
   if (!G.net) return;
   pingT += dt;
-  if (pingT > 1) { pingT = 0; netSend({ t: 'ping' }); }
+  if (pingT > 1) { pingT = 0; netSend({ t: 'ping', ts: Math.round(performance.now()) }); }   // l'autre répond « pong » : temps d'aller-retour
   if (G.net === 'guest' && hostConn && G.time - lastRecv > (G.started ? 8 : 30)) hostLost('L’hôte ne répond plus.');   // partie lancée : au bout de 8 s, on se reconnecte
   if (G.net === 'guest' && G.roomCode && G.myId > 0 && G.time - roomSeenT > 2) {              // pour reprendre sa place si la page est rechargée
     roomSeenT = G.time; const l = storeGet('uf-last-room', null);
@@ -576,15 +593,22 @@ function netHeartbeat(dt) {
 }
 // invité dont l'onglet est caché (plus d'images) : il continue à donner signe de vie, l'hôte garde sa place
 setInterval(() => { if (typeof document !== 'undefined' && document.hidden && G.net === 'guest' && hostConn) safeSend(hostConn, { t: 'ping' }); }, 1000);
-window.addEventListener('beforeunload', () => {
-  for (const c of conns.values()) { try { c.close(); } catch (e) { } }
-  try { if (hostConn) hostConn.close(); } catch (e) { }
-});
+// page fermée : on prévient avant de couper (« bye » : départ voulu, les autres ne cherchent pas à se reconnecter)
+function netLeave() {
+  for (const c of conns.values()) { safeSend(c, { t: 'bye' }); try { c.close(); } catch (e) { } }
+  if (hostConn) { safeSend(hostConn, { t: 'bye' }); try { hostConn.close(); } catch (e) { } }
+}
+window.addEventListener('beforeunload', netLeave);
 
 function applySnapshot(m) {
   snapAt = G.time;
+  const pp = PRED.p && PRED.on ? PRED.p : null;
   m.p.forEach((a, i) => {
     const p = players[i];
+    if (p === pp) {                                              // ton joueur : prédit chez toi (plongeons et sauts compris), on corrige seulement l'écart
+      p.tag = a[6]; p.state = a[7]; p.role = a[8]; p.cx = a[9]; p.cy = a[10]; p.match = a[11] >= 0 ? players[a[11]] : null;
+      p.nx = a[0]; p.ny = a[1]; predFix(p, a, m.ak); return;
+    }
     if (p.nx === undefined) { p.x = a[0]; p.y = a[1]; }
     p.nx = a[0]; p.ny = a[1]; p.vx = a[2]; p.vy = a[3]; p.dive = a[4] ? 1 : 0; p.down = a[5] ? 1 : 0;
     p.tag = a[6]; p.state = a[7]; p.role = a[8]; p.cx = a[9]; p.cy = a[10]; p.match = a[11] >= 0 ? players[a[11]] : null; p.lift = a[12] || 0;
@@ -620,7 +644,11 @@ function applySnapshot(m) {
   if (g.phase === 'pull' && G.pull) G.pull.by = g.pullBy;
   G.netPullReady = !!g.pready; G.netPullLeft = g.pleft == null ? null : g.pleft;
   if (g.phase !== G.phase) { G.phase = g.phase; if (g.phase !== 'play') G.aiming = false; }
-  if (m.fx) for (const e of m.fx) fxPlay(e[0], e[1], e[2], e[3]);   // effets après l'état (direction des lancers)
+  if (m.fx) for (const e of m.fx) {                            // effets après l'état (direction des lancers)
+    const ek = e[0] === 'throw' || e[0] === 'layout' || e[0] === 'jump' ? e[0] : null;     // ton lancer, plongeon, saut : déjà joués chez toi
+    if (ek && PRED.echo[ek] && performance.now() - PRED.echo[ek] < 2000) { PRED.echo[ek] = 0; continue; }
+    fxPlay(e[0], e[1], e[2], e[3]);
+  }
   if (lastMid === -1) lastMid = g.mid;
   else if (g.mid !== lastMid) { lastMid = g.mid; if (g.msg) flash(g.msg, true, g.mt === undefined ? null : g.mt, g.ma); }
 }
@@ -628,8 +656,9 @@ function applySnapshot(m) {
 function guestFrame(dt) {
   flushSnap();
   const since = G.pz ? 0 : Math.min(0.15, G.time - snapAt), k = Math.min(1, dt * 14), sp = SPEEDS[G.form.speed];
+  const pp = predFrame(dt * sp);
   for (const p of players) {
-    if (p.nx === undefined) continue;
+    if (p.nx === undefined || p === pp) continue;
     const tx = p.nx + p.vx * since * sp, ty = p.ny + p.vy * since * sp;
     p.x += (tx - p.x) * k; p.y += (ty - p.y) * k;
   }
@@ -640,6 +669,67 @@ function guestFrame(dt) {
     disc.z = discZ(u);
   } else if ((disc.mode === 'held' || disc.mode === 'carry') && disc.holder) { disc.x = disc.holder.x; disc.y = disc.holder.y; disc.z = 0; }
   else if (disc.nx !== undefined) { disc.x = disc.nx; disc.y = disc.ny; disc.z = 0; }
+}
+
+// =====================================================================
+//  Prédiction de l'invité : ton joueur répond tout de suite
+// =====================================================================
+// Sans prédiction, ton ordre fait l'aller-retour chez l'hôte avant que ton joueur bouge (un à deux dixièmes de seconde).
+// Ici, l'invité déplace lui-même le joueur qu'il contrôle, avec les mêmes règles de course que l'hôte (steer, mark aimantée).
+// L'hôte reste le seul à décider : chaque état dit quel ordre il a appliqué (ak : numéro, ms depuis sa réception). On compare
+// sa position avec celle que l'invité avait prédite au même moment, et on corrige l'écart en douceur (en un coup s'il est
+// grand : plongeon, nouveau point…). Les autres joueurs restent lissés comme avant.
+const PRED = { on: false, p: null, q: 0, sent: new Map(), hist: [], cx: 0, cy: 0, echo: {}, err: 0 };
+function predReset() { PRED.on = false; PRED.p = null; PRED.hist = []; PRED.cx = PRED.cy = 0; }
+// le joueur que tu déplaces toi-même en ce moment (null : pas de prédiction)
+function predWho() {
+  if (G.net !== 'guest' || G.spectator || G.phase !== 'play' || G.pz || CTRL.netPredict === false) return null;
+  const me = meH(), p = me && me.sel;
+  if (!p || p.nx === undefined || controllerOf(p) !== me || !userControls(p)) return null;
+  if ((disc.mode === 'held' || disc.mode === 'carry') && disc.holder === p) return null;
+  if (p !== PRED.p && (p.dive > 0 || p.down > 0 || p.lift > 0 || p.lift < 0)) return null;   // plongeon ou saut déjà en cours chez l'hôte : on le suit
+  return p;                                                      // (tes plongeons et sauts, eux, partent aussi chez toi : predAction)
+}
+// tu plonges ou tu sautes : ton joueur le fait tout de suite chez toi (l'hôte fait pareil à la réception, mêmes règles)
+function predAction(kind, x, y) {
+  const p = PRED.on && PRED.p; if (!p || p.dive > 0 || p.down > 0 || p.jump > 0 || p.jprep > 0) return;
+  if (kind === 'dive') { [p.vx, p.vy] = diveVel(p, x, y); p.dive = DIVE_T; PRED.echo.layout = performance.now(); fxPlay('layout', p.x, p.y, p.team); }
+  else if (kind === 'jump' && jumpTarget(meH()) === p && !(p.jumpCd > 0)) { p.jprep = JUMP_PREP; p.jumpAt = 0; PRED.echo.jump = performance.now(); fxPlay('jump', p.x, p.y, p.team); }
+}
+function predFrame(gdt) {
+  const p = predWho();
+  if (p !== PRED.p || !p) { PRED.p = p; PRED.on = !!p; PRED.hist = []; PRED.cx = PRED.cy = 0; if (!p) return null; }
+  const inp = G.pointer;                                         // même cible que chez l'hôte (sim.js : update)
+  [p.tx, p.ty] = braking(inp) ? brakeTarget(p) : [inp.x, inp.y];
+  if (p.team !== G.off) { const mk = markAssistTarget(p, inp); if (mk) [p.tx, p.ty] = mk.pt; p.markOn = !!mk; }
+  p.sp = SPD.user;
+  steer(p, gdt);
+  const k = Math.min(1, gdt * 10), cx = PRED.cx * k, cy = PRED.cy * k;   // correction étalée (~0,1 s)
+  p.x += cx; p.y += cy; PRED.cx -= cx; PRED.cy -= cy;
+  p.x = clamp(p.x, -2, W + 2); p.y = clamp(p.y, -2, H + 2);
+  const now = performance.now();
+  PRED.hist.push({ t: now, x: p.x + PRED.cx, y: p.y + PRED.cy, vx: p.vx, vy: p.vy });   // position « corrigée » (correction en cours comprise)
+  while (PRED.hist.length > 2 && now - PRED.hist[0].t > 2500) PRED.hist.shift();
+  return p;
+}
+// état de l'hôte pour ton joueur : a = [x, y, vx, vy, …], ak = [ordre appliqué, ms depuis sa réception]
+function predFix(p, a, ak) {
+  const H0 = PRED.hist;
+  if (!ak || !H0.length) return;
+  const ts = PRED.sent.get(ak[0]); if (ts == null) return;
+  const t = ts + ak[1];                                          // moment où ta prédiction en était au même point que l'hôte
+  if (t < H0[0].t || t > H0[H0.length - 1].t + 40) return;
+  let i = 1; while (i < H0.length && H0[i].t < t) i++;
+  const A = H0[i - 1], B = H0[Math.min(i, H0.length - 1)], u = B.t > A.t ? clamp((t - A.t) / (B.t - A.t), 0, 1) : 0;
+  const hx = A.x + (B.x - A.x) * u, hy = A.y + (B.y - A.y) * u, hvx = A.vx + (B.vx - A.vx) * u, hvy = A.vy + (B.vy - A.vy) * u;
+  const ex = a[0] - hx, ey = a[1] - hy, e = Math.hypot(ex, ey);
+  PRED.err = PRED.err * 0.9 + e * 0.1;                            // écart moyen (tests, mesures)
+  if (e > 4) { p.x = a[0]; p.y = a[1]; p.vx = a[2]; p.vy = a[3]; PRED.hist = []; PRED.cx = PRED.cy = 0; return; }   // trop loin : on se recale
+  if (e < 0.06) return;                                          // arrondis de l'envoi (0,1 m)
+  PRED.cx += ex; PRED.cy += ey;
+  const evx = a[2] - hvx, evy = a[3] - hvy;
+  p.vx += evx * 0.5; p.vy += evy * 0.5;
+  for (const h of H0) if (h.t >= t) { h.x += ex; h.y += ey; }     // les prédictions suivantes en tenaient compte : on les décale aussi
 }
 
 // =====================================================================
