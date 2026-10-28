@@ -67,6 +67,17 @@ export default async function (t) {
     t.ok(!au.ctx || (au.menu.playing && au.menu.step > 0), 'dans les menus, la musique joue', au);
     t.ok(!au.ctx || (!au.match.playing && au.match.crowd), 'en match (réglage « Menus ») : pas de musique, le public murmure', au);
     t.ok(!au.ctx || (!au.off.playing && !au.muted.playing), 'musique coupée dans Commandes, ou bouton 🔊 : silence', au);
+    const smp = await p.evaluate(async () => {
+      for (let k = 0; k < 50 && !(SAMPLES.applause && SAMPLES.ooh); k++) await new Promise(r => setTimeout(r, 100));
+      if (!FX.ctx) return { ctx: false };
+      const r = { ctx: true, app: SAMPLES.applause && +SAMPLES.applause.duration.toFixed(1), ooh: SAMPLES.ooh && +SAMPLES.ooh.duration.toFixed(1) };
+      r.plays = crowdSample('applause', { vol: 0.5 }) && crowdSample('ooh', { vol: 0.5 });
+      CTRL.crowd = false; r.offSilent = !crowdSample('ooh'); CTRL.crowd = true;
+      fxPlay('score', 0, 0, G.me); fxPlay('block', 0, 0, G.me); fxPlay('layout', 0, 0, G.me);
+      return r;
+    });
+    t.ok(!smp.ctx || (smp.app > 4 && smp.ooh > 1.5 && smp.plays), 'vrais enregistrements du public chargés (applaudissements, « ooh ») et joués', smp);
+    t.ok(!smp.ctx || smp.offSilent, 'public coupé dans Commandes : pas d’enregistrement joué', smp);
 
     t.ok(!errs.length, 'aucune erreur', errs);
   } finally { await browser.close(); await srv.close(); }

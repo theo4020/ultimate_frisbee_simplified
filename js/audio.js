@@ -128,10 +128,29 @@ function crowdVoices(kind, dur, k, delay) {
   }
 }
 
+// ---------- vrais enregistrements du public (sounds/, licence Pixabay) ----------
+// chargés une fois quand le son démarre ; tant qu'ils ne sont pas là (ou hors ligne sans cache), on garde les sons fabriqués
+const SAMPLES = { applause: null, ooh: null }; let samplesAsked = false;
+function loadSamples(a) {
+  if (samplesAsked || typeof fetch !== 'function' || !a.decodeAudioData) return; samplesAsked = true;
+  for (const k of Object.keys(SAMPLES))
+    fetch('sounds/' + k + '.mp3').then(r => r.ok ? r.arrayBuffer() : Promise.reject()).then(b => new Promise((ok, ko) => a.decodeAudioData(b, ok, ko))).then(buf => { SAMPLES[k] = buf; }).catch(() => { });
+}
+// joue un enregistrement : vol, à partir de « from » s, pendant « dur » s (fondu de sortie), après « delay » s. Faux s'il n'est pas chargé.
+function crowdSample(name, o) {
+  const a = FX.ctx, buf = SAMPLES[name]; if (!crowdOn() || !buf) return false;
+  o = o || {}; const t0 = a.currentTime + (o.delay || 0), from = o.from || 0, dur = Math.min(o.dur || buf.duration, buf.duration - from), v = o.vol || 1;
+  const src = a.createBufferSource(), g = a.createGain(); src.buffer = buf; src.playbackRate.value = o.rate || 1;
+  g.gain.setValueAtTime(v, t0); g.gain.setValueAtTime(v, t0 + Math.max(0, dur - 0.4)); g.gain.linearRampToValueAtTime(0.0001, t0 + dur);
+  src.connect(g).connect(sfxOut(a)); src.start(t0, from); src.stop(t0 + dur + 0.05);
+  return true;
+}
+
 // ---------- à chaque image : qui joue, et à quel volume ----------
 const inMatch = () => !G.attract && (G.phase === 'play' || G.phase === 'pull' || G.phase === 'between' || G.phase === 'over') && $('overlay').classList.contains('hidden');
 function audioFrame(dt) {
   const a = FX.ctx;
+  if (a && !FX.muted) loadSamples(a);
   if (!a || FX.muted || (typeof document !== 'undefined' && document.hidden)) { musicStop(); crowdStop(); if (AU.bus) { AU.bus.music.gain.value = 0; AU.bus.crowd.gain.value = 0; } return; }
   const B = auBuses(a), match = inMatch(), mode = CTRL.music || 'menus';
   const wantMusic = mode === 'tout' || (mode === 'menus' && !match);

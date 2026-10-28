@@ -97,7 +97,7 @@ export function fakeNsByName(Cls, known = {}) {
 }
 
 // ---------- serveur local : les fichiers du site + le vrai worker (/api/turn, /api/scores) ----------
-const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.webmanifest': 'application/manifest+json', '.json': 'application/json' };
+const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.png': 'image/png', '.webmanifest': 'application/manifest+json', '.json': 'application/json', '.mp3': 'audio/mpeg' };
 export async function startServer({ turnEnv = false } = {}) {
   const { default: worker, Board, Accounts, Gallery, Reports } = await import(path.join(ROOT, 'worker', 'index.js'));
   const store = new Map();

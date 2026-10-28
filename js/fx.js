@@ -105,9 +105,9 @@ function fxPlay(name, x, y, team) {
   if (name === 'call' && hiddenFromMe(team)) return;          // en ligne : un appel de cut reste secret pour l'adversaire
   if (!G.attract) try {
     if (SOUNDS[name]) SOUNDS[name](team);
-    if (name === 'score') { SOUNDS.cheer(); if (typeof crowdSwell === 'function') { crowdSwell(1); crowdVoices('ouais', 2.2, 1); crowdClap(45, 2.5); } }
-    else if (name === 'block' || name === 'int') { SOUNDS.ooh(); if (typeof crowdSwell === 'function') { crowdSwell(0.7); crowdVoices('ooh', 1.1, 0.8); } }
-    else if ((name === 'layout' || name === 'duel') && typeof crowdSwell === 'function') { crowdSwell(0.6); crowdVoices('ouais', 1.0, 0.5); crowdClap(14, 1.0); }
+    if (name === 'score') { SOUNDS.cheer(); if (typeof crowdSwell === 'function') { crowdSwell(1); if (!crowdSample('applause', { vol: 0.55 })) { crowdVoices('ouais', 2.2, 1); crowdClap(45, 2.5); } } }
+    else if (name === 'block' || name === 'int') { SOUNDS.ooh(); if (typeof crowdSwell === 'function') { crowdSwell(0.7); if (!crowdSample('ooh', { vol: 0.5 })) crowdVoices('ooh', 1.1, 0.8); } }
+    else if ((name === 'layout' || name === 'duel') && typeof crowdSwell === 'function') { crowdSwell(0.6); if (!crowdSample('applause', { vol: 0.3, from: 0.4, dur: 1.6 })) { crowdVoices('ouais', 1.0, 0.5); crowdClap(14, 1.0); } }
     else if (name === 'throw' && typeof crowdSwell === 'function' && disc.mode === 'air' && !disc.pull && discLen() > 28) crowdSwell(0.45);   // un long huck part
   } catch (e) { }
   const c = teamColor(team);
