@@ -185,7 +185,14 @@ export default async function (t) {
     await p.click('#repCopy');
     await p.waitForFunction(() => /copié|sélectionne/.test(document.getElementById('repStatus').textContent), null, { timeout: 5000 }).catch(() => {});
     t.ok(/copié|sélectionne/.test(await p.textContent('#repStatus')), 'rapport copié', await p.textContent('#repStatus'));
-    await p.click('#repBack'); await p.click('#gmResume');
+    await p.click('#repBack'); await p.click('#gmFeedback');
+    t.ok(await vis(p, '#feedbackCard'), 'menu ☰ : « Donner mon avis »');
+    await p.click('#fbMoods button[data-m=bien]'); await p.fill('#fbText', 'les passes hautes sont géniales');
+    await p.click('#fbSend');
+    await p.waitForFunction(() => /Merci|impossible/.test(document.getElementById('fbStatus').textContent), null, { timeout: 5000 });
+    const fb = srv.reports("SELECT descr, kind FROM reports WHERE kind = 'avis'");
+    t.ok(/Merci/.test(await p.textContent('#fbStatus')) && fb.length === 1 && fb[0].descr === '🙂 les passes hautes sont géniales', 'avis envoyé (humeur + texte), rangé à part des signalements', { st: await p.textContent('#fbStatus'), fb });
+    await p.click('#fbBack'); await p.click('#gmResume');
     t.ok(!(await p.evaluate(() => G.paused)) && !(await vis(p, '#gameMenuCard')), 'reprise du jeu');
     await p.click('#menuB'); await p.click('#gmQuit');
     t.ok(await vis(p, '#askBox'), 'abandonner un match demande confirmation');
@@ -272,6 +279,23 @@ export default async function (t) {
       await q.click('#newbieOpts');
       t.ok(await q.evaluate(() => !document.getElementById('stratCard').classList.contains('newbie') && document.getElementById('stratRows').offsetHeight > 0 && storeGet('uf-showopts', false)), '« Voir les réglages » : tout réapparaît, et reste visible ensuite');
       await cn.close();
+    }
+
+    t.group('Admin : avis des joueurs, à part des signalements');
+    {
+      const ca = await browser.newContext({ viewport: { width: 1000, height: 760 } });
+      const q = await ca.newPage(); watch(q, 'admin');
+      await q.goto(srv.url + 'index.html'); await q.waitForFunction(() => typeof G !== 'undefined' && G.attract);
+      t.ok(await vis(q, '#feedbackB') && !(await vis(q, '#fbAdminB')), 'menu principal : « Donner mon avis » (la liste des avis reste réservée aux admins)');
+      const r = await q.evaluate(async () => (await fetch('api/account/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: 'Admin', password: 'abcd1234' }) })).json());
+      await q.evaluate(r => { storeSet('uf-acc', { name: 'Admin', token: r.token, admin: true }); showLobby(); }, r);
+      await q.waitForFunction(() => document.getElementById('fbBadge').textContent === '1', null, { timeout: 5000 }).catch(() => { });
+      t.ok(await vis(q, '#fbAdminB') && (await q.textContent('#fbBadge')) === '1', 'admin : bouton « Avis des joueurs », avec le nombre de nouveaux', await q.textContent('#fbBadge'));
+      await q.click('#fbAdminB');
+      await q.waitForFunction(() => /avis/.test(document.getElementById('repListStatus').textContent), null, { timeout: 5000 }).catch(() => { });
+      const lt = await q.evaluate(() => ({ title: document.getElementById('repListTitle').textContent, n: document.querySelectorAll('#repList li').length, txt: document.getElementById('repList').textContent }));
+      t.ok(lt.title.includes('Avis') && lt.n === 1 && lt.txt.includes('passes hautes') && !lt.txt.includes('un test avec des espaces'), 'la liste ne montre que les avis (pas les signalements)', lt);
+      await ca.close();
     }
 
     t.group('Téléphone : lancer au lance-pierre');

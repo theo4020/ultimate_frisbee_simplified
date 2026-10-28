@@ -427,23 +427,25 @@ export class Reports {
     state.blockConcurrencyWhile(async () => {
       this.db.run('CREATE TABLE IF NOT EXISTS reports (id TEXT PRIMARY KEY, at INTEGER, descr TEXT, mode TEXT, device TEXT, data TEXT)');
       try { this.db.run('ALTER TABLE reports ADD COLUMN user TEXT'); } catch (e) { }   // (colonne ajoutée après coup)
+      try { this.db.run('ALTER TABLE reports ADD COLUMN kind TEXT'); } catch (e) { }   // 'bug' (signalement) ou 'avis' (retour d'un joueur)
     });
   }
   async fetch(request) {
     const url = new URL(request.url);
-    if (url.pathname === '/list') {                              // admins : les derniers rapports (sans le détail)
-      const rows = this.db.all('SELECT id, at, user, descr, mode, device FROM reports ORDER BY at DESC LIMIT 60');
-      return json({ reports: rows, total: this.db.one('SELECT COUNT(*) AS n FROM reports').n });
+    if (url.pathname === '/list') {                              // admins : les derniers rapports d'un type (sans le détail)
+      const kind = url.searchParams.get('kind') === 'avis' ? 'avis' : 'bug';
+      const rows = this.db.all("SELECT id, at, user, descr, mode, device, kind FROM reports WHERE COALESCE(kind, 'bug') = ? ORDER BY at DESC LIMIT 60", kind);
+      return json({ reports: rows, total: this.db.one("SELECT COUNT(*) AS n FROM reports WHERE COALESCE(kind, 'bug') = ?", kind).n, kind });
     }
     if (url.pathname === '/get') {                               // admins : un rapport complet
       const { id } = await request.json(), row = this.db.one('SELECT data FROM reports WHERE id = ?', String(id || ''));
       return row ? new Response(row.data, { headers: { 'Content-Type': 'application/json' } }) : json({ error: 'rapport introuvable' }, 404);
     }
-    const { r, ip, device, user } = await request.json(), now = Date.now();
-    if (now - (this.last.get(ip) || 0) < REPORT_WAIT) return json({ error: 'un rapport vient déjà d’être envoyé, réessaie dans un instant' }, 429);
-    this.last.set(ip, now); if (this.last.size > 5000) this.last.clear();
+    const { r, ip, device, user } = await request.json(), now = Date.now(), kind = r.kind === 'avis' ? 'avis' : 'bug', lk = ip + '|' + kind;   // (un avis et un signalement ne se gênent pas)
+    if (now - (this.last.get(lk) || 0) < REPORT_WAIT) return json({ error: kind === 'avis' ? 'un avis vient déjà d’être envoyé, réessaie dans un instant' : 'un rapport vient déjà d’être envoyé, réessaie dans un instant' }, 429);
+    this.last.set(lk, now); if (this.last.size > 5000) this.last.clear();
     const id = crypto.randomUUID().slice(0, 8);
-    this.db.run('INSERT INTO reports (id, at, user, descr, mode, device, data) VALUES (?, ?, ?, ?, ?, ?, ?)', id, now, String(user || ''), String(r.desc || '').slice(0, 1000), String(r.mode || ''), device, JSON.stringify(r));
+    this.db.run('INSERT INTO reports (id, at, user, descr, mode, device, data, kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', id, now, String(user || ''), (kind === 'avis' && MOODS[r.mood] ? MOODS[r.mood] + ' ' : '') + String(r.desc || '').slice(0, 1000), String(r.mode || ''), device, JSON.stringify(r), kind);
     this.db.run('DELETE FROM reports WHERE id NOT IN (SELECT id FROM reports ORDER BY at DESC LIMIT ?)', REPORT_KEEP);
     return json({ id });
   }
@@ -454,6 +456,8 @@ function deviceOf(ua, touch) {
   const br = /OPR\//.test(ua) ? 'Opera' : /Edg\//.test(ua) ? 'Edge' : /Firefox\//.test(ua) ? 'Firefox' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : '?';
   return os + ' · ' + br + (touch ? ' · tactile' : '');
 }
+// humeur choisie dans « Donner mon avis »
+const MOODS = { adore: '😍', bien: '🙂', bof: '😐', pasfan: '🙁' };
 // une ligne lisible sur la fluidité et la connexion (rapport envoyé par le jeu : diag.perf, diag.net)
 function diagLine(d) {
   if (!d || typeof d !== 'object') return '';
@@ -470,6 +474,7 @@ async function report(request, env) {
   if (txt.length > REPORT_MAX) return json({ error: 'rapport trop volumineux' }, 413);
   let r = null; try { r = JSON.parse(txt); } catch (e) { }
   if (!r || r.v !== 'ultimate-report-1') return json({ error: 'rapport invalide' }, 400);
+  if (r.kind === 'avis' && !String(r.desc || '').trim() && !MOODS[r.mood]) return json({ error: 'avis vide' }, 400);
   const device = deviceOf(String(r.ua || ''), !!r.touch);
   // qui l'envoie : le compte (vérifié par son jeton, jamais gardé dans le rapport), sinon le pseudo tapé
   const auth = r.auth && typeof r.auth === 'object' ? r.auth : null; delete r.auth;
@@ -485,7 +490,8 @@ async function report(request, env) {
   let notified = false;
   if (env.REPORT_WEBHOOK) {                                     // message instantané (Discord) : résumé lisible + fichier complet
     try {
-      const msg = `🐞 **Rapport ${j.id}** de **${user}** — ${String(r.desc || '(sans description)').slice(0, 900)}\n` +
+      const avis = r.kind === 'avis', mood = avis && MOODS[r.mood] ? MOODS[r.mood] + ' ' : '';
+      const msg = (avis ? `💬 **Avis ${j.id}** de **${user}** — ${mood}` : `🐞 **Rapport ${j.id}** de **${user}** — `) + `${String(r.desc || '(sans description)').slice(0, 900)}\n` +
         `Mode : ${r.mode} · phase ${r.phase} · score ${(r.score || []).join('–')}${r.net ? ' · en ligne (' + r.net + ')' : ''}\n${device}` +
         diagLine(r.diag) +
         ((r.errors || []).length ? `\n⚠️ Erreurs : ${r.errors.slice(0, 3).join(' | ').slice(0, 500)}` : '');
@@ -509,7 +515,7 @@ async function reportsAdmin(request, env) {
   if (!c.ok) return json({ error: 'session expirée, reconnecte-toi' }, 401);
   if (!isAdmin(env, c.name)) return json({ error: 'réservé aux admins' }, 403);
   const stub = env.REPORTS.get(env.REPORTS.idFromName('main'));
-  return b.id ? stub.fetch('https://rep/get', { method: 'POST', body: JSON.stringify({ id: b.id }) }) : stub.fetch('https://rep/list');
+  return b.id ? stub.fetch('https://rep/get', { method: 'POST', body: JSON.stringify({ id: b.id }) }) : stub.fetch('https://rep/list?kind=' + (b.kind === 'avis' ? 'avis' : 'bug'));
 }
 
 export default {

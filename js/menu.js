@@ -1,7 +1,7 @@
 // menu.js — Menu en jeu (☰), pause pour tout le monde en ligne, panneau Commandes, signalement d'un problème.
 
 // ---------- cartes par-dessus le jeu (on revient toujours à l'écran d'avant) ----------
-const CARDS = ['lobbyCard', 'stratCard', 'seriesCard', 'profileCard', 'gameMenuCard', 'ctrlCard', 'reportCard', 'repListCard', 'newsCard', 'moveCard', 'endlessCard', 'accountCard', 'sysCard', 'styleCard'];
+const CARDS = ['lobbyCard', 'stratCard', 'seriesCard', 'profileCard', 'gameMenuCard', 'ctrlCard', 'reportCard', 'feedbackCard', 'repListCard', 'newsCard', 'moveCard', 'endlessCard', 'accountCard', 'sysCard', 'styleCard'];
 const cardStack = [];
 function openCard(id) {
   const shown = CARDS.find(c => $(c).style.display !== 'none') || null;
@@ -21,7 +21,7 @@ function closeCard() {
 }
 function closeAllCards() { while (cardStack.length) closeCard(); }
 // le point démarre : les panneaux ouverts par-dessus le menu d'avant-point se ferment
-function resetCards() { cardStack.length = 0; for (const c of ['gameMenuCard', 'ctrlCard', 'reportCard']) $(c).style.display = 'none'; G.paused = false; }
+function resetCards() { cardStack.length = 0; for (const c of ['gameMenuCard', 'ctrlCard', 'reportCard', 'feedbackCard']) $(c).style.display = 'none'; G.paused = false; }
 
 // ---------- menu en jeu ----------
 function renderGameMenu() {
@@ -138,30 +138,37 @@ function loadReport(r) {
   $('overlay').classList.add('hidden'); G.menuShown = false;
 }
 
-// ---------- admin : lire les signalements (et savoir qu'il y en a de nouveaux) ----------
-// la liste est relue en arrivant au menu principal et toutes les 2 minutes ; « vu » jusqu'au plus récent ouvert (gardé avec le compte)
+// ---------- admin : lire les signalements et les avis (et savoir qu'il y en a de nouveaux) ----------
+// les listes sont relues en arrivant au menu principal et toutes les 2 minutes ; « vu » jusqu'au plus récent ouvert (gardé avec le compte)
 const repAdmin = () => { const a = typeof accGet === 'function' && accGet(); return a && a.admin ? a : null; };
-let repCache = [], repAt = -1e9;
+const REPK = {
+  bug: { cache: [], seen: 'uf-rep-seen', btn: 'repAdminB', badge: 'repBadge', title: '🐞 Signalements', none: 'Aucun rapport pour l’instant.', one: 'rapport' },
+  avis: { cache: [], seen: 'uf-fb-seen', btn: 'fbAdminB', badge: 'fbBadge', title: '💬 Avis des joueurs', none: 'Aucun avis pour l’instant.', one: 'avis' }
+};
+let repAt = -1e9, repKind = 'bug';
+let repCache = REPK.bug.cache;                                  // (compatibilité)
 const repPost = body => fetch('api/reports', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
   .then(r => r.json().catch(() => ({})).then(j => (r.ok ? j : { error: j.error || 'erreur ' + r.status }))).catch(() => ({ error: 'serveur injoignable' }));
+const repNew = k => { const K = REPK[k], seen = +storeGet(K.seen, 0) || 0; return repAdmin() ? K.cache.filter(r => r.at > seen).length : 0; };
 function repBadge() {
-  const seen = +storeGet('uf-rep-seen', 0) || 0, n = repAdmin() ? repCache.filter(r => r.at > seen).length : 0;
-  $('repBadge').style.display = n ? '' : 'none'; $('repBadge').textContent = n;
-  $('menuB').textContent = n ? '☰ Menu 🐞' : '☰ Menu';
+  let any = 0;
+  for (const k of Object.keys(REPK)) { const n = repNew(k), b = $(REPK[k].badge); b.style.display = n ? '' : 'none'; b.textContent = n; any += n; }
+  $('menuB').textContent = any ? '☰ Menu ' + (repNew('bug') ? '🐞' : '💬') : '☰ Menu';
 }
 function repPoll(force) {
   const a = repAdmin();
-  $('repAdminB').style.display = a ? '' : 'none';
-  if (!a) { repCache = []; repBadge(); return; }
+  for (const k of Object.keys(REPK)) $(REPK[k].btn).style.display = a ? '' : 'none';
+  if (!a) { for (const k of Object.keys(REPK)) REPK[k].cache = []; repBadge(); return; }
   if (!force && G.time - repAt < 120) return;
   repAt = G.time;
-  repPost({ name: a.name, token: a.token }).then(j => { if (Array.isArray(j.reports)) { repCache = j.reports; repBadge(); } });
+  for (const k of Object.keys(REPK)) repPost({ name: a.name, token: a.token, kind: k }).then(j => { if (Array.isArray(j.reports)) { REPK[k].cache = j.reports; repBadge(); } });
 }
 function repRender(status) {
-  const seen = +storeGet('uf-rep-seen', 0) || 0, day = t => new Date(t).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-  $('repListStatus').textContent = status || (repCache.length ? repCache.length + ' rapport' + (repCache.length > 1 ? 's' : '') + ' (les plus récents en haut)' : 'Aucun rapport pour l’instant.');
-  $('repList').innerHTML = repCache.map(r => `<li class="${r.at > seen ? 'new' : ''}"><div class="rh"><b>${esc(r.user || 'anonyme')}</b><span>${day(r.at)}</span><span>${esc(r.mode || '')}</span><span>${esc(r.device || '')}</span><span>n° ${esc(r.id)}</span></div>
-    <div class="rd">${esc(r.descr || '(sans description)')}</div><button data-id="${esc(r.id)}">Copier le rapport complet</button></li>`).join('');
+  const K = REPK[repKind], list = K.cache, seen = +storeGet(K.seen, 0) || 0, day = t => new Date(t).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  $('repListTitle').textContent = K.title;
+  $('repListStatus').textContent = status || (list.length ? list.length + ' ' + K.one + (list.length > 1 && K.one !== 'avis' ? 's' : '') + ' (les plus récents en haut)' : K.none);
+  $('repList').innerHTML = list.map(r => `<li class="${r.at > seen ? 'new' : ''}"><div class="rh"><b>${esc(r.user || 'anonyme')}</b><span>${day(r.at)}</span><span>${esc(r.mode || '')}</span><span>${esc(r.device || '')}</span><span>n° ${esc(r.id)}</span></div>
+    <div class="rd">${esc(r.descr || '(sans description)')}</div><button data-id="${esc(r.id)}">Copier ${repKind === 'avis' ? 'l’avis' : 'le rapport'} complet</button></li>`).join('');
   $('repList').querySelectorAll('button').forEach(b => b.addEventListener('click', () => repCopyOne(b.dataset.id, b)));
 }
 function repCopyOne(id, btn) {
@@ -173,16 +180,56 @@ function repCopyOne(id, btn) {
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(() => { btn.textContent = 'Copié ✓'; }, fallback); else fallback();
   });
 }
-$('repAdminB').addEventListener('click', () => {
+function repOpen(kind) {
+  repKind = kind; const K = REPK[kind];
   openCard('repListCard'); $('repListOut').style.display = 'none';
   repRender('Chargement…');
   const a = repAdmin(); if (!a) return;
-  repPost({ name: a.name, token: a.token }).then(j => {
+  repPost({ name: a.name, token: a.token, kind }).then(j => {
     if (j.error) { repRender('⚠️ ' + j.error); return; }
-    repCache = j.reports || []; repRender();
-    if (repCache.length) storeSet('uf-rep-seen', Math.max(+storeGet('uf-rep-seen', 0) || 0, repCache[0].at));   // ouverts : tous vus
+    K.cache = j.reports || []; if (kind === 'bug') repCache = K.cache; repRender();
+    if (K.cache.length) storeSet(K.seen, Math.max(+storeGet(K.seen, 0) || 0, K.cache[0].at));   // ouverts : tous vus
     repBadge();
   });
-});
+}
+$('repAdminB').addEventListener('click', () => repOpen('bug'));
+$('fbAdminB').addEventListener('click', () => repOpen('avis'));
 $('repListBack').addEventListener('click', closeCard);
+
+// ---------- « Donner mon avis » (menu principal et menu en jeu) : un retour libre, rangé à part des signalements ----------
+let fbMood = null;
+function fbOpen() {
+  fbMood = null; $('fbStatus').textContent = ''; $('fbSend').disabled = false;
+  $('fbMoods').querySelectorAll('button').forEach(b => b.classList.remove('on'));
+  openCard('feedbackCard');
+}
+$('fbMoods').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+  fbMood = fbMood === b.dataset.m ? null : b.dataset.m;
+  $('fbMoods').querySelectorAll('button').forEach(o => o.classList.toggle('on', o.dataset.m === fbMood));
+}));
+$('fbSend').addEventListener('click', () => {
+  const txt = $('fbText').value.trim();
+  if (!txt && !fbMood) { $('fbStatus').textContent = 'Écris quelques mots (ou choisis un smiley) avant d’envoyer.'; return; }
+  const a = accGet(), body = {
+    v: 'ultimate-report-1', kind: 'avis', at: new Date().toISOString(), desc: txt.slice(0, 1000), mood: fbMood,
+    user: { name: myName(), account: (a || {}).name || null }, ua: navigator.userAgent, screen: [innerWidth, innerHeight], touch: isTouch(),
+    mode: G.tuto ? 'tuto' : G.practice ? 'practice' : G.series ? (G.series.endless ? 'infini' : 'tournoi') : G.net ? 'en ligne' : G.attract ? 'menu' : 'solo',
+    phase: G.phase, score: G.score, net: G.net, career: typeof careerGet === 'function' ? careerGet() : null,
+    diag: { perf: typeof perfDiag === 'function' ? perfDiag() : null, net: typeof netDiag === 'function' ? netDiag() : null }, errors: DBG.errors, frames: []
+  };
+  if (a) body.auth = { name: a.name, token: a.token };              // (vérifie le compte, n'est pas gardé)
+  $('fbSend').disabled = true; $('fbStatus').textContent = 'Envoi…';
+  fetch('api/report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    .then(r => r.json().catch(() => ({})).then(j => (r.ok ? j : { error: j.error || 'erreur ' + r.status })))
+    .catch(() => ({ error: 'serveur injoignable' }))
+    .then(j => {
+      $('fbSend').disabled = false;
+      if (j.error) { $('fbStatus').textContent = '⚠️ Envoi impossible (' + j.error + '). Réessaie dans un instant.'; return; }
+      $('fbText').value = ''; fbMood = null; $('fbMoods').querySelectorAll('button').forEach(o => o.classList.remove('on'));
+      $('fbStatus').textContent = '✅ Merci ! Ton avis est bien arrivé.';
+    });
+});
+$('feedbackB').addEventListener('click', fbOpen);
+$('gmFeedback').addEventListener('click', fbOpen);
+$('fbBack').addEventListener('click', closeCard);
 setInterval(() => repPoll(false), 120000);

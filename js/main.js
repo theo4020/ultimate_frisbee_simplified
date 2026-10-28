@@ -72,6 +72,7 @@ function frame(now, visible) {
   updateStreaks(dt);
   fxUpdate(dt);
   $('overlay').classList.toggle('attract', !!G.attract && $('lobbyCard').style.display !== 'none');
+  document.body.classList.toggle('ovOpen', !$('overlay').classList.contains('hidden'));   // (conseil « paysage » caché sous les menus)
   $('teamsB').style.display = G.net && G.started ? '' : 'none';
   $('menuB').style.visibility = G.attract || ($('lobbyCard').style.display !== 'none' && !$('overlay').classList.contains('hidden') && !G.net) ? 'hidden' : 'visible';
   if (!visible) return;

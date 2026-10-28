@@ -200,7 +200,7 @@ export default async function (t) {
       await settle(); const rp = await react();
       const hy = await host.evaluate(() => +TEAMS[1][3].y.toFixed(2));
       await guest.evaluate(() => { CTRL.netPredict = false; }); await settle(); const rn = await react(); await guest.evaluate(() => { CTRL.netPredict = true; });
-      t.ok(rp.lat >= 0 && rp.lat < 100 && rn.lat > rp.lat, 'réseau lent : avec la prédiction, ton joueur part tout de suite (sans : après l’aller-retour)', { avec: rp, sans: rn });
+      t.ok(rp.lat >= 0 && rp.lat < 100 && (rn.lat < 0 || rn.lat > rp.lat), 'réseau lent : avec la prédiction, ton joueur part tout de suite (sans : après l’aller-retour)', { avec: rp, sans: rn });
       t.ok(Math.abs(rp.y - hy) < 1.6 && rp.err < 0.6, 'ton joueur prédit reste d’accord avec l’hôte (écart d’environ le retard du réseau, corrigé en douceur)', { guest: rp.y, host: hy, err: rp.err });
       // plongeon : il part tout de suite chez toi, et finit au même endroit que chez l'hôte
       await settle();

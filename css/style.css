@@ -327,7 +327,7 @@ body.touch #fknob{opacity:.7}
 @media (max-width:560px){#ctrlCard .row:has(input.vol) span{width:96px}}
 .copt.on,.kbtn.on{background:var(--blue);color:#fff}
 .kbtn{min-width:120px}
-#reportCard textarea{width:100%;font:inherit;font-size:14px;padding:8px;border-radius:8px;border:1px solid var(--panel2);background:var(--bg);color:var(--text);margin:4px 0}
+#reportCard textarea,#feedbackCard textarea{width:100%;font:inherit;font-size:14px;padding:8px;border-radius:8px;border:1px solid var(--panel2);background:var(--bg);color:var(--text);margin:4px 0}
 #pauseBanner{position:fixed;top:40%;left:50%;transform:translate(-50%,-50%);z-index:20;background:rgba(15,23,42,.92);border:2px solid var(--accent);
   border-radius:14px;padding:14px 18px;display:flex;gap:14px;align-items:center;font-size:17px;font-weight:700}
 /* tutoriel : texte court, plus gros */
@@ -468,3 +468,10 @@ details.orders summary small{color:var(--muted);font-weight:400}
 #newbieBox{display:flex;flex-direction:column;gap:8px;margin:6px 0 10px}
 #newbieBox .desc0{margin:0;color:var(--muted);font-size:14px;line-height:1.4}
 #newbieBox button{width:100%}
+
+/* « Donner mon avis » : humeur en un geste (facultative) */
+.moods{display:flex;gap:8px;margin:6px 0 10px}
+.moods button{flex:1;font-size:26px;padding:8px 4px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.moods button small{font-size:12px}
+.moods button.on{background:var(--blue);color:#fff}
+body.ovOpen #rotateHint{display:none!important}

@@ -88,6 +88,8 @@
       <button class="bigbtn" id="ctrlB">⚙️ Commandes<small>Gestes ou joystick sur téléphone, touches du clavier</small></button>
       <button class="bigbtn" id="styleB">🎨 Mon style<small>Disque, terrain, tenue, célébration : débloqués par tes succès</small></button>
       <button class="bigbtn" id="profileB">🏅 Profil<small>Tes statistiques de carrière et tes succès</small></button>
+      <button class="bigbtn" id="feedbackB">💬 Donner mon avis<small>Une idée, une envie, quelque chose qui gêne : ça part directement au développeur</small></button>
+      <button class="bigbtn" id="fbAdminB" style="display:none">💬 Avis des joueurs <span id="fbBadge" class="badge" style="display:none"></span><small>Admin : les retours envoyés par les joueurs</small></button>
       <button class="bigbtn" id="repAdminB" style="display:none">🐞 Signalements <span id="repBadge" class="badge" style="display:none"></span><small>Admin : les rapports envoyés par les joueurs</small></button>
       <button class="bigbtn" id="newsB">📰 Nouveautés <span id="newsBadge" class="badge" style="display:none"></span><small>Ce qui a changé dans le jeu</small></button>
       <button class="bigbtn" id="installB" style="display:none">📲 Installer le jeu<small>Sur l'écran d'accueil, en plein écran, jouable hors connexion en solo</small></button>
@@ -150,6 +152,7 @@
     <button class="bigbtn primary" id="gmResume">▶ Reprendre</button>
     <button class="bigbtn" id="gmPause">⏸ Pause pour tout le monde</button>
     <button class="bigbtn" id="gmCtrl">⚙️ Commandes</button>
+    <button class="bigbtn" id="gmFeedback">💬 Donner mon avis</button>
     <button class="bigbtn" id="gmReport">🐞 Signaler un problème</button>
     <button class="bigbtn" id="gmQuit">✕ Quitter la partie</button>
   </div>
@@ -159,11 +162,22 @@
     <button id="ctrlBack" class="primary back">← Retour</button>
   </div>
   <div class="card" id="repListCard" style="display:none">
-    <h1>🐞 Signalements</h1>
+    <h1 id="repListTitle">🐞 Signalements</h1>
     <p class="net" id="repListStatus"></p>
     <ul id="repList" class="repList"></ul>
     <textarea id="repListOut" rows="4" readonly style="display:none"></textarea>
     <button id="repListBack" class="back">← Retour</button>
+  </div>
+  <div class="card" id="feedbackCard" style="display:none">
+    <h1>💬 Ton avis</h1>
+    <p>Ce que tu aimes, ce qui te manque, ce qui te gêne, une idée… Tout est lu par le développeur, et c’est grâce à vos retours que le jeu avance.</p>
+    <div class="moods" id="fbMoods">
+      <button data-m="adore">😍<small>J’adore</small></button><button data-m="bien">🙂<small>Bien</small></button><button data-m="bof">😐<small>Bof</small></button><button data-m="pasfan">🙁<small>Pas fan</small></button>
+    </div>
+    <textarea id="fbText" rows="4" maxlength="1000" placeholder="Ton avis, ton idée…"></textarea>
+    <button id="fbSend" class="primary">Envoyer</button>
+    <p class="net" id="fbStatus"></p>
+    <button id="fbBack" class="back">← Retour</button>
   </div>
   <div class="card" id="reportCard" style="display:none">
     <h1>🐞 Signaler un problème</h1>

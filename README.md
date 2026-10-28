@@ -131,6 +131,7 @@ les 300 derniers, visibles dans Data Studio). Pour les recevoir aussi sur ton t�
 (salon → Modifier → Intégrations → Webhooks → Nouveau webhook → Copier l'URL), puis ajoute dans *Settings → Variables
 and Secrets* du worker un **secret** `REPORT_WEBHOOK` contenant cette URL. Chaque rapport arrive alors dans ce salon :
 un résumé lisible et le rapport complet en pièce jointe.
+Les **avis** (bouton « 💬 Donner mon avis », menu principal et menu ☰) passent par le même chemin (`kind: 'avis'`, humeur facultative) mais sont rangés à part : bouton admin « 💬 Avis des joueurs », message Discord « 💬 Avis ».
 Chaque rapport indique **qui l'a envoyé** (le compte, vérifié par son jeton — jamais gardé —, sinon le pseudo suivi de
 « sans compte »). **Dans le jeu**, un compte admin voit au menu principal un bouton « 🐞 Signalements » avec le nombre de
 nouveaux rapports (et un 🐞 sur le bouton ☰ Menu en partie) : il ouvre la liste (qui, quand, mode, appareil, description)
