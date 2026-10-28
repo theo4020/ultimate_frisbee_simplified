@@ -4,7 +4,7 @@
 // coupe tout. Réglages dans Commandes (CTRL.music : 'off' | 'menus' | 'tout', CTRL.crowd : true / false).
 
 const AU = { bus: null, music: null, crowd: null, crowdF: null, crowdSrc: null, next: 0, step: 0, bar: 0, playing: false, swell: 0, timer: null, mLevel: 0 };
-const MUSIC_VOL = 0.45, CROWD_VOL = 0.05;
+const MUSIC_VOL = 0.45, CROWD_VOL = 0.16;
 
 // sorties : les effets (fx.js) passent par AU.bus.sfx ; la musique et le public ont leur propre volume
 function auBuses(a) {
@@ -90,8 +90,42 @@ function crowdStart(a) {
 function crowdStop() { if (AU.crowdSrc) { try { AU.crowdSrc.stop(); } catch (e) { } AU.crowdSrc = null; } }
 // le public réagit : k de 0 à 1 (un huck qui part : 0,6 ; un point : 1)
 function crowdSwell(k) { AU.swell = Math.max(AU.swell, k); }
-function crowdClap(n, spread) {                             // applaudissements : des petits claquements au hasard
-  for (let i = 0; i < n; i++) noise(0.04, { filter: 'highpass', freq: 1800 + Math.random() * 1500, vol: 0.035 + Math.random() * 0.03, delay: Math.random() * spread });
+const crowdOn = () => CTRL.crowd !== false && !!FX.ctx && !FX.muted;
+// applaudissements : n personnes frappent dans leurs mains pendant « spread » s (plus dense au début). Un clap = 3 petits
+// éclats de bruit très rapprochés (8 ms), filtrés autour de 1 à 2 kHz, qui retombent en 60 ms
+function crowdClap(n, spread, delay) {
+  const a = FX.ctx; if (!crowdOn()) return;
+  if (!noiseBuf) noise(0.001, { vol: 0.0001 });
+  const out = sfxOut(a), t0 = a.currentTime + (delay || 0);
+  for (let i = 0; i < n; i++) {
+    const t = t0 + spread * Math.pow(Math.random(), 1.6), f = 900 + Math.random() * 1300, v = 0.06 + Math.random() * 0.07;
+    for (let k = 0; k < 3; k++) {
+      const src = a.createBufferSource(), bp = a.createBiquadFilter(), g = a.createGain(), tk = t + k * 0.008;
+      src.buffer = noiseBuf; bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = 1.1;
+      g.gain.setValueAtTime(0.0001, tk); g.gain.exponentialRampToValueAtTime(v * (k === 2 ? 1 : 0.6), tk + 0.002); g.gain.exponentialRampToValueAtTime(0.0001, tk + (k === 2 ? 0.07 : 0.01));
+      src.connect(bp).connect(g).connect(out); src.start(tk, Math.random() * 0.8); src.stop(tk + 0.09);
+    }
+  }
+}
+// voix de la foule : un chœur de voix (dents de scie désaccordées) passé dans des filtres de voyelle
+// kind 'ouais' : ça monte et ça crie ; 'ooh' : ça descend, voyelle « ou »
+function crowdVoices(kind, dur, k, delay) {
+  const a = FX.ctx; if (!crowdOn()) return;
+  const out = sfxOut(a), t0 = a.currentTime + (delay || 0), vow = kind === 'ooh' ? [350, 800] : [750, 1250], amt = (k || 1) * 0.05;
+  const mix = a.createGain(); mix.gain.value = 1;
+  const f1 = a.createBiquadFilter(), f2 = a.createBiquadFilter(), env = a.createGain();
+  f1.type = 'bandpass'; f1.frequency.value = vow[0]; f1.Q.value = 2.5; f2.type = 'bandpass'; f2.frequency.value = vow[1]; f2.Q.value = 3;
+  mix.connect(f1).connect(env); mix.connect(f2).connect(env); env.connect(out);
+  env.gain.setValueAtTime(0.0001, t0); env.gain.exponentialRampToValueAtTime(amt, t0 + (kind === 'ooh' ? 0.15 : 0.3));
+  env.gain.setValueAtTime(amt, t0 + dur * 0.55); env.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  for (let i = 0; i < 14; i++) {
+    const o = a.createOscillator(), base = 150 + Math.random() * 220, vib = a.createOscillator(), vg = a.createGain();
+    o.type = 'sawtooth';
+    o.frequency.setValueAtTime(base * (kind === 'ooh' ? 1.15 : 0.9), t0);
+    o.frequency.linearRampToValueAtTime(base * (kind === 'ooh' ? 0.8 : 1.25), t0 + dur * 0.6);      // ça monte (ouais) ou ça descend (ooh)
+    vib.frequency.value = 4 + Math.random() * 3; vg.gain.value = base * 0.02; vib.connect(vg).connect(o.frequency);
+    o.connect(mix); o.start(t0 + Math.random() * 0.12); o.stop(t0 + dur + 0.05); vib.start(t0); vib.stop(t0 + dur + 0.05);
+  }
 }
 
 // ---------- à chaque image : qui joue, et à quel volume ----------
