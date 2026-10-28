@@ -26,7 +26,11 @@ if (!['top', 'iso'].includes(CTRL.view)) CTRL.view = 'top';
 CTRL.perf = !!CTRL.perf;
 if (CTRL.markAssist === undefined) CTRL.markAssist = true;
 if (!CTRL.music) CTRL.music = 'menus';                                 // musique (audio.js) : dans les menus par défaut
-if (CTRL.crowd === undefined) CTRL.crowd = true;                        // ambiance du public en match          // mark aimantée (sim.js : markAssist), activée par défaut                                        // affichage des performances (admin)
+// volumes (0 à 100) : effets du jeu, musique, public (l'ancien réglage « Public : non » devient un volume à 0)
+if (!CTRL.vol || typeof CTRL.vol !== 'object') CTRL.vol = { fx: 100, music: 100, crowd: CTRL.crowd === false ? 0 : 100 };
+for (const k of ['fx', 'music', 'crowd']) CTRL.vol[k] = Math.max(0, Math.min(100, Number.isFinite(+CTRL.vol[k]) ? +CTRL.vol[k] : 100));
+delete CTRL.crowd;
+const volOf = k => (CTRL.vol[k] == null ? 100 : CTRL.vol[k]) / 100;                        // ambiance du public en match          // mark aimantée (sim.js : markAssist), activée par défaut                                        // affichage des performances (admin)
 function saveCtrl() { try { localStorage.setItem('uf-ctrl', JSON.stringify(CTRL)); } catch (e) { } }
 const keysOf = a => (Array.isArray(CTRL.keys[a]) && CTRL.keys[a].length ? CTRL.keys[a] : DEFAULT_KEYS[a]);
 const keyIs = (a, k) => keysOf(a).includes(k);
@@ -61,8 +65,8 @@ function renderCtrl() {
     <div class="desc">${MOVE[CTRL.move]}</div>
     <h2>Son</h2>
     <div class="row"><span>Musique</span>${b('music', 'off', 'Coupée')}${b('music', 'menus', 'Menus')}${b('music', 'tout', 'Menus et matchs')}</div>
-    <div class="row"><span>Public</span>${b('crowd', true, 'Oui')}${b('crowd', false, 'Non')}</div>
-    <div class="desc">Une petite musique dans les menus (et en fond pendant les matchs si tu veux), un public qui murmure, retient son souffle sur les longues passes et applaudit les beaux gestes. Le bouton 🔊 en haut coupe tout.</div>
+    ${[['fx', '🔉 Effets'], ['music', '🔉 Musique'], ['crowd', '🔉 Public']].map(([k, l]) => `<div class="row"><span>${l}</span><input type="range" class="vol" data-k="${k}" min="0" max="100" step="5" value="${CTRL.vol[k]}" aria-label="${l}"><b class="volv" id="volv-${k}">${CTRL.vol[k] ? CTRL.vol[k] + ' %' : 'Coupé'}</b></div>`).join('')}
+    <div class="desc">Effets : lancers, réceptions, sifflet… Une petite musique dans les menus (et en fond pendant les matchs si tu veux). Le public murmure, retient son souffle sur les longues passes, applaudit les beaux gestes (à 0 : plus de public). Le bouton 🔊 en haut coupe tout.</div>
     <h2>Défense</h2>
     <div class="row"><span>Mark aimantée</span>${b('markAssist', true, 'Oui')}${b('markAssist', false, 'Non')}</div>
     <div class="desc">${CTRL.markAssist ? 'Dans le cercle du porteur, ton joueur se cale tout seul face à lui : déplace-toi à gauche ou à droite pour fermer un côté. Vise plus loin (ou change de joueur) pour quitter la mark, comme en match.' : 'Ton joueur suit toujours ta souris ou ton doigt, même en mark.'}</div>
@@ -80,6 +84,10 @@ function renderCtrl() {
     CTRL[el.dataset.g] = v; saveCtrl(); applyCtrlClass(); hudKey = ''; renderCtrl();
     if (el.dataset.g === 'view') resize();
   }));
+  $('ctrlBody').querySelectorAll('.vol').forEach(el => {
+    el.addEventListener('input', () => { const k = el.dataset.k; CTRL.vol[k] = +el.value; $('volv-' + k).textContent = CTRL.vol[k] ? CTRL.vol[k] + ' %' : 'Coupé'; saveCtrl(); });
+    el.addEventListener('change', () => { if (typeof volPreview === 'function') volPreview(el.dataset.k); });   // on entend le nouveau volume
+  });
   $('ctrlBody').querySelectorAll('.kbtn').forEach(el => el.addEventListener('click', () => { keyWait = keyWait === el.dataset.a ? null : el.dataset.a; renderCtrl(); }));
   $('keysReset').addEventListener('click', () => { CTRL.keys = {}; keyWait = null; saveCtrl(); renderCtrl(); });
 }

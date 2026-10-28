@@ -8,6 +8,15 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
+  { id: 33, date: '2026-10-28', tag: 'Son et en ligne', title: 'Le stade prend vie, et le jeu en ligne devient plus réactif 🔊',
+    body: `<b>Du son</b> : une petite musique dans les menus, et en match un vrai <b>public</b> qui murmure, retient son
+      souffle sur les longues passes, applaudit les points, crie « ooh » sur un block et soupire sur un drop. Sifflet,
+      lancers et réceptions ont aussi leur bruit. Règle chaque volume (effets, musique, public) dans <b>Commandes</b>.<br>
+      <b>En ligne</b> :<br>
+      • ton joueur <b>répond tout de suite</b>, même si tu n'es pas l'hôte (course, mark, plongeons, sauts) ;<br>
+      • <b>reconnexion automatique</b> : wifi coupé, passage en 4G, page rechargée… tu reviens dans la partie, dans ton équipe ;<br>
+      • la qualité de ta connexion s'affiche dans le menu ☰.<br>
+      Et un <b>Callahan</b> se fête désormais comme il se doit 🦅` },
   { id: 32, date: '2026-10-27', tag: 'Style', title: 'Mon style : choisis ton disque, ton terrain, ta tenue 🎨',
     body: `Nouveau bouton <b>🎨 Mon style</b> dans le menu principal. Choisis :<br>
       • ton <b>disque</b> : fluo, arc-en-ciel, galaxie, flamme, néon, or, cible, pastèque, damier (avec sa traînée assortie) ;<br>

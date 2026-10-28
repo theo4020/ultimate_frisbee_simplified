@@ -411,20 +411,22 @@ export default async function (t, { quick }) {
 
   t.group('Callahan : un arrêt dans l’en-but adverse est toujours une interception qui marque');
   const cal = R(`(() => {
-    let ok = 0;
+    let ok = 0, fx = null;
     for (let k = 0; k < 20; k++) {
       G.score = [0, 0]; G.receiving = 0; newWind(); startPoint();
       for (let f = 0; f < 6000 && !(G.phase === 'play' && disc.mode === 'held'); f++) __tick();
       const d = 1 - G.off, p = TEAMS[d][0];
       let x = 0; while (x < W && !inScoreZone(d, x)) x += 1;
       x += 3; disc.x = x; disc.y = H / 2; p.x = x; p.y = H / 2;
-      const before = G.score[d];
+      const before = G.score[d]; FX.parts.length = 0;
       defStop(p, 'Contre');
       if (G.score[d] === before + 1) ok++;
+      if (k === 0) fx = { stars: FX.parts.filter(q => q.kind === 'star').length, rings: FX.parts.filter(q => q.kind === 'ring' && q.color === '#facc15').length, msg: G.msg };
     }
-    return ok;
+    return { ok, fx };
   })()`);
-  t.ok(cal === 20, 'Callahan à chaque fois (20 essais)', cal);
+  t.ok(cal.ok === 20, 'Callahan à chaque fois (20 essais)', cal.ok);
+  t.ok(cal.fx.stars >= 30 && cal.fx.rings >= 3 && /CALLAHAN/.test(cal.fx.msg), 'un Callahan se fête en grand : ondes dorées, pluie d’étoiles, « 🦅 CALLAHAN ! »', cal.fx);
 
   t.group('Mode infini');
   const lv = R(`[0, 0.5, 1, 2, 4, 6, 9, 11, 14, 20].map(d => endlessLevel(d))`);

@@ -113,6 +113,7 @@ function fxPlay(name, x, y, team) {
     else if (name === 'block' || name === 'int') { if (!au || !crowdSample('ooh', { vol: 0.45 })) SOUNDS.ooh(); if (au) { crowdSwell(0.7); if (!SAMPLES.ooh) crowdVoices('ooh', 1.1, 0.8); } }
     else if ((name === 'layout' || name === 'duel') && au) { crowdSwell(0.6); if (!crowdSample('cheer-short', { vol: 0.4 })) { crowdVoices('ouais', 1.0, 0.5); crowdClap(14, 1.0); } }
     else if (name === 'turn' && au) crowdSample('sigh', { vol: 0.32 });   // drop, passe dehors : le public est déçu
+    else if (name === 'callahan' && au) { crowdSwell(1); crowdSample('cheer-short', { vol: 0.55 }); crowdSample('cheer', { vol: 0.35, delay: 0.15 }); }   // le stade explose
     else if (name === 'throw' && typeof crowdSwell === 'function' && disc.mode === 'air' && !disc.pull && discLen() > 28) crowdSwell(0.45);   // un long huck part
   } catch (e) { }
   const c = teamColor(team);
@@ -146,6 +147,13 @@ function fxPlay(name, x, y, team) {
     case 'duel': burst(x, y, 12, { color: [c, '#fde68a', '#fff'], speed: 7, life: 0.5 }); ring(x, y, c, 2.6, 0.45); FX.shake = Math.max(FX.shake, 5); vibrate(40); break;
     case 'jump': ring(x, y, 'rgba(255,255,255,.5)', 1.4, 0.3); break;
     case 'call': ring(x, y, '#facc15', 2.2, 0.6); ring(x, y, 'rgba(250,204,21,.6)', 3.4, 0.8); break;
+    case 'callahan': {                                       // rare et spectaculaire : ondes dorées, pluie d'étoiles, gros tremblement
+      [[0, 4], [-0.14, 6.5], [-0.28, 9]].forEach(([t0, r]) => FX.parts.push({ x, y, t: t0, life: 0.7, color: '#facc15', maxR: r, kind: 'ring', vx: 0, vy: 0 }));
+      burst(x, y, 34, { color: ['#facc15', '#fde68a', '#fff', c], speed: 13, life: 1.3, size: 0.75, kind: 'star', drag: 1.6 });
+      burst(x, y, 20, { color: ['#facc15', '#fff'], speed: 6, life: 0.9, size: 0.3 });
+      FX.shake = Math.max(FX.shake, 13); FX.pop = 1.4; vibrate([80, 40, 80, 40, 160]);
+      break;
+    }
     case 'land': burst(x, y, 6, { color: ['#d9f99d', '#a3e635'], speed: 2.5, life: 0.45, size: 0.25 }); break;
   }
 }

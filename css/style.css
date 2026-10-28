@@ -323,6 +323,8 @@ body.touch #fknob{opacity:.7}
 #gameMenuCard .bigbtn{text-align:center}
 #ctrlCard h2{font-size:16px;margin:14px 0 4px}
 #ctrlCard .row span{width:150px}
+#ctrlCard .row input.vol{flex:1;min-width:100px;max-width:240px;accent-color:var(--blue)} #ctrlCard .volv{min-width:48px;font-size:14px;white-space:nowrap}
+@media (max-width:560px){#ctrlCard .row:has(input.vol) span{width:96px}}
 .copt.on,.kbtn.on{background:var(--blue);color:#fff}
 .kbtn{min-width:120px}
 #reportCard textarea{width:100%;font:inherit;font-size:14px;padding:8px;border-radius:8px;border:1px solid var(--panel2);background:var(--bg);color:var(--text);margin:4px 0}

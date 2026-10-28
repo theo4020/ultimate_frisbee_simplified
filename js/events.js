@@ -66,7 +66,7 @@ function interception(p) {
   if (G.oplay) endOPlay();
   if (G.dplay) endDPlay();
   G.off = p.team;
-  if (inScoreZone(p.team, disc.x)) { if (G.ms) msPl(p).gol++; G.scorer = p; achEvent('callahan', p.team); achEvent('goal', p.team); scorePoint(p.team, 'Callahan !'); return; }
+  if (inScoreZone(p.team, disc.x)) { if (G.ms) msPl(p).gol++; G.scorer = p; achEvent('callahan', p.team); achEvent('goal', p.team); fxEvent('callahan', p.x, p.y, p.team); scorePoint(p.team, '🦅 CALLAHAN !'); return; }
   p.dive = 0; p.down = 0;
   const x = clamp(p.x, 0.5, W - 0.5), y = clamp(p.y, 0.5, H - 0.5), L = lineSpot(x, y);
   if (L) startCarry(p, L.x, L.y, '');                          // intercepté dans son en-but : il ramène le disque à la ligne

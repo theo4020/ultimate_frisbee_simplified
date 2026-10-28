@@ -57,7 +57,7 @@ export default async function (t) {
     t.group('Son : musique dans les menus, public en match');
     const au = await p.evaluate(async () => {
       const wait = ms => new Promise(r => setTimeout(r, ms));
-      FX.muted = false; audioCtx(); CTRL.music = 'menus'; CTRL.crowd = true;
+      FX.muted = false; audioCtx(); CTRL.music = 'menus'; CTRL.vol.crowd = 100;
       await wait(1200); const match = { playing: AU.playing, crowd: !!AU.crowdSrc };       // (on est en match ici)
       goMainMenu && showLobby(); await wait(1500); const menu = { playing: AU.playing, step: AU.step };
       CTRL.music = 'off'; await wait(2500); const off = { playing: AU.playing };
@@ -73,13 +73,28 @@ export default async function (t) {
       const r = { ctx: true, loaded: Object.keys(SAMPLES).filter(k => SAMPLES[k]), app: SAMPLES.cheer && +SAMPLES.cheer.duration.toFixed(1), ooh: SAMPLES.ooh && +SAMPLES.ooh.duration.toFixed(1) };
       r.plays = crowdSample('cheer', { vol: 0.5 }) && crowdSample('ooh', { vol: 0.5 }) && sfxSample('whistle', { vol: 0.3 });
       crowdStop(); crowdStart(FX.ctx); r.murmur = !!(AU.crowdSrc && AU.crowdSrc.sample);
-      CTRL.crowd = false; r.offSilent = !crowdSample('ooh'); r.sfxStill = sfxSample('catch'); CTRL.crowd = true;
+      CTRL.vol.crowd = 0; r.offSilent = !crowdSample('ooh'); r.sfxStill = sfxSample('catch'); CTRL.vol.crowd = 100;
       ['score', 'block', 'layout', 'turn', 'throw', 'catch', 'stall'].forEach(n => fxPlay(n, 0, 0, G.me));
       return r;
     });
     t.ok(!smp.ctx || (smp.loaded.length === 8 && smp.app > 6 && smp.ooh > 1.5 && smp.plays), 'les 8 enregistrements sont chargés (public, sifflet, réception, lancer) et joués', smp);
     t.ok(!smp.ctx || smp.murmur, 'le murmure de fond est la vraie foule (en boucle)', smp);
-    t.ok(!smp.ctx || (smp.offSilent && smp.sfxStill), 'public coupé dans Commandes : plus de public, mais les bruits du jeu restent', smp);
+    t.ok(!smp.ctx || (smp.offSilent && smp.sfxStill), 'volume du public à 0 : plus de public, mais les bruits du jeu restent', smp);
+
+    t.group('Son : volumes');
+    const vo = await p.evaluate(async () => {
+      FX.muted = false; audioCtx(); CTRL.music = 'tout';
+      closeAllCards(); openCard('ctrlCard'); renderCtrl();
+      const set = (k, v) => { const el = document.querySelector('.vol[data-k=' + k + ']'); el.value = v; el.dispatchEvent(new Event('input')); el.dispatchEvent(new Event('change')); };
+      set('fx', 40); set('music', 0); set('crowd', 25);
+      await new Promise(r => setTimeout(r, 1500));
+      const B = AU.bus, saved = JSON.parse(localStorage.getItem('uf-ctrl')).vol;
+      const r = { saved, sfx: B && +B.sfx.gain.value.toFixed(2), music: B && +B.music.gain.value.toFixed(3), cfx: B && +B.crowdFx.gain.value.toFixed(2), label: document.getElementById('volv-music').textContent, ctx: !!FX.ctx };
+      set('fx', 100); set('music', 100); set('crowd', 100); CTRL.music = 'menus'; closeAllCards();
+      return r;
+    });
+    t.ok(vo.saved.fx === 40 && vo.saved.music === 0 && vo.saved.crowd === 25 && vo.label === 'Coupé', 'trois curseurs de volume dans Commandes, gardés dans le navigateur', vo);
+    t.ok(!vo.ctx || (vo.sfx === 0.4 && vo.music === 0 && vo.cfx === 0.25), 'les volumes s’appliquent (effets, musique, réactions du public)', vo);
 
     t.ok(!errs.length, 'aucune erreur', errs);
   } finally { await browser.close(); await srv.close(); }
