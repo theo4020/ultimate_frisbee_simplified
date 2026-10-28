@@ -454,6 +454,14 @@ function deviceOf(ua, touch) {
   const br = /OPR\//.test(ua) ? 'Opera' : /Edg\//.test(ua) ? 'Edge' : /Firefox\//.test(ua) ? 'Firefox' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : '?';
   return os + ' · ' + br + (touch ? ' · tactile' : '');
 }
+// une ligne lisible sur la fluidité et la connexion (rapport envoyé par le jeu : diag.perf, diag.net)
+function diagLine(d) {
+  if (!d || typeof d !== 'object') return '';
+  const p = d.perf || {}, n = d.net, out = [];
+  if (p.fps != null) out.push(`🎞️ ${p.fps} img/s (min ${p.fpsMin}) · calcul ${p.simMs} ms · dessin ${p.drawMs} ms`);
+  if (n) out.push(`📶 ${n.role}${n.rtt != null ? ' · aller-retour ' + n.rtt + ' ms' : ''}${n.reconn ? ' · reconnexions ' + n.reconnOk + '/' + n.reconn : ''}${n.snapGapMs ? ' · trous max ' + n.snapGapMs.max + ' ms' : ''}${n.ice ? ' · liaison ' + n.ice : ''}`);
+  return out.length ? '\n' + out.join('\n').slice(0, 400) : '';
+}
 async function report(request, env) {
   if (!env.REPORTS) return json({ error: 'rapports indisponibles ici' }, 503);
   if (request.method !== 'POST') return json({ error: 'POST seulement' }, 405);
@@ -479,6 +487,7 @@ async function report(request, env) {
     try {
       const msg = `🐞 **Rapport ${j.id}** de **${user}** — ${String(r.desc || '(sans description)').slice(0, 900)}\n` +
         `Mode : ${r.mode} · phase ${r.phase} · score ${(r.score || []).join('–')}${r.net ? ' · en ligne (' + r.net + ')' : ''}\n${device}` +
+        diagLine(r.diag) +
         ((r.errors || []).length ? `\n⚠️ Erreurs : ${r.errors.slice(0, 3).join(' | ').slice(0, 500)}` : '');
       const form = new FormData();
       form.append('payload_json', JSON.stringify({ content: msg.replace(/@/g, '@\u200b') }));

@@ -19,12 +19,17 @@ const pickLine = a => a[Math.floor(Math.random() * a.length)];
 const TIPS = {
   start: () => `Trois feux rouges, puis le vert : ${isTouchUI() ? 'tape l’écran' : 'clic ou Espace'} pile au vert et ton équipe part en trombe. Trop tôt ? Hors-jeu, et je siffle.`,
   offside: () => 'Hors-jeu ! Quand ton équipe pulle, l’adversaire repart du brick ; quand elle reçoit, elle attend que la défense se place. On ne vole pas le départ !',
+  // les bases, pour qui n'a pas fait le tutoriel
+  throw: () => isTouchUI() ? (CTRL.sling ? 'Le disque est à toi ! Tire le doigt en arrière, à l’opposé d’un coéquipier démarqué (anneau vert), et lâche.' : 'Le disque est à toi ! Glisse le doigt vers un coéquipier démarqué (anneau vert) et lâche pour lancer.')
+    : 'Le disque est à toi ! Vise un coéquipier démarqué (anneau vert), maintiens le clic et relâche pour lancer.',
+  defend: () => 'En défense, tu diriges le joueur à l’anneau jaune : ' + (isTouchUI() ? (CTRL.move === 'joystick' ? 'pose le doigt et glisse pour courir, bouton Layout pour plonger sur le disque.' : 'tape ou glisse pour le déplacer, glisse vite pour plonger.') : 'il suit ta souris, clic pour plonger sur le disque.'),
   mark: () => `Te voilà en mark ! ${isTouchUI() ? 'Gauche, droite' : 'Souris à gauche, à droite'} : tu fermes un côté du porteur. Pour la quitter, vise plus loin, je ne te retiens pas.`
 };
-let tipT = 0;
+let tipT = 0, tipSeen = null, tutoC = { t: -99, v: false };
 function coachTip(k) {
-  const seen = storeGet('uf-tips', {}) || {};
-  if (seen[k] || tipT > 0) return;
+  if (tipT > 0 || (tipSeen && tipSeen[k])) return;                 // (appelé à chaque image : la mémoire évite de relire le stockage)
+  const seen = storeGet('uf-tips', {}) || {}; tipSeen = seen;
+  if (seen[k]) return;
   seen[k] = 1; storeSet('uf-tips', seen);
   $('ctText').textContent = '« ' + TIPS[k]() + ' »'; $('coachTip').style.display = '';
   tipT = 7;
@@ -37,6 +42,11 @@ function tipsFrame(dt) {
   if (st && st[0] >= 1) coachTip('start');
   const off = G.net === 'guest' ? G.netOffside : G.offside && G.offside.team;
   if (off === me.team) coachTip('offside');
+  if (G.time - tutoC.t > 2) tutoC = { t: G.time, v: !!storeGet('uf-tuto', false) };
+  if (!tutoC.v && G.phase === 'play') {        // pas de tutoriel : les deux gestes de base, la première fois
+    if (canThrow()) coachTip('throw');
+    else if (disc.holder && disc.holder.team !== me.team && me.sel && controllerOf(me.sel) === me) coachTip('defend');
+  }
   const s = me.sel, h = disc.holder;
   if (CTRL.markAssist && s && h && disc.mode === 'held' && G.phase === 'play' && h.team !== me.team && dist(s.x, s.y, h.x, h.y) < STALL_R) coachTip('mark');
 }

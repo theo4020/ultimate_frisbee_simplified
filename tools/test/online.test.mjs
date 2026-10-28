@@ -177,29 +177,35 @@ export default async function (t) {
         const o = TEAMS[0][0]; o.x = 30; o.y = 18; o.vx = o.vy = 0; holdDisc(o); o.think = 99; G.stall = 0;
         const gh = G.humans.find(h => h.team === 1), d = TEAMS[1][3]; selectFor(gh, d); d.x = 60; d.y = 10; d.vx = d.vy = 0; Object.assign(inputOf(gh), { x: 60, y: 10, down: false, bx: 60, by: 10 });
       });
+      // mise en place sûre : l'invité vise (60, 10) et attend que ses ordres en retard soient arrivés, puis l'hôte place le
+      // joueur, puis on attend qu'il soit immobile chez l'invité (10 images de suite)
+      const settle = async () => {
+        await guest.evaluate(async () => { Object.assign(G.pointer, { x: 60, y: 10, down: false, active: true, last: G.time }); sendInput(true); await new Promise(r => setTimeout(r, 900)); });
+        await setupD();
+        await guest.evaluate(async () => {
+          const fr = () => new Promise(r => requestAnimationFrame(r)), me = () => meH().sel; let ok = 0;
+          for (let k = 0; k < 240 && ok < 10; k++) { await fr(); G.pointer.last = G.time; const p = me(); ok = p && p.nx !== undefined && Math.hypot(p.x - 60, p.y - 10) < 0.5 && Math.hypot(p.vx, p.vy) < 0.3 ? ok + 1 : 0; }
+        });
+      };
       const react = () => guest.evaluate(async () => {
         const fr = () => new Promise(r => requestAnimationFrame(r)), me = () => meH().sel;
-        Object.assign(G.pointer, { x: 60, y: 10, down: false, active: true, last: G.time }); sendInput(true);
-        await new Promise(r => setTimeout(r, 900));               // les ordres en retard sont arrivés
-        for (let k = 0; k < 60 && !(me() && me().nx !== undefined && Math.hypot(me().x - 60, me().y - 10) < 0.6 && Math.abs(me().vy) < 0.3); k++) await fr();
-        const p = me(), t0 = performance.now();
+        const p = me(), t0 = performance.now(), vy0 = p.vy;    // (on mesure le changement de vitesse vers la cible, quel que soit l'élan de départ)
         G.pointer.x = p.x; G.pointer.y = 30; G.pointer.active = true; G.pointer.down = true; G.pointer.last = G.time; sendInput(true);
         let lat = -1; const iv = setInterval(() => { G.pointer.last = G.time; sendInput(true); }, 100);
-        while (performance.now() - t0 < 2200) { await fr(); if (lat < 0 && p.vy > 0.3) lat = performance.now() - t0; }
-        G.pointer.down = false; sendInput(true); clearInterval(iv);
+        while (performance.now() - t0 < 2200) { await fr(); if (lat < 0 && p.vy - vy0 > 0.2) lat = performance.now() - t0; }
+        clearInterval(iv); Object.assign(G.pointer, { x: p.x, y: p.y, down: false, last: G.time }); sendInput(true);   // il s'arrête là
         return { lat: Math.round(lat), y: +p.y.toFixed(2), err: +PRED.err.toFixed(2), on: PRED.on };
       });
-      await setupD(); const rp = await react();
+      await host.evaluate(() => { window.__ns = setInterval(() => { G.stall = 0; G.phase = 'play'; }, 100); });   // pas de stall ni de fin de point pendant ces essais
+      await settle(); const rp = await react();
       const hy = await host.evaluate(() => +TEAMS[1][3].y.toFixed(2));
-      await guest.evaluate(() => { CTRL.netPredict = false; }); await setupD(); const rn = await react(); await guest.evaluate(() => { CTRL.netPredict = true; });
-      t.ok(rp.lat >= 0 && rp.lat < 120 && rn.lat > rp.lat + 150, 'réseau lent : avec la prédiction, ton joueur part tout de suite (sans : après l’aller-retour)', { avec: rp, sans: rn });
+      await guest.evaluate(() => { CTRL.netPredict = false; }); await settle(); const rn = await react(); await guest.evaluate(() => { CTRL.netPredict = true; });
+      t.ok(rp.lat >= 0 && rp.lat < 100 && rn.lat > rp.lat, 'réseau lent : avec la prédiction, ton joueur part tout de suite (sans : après l’aller-retour)', { avec: rp, sans: rn });
       t.ok(Math.abs(rp.y - hy) < 1.6 && rp.err < 0.6, 'ton joueur prédit reste d’accord avec l’hôte (écart d’environ le retard du réseau, corrigé en douceur)', { guest: rp.y, host: hy, err: rp.err });
       // plongeon : il part tout de suite chez toi, et finit au même endroit que chez l'hôte
-      await setupD();
+      await settle();
       const dv = await guest.evaluate(async () => {
         const fr = () => new Promise(r => requestAnimationFrame(r)), me = () => meH().sel;
-        Object.assign(G.pointer, { x: 60, y: 10, down: false, active: true, last: G.time }); sendInput(true);
-        await new Promise(r => setTimeout(r, 900));
         Object.assign(G.pointer, { x: 60, y: 30, down: true, last: G.time }); sendInput(true);
         for (let k = 0; k < 30; k++) await fr();                  // il court
         const p = me(), on = PRED.on && PRED.p === p; doDive(p.x, p.y + 6);
@@ -211,6 +217,7 @@ export default async function (t) {
       });
       const dh = await host.evaluate(() => ({ x: +TEAMS[1][3].x.toFixed(2), y: +TEAMS[1][3].y.toFixed(2), dives: G.stats.dives }));
       t.ok(dv.on && dv.now && Math.hypot(dv.x - dh.x, dv.y - dh.y) < 1.2, 'plongeon : ton joueur plonge tout de suite chez toi, et finit au même endroit que chez l’hôte', { dv, dh });
+      await host.evaluate(() => clearInterval(window.__ns));
       await net(host, { lag: 0, jitter: 0 }); await net(guest, { lag: 0, jitter: 0 });
 
       // 2. wifi coupé 3 s : rien ne casse, pas de rafale de 3 s d'effets d'un coup au retour
@@ -241,6 +248,8 @@ export default async function (t) {
       await guest.waitForFunction(() => G.net === 'guest' && hostConn && hostConn.open && !G.reconn && G.time - lastRecv < 0.5, null, { timeout: 8000 }).catch(() => { });
       const ice = await Promise.all([guest.evaluate(() => ({ net: G.net, me: G.me, reconn: !!G.reconn })), host.evaluate(() => G.humans.map(h => [h.id, h.team]))]);
       t.ok(ice[0].net === 'guest' && !ice[0].reconn && ice[0].me === 1 && ice[1].length === 2, 'liaison perdue (changement de réseau) : reconnexion automatique, même équipe', ice);
+      const dg = await guest.evaluate(() => buildReport().diag);
+      t.ok(dg.net && dg.net.role === 'guest' && dg.net.reconnOk >= 2 && dg.net.rtt > 0 && dg.net.snapGapMs && dg.net.snapGapMs.max > 2000 && dg.net.events.length >= 2 && dg.perf.fps > 0, 'rapport de bug : connexion (aller-retour, reconnexions, trous de réception, événements) et fluidité jointes', dg);
 
       // 5. le service de mise en relation se reconnecte (téléphone revenu sur l'appli) : rien ne change
       const before = await host.evaluate(() => ({ hum: G.humans.length, started: G.started }));

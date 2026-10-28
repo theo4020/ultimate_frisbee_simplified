@@ -47,6 +47,8 @@ function resize() {
   document.body.style.setProperty('--tb', Math.round(clamp(sh * 0.17, 52, 78)) + 'px');
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   document.body.classList.toggle('portrait', window.innerHeight > window.innerWidth);
+  const rh = document.getElementById('rotateHint');                 // téléphone en portrait : le conseil va sous le terrain (pas dessus)
+  if (rh && document.body.classList.contains('touch')) rh.style.top = Math.round(canvas.getBoundingClientRect().bottom + 10) + 'px';
 }
 window.addEventListener('resize', resize);
 window.addEventListener('orientationchange', () => setTimeout(resize, 200));

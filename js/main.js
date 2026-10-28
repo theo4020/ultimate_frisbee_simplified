@@ -30,7 +30,7 @@ function frame(now, visible) {
   // jamais négatif : l'heure d'une image (requestAnimationFrame) peut être un peu antérieure au dernier tic du Worker
   // (hôte qui revient sur l'onglet) ; un pas de temps négatif rendait des positions invalides (NaN) pour tout le monde
   const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = Math.max(last, now);
-  const t0 = CTRL.perf ? performance.now() : 0;
+  const t0 = performance.now();                               // (mesures légères, toujours : rapports de bug)
   G.time += dt;
   computeTeams();
   gamepadFrame();
@@ -75,15 +75,30 @@ function frame(now, visible) {
   $('teamsB').style.display = G.net && G.started ? '' : 'none';
   $('menuB').style.visibility = G.attract || ($('lobbyCard').style.display !== 'none' && !$('overlay').classList.contains('hidden') && !G.net) ? 'hidden' : 'visible';
   if (!visible) return;
-  const t1 = CTRL.perf ? performance.now() : 0;
+  const t1 = performance.now();
   if (G.replay) drawReplay(); else draw();
   updateHud();
   perfFrame(now, t0, t1);
 }
+// fluidité gardée pour les rapports de bug : images par seconde de chaque seconde (2 dernières minutes), calcul et dessin moyens
+const PERFLOG = { n: 0, at: 0, sim: 0, draw: 0, fps: [], simMs: 0, drawMs: 0 };
+function perfLog(now, t0, t1, t2) {
+  const L = PERFLOG; L.n++; L.sim += t1 - t0; L.draw += t2 - t1;
+  if (!L.at) L.at = now;
+  if (now - L.at >= 1000) {
+    L.fps.push(Math.round(L.n * 1000 / (now - L.at))); if (L.fps.length > 120) L.fps.shift();
+    L.simMs = +(L.sim / L.n).toFixed(2); L.drawMs = +(L.draw / L.n).toFixed(2); L.n = 0; L.sim = 0; L.draw = 0; L.at = now;
+  }
+}
+function perfDiag() {
+  const f = PERFLOG.fps.slice(-60), avg = f.length ? Math.round(f.reduce((a, b) => a + b, 0) / f.length) : null;
+  return { fps: avg, fpsMin: f.length ? Math.min(...f) : null, fpsLast: f.slice(-20), simMs: PERFLOG.simMs, drawMs: PERFLOG.drawMs, dpr: typeof devicePixelRatio === 'number' ? devicePixelRatio : 1, view: CTRL.view };
+}
 function perfFrame(now, t0, t1) {
+  const t2 = performance.now();
+  perfLog(now, t0, t1, t2);
   const on = !!CTRL.perf && !!(typeof accGet === 'function' && accGet() && accGet().admin), box = $('perfBox');
   if (!on) { if (box.style.display !== 'none') box.style.display = 'none'; return; }
-  const t2 = performance.now();
   PERF.n++; PERF.sim += t1 - t0; PERF.draw += t2 - t1;
   if (now - PERF.at >= 500) {                                 // moyenne toutes les 0,5 s
     const k = PERF.n || 1, fps = PERF.at ? PERF.n * 1000 / (now - PERF.at) : 0;

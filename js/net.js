@@ -4,13 +4,17 @@
 // Tout invité arrive en spectateur ; il rejoint une équipe quand il veut (bouton 👥 Équipes), partie lancée ou non,
 // s'il y reste une place (5 humains max par équipe). Une équipe sans humain est jouée par l'IA. L'hôte joue toujours.
 // Si l'hôte part, un invité désigné à l'avance (l'« héritier », annoncé dans l'état du jeu) reprend la partie là où elle
-// en était, et les autres invités se reconnectent à lui (voir hostLost).
+// en était, et les autres invités se reconnectent à lui.
+// Suite dans net-link.js (connexion perdue, reconnexion, changement d'hôte, ping, diagnostic) et net-predict.js
+// (prédiction du joueur de l'invité).
 
-let roomSeenT = -9, pendSnap = null, pendFx = [];
+let roomSeenT = -9, pendSnap = null, pendFx = [], pendN = 0, lastSnapMs = 0;
 let peer = null, codePeer = null, hostConn = null, netT = 0, inT = 0, lastMid = 0, snapAt = 0, lastRecv = 0, pingT = 0;
 const conns = new Map();                                     // côté hôte : id d'invité → connexion
 const lastSeen = new Map();
-const seatGone = new Map();                                  // côté hôte : joueurs partis en cours de partie → { équipe, heure }
+const seatGone = new Map();
+const newKey = () => Math.random().toString(36).slice(2, 10);
+const seatKey = id => { const h = humanById(id), g = seatGone.get(id); return (h && h.key) || (g && g.key) || null; };                                  // côté hôte : joueurs partis en cours de partie → { équipe, heure }
 let nextId = 1;
 const MAX_PER_TEAM = 5, MAX_SPEC = 10;
 const CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -52,6 +56,7 @@ function sendInput(force) {
   netSend({ t: 'in', x: +G.pointer.x.toFixed(2), y: +G.pointer.y.toFixed(2), down: G.pointer.down, brake: braking(G.pointer), loft: canThrow() ? +G.loft.toFixed(2) : LOFT.N, aim, aiming: aim && !!G.aiming, curve: aim ? +(+G.curve || 0).toFixed(2) : 0, piv: canThrow() && G.pivHolder === disc.holder ? G.pivSel : -1, ma: CTRL.markAssist ? 1 : 0, q });
 }
 function netError(msg) {
+  if (msg) netLog('fin : ' + msg);
   if (G.net === 'guest') safeSend(hostConn, { t: 'bye' });
   else for (const c of conns.values()) safeSend(c, { t: 'bye' });
   G.reconn = null; G.heirTry = false; pendSnap = null; pendFx = []; predReset();
@@ -189,6 +194,7 @@ function addGuest(c) {
   c.on('data', m => {
     if (!m || typeof m !== 'object') return;
     if (id === null) { if (m.t === 'hello') id = admitGuest(c, m); return; }
+    if (conns.get(id) !== c) return;                           // ancienne connexion remplacée (il est revenu) : on l'ignore
     lastSeen.set(id, G.time); hostOnData(id, m);
   });
   // (seulement si c'est encore sa connexion : revenu par une nouvelle, l'ancienne qui se ferme ne compte plus)
@@ -199,14 +205,18 @@ function addGuest(c) {
 function admitGuest(c, m) {
   // retour d'un joueur : après un changement d'hôte, une coupure de réseau (sa nouvelle connexion remplace l'ancienne)
   // ou une page rechargée (sa place est gardée 10 min) : il retrouve son équipe
-  // (« back » : page rechargée — on ne prend la place que si elle est libre ou si l'ancienne connexion ne répond plus)
-  let rid = m.rejoin == null ? null : +m.rejoin;
-  if (rid == null && m.back != null) { const b = +m.back; if (seatGone.has(b) || (humanById(b) && b !== G.myId && G.time - (lastSeen.get(b) || -99) > 3)) rid = b; }
+  // Chaque joueur reçoit une clé secrète à son arrivée (« welcome ») : pour reprendre une place, il faut la bonne clé
+  // (sinon un autre onglet pourrait prendre la place de quelqu'un). Sans clé connue (nouvel hôte après un changement), on
+  // accepte comme avant. « back » : page rechargée ; « rejoin » : reconnexion ou changement d'hôte.
+  const keyOk = id => { const k = seatKey(id); return !k || k === m.key; };
+  let rid = m.rejoin != null ? +m.rejoin : m.back != null ? +m.back : null;
+  if (rid != null && (rid === G.myId || !keyOk(rid) || (m.back != null && !m.key && !seatGone.has(rid) && G.time - (lastSeen.get(rid) || -99) <= 3))) rid = null;
   const gone = rid != null && seatGone.get(rid);
   if (gone && !humanById(rid) && Date.now() - gone.at < 10 * 60e3 && rid !== G.myId) {
     const full = gone.team >= 0 && G.humans.filter(h => h.team === gone.team).length >= MAX_PER_TEAM;
-    G.humans.push({ id: rid, team: full ? -1 : gone.team, sel: null, name: cleanName(m.name) });
+    G.humans.push({ id: rid, team: full ? -1 : gone.team, sel: null, name: cleanName(m.name), key: gone.key });
     if (G.started) flash(humanLabel(humanById(rid)) + ' est de retour');
+    netLog('joueur ' + rid + ' revenu');
     if (G.started && G.phase === 'play') updateSelected();
   }
   seatGone.delete(rid);
@@ -215,7 +225,8 @@ function admitGuest(c, m) {
     const id = rid, old = conns.get(id);
     conns.set(id, c); lastSeen.set(id, G.time);
     if (old && old !== c) { try { old.close(); } catch (e) { } }
-    sendTo(id, { t: 'welcome', id });
+    const hb = humanById(id); if (!hb.key) hb.key = newKey();
+    sendTo(id, { t: 'welcome', id, key: hb.key, started: !!G.started });
     sendTo(id, roomState());
     if (G.started && G.menuShown) sendTo(id, { t: 'menu', kind: G.lastMenu || 'between', score: G.score, rec: G.receiving, wind: G.wind, teams: G.teams, pts: winPts(), sum: G.lastMenu === 'over' ? G.lastSummary : null, ser: coopSer() });
     broadcastRoom();
@@ -224,9 +235,9 @@ function admitGuest(c, m) {
   if (G.humans.filter(h => h.team < 0).length >= MAX_SPEC) { safeSend(c, { t: 'full' }); setTimeout(() => c.close(), 300); return null; }
   const id = nextId++;
   conns.set(id, c); lastSeen.set(id, G.time);
-  const h = { id, team: -1, sel: null, name: cleanName(m.name) };
+  const h = { id, team: -1, sel: null, name: cleanName(m.name), key: newKey() };
   G.humans.push(h);
-  sendTo(id, { t: 'welcome', id });
+  sendTo(id, { t: 'welcome', id, key: h.key, started: !!G.started });
   sendTo(id, roomState());
   if (G.started && G.menuShown) sendTo(id, { t: 'menu', kind: G.lastMenu || 'first', score: G.score, rec: G.receiving, wind: G.wind, teams: G.teams, pts: winPts(), sum: G.lastMenu === 'over' ? G.lastSummary : null, ser: coopSer() });
   broadcastRoom();
@@ -235,10 +246,11 @@ function admitGuest(c, m) {
 }
 function dropGuest(id, why) {
   if (!conns.has(id)) return;
+  netLog('joueur ' + id + ' ' + why);
   try { conns.get(id).close(); } catch (e) { }
   conns.delete(id); lastSeen.delete(id);
   const h = humanById(id);
-  if (h && G.started) seatGone.set(id, { team: h.team, at: Date.now() });   // sa place est gardée s'il revient (coupure, page rechargée)
+  if (h && G.started) seatGone.set(id, { team: h.team, at: Date.now(), key: h.key });   // sa place est gardée s'il revient (coupure, page rechargée)
   G.humans = G.humans.filter(o => o.id !== id);
   if (G.readyIds) G.readyIds.delete(id);
   if (G.pz && G.pz.by === id) G.pz = null;                     // celui qui avait mis en pause est parti
@@ -378,12 +390,12 @@ function joinGame(code) {
         G.score = [0, 0]; G.receiving = 0; G.phase = 'menu';
         G.net = 'guest';
         G.roomCode = code; G.inviteUrl = location.href.split('#')[0] + '#join=' + code;   // pour inviter d'autres joueurs (menu ☰)
-        const last = storeGet('uf-last-room', null);            // page rechargée en pleine partie : on demande à reprendre sa place
-        const rejoin = last && last.code === code && last.id > 0 && Date.now() - (last.seen || last.at) < 10 * 60e3 ? last.id : undefined;
+        const last = seatGet();                                  // page rechargée en pleine partie : on demande à reprendre sa place
+        const fresh = last && last.code === code && last.id > 0 && Date.now() - (last.seen || last.at) < 10 * 60e3, rejoin = fresh ? last.id : undefined;
         storeSet('uf-last-room', { code, at: Date.now() });     // pour revenir dans la partie si on la quitte
         $('joinStatus').textContent = 'Connecté !';
         lastMid = -1;
-        netSend({ t: 'hello', name: myName(), back: rejoin });
+        netSend({ t: 'hello', name: myName(), back: rejoin, key: fresh ? last.key : undefined });
       });
     });
     p.on('error', err => {
@@ -404,99 +416,6 @@ function attachHost(c) {
   c.on('close', () => { if (hostConn === c) hostLost('La connexion avec l’hôte a été perdue.'); });
   c.on('error', () => { if (hostConn === c) hostLost('Erreur de connexion avec l’hôte.'); });
 }
-// ---------- connexion perdue, changement d'hôte ----------
-// plus de nouvelles de l'hôte : d'abord on essaie de le retrouver (coupure de wifi, passage en 4G, appli en arrière-plan…)
-// en reprenant sa place. Seulement si le service dit que l'hôte n'existe plus (« peer-unavailable »), l'héritier reprend la
-// partie : un invité dont le réseau est coupé ne crée jamais une deuxième partie de son côté.
-function hostLost(msg) {
-  if (G.net !== 'guest' || G.reconn) return;
-  const old = hostConn, hostPeer = old && (old.peer || old.other);
-  try { if (old) old.close(); } catch (e) { }
-  hostConn = null;
-  if (!G.started || !peer || peer.destroyed || !hostPeer || G.hostBye) { if (G.started && G.heir && peer && !peer.destroyed) heirTakeover(msg); else connectionLost(msg); return; }
-  G.reconn = { until: Date.now() + 30e3, peerId: hostPeer, msg, since: Date.now() };
-  flash('Connexion perdue : reconnexion…', true);
-  reconnTry();
-}
-function reconnTry() {
-  const R = G.reconn; if (!R || G.net !== 'guest' || hostConn) return;
-  if (Date.now() > R.until) { G.reconn = null; connectionLost(R.msg + ' La reconnexion n’a pas marché.'); return; }
-  if (!peer || peer.destroyed) { G.reconn = null; connectionLost(R.msg); return; }
-  if (peer.disconnected) { try { peer.reconnect(); } catch (e) { } setTimeout(reconnTry, 1500); return; }   // d'abord le service
-  const c = peer.connect(R.peerId, { reliable: true, serialization: 'json' });
-  let ok = false;
-  c.on('open', () => {
-    if (G.reconn !== R || hostConn) { try { c.close(); } catch (e) { } return; }
-    ok = true; G.reconn = null; attachHost(c); lastMid = -1;
-    netSend({ t: 'hello', name: myName(), rejoin: G.myId }); flash('Reconnecté ✓', true);
-  });
-  setTimeout(() => { if (!ok && G.reconn === R) { try { c.close(); } catch (e) { } reconnTry(); } }, 3000);
-}
-// l'hôte est parti pour de bon : l'héritier reprend la partie ; les autres se reconnectent à lui (pendant 25 s au plus)
-function heirTakeover(msg) {
-  const H = G.heir;
-  if (!G.started || !H || !peer || peer.destroyed || G.net !== 'guest') { connectionLost(msg); return; }
-  if (H[0] === G.myId) { becomeHost(); return; }
-  if (!H[1]) { connectionLost(msg); return; }
-  const until = G.time + 25;
-  G.heirTry = true;
-  flash('L’hôte est parti : connexion au nouvel hôte…', true);
-  const tryOnce = () => {
-    if (G.net !== 'guest' || hostConn) { G.heirTry = false; return; }
-    if (G.time > until) { G.heirTry = false; connectionLost('L’hôte est parti et personne n’a pu reprendre la partie.'); return; }
-    const c = peer.connect(H[1], { reliable: true, serialization: 'json' });
-    let ok = false;
-    c.on('open', () => { ok = true; G.heirTry = false; attachHost(c); lastMid = -1; netSend({ t: 'hello', name: myName(), rejoin: G.myId }); flash('Partie reprise ✓', true); });
-    setTimeout(() => { if (!ok) { try { c.close(); } catch (e) { } tryOnce(); } }, 2500);
-  };
-  setTimeout(tryOnce, 600);                                      // le temps que l'héritier se mette en place
-}
-// on devient l'hôte : on reprend la partie depuis le dernier état reçu (positions, disque, score, stratégies…)
-function becomeHost() {
-  const oldHost = humanById(G.hostId);
-  G.net = 'host'; hostConn = null; conns.clear(); lastSeen.clear();
-  G.humans = G.humans.filter(h => h.id !== G.hostId);
-  G.hostId = G.myId;
-  nextId = Math.max(0, ...G.humans.map(h => h.id)) + 1;
-  for (const t of [0, 1]) { const c = captain(t); if (c && c.id !== G.myId && G.netCfg && G.netCfg[t]) c.cfg = Object.assign({}, DEFAULT_CFG, G.netCfg[t]); }
-  if (G.netTeams) G.teams = G.netTeams;
-  if (G.coopRoom && G.series) {                                  // mode infini à plusieurs : on reprend la série (adversaire, niveau, victoires)
-    G.series = Object.assign(newCoopSeries(), G.series, { opp: endlessOpp(G.series.cur || 0) });
-    endlessCfgIn();
-  }
-  syncMe();
-  players.forEach(p => { if (p.nx !== undefined) { p.x = p.nx; p.y = p.ny; } p.nx = p.ny = undefined; p.tx = p.x; p.ty = p.y; p.windup = null; p.guess = null; });
-  G.oplay = null; G.dplay = null; G.pz = null;
-  visReset();
-  if (G.phase === 'play') {
-    if ((disc.mode === 'held' || disc.mode === 'carry') && disc.holder) {
-      const st = G.stall, carry = disc.mode === 'carry' && G.carryTo;
-      if (carry) startCarry(disc.holder, G.carryTo.x, G.carryTo.y, ''); else { holdDisc(disc.holder); G.stall = st; }
-    } else if (disc.mode === 'air') {
-      disc.t = disc.netT || disc.t; disc.rolled = new Set(); disc.pull = false;
-      disc.thrower = nearest(TEAMS[disc.team], disc.sx, disc.sy);
-      assignRoles(disc.team, disc.intended || disc.thrower); setupDefense(1 - disc.team, disc.intended || disc.thrower);
-    } else if (disc.mode === 'ground') {
-      disc.x = disc.nx !== undefined ? disc.nx : disc.x; disc.y = disc.ny !== undefined ? disc.ny : disc.y;
-      G.pickup = pickupFor(G.off, disc.x, disc.y); assignRoles(G.off, G.pickup); setupDefense(1 - G.off, G.pickup);
-    }
-  } else if (G.phase === 'pull') startPull();
-  else if (G.menuShown && $('stratCard').style.display !== 'none') showMenu(G.phase === 'over' ? 'over' : 'between');   // entre deux points : le menu, côté hôte
-  G.readyIds = new Set();
-  claimCode(G.time + 60);
-  broadcastRoom();
-  flash((oldHost ? humanLabel(oldHost) + ' (hôte) est parti' : 'L’hôte est parti') + ' : tu reprends la partie', true);
-}
-// le nouvel hôte reprend aussi le code de la partie (dès que l'ancien l'a libéré) : on peut encore la rejoindre avec le code
-function claimCode(until) {
-  if (G.net !== 'host' || !G.roomCode || codePeer || G.time > until) return;
-  makePeer(PEER_PREFIX + G.roomCode).then(p => {
-    if (G.net !== 'host') { try { p.destroy(); } catch (e) { } return; }
-    p.on('open', () => { codePeer = p; });
-    p.on('connection', hostAccept);
-    p.on('error', err => { if (err && err.type === 'unavailable-id') { try { p.destroy(); } catch (e) { } setTimeout(() => claimCode(until), 3000); } });
-  }).catch(() => {});
-}
 function applyHumans(list) {
   const old = new Map(G.humans.map(h => [h.id, h]));
   G.humans = list.map(([id, team, si, name]) => {
@@ -510,12 +429,17 @@ function applyHumans(list) {
 // d'un coup : on saute directement au dernier, et on ne rejoue que les sons et effets récents (pas 3 s d'effets en même temps)
 function flushSnap() {
   if (!pendSnap) return;
-  const m = pendSnap, wt = +m.g.wt || 0; pendSnap = null;          // wt : heure de l'hôte à l'envoi
+  const m = pendSnap, wt = +m.g.wt || 0; pendSnap = null;
+  if (pendN > 3) NETLOG.bursts++;                                  // plusieurs états d'un coup : la réception a eu un trou
+  pendN = 0;          // wt : heure de l'hôte à l'envoi
   m.fx = pendFx.filter(([t]) => !(t < wt - 0.6)).map(x => x[1]); pendFx = [];
   applySnapshot(m);
 }
 function guestOnData(m) {
   if (m.t === 's') {
+    const nowMs = performance.now();
+    if (lastSnapMs && G.started) { NETLOG.gaps.push(Math.round(nowMs - lastSnapMs)); if (NETLOG.gaps.length > 400) NETLOG.gaps.shift(); }
+    lastSnapMs = nowMs; pendN++;
     if (pendSnap && pendSnap.m && !m.m) m.m = pendSnap.m;      // garder les dernières métadonnées reçues
     if (m.fx) for (const e of m.fx) pendFx.push([+m.g.wt || 0, e]);
     if (pendFx.length > 200) pendFx.splice(0, pendFx.length - 200);
@@ -527,8 +451,8 @@ function guestOnData(m) {
   flushSnap();                                                   // les autres messages passent après l'état qui les précède
   switch (m.t) {
     case 'welcome':
-      G.myId = m.id;
-      if (!G.started) showRoom();
+      G.myId = m.id; if (m.key) G.seatKey = m.key;
+      if (!G.started && !m.started) showRoom();                  // partie déjà lancée (retour, page rechargée) : droit au terrain
       break;
     case 'emo': if (EMOTES[m.e]) G.emotes.push({ id: m.id, e: EMOTES[m.e], t: G.time }); break;
     case 'full': netError('La partie est complète.'); break;
@@ -564,42 +488,6 @@ function guestOnData(m) {
       break;
   }
 }
-// temps d'aller-retour (ms), lissé ; qualité affichée dans le menu ☰ (et sur le terrain si elle est mauvaise)
-function rttMix(old, ts) { const r = performance.now() - (+ts || 0); if (!(r >= 0 && r < 30000)) return old; return old ? old * 0.7 + r * 0.3 : r; }
-const rttLabel = r => !r ? '…' : Math.round(r) + ' ms (' + (r < 120 ? 'bonne' : r < 250 ? 'moyenne' : 'faible') + ')';
-function netQualityText() {
-  if (G.net === 'guest') return 'Connexion à l’hôte : ' + rttLabel(G.rtt);
-  if (G.net === 'host') { const l = G.humans.filter(h => h.id !== G.myId).map(h => humanLabel(h) + ' ' + rttLabel(h.rtt)); return l.length ? 'Connexion des joueurs : ' + l.join(' · ') : ''; }
-  return '';
-}
-// battement de cœur : un joueur muet pendant 30 s est considéré comme parti
-// invité : plus rien ne vient de l'hôte depuis 2 s (onglet ou appli quittée, réseau coupé) → on le dit au lieu de figer en silence
-function hostWaitMsg() {
-  if (G.net === 'guest' && G.reconn) return '🔄 Reconnexion… (' + Math.floor((Date.now() - G.reconn.since) / 1000) + ' s)';
-  if (G.net !== 'guest' || !hostConn || !G.started) return '';
-  const s = G.time - lastRecv;
-  return s > 2 ? '⏳ En attente de l’hôte… (' + Math.floor(s) + ' s)' : '';
-}
-function netHeartbeat(dt) {
-  if (!G.net) return;
-  pingT += dt;
-  if (pingT > 1) { pingT = 0; netSend({ t: 'ping', ts: Math.round(performance.now()) }); }   // l'autre répond « pong » : temps d'aller-retour
-  if (G.net === 'guest' && hostConn && G.time - lastRecv > (G.started ? 8 : 30)) hostLost('L’hôte ne répond plus.');   // partie lancée : au bout de 8 s, on se reconnecte
-  if (G.net === 'guest' && G.roomCode && G.myId > 0 && G.time - roomSeenT > 2) {              // pour reprendre sa place si la page est rechargée
-    roomSeenT = G.time; const l = storeGet('uf-last-room', null);
-    if (l && l.code === G.roomCode) { l.id = G.myId; l.seen = Date.now(); storeSet('uf-last-room', l); }
-  }
-  if (G.net === 'host') for (const [id, t] of lastSeen) if (G.time - t > 30) dropGuest(id, 'ne répond plus');
-}
-// invité dont l'onglet est caché (plus d'images) : il continue à donner signe de vie, l'hôte garde sa place
-setInterval(() => { if (typeof document !== 'undefined' && document.hidden && G.net === 'guest' && hostConn) safeSend(hostConn, { t: 'ping' }); }, 1000);
-// page fermée : on prévient avant de couper (« bye » : départ voulu, les autres ne cherchent pas à se reconnecter)
-function netLeave() {
-  for (const c of conns.values()) { safeSend(c, { t: 'bye' }); try { c.close(); } catch (e) { } }
-  if (hostConn) { safeSend(hostConn, { t: 'bye' }); try { hostConn.close(); } catch (e) { } }
-}
-window.addEventListener('beforeunload', netLeave);
-
 function applySnapshot(m) {
   snapAt = G.time;
   const pp = PRED.p && PRED.on ? PRED.p : null;
@@ -669,67 +557,6 @@ function guestFrame(dt) {
     disc.z = discZ(u);
   } else if ((disc.mode === 'held' || disc.mode === 'carry') && disc.holder) { disc.x = disc.holder.x; disc.y = disc.holder.y; disc.z = 0; }
   else if (disc.nx !== undefined) { disc.x = disc.nx; disc.y = disc.ny; disc.z = 0; }
-}
-
-// =====================================================================
-//  Prédiction de l'invité : ton joueur répond tout de suite
-// =====================================================================
-// Sans prédiction, ton ordre fait l'aller-retour chez l'hôte avant que ton joueur bouge (un à deux dixièmes de seconde).
-// Ici, l'invité déplace lui-même le joueur qu'il contrôle, avec les mêmes règles de course que l'hôte (steer, mark aimantée).
-// L'hôte reste le seul à décider : chaque état dit quel ordre il a appliqué (ak : numéro, ms depuis sa réception). On compare
-// sa position avec celle que l'invité avait prédite au même moment, et on corrige l'écart en douceur (en un coup s'il est
-// grand : plongeon, nouveau point…). Les autres joueurs restent lissés comme avant.
-const PRED = { on: false, p: null, q: 0, sent: new Map(), hist: [], cx: 0, cy: 0, echo: {}, err: 0 };
-function predReset() { PRED.on = false; PRED.p = null; PRED.hist = []; PRED.cx = PRED.cy = 0; }
-// le joueur que tu déplaces toi-même en ce moment (null : pas de prédiction)
-function predWho() {
-  if (G.net !== 'guest' || G.spectator || G.phase !== 'play' || G.pz || CTRL.netPredict === false) return null;
-  const me = meH(), p = me && me.sel;
-  if (!p || p.nx === undefined || controllerOf(p) !== me || !userControls(p)) return null;
-  if ((disc.mode === 'held' || disc.mode === 'carry') && disc.holder === p) return null;
-  if (p !== PRED.p && (p.dive > 0 || p.down > 0 || p.lift > 0 || p.lift < 0)) return null;   // plongeon ou saut déjà en cours chez l'hôte : on le suit
-  return p;                                                      // (tes plongeons et sauts, eux, partent aussi chez toi : predAction)
-}
-// tu plonges ou tu sautes : ton joueur le fait tout de suite chez toi (l'hôte fait pareil à la réception, mêmes règles)
-function predAction(kind, x, y) {
-  const p = PRED.on && PRED.p; if (!p || p.dive > 0 || p.down > 0 || p.jump > 0 || p.jprep > 0) return;
-  if (kind === 'dive') { [p.vx, p.vy] = diveVel(p, x, y); p.dive = DIVE_T; PRED.echo.layout = performance.now(); fxPlay('layout', p.x, p.y, p.team); }
-  else if (kind === 'jump' && jumpTarget(meH()) === p && !(p.jumpCd > 0)) { p.jprep = JUMP_PREP; p.jumpAt = 0; PRED.echo.jump = performance.now(); fxPlay('jump', p.x, p.y, p.team); }
-}
-function predFrame(gdt) {
-  const p = predWho();
-  if (p !== PRED.p || !p) { PRED.p = p; PRED.on = !!p; PRED.hist = []; PRED.cx = PRED.cy = 0; if (!p) return null; }
-  const inp = G.pointer;                                         // même cible que chez l'hôte (sim.js : update)
-  [p.tx, p.ty] = braking(inp) ? brakeTarget(p) : [inp.x, inp.y];
-  if (p.team !== G.off) { const mk = markAssistTarget(p, inp); if (mk) [p.tx, p.ty] = mk.pt; p.markOn = !!mk; }
-  p.sp = SPD.user;
-  steer(p, gdt);
-  const k = Math.min(1, gdt * 10), cx = PRED.cx * k, cy = PRED.cy * k;   // correction étalée (~0,1 s)
-  p.x += cx; p.y += cy; PRED.cx -= cx; PRED.cy -= cy;
-  p.x = clamp(p.x, -2, W + 2); p.y = clamp(p.y, -2, H + 2);
-  const now = performance.now();
-  PRED.hist.push({ t: now, x: p.x + PRED.cx, y: p.y + PRED.cy, vx: p.vx, vy: p.vy });   // position « corrigée » (correction en cours comprise)
-  while (PRED.hist.length > 2 && now - PRED.hist[0].t > 2500) PRED.hist.shift();
-  return p;
-}
-// état de l'hôte pour ton joueur : a = [x, y, vx, vy, …], ak = [ordre appliqué, ms depuis sa réception]
-function predFix(p, a, ak) {
-  const H0 = PRED.hist;
-  if (!ak || !H0.length) return;
-  const ts = PRED.sent.get(ak[0]); if (ts == null) return;
-  const t = ts + ak[1];                                          // moment où ta prédiction en était au même point que l'hôte
-  if (t < H0[0].t || t > H0[H0.length - 1].t + 40) return;
-  let i = 1; while (i < H0.length && H0[i].t < t) i++;
-  const A = H0[i - 1], B = H0[Math.min(i, H0.length - 1)], u = B.t > A.t ? clamp((t - A.t) / (B.t - A.t), 0, 1) : 0;
-  const hx = A.x + (B.x - A.x) * u, hy = A.y + (B.y - A.y) * u, hvx = A.vx + (B.vx - A.vx) * u, hvy = A.vy + (B.vy - A.vy) * u;
-  const ex = a[0] - hx, ey = a[1] - hy, e = Math.hypot(ex, ey);
-  PRED.err = PRED.err * 0.9 + e * 0.1;                            // écart moyen (tests, mesures)
-  if (e > 4) { p.x = a[0]; p.y = a[1]; p.vx = a[2]; p.vy = a[3]; PRED.hist = []; PRED.cx = PRED.cy = 0; return; }   // trop loin : on se recale
-  if (e < 0.06) return;                                          // arrondis de l'envoi (0,1 m)
-  PRED.cx += ex; PRED.cy += ey;
-  const evx = a[2] - hvx, evy = a[3] - hvy;
-  p.vx += evx * 0.5; p.vy += evy * 0.5;
-  for (const h of H0) if (h.t >= t) { h.x += ex; h.y += ey; }     // les prédictions suivantes en tenaient compte : on les décale aussi
 }
 
 // =====================================================================

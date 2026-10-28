@@ -54,7 +54,9 @@ Les scripts sont chargés dans cet ordre par `index.html` et partagent le même 
 | `js/controls.js` | Souris, clavier, tactile, joystick virtuel, plein écran |
 | `js/gestures.js` | Gestes sur téléphone (visée, 2e doigt pour la courbe et la hauteur, taps) |
 | `js/gamepad.js` | Manette (API Gamepad) |
-| `js/net.js` | Multijoueur en ligne (PeerJS) : salle d'attente, spectateurs, émojis, reprise de la partie si l'hôte part |
+| `js/net.js` | Multijoueur en ligne (PeerJS) : salle d'attente, spectateurs, émojis, hôte (états envoyés), invité (états reçus, lissage) |
+| `js/net-link.js` | En ligne : connexion perdue et reconnexion (place gardée), changement d'hôte, ping / pong, départ annoncé, diagnostic des rapports |
+| `js/net-predict.js` | En ligne : prédiction du joueur de l'invité (course, mark, plongeons, sauts), corrigée par l'hôte |
 | `js/main.js` | Boucle principale et démarrage |
 | `js/pwa.js` | Installation sur l'écran d'accueil (bouton « Installer ») |
 | `sw.js` | Service worker : garde une copie des fichiers pour jouer hors connexion |

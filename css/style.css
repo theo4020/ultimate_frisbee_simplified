@@ -462,3 +462,9 @@ details.orders summary small{color:var(--muted);font-weight:400}
 #sysItems .kind.play,#galItems .kind.play{background:rgba(250,204,21,.22);color:#fde68a}
 .edBase{display:flex;align-items:center;gap:8px;font-size:14px}
 .accAdmin{margin-top:12px;border-top:1px solid rgba(148,163,184,.25);padding-top:8px}.accAdmin summary{cursor:pointer;font-weight:600}
+
+/* premiers matchs : la carte d'avant-match ne garde que l'essentiel (ui.js : isNewbie) */
+#stratCard.newbie #stratRows,#stratCard.newbie #hostOnlyWind,#stratCard.newbie #rowFirst,#stratCard.newbie #rowSpeed,#stratCard.newbie #rowPoints{display:none}
+#newbieBox{display:flex;flex-direction:column;gap:8px;margin:6px 0 10px}
+#newbieBox .desc0{margin:0;color:var(--muted);font-size:14px;line-height:1.4}
+#newbieBox button{width:100%}

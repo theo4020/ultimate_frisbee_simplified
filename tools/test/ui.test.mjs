@@ -250,6 +250,30 @@ export default async function (t) {
     await ctx.close();
 
     // ---------- téléphone ----------
+    t.group('Nouveau joueur : premiers matchs simplifiés');
+    {
+      const cn = await browser.newContext({ viewport: { width: 1100, height: 760 } });
+      const q = await cn.newPage(); watch(q, 'nouveau');
+      await q.goto(srv.url + 'index.html'); await q.waitForFunction(() => typeof G !== 'undefined' && G.attract);
+      await q.click('#soloMenuB'); await q.click('#soloB');
+      const nb = await q.evaluate(() => ({ recv: G.receiving === G.me, cls: document.getElementById('stratCard').classList.contains('newbie'), rows: document.getElementById('stratRows').offsetHeight, box: document.getElementById('newbieBox').offsetHeight > 0, tuto: document.getElementById('newbieTuto').offsetHeight > 0, lvl: G.form.level, levelRow: document.getElementById('rowLevel').offsetHeight > 0 }));
+      t.ok(nb.cls && nb.rows === 0 && nb.box && nb.tuto && nb.levelRow, 'premier match : seulement l’essentiel (réglages d’équipe repliés, proposition du tutoriel, niveau de l’IA)', nb);
+      t.ok(nb.lvl === 'facile' && nb.recv, 'tout premier match : IA facile, et il commence en attaque (pas de pull à faire)', nb);
+      await q.evaluate(() => { G.form.first = String(G.me); START.AI_OFF = 0; });
+      await q.click('#go');
+      await q.waitForFunction(() => G.phase === 'play' && !startWindow(), null, { timeout: 30000 });
+      await q.evaluate(() => { tipT = 0; document.getElementById('coachTip').style.display = 'none'; G.off = G.me; G.oplay = null; G.pickup = null; const h = TEAMS[G.me][0]; h.x = W / 2; holdDisc(h); h.think = 99; });
+      await q.waitForFunction(() => /disque est à toi/.test(document.getElementById('ctText').textContent) && document.getElementById('coachTip').style.display !== 'none', null, { timeout: 4000 }).catch(() => { });
+      t.ok(/disque est à toi/.test(await q.textContent('#ctText')), 'sans tutoriel : Coach Disco explique comment lancer la première fois', await q.textContent('#ctText'));
+      await q.evaluate(() => { tipT = 0; G.off = 1 - G.me; const o = TEAMS[1 - G.me][0]; holdDisc(o); o.think = 99; updateSelected(); G.pointer.last = G.time; });
+      await q.waitForFunction(() => /anneau jaune/.test(document.getElementById('ctText').textContent), null, { timeout: 4000 }).catch(() => { });
+      t.ok(/anneau jaune/.test(await q.textContent('#ctText')), 'et comment défendre', await q.textContent('#ctText'));
+      await q.evaluate(() => { G.menuShown = false; showMenu('between'); });
+      await q.click('#newbieOpts');
+      t.ok(await q.evaluate(() => !document.getElementById('stratCard').classList.contains('newbie') && document.getElementById('stratRows').offsetHeight > 0 && storeGet('uf-showopts', false)), '« Voir les réglages » : tout réapparaît, et reste visible ensuite');
+      await cn.close();
+    }
+
     t.group('Téléphone : lancer au lance-pierre');
     const m = await browser.newContext({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
     const q = await m.newPage(); watch(q, 'mobile');

@@ -18,6 +18,7 @@ export default async function (t) {
 
     t.group('Départ au pull : faux départ de l’équipe qui reçoit');
     await p.evaluate(() => { START.AI_OFF = 0; });               // pas de faux départ de l'IA, sauf dans le test qui le demande
+    await p.evaluate(() => { storeSet('uf-tuto', true); storeSet('uf-showopts', true); });   // joueur qui a fait le tutoriel : pas les conseils de base
     await startMatch('0');                                    // on reçoit : l'IA adverse pulle avec les feux
     await p.waitForFunction(() => G.phase === 'pull' && G.pull && lightsOn(G.pull.cd) >= 2, null, { timeout: 20000 });
     t.ok(await p.evaluate(() => startOn() && G.pull.by == null), 'l’IA pulle : les feux s’allument');
@@ -68,7 +69,7 @@ export default async function (t) {
     // attente en temps de jeu (la machine de test peut ralentir les images : on ne compte pas en temps réel)
     const gwait = async sec => { const t0 = await p.evaluate(() => G.gt); await p.waitForFunction(t => G.gt >= t, t0 + sec, { timeout: 15000, polling: 'raf' }); };
     const look = () => p.evaluate(() => { const d = meH().sel, h = disc.holder; return { on: !!d.markOn, dx: +(dirOf(h.team) * (d.x - h.x)).toFixed(2), dy: +(d.y - h.y).toFixed(2), mk: G.marker === d, stall: +G.stall.toFixed(1), shade: +G.mkShade.toFixed(2), ph: G.phase, mode: disc.mode, ht: h && h.team, me: G.me, ctl: !!controllerOf(d), pz: G.paused, pull: !!G.pull }; });
-    await p.evaluate(() => { tipT = 0; document.getElementById('coachTip').style.display = 'none'; const s = storeGet('uf-tips', {}) || {}; delete s.mark; storeSet('uf-tips', s); });
+    await p.evaluate(() => { tipT = 0; tipSeen = null; document.getElementById('coachTip').style.display = 'none'; const s = storeGet('uf-tips', {}) || {}; delete s.mark; storeSet('uf-tips', s); });
     await setup(1);
     await gwait(1.2);
     const m1 = await look();

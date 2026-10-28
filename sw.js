@@ -59,6 +59,8 @@ const FILES = [
   'js/gallery.js',
   'js/gamepad.js',
   'js/net.js',
+  'js/net-link.js',
+  'js/net-predict.js',
   'js/main.js',
   'js/pwa.js'
 ];

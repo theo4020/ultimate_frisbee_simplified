@@ -156,11 +156,19 @@ const tStars = c => { const b = storeGet('uf-tuto-stars', {}) || {}, st = TUTO_C
   $('lobbyErr').textContent = err || '';
   $('overlay').classList.remove('hidden');
 }
+// nouveau joueur : moins de 2 matchs joués, en match rapide solo, et pas encore demandé à voir les réglages
+const isNewbie = () => !G.net && !G.series && !G.tuto && !G.practice && careerGet().matches < 2 && !storeGet('uf-showopts', false) && !sysList().length;   // (ses propres systèmes : il veut les réglages)
+if (typeof document !== 'undefined' && document.getElementById('newbieOpts')) {
+  $('newbieOpts').addEventListener('click', () => { storeSet('uf-showopts', true); $('stratCard').classList.remove('newbie'); $('newbieBox').style.display = 'none'; refreshOptions(); });
+  $('newbieTuto').addEventListener('click', () => { closeAllCards(); tutoStart('base'); });
+}
 function showMenu(kind) {
   G.menuShown = true; G.teamsOpen = null;
   if (G.net !== 'guest') newWind();
   hudKey = ''; G.lastMenu = kind;
   computeTeams();
+  // tout premier match d'un nouveau joueur : IA facile, et il commence en attaque (il reçoit le pull au lieu de le faire)
+  if (kind === 'first' && isNewbie() && !storeGet('uf-first-lvl', false)) { storeSet('uf-first-lvl', true); if (G.form.level === 'normal') G.form.level = 'facile'; G.form.first = String(G.me); }
   for (const id of ['lobbyCard', 'seriesCard', 'profileCard', 'endlessCard', 'styleCard']) $(id).style.display = 'none';
   $('stratCard').style.display = '';
   const ME = G.me, side = `les ${tn(ME)} et tu attaques vers la ${dirOf(ME) > 0 ? 'droite' : 'gauche'}`;
@@ -188,6 +196,11 @@ function showMenu(kind) {
     $('go').textContent = 'Jouer le point ▶';
     renderSummary(null);
   }
+  // premiers matchs en solo : seulement l'essentiel (les réglages d'équipe sont repliés, IA facile pour le tout premier)
+  const newbie = isNewbie();
+  $('stratCard').classList.toggle('newbie', newbie && kind !== 'over');
+  $('newbieBox').style.display = newbie && kind !== 'over' ? '' : 'none';
+  $('newbieTuto').style.display = storeGet('uf-tuto', false) ? 'none' : '';
   $('replayB').style.display = kind !== 'first' && REPLAY.last && !G.net ? '' : 'none';
   $('stratCard').scrollTop = 0;
   G.readyIds = new Set(); G.lastMenu = kind;

@@ -98,6 +98,7 @@ function buildReport() {
     wind: G.wind, curve: G.curve, loft: G.loft, form: G.form, ai: G.ai, pull: G.pull, pullUI: G.pullUI, oplay: G.oplay && G.oplay.type, dplay: G.dplay && G.dplay.type,
     disc: { mode: disc.mode, holder: idx(disc.holder), x: r2(disc.x), y: r2(disc.y), z: r2(disc.z || 0), sx: r2(disc.sx), sy: r2(disc.sy), cx: r2(disc.cx), cy: r2(disc.cy),
       ex: r2(disc.ex), ey: r2(disc.ey), t: r2(disc.t), dur: r2(disc.dur), team: disc.team, intended: idx(disc.intended), kind: disc.kind, loft: disc.loft, pull: !!disc.pull },
+    diag: { perf: typeof perfDiag === 'function' ? perfDiag() : null, net: typeof netDiag === 'function' ? netDiag() : null },   // fluidité, connexion
     players: players.map(pl), frames: DBG.frames, errors: DBG.errors
   };
 }

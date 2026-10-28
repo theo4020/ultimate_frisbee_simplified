@@ -79,12 +79,14 @@ export default async function (t) {
     const keep = globalThis.fetch; globalThis.fetch = async (url, o) => { hook = { url, form: o.body }; return new Response('{}', { status: 200 }); };
     const e2 = { ASSETS: { fetch: async () => new Response('page') }, REPORTS: { idFromName: () => 'main', get: () => ({ fetch: (u, o) => reports.fetch(new Request(u, o)) }) }, REPORT_WEBHOOK: 'https://discord.com/api/webhooks/x/y' };
     const send = (body, ip = '40.0.0.1', h = { 'Sec-Fetch-Site': 'same-origin' }) => worker.fetch(new Request('https://jeu.example/api/report', { method: 'POST', headers: { ...h, 'CF-Connecting-IP': ip }, body }), e2).then(async r => ({ s: r.status, j: await r.json() }));
-    const rep = { v: 'ultimate-report-1', desc: 'les joueurs sont figés @everyone', ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) Safari/604.1', touch: true, mode: 'series 5', phase: 'play', score: [1, 0], errors: [], frames: [] };
+    const rep = { v: 'ultimate-report-1', desc: 'les joueurs sont figés @everyone', ua: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) Safari/604.1', touch: true, mode: 'series 5', phase: 'play', score: [1, 0], errors: [], frames: [],
+      diag: { perf: { fps: 57, fpsMin: 38, simMs: 0.6, drawMs: 1.2 }, net: { role: 'guest', rtt: 210, reconn: 2, reconnOk: 2, snapGapMs: { med: 50, p95: 90, max: 1400 }, ice: 'srflx → relay · 190 ms' } } };
     const ok = await send(JSON.stringify(rep));
     const row = rs.db.prepare('SELECT * FROM reports').get();
     t.ok(ok.s === 200 && ok.j.id && row && row.descr.startsWith('les joueurs sont figés') && row.device === 'iPhone · Safari · tactile', 'rapport gardé sur le serveur (description, appareil)', ok.j);
     const content = hook && JSON.parse(hook.form.get('payload_json')).content, file = hook && hook.form.get('files[0]');
     t.ok(ok.j.notified && hook.url.includes('discord.com') && content.includes('figés') && content.includes('iPhone') && !content.includes('@everyone') && file && file.size > 50, 'message Discord : résumé lisible, rapport complet en pièce jointe, sans mention @everyone', content);
+    t.ok(/57 img\/s \(min 38\)/.test(content) && /aller-retour 210 ms/.test(content) && /reconnexions 2\/2/.test(content) && /relay/.test(content), 'le message dit aussi la fluidité et la connexion (images/s, aller-retour, reconnexions, liaison)', content);
     t.ok((await send(JSON.stringify(rep))).s === 429, 'pas deux rapports en 30 s depuis la même adresse');
     t.ok((await send('{"v":"autre"}', '40.0.0.2')).s === 400, 'rapport invalide refusé');
     t.ok((await send('x'.repeat(300000), '40.0.0.3')).s === 413, 'rapport trop gros refusé');
