@@ -54,6 +54,20 @@ export default async function (t) {
     t.ok(drawn.out.length === 20, 'chaque combinaison est dessinée (vue de dessus et inclinée)', drawn.out.length);
     t.ok(drawn.snowDisc === 'orange', 'lisibilité : sur la neige, le disque blanc devient orange', drawn.snowDisc);
 
+    t.group('Son : musique dans les menus, public en match');
+    const au = await p.evaluate(async () => {
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      FX.muted = false; audioCtx(); CTRL.music = 'menus'; CTRL.crowd = true;
+      await wait(1200); const match = { playing: AU.playing, crowd: !!AU.crowdSrc };       // (on est en match ici)
+      goMainMenu && showLobby(); await wait(1500); const menu = { playing: AU.playing, step: AU.step };
+      CTRL.music = 'off'; await wait(2500); const off = { playing: AU.playing };
+      CTRL.music = 'menus'; toggleMute(); await wait(300); const muted = { playing: AU.playing }; toggleMute();
+      return { match, menu, off, muted, ctx: !!FX.ctx };
+    });
+    t.ok(!au.ctx || (au.menu.playing && au.menu.step > 0), 'dans les menus, la musique joue', au);
+    t.ok(!au.ctx || (!au.match.playing && au.match.crowd), 'en match (réglage « Menus ») : pas de musique, le public murmure', au);
+    t.ok(!au.ctx || (!au.off.playing && !au.muted.playing), 'musique coupée dans Commandes, ou bouton 🔊 : silence', au);
+
     t.ok(!errs.length, 'aucune erreur', errs);
   } finally { await browser.close(); await srv.close(); }
 }

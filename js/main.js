@@ -66,7 +66,8 @@ function frame(now, visible) {
   joyFrame();
   netHeartbeat(dt);
   if (G.msgT > 0) G.msgT -= dt;
-  tipsFrame(dt);                                             // conseils de Coach Disco (première fois)
+  tipsFrame(dt);
+  audioFrame(dt);                                            // musique et public (audio.js)                                             // conseils de Coach Disco (première fois)
   if (G.phase !== 'play') G.gt += dt * 0.5;            // les rafales continuent dans le menu
   updateStreaks(dt);
   fxUpdate(dt);

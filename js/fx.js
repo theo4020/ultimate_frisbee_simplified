@@ -33,7 +33,7 @@ function tone(freq, dur, opt = {}) {
   g.gain.setValueAtTime(0.0001, t0);
   g.gain.exponentialRampToValueAtTime(v, t0 + Math.min(0.02, dur / 4));
   g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-  o.connect(g).connect(a.destination);
+  o.connect(g).connect(typeof sfxOut === 'function' ? sfxOut(a) : a.destination);
   o.start(t0); o.stop(t0 + dur + 0.02);
 }
 let noiseBuf = null;
@@ -54,7 +54,7 @@ function noise(dur, opt = {}) {
   g.gain.setValueAtTime(0.0001, t0);
   g.gain.exponentialRampToValueAtTime(v, t0 + Math.min(0.03, dur / 3));
   g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-  src.connect(f).connect(g).connect(a.destination);
+  src.connect(f).connect(g).connect(typeof sfxOut === 'function' ? sfxOut(a) : a.destination);
   src.start(t0); src.stop(t0 + dur + 0.05);
 }
 
@@ -105,8 +105,10 @@ function fxPlay(name, x, y, team) {
   if (name === 'call' && hiddenFromMe(team)) return;          // en ligne : un appel de cut reste secret pour l'adversaire
   if (!G.attract) try {
     if (SOUNDS[name]) SOUNDS[name](team);
-    if (name === 'score') SOUNDS.cheer();
-    else if (name === 'block' || name === 'int') SOUNDS.ooh();
+    if (name === 'score') { SOUNDS.cheer(); if (typeof crowdSwell === 'function') { crowdSwell(1); crowdClap(30, 1.6); } }
+    else if (name === 'block' || name === 'int') { SOUNDS.ooh(); if (typeof crowdSwell === 'function') crowdSwell(0.7); }
+    else if ((name === 'layout' || name === 'duel') && typeof crowdSwell === 'function') { crowdSwell(0.6); crowdClap(8, 0.6); }
+    else if (name === 'throw' && typeof crowdSwell === 'function' && disc.mode === 'air' && !disc.pull && discLen() > 28) crowdSwell(0.45);   // un long huck part
   } catch (e) { }
   const c = teamColor(team);
   switch (name) {

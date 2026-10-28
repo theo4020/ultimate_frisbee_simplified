@@ -40,6 +40,7 @@ const FILES = [
   'js/practice.js',
   'js/achievements.js',
   'js/style.js',
+  'js/audio.js',
   'js/tuto.js',
   'js/ctrl.js',
   'js/controls.js',

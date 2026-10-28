@@ -24,7 +24,9 @@ if (!['gestes', 'boutons'].includes(CTRL.throwUI)) CTRL.throwUI = 'gestes';
 if (!['tap', 'follow', 'joystick'].includes(CTRL.move)) CTRL.move = 'tap';
 if (!['top', 'iso'].includes(CTRL.view)) CTRL.view = 'top';
 CTRL.perf = !!CTRL.perf;
-if (CTRL.markAssist === undefined) CTRL.markAssist = true;          // mark aimantée (sim.js : markAssist), activée par défaut                                        // affichage des performances (admin)
+if (CTRL.markAssist === undefined) CTRL.markAssist = true;
+if (!CTRL.music) CTRL.music = 'menus';                                 // musique (audio.js) : dans les menus par défaut
+if (CTRL.crowd === undefined) CTRL.crowd = true;                        // ambiance du public en match          // mark aimantée (sim.js : markAssist), activée par défaut                                        // affichage des performances (admin)
 function saveCtrl() { try { localStorage.setItem('uf-ctrl', JSON.stringify(CTRL)); } catch (e) { } }
 const keysOf = a => (Array.isArray(CTRL.keys[a]) && CTRL.keys[a].length ? CTRL.keys[a] : DEFAULT_KEYS[a]);
 const keyIs = (a, k) => keysOf(a).includes(k);
@@ -57,6 +59,10 @@ function renderCtrl() {
     <h2>Téléphone : sans le disque (défense, attaque à plusieurs)</h2>
     <div class="row"><span>Déplacement</span>${b('move', 'tap', 'Taper / glisser')}${b('move', 'follow', 'Suivre le doigt')}${b('move', 'joystick', 'Joystick et boutons')}</div>
     <div class="desc">${MOVE[CTRL.move]}</div>
+    <h2>Son</h2>
+    <div class="row"><span>Musique</span>${b('music', 'off', 'Coupée')}${b('music', 'menus', 'Menus')}${b('music', 'tout', 'Menus et matchs')}</div>
+    <div class="row"><span>Public</span>${b('crowd', true, 'Oui')}${b('crowd', false, 'Non')}</div>
+    <div class="desc">Une petite musique dans les menus (et en fond pendant les matchs si tu veux), un public qui murmure, retient son souffle sur les longues passes et applaudit les beaux gestes. Le bouton 🔊 en haut coupe tout.</div>
     <h2>Défense</h2>
     <div class="row"><span>Mark aimantée</span>${b('markAssist', true, 'Oui')}${b('markAssist', false, 'Non')}</div>
     <div class="desc">${CTRL.markAssist ? 'Dans le cercle du porteur, ton joueur se cale tout seul face à lui : déplace-toi à gauche ou à droite pour fermer un côté. Vise plus loin (ou change de joueur) pour quitter la mark, comme en match.' : 'Ton joueur suit toujours ta souris ou ton doigt, même en mark.'}</div>
