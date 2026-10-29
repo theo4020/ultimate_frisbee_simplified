@@ -107,6 +107,21 @@ export default async function (t) {
     });
     t.ok(cam.z > 1.1 && cam.err < 0.01, 'caméra « suit le jeu » : elle zoome, et la visée tombe toujours au bon endroit', cam);
     t.ok(cam.back === 1, 'caméra fixe : tout le terrain revient', cam);
+    const cf = await p.evaluate(async () => {
+      const fr = n => new Promise(r => { let k = 0; const f = () => (++k >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); });
+      CTRL.cam = 'suivi'; const cw = canvas.width / dpr, ch = canvas.height / dpr;
+      const keep = players.map(q => [q.x, q.y]);
+      players.forEach((q, i) => { q.x = i < 5 ? 18 : 82; q.y = 4 + (i % 5) * 7; });     // au pull : chaque équipe sur sa ligne
+      const pull = +camTarget(cw, ch).z.toFixed(2);
+      players.forEach((q, i) => { q.x = 50 + (i % 3); q.y = 18 + (i % 4); });            // tout le monde groupé : on zoome
+      const tight = +camTarget(cw, ch).z.toFixed(2);
+      G.paused = true; let maxStep = 0, last = CAM.z;                                       // le zoom change en douceur
+      for (let k = 0; k < 40; k++) { camFrame(1 / 60); maxStep = Math.max(maxStep, Math.abs(CAM.z - last)); last = CAM.z; }
+      players.forEach((q, i) => { [q.x, q.y] = keep[i]; }); G.paused = false; CTRL.cam = 'fixe'; await fr(150);
+      return { pull, tight, maxStep: +maxStep.toFixed(3) };
+    });
+    t.ok(cf.pull < 1.15 && cf.tight > 1.4, 'le cadre contient tous les joueurs : au pull presque tout le terrain, groupés on zoome', cf);
+    t.ok(cf.maxStep < 0.03, 'le zoom accélère et freine en douceur (pas de saut d’une image à l’autre)', cf);
     t.ok(cam.font, 'la police des titres est chargée (embarquée, marche hors ligne)', cam);
 
     t.group('Son : musique dans les menus, public en match');

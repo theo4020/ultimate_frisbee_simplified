@@ -363,7 +363,8 @@ function drawStartUI() {
   const st = G.net === 'guest' ? G.netStart : startNet();
   const fs = Math.max(11, S * 1.5);
   if (st) inScreen(() => {
-    const [n, go] = st, pull = go >= 0 && go < 0.6, cx = X(W / 2), cy = SY(7), dot = Math.max(3, S * 0.42), ph = dot * 9.5, pw = pull ? dot * 26 : dot * 9;
+    const [n, go] = st, pull = go >= 0 && go < 0.6, cx = X(W / 2), cy = SY(7), dot = Math.max(3, CAM.S0 * 0.42), ph = dot * 9.5, pw = pull ? dot * 26 : dot * 9;
+    if (!pull && !(n > 0)) return;                                // entre le « PULL ! » et la fin : rien (pas de panneau vide)
     ctx.save();
     ctx.fillStyle = '#05070d'; ctx.strokeStyle = '#1c2438'; ctx.lineWidth = 2;                    // le panneau
     roundRectPath(cx - pw / 2, cy - ph / 2, pw, ph, dot * 1.2); ctx.fill(); ctx.stroke();

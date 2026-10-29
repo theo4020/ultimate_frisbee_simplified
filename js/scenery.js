@@ -416,21 +416,32 @@ function drawWindLife(fid) {
 }
 
 // ---------- caméra ----------
-// suit le jeu : zoom léger (téléphone : plus fort, les joueurs sont plus gros), centré sur le disque (en vol : vers son
-// arrivée), sans jamais montrer le vide autour du terrain. À-coup de zoom sur un point (CAM.punch).
+// (sans jamais montrer le vide autour du terrain)
+// caméra « suit le jeu » : le plus petit cadre qui contient tous les joueurs (et le disque), avec un peu de marge ;
+// zoom et centre suivent leur cible avec un ressort amorti (accélération et freinage doux, sans à-coups ni rebond)
+const CAMF = { MARGIN: 4.5, ZMAX_TOUCH: 1.9, ZMAX: 1.6, W0: 2.4 };   // W0 : raideur du ressort (rad/s)
+function camTarget(cw, ch) {
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+  const add = (x, y) => { if (!isFinite(x) || !isFinite(y)) return; x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); };
+  for (const p of players) add(p.x, p.y);
+  add(disc.x, disc.y);
+  if (disc.mode === 'air') add(disc.ex, disc.ey);                // là où la passe va tomber reste dans le cadre
+  if (!isFinite(x0)) return { z: 1, x: W / 2, y: H / 2 };
+  const m = CAMF.MARGIN, bw = Math.max(8, x1 - x0 + 2 * m), bh = Math.max(6, y1 - y0 + 2 * m);
+  const z = clamp(Math.min(cw / (bw * CAM.S0), ch / (bh * CAM.S0)), 1, isTouchUI() ? CAMF.ZMAX_TOUCH : CAMF.ZMAX);
+  return { z, x: (x0 + x1) / 2, y: (y0 + y1) / 2 };
+}
 function camFrame(dt) {
   const cw = canvas.width / dpr, ch = canvas.height / dpr;
   const on = CTRL.cam === 'suivi' && !isoView() && !G.attract && !G.replay && !G.tuto && ['play', 'pull', 'between', 'over'].includes(G.phase);
   CAM.punch = Math.max(0, CAM.punch - dt * 1.4);
-  let zt = 1, tx = W / 2, ty = H / 2;
-  if (on) {
-    zt = (isTouchUI() ? 1.45 : 1.22) + 0.14 * Math.sin(Math.min(1, CAM.punch) * Math.PI);
-    if (disc.mode === 'air') { tx = disc.x * 0.6 + disc.ex * 0.4; ty = disc.y * 0.6 + disc.ey * 0.4; } else { tx = disc.x; ty = disc.y; }
-    if (!isFinite(tx) || !isFinite(ty)) { tx = W / 2; ty = H / 2; }
-  }
-  const k = Math.min(1, dt * 2.6);
-  CAM.z += (zt - CAM.z) * Math.min(1, dt * 2.2); CAM.fx += (tx - CAM.fx) * k; CAM.fy += (ty - CAM.fy) * k;
-  if (Math.abs(CAM.z - 1) < 0.002 && !on) { CAM.z = 1; S = CAM.S0; CAM.ox = CAM.oy = 0; return; }
+  const T = on ? camTarget(cw, ch) : { z: 1, x: W / 2, y: H / 2 };
+  const h = Math.min(0.05, Math.max(0, dt)), w = CAMF.W0;
+  const spring = (k, v, x) => { CAM[v] = (CAM[v] || 0) + ((x - CAM[k]) * w * w - 2 * w * (CAM[v] || 0)) * h; CAM[k] += CAM[v] * h; };   // amorti critique
+  if (!isFinite(CAM.fx)) CAM.fx = W / 2; if (!isFinite(CAM.fy)) CAM.fy = H / 2;
+  spring('z', 'vz', T.z); spring('fx', 'vfx', T.x); spring('fy', 'vfy', T.y);
+  if (CAM.z < 1) { CAM.z = 1; CAM.vz = Math.max(0, CAM.vz); }
+  if (!on && Math.abs(CAM.z - 1) < 0.006 && Math.abs(CAM.vz) < 0.05) { CAM.z = 1; CAM.vz = 0; S = CAM.S0; CAM.ox = CAM.oy = 0; return; }
   S = CAM.S0 * CAM.z;
   const fw = (W + 2 * M) * S, fh = fieldH() * S;
   CAM.ox = clamp(cw / 2 - (CAM.fx + M) * S, cw - fw, 0); CAM.oy = clamp(ch / 2 - (CAM.fy + M) * S, ch - fh, 0);
