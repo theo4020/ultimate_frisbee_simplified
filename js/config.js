@@ -52,7 +52,7 @@ const DIVE_T = 0.28, DOWN_T = 1.2;                         // plongeon : ~1,8 m 
 // récupération à la réception (ralenti) et délai avant de pouvoir ressauter
 const JUMP_PREP = 0.05, JUMP_T = 0.5, JUMP_H = 0.6, JUMP_REC = 0.15, JUMP_CD = 0.35;
 const HIGH_WINDUP = [0.3, 1.2];                            // l'IA arme sa passe haute plus ou moins longtemps avant de lancer
-const SPEEDS = { lent: 0.72, normal: 0.88, rapide: 1.05 };   // vitesse du jeu (× le temps réel)
+const SPEEDS = { lent: 0.75, normal: 0.92, rapide: 1.09 };   // vitesse du jeu (× le temps réel)
 const DRIFT = 0.5;                                          // dérive du disque : vent (m/s) × temps de vol × DRIFT
 const STALL_R = 4;                                          // distance max de la mark pour le stall count (4 m)
 const STALL_RATE = 1;                                       // stall count : 1 compte par seconde
