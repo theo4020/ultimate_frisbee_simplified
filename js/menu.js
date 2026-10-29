@@ -197,21 +197,16 @@ $('fbAdminB').addEventListener('click', () => repOpen('avis'));
 $('repListBack').addEventListener('click', closeCard);
 
 // ---------- « Donner mon avis » (menu principal et menu en jeu) : un retour libre, rangé à part des signalements ----------
-let fbMood = null;
+// (pas de smileys : un clic suffisait, et on n'écrivait plus rien ; un vrai mot est bien plus utile)
 function fbOpen() {
-  fbMood = null; $('fbStatus').textContent = ''; $('fbSend').disabled = false;
-  $('fbMoods').querySelectorAll('button').forEach(b => b.classList.remove('on'));
+  $('fbStatus').textContent = ''; $('fbSend').disabled = false;
   openCard('feedbackCard');
 }
-$('fbMoods').querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
-  fbMood = fbMood === b.dataset.m ? null : b.dataset.m;
-  $('fbMoods').querySelectorAll('button').forEach(o => o.classList.toggle('on', o.dataset.m === fbMood));
-}));
 $('fbSend').addEventListener('click', () => {
   const txt = $('fbText').value.trim();
-  if (!txt && !fbMood) { $('fbStatus').textContent = 'Écris quelques mots (ou choisis un smiley) avant d’envoyer.'; return; }
+  if (txt.length < 3) { $('fbStatus').textContent = 'Écris quelques mots avant d’envoyer.'; return; }
   const a = accGet(), body = {
-    v: 'ultimate-report-1', kind: 'avis', at: new Date().toISOString(), desc: txt.slice(0, 1000), mood: fbMood,
+    v: 'ultimate-report-1', kind: 'avis', at: new Date().toISOString(), desc: txt.slice(0, 1000),
     user: { name: myName(), account: (a || {}).name || null }, ua: navigator.userAgent, screen: [innerWidth, innerHeight], touch: isTouch(),
     mode: G.tuto ? 'tuto' : G.practice ? 'practice' : G.series ? (G.series.endless ? 'infini' : 'tournoi') : G.net ? 'en ligne' : G.attract ? 'menu' : 'solo',
     phase: G.phase, score: G.score, net: G.net, career: typeof careerGet === 'function' ? careerGet() : null,
@@ -225,7 +220,7 @@ $('fbSend').addEventListener('click', () => {
     .then(j => {
       $('fbSend').disabled = false;
       if (j.error) { $('fbStatus').textContent = '⚠️ Envoi impossible (' + j.error + '). Réessaie dans un instant.'; return; }
-      $('fbText').value = ''; fbMood = null; $('fbMoods').querySelectorAll('button').forEach(o => o.classList.remove('on'));
+      $('fbText').value = '';
       $('fbStatus').textContent = '✅ Merci ! Ton avis est bien arrivé.';
     });
 });

@@ -445,7 +445,7 @@ export class Reports {
     if (now - (this.last.get(lk) || 0) < REPORT_WAIT) return json({ error: kind === 'avis' ? 'un avis vient déjà d’être envoyé, réessaie dans un instant' : 'un rapport vient déjà d’être envoyé, réessaie dans un instant' }, 429);
     this.last.set(lk, now); if (this.last.size > 5000) this.last.clear();
     const id = crypto.randomUUID().slice(0, 8);
-    this.db.run('INSERT INTO reports (id, at, user, descr, mode, device, data, kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', id, now, String(user || ''), (kind === 'avis' && MOODS[r.mood] ? MOODS[r.mood] + ' ' : '') + String(r.desc || '').slice(0, 1000), String(r.mode || ''), device, JSON.stringify(r), kind);
+    this.db.run('INSERT INTO reports (id, at, user, descr, mode, device, data, kind) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', id, now, String(user || ''), String(r.desc || '').slice(0, 1000), String(r.mode || ''), device, JSON.stringify(r), kind);
     this.db.run('DELETE FROM reports WHERE id NOT IN (SELECT id FROM reports ORDER BY at DESC LIMIT ?)', REPORT_KEEP);
     return json({ id });
   }
@@ -456,8 +456,6 @@ function deviceOf(ua, touch) {
   const br = /OPR\//.test(ua) ? 'Opera' : /Edg\//.test(ua) ? 'Edge' : /Firefox\//.test(ua) ? 'Firefox' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : '?';
   return os + ' · ' + br + (touch ? ' · tactile' : '');
 }
-// humeur choisie dans « Donner mon avis »
-const MOODS = { adore: '😍', bien: '🙂', bof: '😐', pasfan: '🙁' };
 // une ligne lisible sur la fluidité et la connexion (rapport envoyé par le jeu : diag.perf, diag.net)
 function diagLine(d) {
   if (!d || typeof d !== 'object') return '';
@@ -474,7 +472,7 @@ async function report(request, env) {
   if (txt.length > REPORT_MAX) return json({ error: 'rapport trop volumineux' }, 413);
   let r = null; try { r = JSON.parse(txt); } catch (e) { }
   if (!r || r.v !== 'ultimate-report-1') return json({ error: 'rapport invalide' }, 400);
-  if (r.kind === 'avis' && !String(r.desc || '').trim() && !MOODS[r.mood]) return json({ error: 'avis vide' }, 400);
+  if (r.kind === 'avis' && !String(r.desc || '').trim()) return json({ error: 'avis vide' }, 400);
   const device = deviceOf(String(r.ua || ''), !!r.touch);
   // qui l'envoie : le compte (vérifié par son jeton, jamais gardé dans le rapport), sinon le pseudo tapé
   const auth = r.auth && typeof r.auth === 'object' ? r.auth : null; delete r.auth;
@@ -490,8 +488,8 @@ async function report(request, env) {
   let notified = false;
   if (env.REPORT_WEBHOOK) {                                     // message instantané (Discord) : résumé lisible + fichier complet
     try {
-      const avis = r.kind === 'avis', mood = avis && MOODS[r.mood] ? MOODS[r.mood] + ' ' : '';
-      const msg = (avis ? `💬 **Avis ${j.id}** de **${user}** — ${mood}` : `🐞 **Rapport ${j.id}** de **${user}** — `) + `${String(r.desc || '(sans description)').slice(0, 900)}\n` +
+      const avis = r.kind === 'avis';
+      const msg = (avis ? `💬 **Avis ${j.id}** de **${user}** — ` : `🐞 **Rapport ${j.id}** de **${user}** — `) + `${String(r.desc || '(sans description)').slice(0, 900)}\n` +
         `Mode : ${r.mode} · phase ${r.phase} · score ${(r.score || []).join('–')}${r.net ? ' · en ligne (' + r.net + ')' : ''}\n${device}` +
         diagLine(r.diag) +
         ((r.errors || []).length ? `\n⚠️ Erreurs : ${r.errors.slice(0, 3).join(' | ').slice(0, 500)}` : '');

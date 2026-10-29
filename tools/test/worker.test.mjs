@@ -88,11 +88,11 @@ export default async function (t) {
     t.ok(ok.j.notified && hook.url.includes('discord.com') && content.includes('figés') && content.includes('iPhone') && !content.includes('@everyone') && file && file.size > 50, 'message Discord : résumé lisible, rapport complet en pièce jointe, sans mention @everyone', content);
     t.ok(/57 img\/s \(min 38\)/.test(content) && /aller-retour 210 ms/.test(content) && /reconnexions 2\/2/.test(content) && /relay/.test(content), 'le message dit aussi la fluidité et la connexion (images/s, aller-retour, reconnexions, liaison)', content);
     hook = null;
-    const av = await send(JSON.stringify({ v: 'ultimate-report-1', kind: 'avis', mood: 'adore', desc: 'super jeu, il manque un mode 3 contre 3', ua: 'Mozilla/5.0 (Linux; Android 14) Chrome/130', touch: true, mode: 'menu', frames: [], errors: [] }));
+    const av = await send(JSON.stringify({ v: 'ultimate-report-1', kind: 'avis', desc: 'super jeu, il manque un mode 3 contre 3', ua: 'Mozilla/5.0 (Linux; Android 14) Chrome/130', touch: true, mode: 'menu', frames: [], errors: [] }));
     const avC = hook && JSON.parse(hook.form.get('payload_json')).content;
     const lists = { bug: await (await reports.fetch(new Request('https://rep/list?kind=bug'))).json(), avis: await (await reports.fetch(new Request('https://rep/list?kind=avis'))).json() };
-    t.ok(av.s === 200 && /^💬 \*\*Avis/.test(avC) && avC.includes('😍') && avC.includes('3 contre 3'), 'un avis passe juste après un signalement, et le message Discord dit « Avis » avec l’humeur', { s: av.s, avC });
-    t.ok(lists.bug.reports.length === 1 && lists.avis.reports.length === 1 && lists.avis.reports[0].descr.startsWith('😍 super jeu'), 'les avis sont rangés à part des signalements', lists);
+    t.ok(av.s === 200 && /^💬 \*\*Avis/.test(avC) && avC.includes('3 contre 3'), 'un avis passe juste après un signalement, et le message Discord dit « Avis »', { s: av.s, avC });
+    t.ok(lists.bug.reports.length === 1 && lists.avis.reports.length === 1 && lists.avis.reports[0].descr.startsWith('super jeu'), 'les avis sont rangés à part des signalements', lists);
     t.ok((await send(JSON.stringify({ v: 'ultimate-report-1', kind: 'avis', desc: '  ' }), '40.0.0.9')).s === 400, 'avis vide refusé');
     t.ok((await send(JSON.stringify(rep))).s === 429, 'pas deux rapports en 30 s depuis la même adresse');
     t.ok((await send('{"v":"autre"}', '40.0.0.2')).s === 400, 'rapport invalide refusé');

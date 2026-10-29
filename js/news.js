@@ -9,8 +9,8 @@ const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
   { id: 34, date: '2026-10-28', tag: 'Communauté', title: 'Donne ton avis 💬',
-    body: `Nouveau bouton <b>💬 Donner mon avis</b>, dans le menu principal et dans le menu ☰ en partie : un smiley,
-      quelques mots, et ton avis part directement au développeur. Ce que tu aimes, ce qui te manque, ce qui te gêne :
+    body: `Nouveau bouton <b>💬 Donner mon avis</b>, dans le menu principal et dans le menu ☰ en partie : quelques
+      mots, et ton avis part directement au développeur. Ce que tu aimes, ce qui te manque, ce qui te gêne :
       avec si peu de joueurs, chaque retour compte vraiment !<br>
       Et pour bien démarrer, les tout premiers matchs sont plus simples : réglages repliés, IA facile, et Coach Disco
       explique comment lancer et défendre si tu n'as pas fait le tutoriel.` },

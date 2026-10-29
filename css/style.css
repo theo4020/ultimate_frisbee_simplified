@@ -469,9 +469,4 @@ details.orders summary small{color:var(--muted);font-weight:400}
 #newbieBox .desc0{margin:0;color:var(--muted);font-size:14px;line-height:1.4}
 #newbieBox button{width:100%}
 
-/* « Donner mon avis » : humeur en un geste (facultative) */
-.moods{display:flex;gap:8px;margin:6px 0 10px}
-.moods button{flex:1;font-size:26px;padding:8px 4px;display:flex;flex-direction:column;align-items:center;gap:2px}
-.moods button small{font-size:12px}
-.moods button.on{background:var(--blue);color:#fff}
 body.ovOpen #rotateHint{display:none!important}

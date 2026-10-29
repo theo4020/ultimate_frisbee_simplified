@@ -12,6 +12,7 @@ export default async function (t) {
     p.on('console', m => { if (m.type() === 'error' && !/secrets\.js|Failed to load resource/.test(m.text())) errs.push(tag + ' console : ' + m.text()); });
   };
   const vis = (p, sel) => p.isVisible(sel);
+  const q2count = p => p.evaluate(() => document.querySelectorAll('#feedbackCard .moods button, #fbMoods').length);
   try {
     // ---------- ordinateur ----------
     const ctx = await browser.newContext({ viewport: { width: 1100, height: 760 } });
@@ -187,11 +188,14 @@ export default async function (t) {
     t.ok(/copié|sélectionne/.test(await p.textContent('#repStatus')), 'rapport copié', await p.textContent('#repStatus'));
     await p.click('#repBack'); await p.click('#gmFeedback');
     t.ok(await vis(p, '#feedbackCard'), 'menu ☰ : « Donner mon avis »');
-    await p.click('#fbMoods button[data-m=bien]'); await p.fill('#fbText', 'les passes hautes sont géniales');
+    t.ok(!(await q2count(p)), 'pas de smileys : on écrit son avis');
+    await p.click('#fbSend');
+    t.ok(/quelques mots/.test(await p.textContent('#fbStatus')), 'avis vide : on demande d’écrire quelques mots', await p.textContent('#fbStatus'));
+    await p.fill('#fbText', 'les passes hautes sont géniales');
     await p.click('#fbSend');
     await p.waitForFunction(() => /Merci|impossible/.test(document.getElementById('fbStatus').textContent), null, { timeout: 5000 });
     const fb = srv.reports("SELECT descr, kind FROM reports WHERE kind = 'avis'");
-    t.ok(/Merci/.test(await p.textContent('#fbStatus')) && fb.length === 1 && fb[0].descr === '🙂 les passes hautes sont géniales', 'avis envoyé (humeur + texte), rangé à part des signalements', { st: await p.textContent('#fbStatus'), fb });
+    t.ok(/Merci/.test(await p.textContent('#fbStatus')) && fb.length === 1 && fb[0].descr === 'les passes hautes sont géniales', 'avis envoyé, rangé à part des signalements', { st: await p.textContent('#fbStatus'), fb });
     await p.click('#fbBack'); await p.click('#gmResume');
     t.ok(!(await p.evaluate(() => G.paused)) && !(await vis(p, '#gameMenuCard')), 'reprise du jeu');
     await p.click('#menuB'); await p.click('#gmQuit');
