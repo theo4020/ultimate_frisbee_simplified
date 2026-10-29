@@ -433,7 +433,8 @@ function camTarget(cw, ch) {
 }
 function camFrame(dt) {
   const cw = canvas.width / dpr, ch = canvas.height / dpr;
-  const on = CTRL.cam === 'suivi' && !isoView() && !G.attract && !G.replay && !G.tuto && ['play', 'pull', 'between', 'over'].includes(G.phase);
+  // (fin de match, menus entre les points : tout le terrain — la ronde et ses boutons au centre)
+  const on = CTRL.cam === 'suivi' && !isoView() && !G.attract && !G.replay && !G.tuto && (['play', 'pull'].includes(G.phase) || (G.phase === 'between' && !G.menuShown));
   CAM.punch = Math.max(0, CAM.punch - dt * 1.4);
   const T = on ? camTarget(cw, ch) : { z: 1, x: W / 2, y: H / 2 };
   const h = Math.min(0.05, Math.max(0, dt)), w = CAMF.W0;

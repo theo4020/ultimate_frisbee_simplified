@@ -117,10 +117,12 @@ export default async function (t) {
       const tight = +camTarget(cw, ch).z.toFixed(2);
       G.paused = true; let maxStep = 0, last = CAM.z;                                       // le zoom change en douceur
       for (let k = 0; k < 40; k++) { camFrame(1 / 60); maxStep = Math.max(maxStep, Math.abs(CAM.z - last)); last = CAM.z; }
+      const ph = G.phase; G.phase = 'over'; for (let k = 0; k < 240; k++) camFrame(1 / 60); const over = +CAM.z.toFixed(3); G.phase = ph;   // fin de match : tout le terrain
       players.forEach((q, i) => { [q.x, q.y] = keep[i]; }); G.paused = false; CTRL.cam = 'fixe'; await fr(150);
-      return { pull, tight, maxStep: +maxStep.toFixed(3) };
+      return { pull, tight, maxStep: +maxStep.toFixed(3), over };
     });
     t.ok(cf.pull < 1.15 && cf.tight > 1.4, 'le cadre contient tous les joueurs : au pull presque tout le terrain, groupés on zoome', cf);
+    t.ok(cf.over === 1, 'fin de match (la ronde et ses boutons) : la caméra revient sur tout le terrain', cf);
     t.ok(cf.maxStep < 0.03, 'le zoom accélère et freine en douceur (pas de saut d’une image à l’autre)', cf);
     t.ok(cam.font, 'la police des titres est chargée (embarquée, marche hors ligne)', cam);
 
