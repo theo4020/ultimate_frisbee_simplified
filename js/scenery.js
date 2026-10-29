@@ -177,79 +177,120 @@ function paintSurroundings(c, F, fid, px, py, S0, cw, ch) {
 let CROWD = null;
 function crowdPeople() {
   if (CROWD) return CROWD;
-  const R = seeded(777), P = [], shirt = ['#ef4444', '#3b82f6', '#facc15', '#22c55e', '#f8fafc', '#f97316', '#a855f7', '#0ea5e9', '#e11d48', '#334155'];
-  const add = (x, y) => P.push({ x, y, c: shirt[Math.floor(R() * shirt.length)], h: HAIR[Math.floor(R() * HAIR.length)], ph: R() * 6.3, clap: R() < 0.45, fan: R() < 0.12 });
-  // petits groupes le long des deux lignes de côté, hors de la zone du banc (milieu du terrain)
-  for (const y of [-SIDE_Y - 0.15, H + SIDE_Y + 0.15]) for (let x = 1; x < W; x += 0.9 + R() * 1.1) {
+  const R = seeded(777), P = [], pick = a => a[Math.floor(R() * a.length)];
+  const SHIRT = ['#ef4444', '#3b82f6', '#facc15', '#22c55e', '#f8fafc', '#f97316', '#a855f7', '#0ea5e9', '#e11d48', '#334155', '#14b8a6', '#f472b6'];
+  const HAIRS = ['#3b2f2a', '#1f2937', '#a16207', '#7c2d12', '#e5c07b', '#d1d5db', '#57534e', '#f59e0b', '#111827'];
+  const SKINS = ['#f1c7a3', '#d9a37a', '#a8714f', '#7a4b32', '#e8b88f', '#c68642'];
+  const add = (x, y) => P.push({
+    x, y, ph: R() * 6.3, clap: R() < 0.4, fan: R() < 0.1,
+    size: R() < 0.12 ? 0.72 : 0.9 + R() * 0.25,                   // quelques enfants
+    shirt: pick(SHIRT), stripe: R() < 0.22 ? pick(SHIRT) : null, skin: pick(SKINS),
+    hair: R() < 0.07 ? null : pick(HAIRS),                         // (crâne rasé)
+    hat: R() < 0.28 ? { c: pick(['#ef4444', '#0f172a', '#facc15', '#f8fafc', '#2563eb', '#16a34a']), brim: R() < 0.7 } : null,
+    flag: R() < 0.1 ? (R() < 0.5 ? 0 : 1) : -1,                   // drapeau d'une équipe
+    chair: R() < 0.22, chairC: pick(['#475569', '#1d4ed8', '#b91c1c', '#15803d']), turn: (R() - 0.5) * 0.9
+  });
+  // petits groupes clairsemés le long des deux lignes de côté, hors de la zone du banc
+  for (const y of [-SIDE_Y - 0.15, H + SIDE_Y + 0.15]) for (let x = 1.5; x < W - 1; x += 1.6 + R() * 2.4) {
     if (Math.abs(x - 52) < 19) continue;                         // le banc, les sacs, les gourdes
-    if (R() < 0.12) { x += 2 + R() * 3; continue; }              // des trous entre les groupes
+    if (R() < 0.3) { x += 3 + R() * 5; continue; }               // des trous entre les groupes
     add(x, y + (R() - 0.5) * 0.4);
   }
   return (CROWD = P);
 }
+// chaque spectateur vu de dessus : chaise éventuelle, bras (applaudit, lève les bras), épaules (t-shirt uni ou rayé),
+// tête (cheveux, casquette, ou crâne rasé), drapeau d'une équipe pour certains
 function drawCrowd(fid) {
   if (fid === 'espace') return;
-  const P = crowdPeople(), t = G.time, hype = CAM.hype || 0, s = S, toCenter = q => Math.atan2(H / 2 - q.y, W / 2 - q.x);
-  const shirts = new Map();
+  const P = crowdPeople(), t = G.time, hype = CAM.hype || 0, s = S, cw = canvas.width / dpr, ch = canvas.height / dpr;
+  ctx.save(); ctx.lineCap = 'round';
   for (const q of P) {
     if (fid === 'plage' && q.y < 0) continue;                    // la mer est en haut
-    const x = X(q.x), y = Y(q.y); if (x < -20 || y < -20 || x > canvas.width / dpr + 20 || y > canvas.height / dpr + 20) continue;
+    const x = X(q.x), y = Y(q.y); if (x < -20 || y < -20 || x > cw + 20 || y > ch + 20) continue;
     const jump = hype > 0.3 ? Math.max(0, Math.sin(t * 9 + q.ph)) * hype : 0, bob = 1 + Math.sin(t * 2 + q.ph) * 0.03 + jump * 0.22;
-    const a = toCenter(q), ca = Math.cos(a), sa = Math.sin(a), w = 0.58 * s * bob;
-    // bras : applaudissements (mains qui se rejoignent devant), bras levés et agités sur un point
-    const armsUp = hype > 0.45 || q.fan, clapK = q.clap || hype > 0.2 ? (Math.sin(t * (hype > 0.2 ? 16 : 11) + q.ph) + 1) / 2 : 0.5;
-    const lx = -sa, ly = ca;                                       // côté (perpendiculaire au regard)
-    if (armsUp || q.clap || hype > 0.2) {                          // bras visibles seulement quand il applaudit ou lève les bras
-      const reach = armsUp ? 0.7 + Math.sin(t * 10 + q.ph) * 0.1 : 0.38, spread = armsUp ? 0.5 : 0.08 + clapK * 0.2;
-      ctx.strokeStyle = '#d6a77a'; ctx.lineWidth = Math.max(1, 0.13 * s); ctx.beginPath();
-      for (const sd of [1, -1]) { ctx.moveTo(x + lx * sd * w * 0.7, y + ly * sd * w * 0.7); ctx.lineTo(x + (ca * reach + lx * sd * spread) * s, y + (sa * reach + ly * sd * spread) * s); }
+    const a = Math.atan2(H / 2 - q.y, W / 2 - q.x) + q.turn, w = 0.55 * s * q.size * bob;
+    ctx.save(); ctx.translate(x, y); ctx.rotate(a);               // repère du spectateur : x vers le terrain
+    if (q.chair) { ctx.fillStyle = q.chairC; ctx.fillRect(-w * 1.25, -w * 0.95, w * 1.1, w * 1.9); }   // chaise pliante derrière lui
+    softShadow(ctx, w * 0.3, w * 0.4, w * 1.3, 0.25);
+    const armsUp = hype > 0.45 || q.fan, clapping = q.clap || hype > 0.2;
+    if (armsUp || clapping) {
+      const ck = (Math.sin(t * (hype > 0.2 ? 16 : 11) + q.ph) + 1) / 2, reach = armsUp ? 1.35 + Math.sin(t * 10 + q.ph) * 0.15 : 0.75, spread = armsUp ? 0.95 : 0.12 + ck * 0.35;
+      ctx.strokeStyle = q.skin; ctx.lineWidth = Math.max(1, w * 0.26); ctx.beginPath();
+      for (const sd of [1, -1]) { ctx.moveTo(0, sd * w * 0.62); ctx.lineTo(reach * w, sd * spread * w); }
       ctx.stroke();
     }
-    if (!shirts.has(q.c)) shirts.set(q.c, []); shirts.get(q.c).push([x, y, w, a]);
-    q._x = x; q._y = y; q._w = w;
+    if (q.flag >= 0) {                                            // drapeau tenu en l'air, qui flotte
+      const fx = w * 1.2, fy = -w * 0.9, f = Math.sin(t * 6 + q.ph) * w * 0.25;
+      ctx.strokeStyle = '#78350f'; ctx.lineWidth = Math.max(1, w * 0.12); ctx.beginPath(); ctx.moveTo(w * 0.5, -w * 0.5); ctx.lineTo(fx, fy); ctx.stroke();
+      ctx.fillStyle = tcol(q.flag); ctx.beginPath(); ctx.moveTo(fx, fy); ctx.lineTo(fx - w * 1.3, fy - w * 0.4 + f); ctx.lineTo(fx - w * 0.1, fy - w * 1.0); ctx.closePath(); ctx.fill();
+    }
+    ctx.fillStyle = q.shirt; ctx.beginPath(); ctx.ellipse(0, 0, w * 0.62, w, 0, 0, 7); ctx.fill();
+    if (q.stripe) { ctx.save(); ctx.clip(); ctx.fillStyle = q.stripe; for (let k = -2; k <= 2; k++) ctx.fillRect(-w, k * w * 0.42 - w * 0.1, w * 2, w * 0.2); ctx.restore(); }
+    const hr = w * 0.48;
+    if (q.hat) {
+      ctx.fillStyle = q.hat.c; ctx.beginPath(); ctx.arc(-w * 0.05, 0, hr, 0, 7); ctx.fill();
+      if (q.hat.brim) { ctx.beginPath(); ctx.ellipse(hr * 0.75, 0, hr * 0.55, hr * 0.7, 0, -Math.PI / 2, Math.PI / 2); ctx.fill(); }   // visière vers le terrain
+    } else { ctx.fillStyle = q.hair || q.skin; ctx.beginPath(); ctx.arc(-w * 0.05, 0, hr, 0, 7); ctx.fill(); }
+    ctx.restore();
   }
-  for (const [col, L] of shirts) { ctx.fillStyle = col; ctx.beginPath(); for (const [x, y, w, a] of L) { const r = a + Math.PI / 2; ctx.moveTo(x + w * Math.cos(r), y + w * Math.sin(r)); ctx.ellipse(x, y, w, w * 0.62, r, 0, 7); } ctx.fill(); }
-  ctx.beginPath();
-  const heads = new Map();                                        // têtes (couleur de cheveux), un peu vers l'arrière
-  for (const q of P) if (q._x !== undefined && !(fid === 'plage' && q.y < 0)) { const a = toCenter(q), hx = q._x - Math.cos(a) * q._w * 0.12, hy = q._y - Math.sin(a) * q._w * 0.12; if (!heads.has(q.h)) heads.set(q.h, []); heads.get(q.h).push([hx, hy, q._w * 0.46]); }
-  for (const [col, L] of heads) { ctx.fillStyle = col; ctx.beginPath(); for (const [x, y, r] of L) { ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, 7); } ctx.fill(); }
-  for (const q of P) q._x = undefined;
+  ctx.restore();
   CAM.hype = Math.max(0, hype - (FX.dt || 0.016) * 0.28);
 }
-// herbe qui bouge : des brins d'herbe dessinés un par un, qui ondulent chacun à leur rythme, plus fort quand le vent
-// souffle (et dans son sens). Ils sont fins et courts : décor, sans gêner la lecture du jeu.
-let TUFTS = null;
+// herbe qui bouge : des milliers de brins, animés à l'avance. On dessine une fois quelques images d'une « tuile » d'herbe
+// (12 m de côté, brins en touffes qui ondulent chacun à leur rythme, en boucle) ; à chaque image du jeu, on recouvre le
+// terrain avec la tuile du moment (fondu entre deux images : mouvement fluide). Refait seulement si le vent change.
+const GRASS = { frames: null, key: '', T: 12, N: 12 };
+function grassFrames() {
+  const wk = Math.min(1, (G.wind ? G.wind.kmh : 10) / 25), ang = G.wind && G.wind.kmh > 1 ? Math.atan2(G.wind.y, G.wind.x) : 0.3;
+  const key = [CAM.S0.toFixed(2), dpr, Math.round(wk * 10), Math.round(ang * 8)].join('|');
+  if (GRASS.key === key && GRASS.frames) return GRASS.frames;
+  GRASS.key = key;
+  const u = CAM.S0 * dpr, size = Math.max(64, Math.round(GRASS.T * u)), R = seeded(4321), ux = Math.cos(ang), uy = Math.sin(ang);
+  const tufts = [];
+  for (let i = 0; i < GRASS.T * GRASS.T * 0.85; i++) {           // ~0,85 touffe par m², 2 à 4 brins chacune
+    const n = 2 + Math.floor(R() * 3), blades = [];
+    for (let k = 0; k < n; k++) blades.push({ dx: (R() - 0.5) * 0.3, l: 0.22 + R() * 0.38, lean: (R() - 0.5) * 0.5, ph: R() * 6.3, amp: 0.6 + R() * 0.8 });
+    tufts.push({ x: R() * GRASS.T, y: R() * GRASS.T, blades, dark: R() < 0.5 });
+  }
+  GRASS.frames = [];
+  for (let f = 0; f < GRASS.N; f++) {
+    const cv = document.createElement('canvas'); cv.width = cv.height = size;
+    const c = cv.getContext('2d'), ph = f / GRASS.N * Math.PI * 2;
+    c.lineCap = 'round'; c.lineWidth = Math.max(1, u * 0.06);
+    for (const dark of [false, true]) {
+      c.strokeStyle = dark ? 'rgba(12,60,24,.5)' : 'rgba(170,230,110,.4)'; c.beginPath();
+      for (const q of tufts) {
+        if (q.dark !== dark) continue;
+        for (const b of q.blades) {
+          const sw = Math.sin(ph + b.ph) * (0.1 + wk * 0.38) * b.amp;   // une boucle complète sur les N images
+          const bend = b.lean + sw, l = b.l * u;
+          for (const [ox, oy] of [[0, 0], [size, 0], [0, size], [-size, 0], [0, -size]]) {   // brins qui débordent : la tuile se raccorde
+            const bx = q.x * u + b.dx * u + ox, by = q.y * u + oy;
+            if (bx < -l || by < -l * 2 || bx > size + l || by > size + l) continue;
+            const tx = bx + (ux * bend + b.lean * 0.3) * l, ty = by - l * 0.85 + uy * bend * l * 0.6;
+            c.moveTo(bx, by); c.quadraticCurveTo(bx + (tx - bx) * 0.35, by - l * 0.5, tx, ty);
+          }
+        }
+      }
+      c.stroke();
+    }
+    GRASS.frames.push(cv);
+  }
+  return GRASS.frames;
+}
 function drawGrassWind(fid) {
   if (fid === 'plage') { drawSea(); return; }
   if (fid !== 'gazon' && fid !== 'stade') return;
-  const t = G.time, wk = Math.min(1, (G.wind ? G.wind.kmh : 10) / 25), ang = G.wind && G.wind.kmh > 1 ? Math.atan2(G.wind.y, G.wind.x) : 0.3;
-  const ux = Math.cos(ang), uy = Math.sin(ang);
-  if (!TUFTS) {
-    const R = seeded(99); TUFTS = [];
-    for (let i = 0; i < 420; i++) {                               // touffes de 2 à 4 brins, partout (un peu plus sur les bords)
-      const edge = R() < 0.35, x = edge ? (R() < 0.5 ? -M + R() * (M + 1) : W - 1 + R() * (M + 1)) : R() * (W + 2 * M) - M;
-      const y = edge ? R() * (H + 2 * M) - M : R() < 0.25 ? (R() < 0.5 ? -M + R() * (M + 0.6) : H - 0.6 + R() * (M + 0.6)) : R() * (H + 2 * M) - M;
-      const n = 2 + Math.floor(R() * 3), blades = [];
-      for (let k = 0; k < n; k++) blades.push({ dx: (R() - 0.5) * 0.35, l: 0.3 + R() * 0.45, lean: (R() - 0.5) * 0.5, ph: R() * 6.3 });
-      TUFTS.push({ x, y, blades, dark: R() < 0.5 });
-    }
+  const fr = grassFrames(), wk = Math.min(1, (G.wind ? G.wind.kmh : 10) / 25);
+  const pos = (G.time * (0.45 + wk * 0.9) * GRASS.N) % GRASS.N, i = Math.floor(pos), k = pos - i;   // vitesse selon le vent
+  const cw = canvas.width / dpr, ch = canvas.height / dpr;
+  const m = typeof DOMMatrix === 'function' ? new DOMMatrix().translate(CAM.ox, CAM.oy).scale(CAM.z / dpr) : null;
+  for (const [img, a] of [[fr[i], 1], [fr[(i + 1) % GRASS.N], k]]) {
+    const pat = ctx.createPattern(img, 'repeat'); if (!pat) continue;
+    if (m && pat.setTransform) pat.setTransform(m);
+    ctx.globalAlpha = a; ctx.fillStyle = pat; ctx.fillRect(0, 0, cw, ch);
   }
-  const cw = canvas.width / dpr, ch = canvas.height / dpr, lw = Math.max(1, S * 0.07);
-  for (const dark of [false, true]) {
-    ctx.strokeStyle = dark ? 'rgba(12,60,24,.55)' : 'rgba(170,230,110,.45)'; ctx.lineWidth = lw; ctx.lineCap = 'round'; ctx.beginPath();
-    for (const q of TUFTS) {
-      if (q.dark !== dark) continue;
-      const x = X(q.x), y = Y(q.y); if (x < -20 || y < -20 || x > cw + 20 || y > ch + 20) continue;
-      for (const b of q.blades) {
-        // chaque brin : penché au repos, et une oscillation propre (rafales du vent + petit frémissement)
-        const sw = Math.sin(t * (1.3 + wk * 2.2) + b.ph + q.x * 0.21) * (0.12 + wk * 0.45) + Math.sin(t * 5.3 + b.ph * 3) * 0.04;
-        const bend = b.lean + sw, l = b.l * S, bx = x + b.dx * S;
-        const tx = bx + (ux * bend + b.lean * 0.3) * l, ty = y - l * 0.85 + uy * bend * l * 0.6;
-        ctx.moveTo(bx, y); ctx.quadraticCurveTo(bx + (tx - bx) * 0.35, y - l * 0.5, tx, ty);
-      }
-    }
-    ctx.stroke();
-  }
+  ctx.globalAlpha = 1;
 }
 // plage : la mer en haut, l'écume avance et recule
 function drawSea() {
