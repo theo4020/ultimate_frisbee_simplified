@@ -276,6 +276,7 @@ function defenderAI(d, ax, ay, dir, closed, form, slots) {
       [d.tx, d.ty] = manSpot(px, py, ax, ay, dir, lean);
       const R = brainOf(d) && brainOf(d).read;
       if (R && R.a === a) { lineShift(d, R, readK(d.team)); d.react = Math.min(d.react, 0.12); }   // c'est lui que le porteur regarde
+      if (dist(d.x, d.y, d.tx, d.ty) > 5) d.sp = SPD.sprint;   // distancé : il sprinte pour revenir sur son joueur
     }
   } else {
     const s = slots[d.zslot]; d.tx = s.x; d.ty = s.y;
@@ -298,6 +299,7 @@ function mixDefender(d, ax, ay, dir, open, slots) {
     if (M.P.gap === 'serre') d.react = Math.min(d.react, 0.1);
     const ag = seen(d, a);                                   // là où il le croit (vision.js)
     [d.tx, d.ty] = mixManSpot(M.P, ag.x + ag.vx * ant, ag.y + ag.vy * ant, ax, ay, dir, M.P.side === 'auto' && forceOf(d.team) === 'straight' ? 0 : open);
+    if (dist(d.x, d.y, d.tx, d.ty) > 5) d.sp = SPD.sprint;     // distancé : il sprinte pour revenir sur son joueur
     const R = B && B.read;
     if (R && R.a === a && M.P.side === 'auto') lineShift(d, R, readK(d.team));   // c'est lui que le porteur regarde
     return;

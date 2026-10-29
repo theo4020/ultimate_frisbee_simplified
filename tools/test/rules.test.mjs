@@ -428,6 +428,32 @@ export default async function (t, { quick }) {
   t.ok(cal.ok === 20, 'Callahan à chaque fois (20 essais)', cal.ok);
   t.ok(cal.fx.stars >= 30 && cal.fx.rings >= 3 && /CALLAHAN/.test(cal.fx.msg), 'un Callahan se fête en grand : ondes dorées, pluie d’étoiles, « 🦅 CALLAHAN ! »', cal.fx);
 
+  t.group('Individuelle : un attaquant parti au fond, dans le dos de son défenseur, est rattrapé');
+  const deepR = R(`(() => {
+    const keepAi = G.ai.def; G.ai.def = 'man';
+    const out = [];
+    for (let k = 0; k < 6; k++) {
+      G.score = [0, 0]; G.receiving = 0; newWind(); startPoint();
+      for (let f = 0; f < 6000 && !(G.phase === 'play' && disc.mode === 'held' && !G.pullPending && disc.holder.team === 0); f++) __tick();
+      if (G.phase !== 'play' || disc.holder.team !== 0) continue;
+      const h = disc.holder, dir = dirOf(0), a = TEAMS[0].find(p => p !== h), d = TEAMS[1].find(q => q.match === a);
+      if (!d) continue;
+      const gx = dir > 0 ? W - 6 : 6;                            // il file au fond de l'en-but adverse
+      a.x = clamp(h.x + dir * 6, 1, W - 1); a.y = 6 + k * 4; d.x = a.x - dir * 1.5; d.y = a.y;
+      for (let f = 0; f < 60 * 12; f++) {                       // il court ~7 s puis attend au fond : 5 s pour que son défenseur arrive
+        h.think = 99; G.stall = 0;
+        const y0 = a.y, nx = Math.abs(gx - a.x) < 0.2 ? gx : a.x + dir * 7.6 / 60;   // il court à 7,6 m/s (vitesse d'un cut), puis s'arrête au fond
+        __tick();
+        a.x = nx; a.y = y0; a.vx = nx === gx ? 0 : dir * 7.6; a.vy = 0; a.tx = gx; a.ty = y0;
+        if (G.phase !== 'play' || disc.mode !== 'held') break;
+      }
+      out.push(+nearestD(TEAMS[1], a.x, a.y)[1].toFixed(1));   // un défenseur est revenu sur lui (le sien, ou celui qui a échangé)
+    }
+    G.ai.def = keepAi; G.receiving = 0;
+    return out;
+  })()`);
+  t.ok(deepR.length >= 3 && deepR.every(x => x < 4), 'un défenseur le voit (coups d’œil vers son joueur) et sprinte pour revenir sur lui', deepR);
+
   t.group('Pull sorti : brick seulement s’il fait gagner du terrain (WFDF 7.12), hors-jeu (7.5.2)');
   const po = R(`(() => {
     const out = [];

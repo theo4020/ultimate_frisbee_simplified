@@ -80,6 +80,7 @@ const DBG = { frames: [], acc: 0, errors: [] };
 window.addEventListener('error', ev => { DBG.errors.push(String(ev.message || ev.error || '?').slice(0, 200) + (ev.filename ? ' @' + ev.filename.split('/').pop() + ':' + ev.lineno : '')); if (DBG.errors.length > 10) DBG.errors.shift(); });
 window.addEventListener('unhandledrejection', ev => { DBG.errors.push('promise: ' + String(ev.reason).slice(0, 200)); if (DBG.errors.length > 10) DBG.errors.shift(); });
 function dbgRecord(dt) {                                      // 5 images par seconde, 10 s gardées
+  if (G.paused || (G.menuShown && G.phase !== 'over')) return;   // jeu en pause (menu ouvert pour signaler) : on garde les 10 s d'avant
   DBG.acc += dt; if (DBG.acc < 0.2) return; DBG.acc = 0;
   DBG.frames.push({ t: +G.time.toFixed(1), ph: G.phase, off: G.off, d: [disc.mode, r1(disc.x), r1(disc.y), idx(disc.holder)],
     p: players.map(p => [r1(p.x), r1(p.y), p.dive > 0 ? 1 : p.down > 0 ? 2 : p.jump > 0 ? 3 : 0]) });

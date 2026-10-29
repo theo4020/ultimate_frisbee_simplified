@@ -30,16 +30,27 @@ function lookDir(p) {
     const seq = G.stall > 3.5 ? [0, 1.1, -1.1, Math.PI] : [0, 1.1, -1.1];
     return base + seq[p.scanI % seq.length] * (open || 1);
   }
+  // défenseur en individuelle : un coup d'œil sur deux pour son joueur (« voir le disque et son joueur »), sinon un
+  // attaquant parti en profondeur dans son dos sortirait de sa vue et il ne le rattraperait jamais
+  const m = manLooker(p) ? p.mem[pIdx(p.match)] : null;
+  if (m && p.scanI % 2 && Math.hypot(m.x - p.x, m.y - p.y) > VIS.NEAR) return Math.atan2(m.y - p.y, m.x - p.x);
   const dx = disc.x - p.x, dy = disc.y - p.y;
   return Math.hypot(dx, dy) > 0.5 ? Math.atan2(dy, dx) : (dirOf(p.team) > 0 ? 0 : Math.PI);
 }
+// défenseur qui garde un joueur (individuelle, ou mission « individuelle » d'une défense perso)
+function manLooker(p) {
+  if (!p.match || p.team === G.off || !p.mem) return false;
+  const f = defFormOf(p.team);
+  return f === 'man' || (f === 'mix' && !!p.mission && p.mission.type === 'man');
+}
 function glance(p) {
   const L = aiLvl(p.team), a = lookDir(p), fov = L.fov || 1, ca = Math.cos(a), sa = Math.sin(a), cf = Math.cos(fov);
+  const check = manLooker(p) && p.scanI % 2 ? p.match : null;   // il cherche son joueur du regard (même s'il a filé ailleurs) : il le retrouve
   for (const q of players) {
     const m = p.mem[pIdx(q)], dx = q.x - p.x, dy = q.y - p.y, d = Math.hypot(dx, dy);
-    if (q === p || d < VIS.NEAR || (dx * ca + dy * sa) / (d || 1) >= cf) { m.x = q.x; m.y = q.y; m.vx = q.vx; m.vy = q.vy; m.t = G.gt; }
+    if (q === p || q === check || d < VIS.NEAR || (dx * ca + dy * sa) / (d || 1) >= cf) { m.x = q.x; m.y = q.y; m.vx = q.vx; m.vy = q.vy; m.t = G.gt; }
   }
-  if (disc.holder === p) p.scanI++;
+  if (disc.holder === p || manLooker(p)) p.scanI++;
 }
 function visTick(dt) {
   if (!visOn()) return;
