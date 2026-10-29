@@ -8,6 +8,10 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
+  { id: 37, date: '2026-10-29', tag: 'Jeu', title: 'Choisis qui fait le cut 🎯',
+    body: `Avec le disque, fais ton appel de cut <b>sur un coéquipier</b> (clic droit, ou tap au téléphone) : un anneau doré
+      le désigne, et c'est <b>lui</b> qui partira à ton prochain appel, là où tu le demandes. Un 2e appel sur lui annule.<br>
+      Et un receveur bien seul ne s'arrête plus au plus tôt : il laisse venir le disque pour <b>gagner du terrain</b>.` },
   { id: 36, date: '2026-10-29', tag: 'Visuel', title: 'Le temps qu’il fait, et une vraie fin de match 🌇',
     body: `• Dans <b>Mon style</b>, chaque terrain s'ouvre comme un dossier : choisis-y le <b>temps</b> — coucher de soleil,
       pluie, brume du matin, nuit étoilée, chute de neige (débloqués par tes succès). Les joueurs et le disque restent

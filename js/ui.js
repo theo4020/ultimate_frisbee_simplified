@@ -87,7 +87,7 @@ function updateHud() {
              : '<i>Attaque</i> : vise et relâche pour lancer (relâche sur ton joueur pour annuler)')
     + ' · <i>' + K('loftUp') + ' / ' + K('loftDown') + ' ou molette</i> hauteur de passe (haute : par-dessus la défense, mais plus lente et moins précise)'
     + ' · <i>' + K('curveL') + ' / ' + K('curveR') + '</i> courbe (pour contourner la mark côté break, en rouge)'
-    + ' · <i>' + K('pivot') + '</i> pied de pivot · <i>clic droit sur le terrain</i> appel de cut · <i>clic sur un coéquipier</i> le prendre'
+    + ' · <i>' + K('pivot') + '</i> pied de pivot · <i>clic droit sur le terrain</i> appel de cut (sur un coéquipier : c’est lui qui partira au prochain appel) · <i>clic sur un coéquipier</i> le prendre'
     + ' · pendant le vol : <i>' + K('jump') + ' / clic droit</i> saut, <i>' + K('dive') + ' / clic</i> layout du receveur.'
     + ' Anneau vert = coéquipier démarqué ; pointillés = zone de stall.'
     : '<i>Défense</i> : ton joueur (anneau jaune) suit la souris · <i>clic / ' + K('dive') + '</i> layout · <i>' + K('jump') + ' / clic droit</i> saut (block au lâcher ou à l’arrivée)'
@@ -473,9 +473,17 @@ function playBtnsFrame() {
     if (ok) { const ty = playOf(G.me, n), s = ty === 'sys' && playSys(G.me, n), txt = `▶ ${s ? s.name : PLAY_NAMES[ty]}` + (isTouch() ? '' : ` (${keyName(keysOf('play' + n)[0] || '?')})`); if (b.textContent !== txt) b.textContent = txt; }
   }
 }
+// appel de cut : dans l'espace, ou sur un coéquipier pour le désigner (c'est lui qui partira au prochain appel)
 function doCall(x, y) {
-  if (G.net === 'guest') { netSend({ t: 'call', x, y }); return; }
-  callFor(meH(), x, y);
+  const h = meH(), q = h && G.phase === 'play' && G.off === h.team ? pickAt(h.team, x, y) : null;
+  if (q) { const on = myPick() !== q; ring(q.x, q.y, on ? '#facc15' : 'rgba(255,255,255,.6)', 1.6, 0.45); if (on) vibrate(15); }
+  if (G.net === 'guest') { G.myPick = q ? (G.myPick === q ? null : q) : null; netSend({ t: 'call', x, y }); return; }
+  callFor(h, x, y);
+}
+// ton coéquipier désigné pour le prochain cut (l'invité garde sa propre copie pour l'affichage)
+function myPick() {
+  const p = G.net === 'guest' ? G.myPick : (meH() || {}).callPick;
+  return p && G.phase === 'play' && p !== disc.holder && G.off === G.me && !controllerOf(p) ? p : null;
 }
 
 // ---------- retour au menu principal (depuis un match, le menu d'avant-point, le tutoriel, l'entraînement, en ligne) ----------

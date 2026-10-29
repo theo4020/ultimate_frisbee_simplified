@@ -173,12 +173,22 @@ function runPoint(p) {
   return catchPoint(p) || [...inSpot(...seenEnd(p)), false];   // sinon il attend au bord du terrain, au plus près du disque
 }
 // « attaque cet espace » : le coéquipier IA le plus proche coupe vers le point demandé
+//  • appel SUR un coéquipier (à moins de PICK_R m) : il est désigné (ou ne l'est plus) — c'est lui qui fera le prochain cut
+const PICK_R = 1.8;
+// coéquipier désigné par cet appel (null : appel dans l'espace)
+function pickAt(team, x, y) {
+  const [q, dq] = nearestD(TEAMS[team].filter(p => p !== disc.holder && !controllerOf(p)), x, y);
+  return q && dq < PICK_R ? q : null;
+}
 function callFor(h, x, y) {
   if (!h || G.phase !== 'play' || G.off !== h.team || disc.mode === 'dead') return;
+  const q = pickAt(h.team, x, y);
+  if (q) { h.callPick = h.callPick === q ? null : q; return; }
   if (G.tuto) G.tuto.called = true;
   x = clamp(x, 1, W - 1); y = clamp(y, 1.5, H - 1.5);
   const pool = TEAMS[h.team].filter(p => p !== disc.holder && p !== disc.intended && p !== G.pickup && !controllerOf(p));
-  const c = nearest(pool, x, y);
+  const c = h.callPick && pool.includes(h.callPick) ? h.callPick : nearest(pool, x, y);   // le coéquipier désigné, sinon le plus proche
+  h.callPick = null;
   if (!c) return;
   startCut(c, x, y, dirOf(h.team) * (x - c.x) > 12);
   c.callT = 3; c.called = G.time;

@@ -454,6 +454,43 @@ export default async function (t, { quick }) {
   })()`);
   t.ok(deepR.length >= 3 && deepR.every(x => x < 4), 'un défenseur le voit (coups d’œil vers son joueur) et sprinte pour revenir sur lui', deepR);
 
+  t.group('Appel de cut : désigner le coéquipier qui partira');
+  const pk = R(`(() => {
+    G.score = [0, 0]; G.receiving = 0; newWind(); startPoint();
+    for (let f = 0; f < 6000 && !(G.phase === 'play' && disc.mode === 'held' && !G.pullPending && disc.holder.team === 0); f++) __tick();
+    const h = G.humans[0] || { id: 0, team: 0, sel: null }, d = disc.holder, dir = dirOf(0);
+    const mates = TEAMS[0].filter(p => p !== d), A = mates[0], B = mates[1];
+    A.x = d.x - dir * 8; A.y = 6; B.x = d.x + dir * 10; B.y = 30; A.callT = 0; B.callT = 0;   // A loin du point visé, B tout près
+    callFor(h, A.x + 0.5, A.y);                                  // appel sur A : il est désigné
+    const picked = h.callPick === A;
+    callFor(h, B.x + 2, B.y);                                    // appel dans l'espace, près de B : c'est quand même A qui part
+    const r = { picked, aCut: A.callT > 0, bCut: B.callT > 0, cleared: !h.callPick };
+    callFor(h, A.x, A.y); callFor(h, A.x, A.y); r.toggled = !h.callPick;   // deux fois sur lui : il n'est plus désigné
+    return r;
+  })()`);
+  t.ok(pk.picked && pk.aCut && !pk.bCut && pk.cleared, 'appel sur un coéquipier : il est désigné, et c’est lui qui fait le cut suivant (pas le plus proche)', pk);
+  t.ok(pk.toggled, 'un 2e appel sur lui annule la désignation', pk);
+
+  t.group('Receveur seul : il laisse venir le disque pour gagner du terrain');
+  const lc = R(`(() => {
+    const out = [];
+    for (const alone of [true, false]) {
+      G.score = [0, 0]; G.receiving = 0; newWind(); G.wind = { x: 0, y: 0, kmh: 0 }; startPoint();
+      for (let f = 0; f < 6000 && !(G.phase === 'play' && disc.mode === 'held' && !G.pullPending && disc.holder.team === 0); f++) __tick();
+      const h = disc.holder, dir = dirOf(0), r = TEAMS[0].find(p => p !== h);
+      h.x = 40; h.y = 18; if (dir < 0) h.x = 60;
+      r.x = h.x + dir * 22; r.y = 18; r.vx = dir * 6; r.vy = 0;
+      TEAMS[1].forEach((d, k) => { d.x = alone ? h.x - dir * 15 : r.x + dir * 2; d.y = alone ? 4 + k * 7 : 18 + (k - 2) * 0.8; d.vx = d.vy = 0; });
+      visReset();
+      holdDisc(h); throwDisc(h, h.x + dir * 36, 18, 0, 0, 0.3); disc.intended = r;
+      const L = runPoint(r), E = (() => { const keep = LATE.GAIN; LATE.GAIN = 1e9; const e = runPoint(r); LATE.GAIN = keep; return e; })();
+      out.push({ alone, late: +L[0].toFixed(1), early: +E[0].toFixed(1), gain: +(dir * (L[0] - E[0])).toFixed(1) });
+    }
+    return out;
+  })()`);
+  t.ok(lc[0].gain >= 3, 'personne autour : il attrape plus loin (le plus tard possible) au lieu de s’arrêter au plus tôt', lc);
+  t.ok(lc[1].gain === 0, 'un défenseur peut disputer le disque : il l’attaque au plus tôt, comme avant', lc);
+
   t.group('Pull sorti : brick seulement s’il fait gagner du terrain (WFDF 7.12), hors-jeu (7.5.2)');
   const po = R(`(() => {
     const out = [];

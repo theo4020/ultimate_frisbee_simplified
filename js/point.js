@@ -41,6 +41,7 @@ function startPoint() {
   G.firstRoll = null;                                          // prochain match : nouveau tirage au sort
   G.ms.ptT = 0;
   replayReset(); G.celebrate = null; G.scorer = null; FX.celebrate = null; G.loft = LOFT.N;
+  G.myPick = null; G.humans.forEach(h => { h.callPick = null; });   // coéquipier désigné pour le cut : oublié au point suivant
   const dType = cfg(d).dplay;
   G.dplay = dType === 'none' ? null : { type: dType, team: d, t: 0, throws: 0, d: null };
   G.oplay = null; G.aiPlayTried = false;                      // les plays d'attaque s'appellent en jeu (plays.js)

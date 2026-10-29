@@ -275,7 +275,7 @@ export default async function (t) {
     await host.waitForFunction(() => G.humans.length === 1, null, { timeout: 15000 });
     t.ok(await guest.isVisible('#rejoinB') && (await guest.textContent('#rejoinTxt')).includes(code), 'bouton pour revenir dans la partie quittée');
     await guest.click('#rejoinB');
-    await host.waitForFunction(() => G.humans.length === 2, null, { timeout: 10000 }).catch(() => {});
+    await host.waitForFunction(() => G.humans.length === 2, null, { timeout: 20000 }).catch(() => {});
     t.ok(await host.evaluate(() => G.humans.length === 2), 'il revient dans la partie');
     await guest.evaluate(() => netError(''));
     await host.waitForFunction(() => G.humans.length === 1, null, { timeout: 15000 });

@@ -62,7 +62,7 @@ function renderCtrl() {
     <div class="row"><span>Lancer</span>${b('sling', true, 'Lance-pierre (tirer en arrière)')}${b('sling', false, 'Glisser vers la cible')}</div>
     <div class="row"><span>Courbe et hauteur</span>${b('throwUI', 'gestes', 'Gestes')}${b('throwUI', 'boutons', 'Curseurs sur le bord')}</div>
     <div class="desc">${CTRL.throwUI === 'gestes' ? 'Pendant la visée, un 2<sup>e</sup> doigt glisse : sur le côté = courbe ; vers ton joueur = passe plus haute, vers la cible = plus basse. Taper ton joueur : changer de pied.'
-      : 'Courbe et hauteur : curseurs sur le bord droit. Pied de pivot : bouton sous les curseurs.'} Taper ailleurs appelle un cut.</div>
+      : 'Courbe et hauteur : curseurs sur le bord droit. Pied de pivot : bouton sous les curseurs.'} Taper ailleurs appelle un cut ; taper un coéquipier le désigne : c’est lui qui partira au prochain appel.</div>
     <h2>Téléphone : sans le disque (défense, attaque à plusieurs)</h2>
     <div class="row"><span>Déplacement</span>${b('move', 'tap', 'Taper / glisser')}${b('move', 'follow', 'Suivre le doigt')}${b('move', 'joystick', 'Joystick et boutons')}</div>
     <div class="desc">${MOVE[CTRL.move]}</div>
@@ -75,7 +75,7 @@ function renderCtrl() {
     <div class="desc">${CTRL.markAssist ? 'Dans le cercle du thrower, ton joueur se cale tout seul face à lui : déplace-toi à gauche ou à droite pour fermer un côté. Vise plus loin (ou change de joueur) pour quitter la mark, comme en match.' : 'Ton joueur suit toujours ta souris ou ton doigt, même en mark.'}</div>
     <h2>Clavier</h2>
     ${KEY_ACTIONS.map(([a, l]) => `<div class="row"><span>${l}</span><button class="kbtn${keyWait === a ? ' on' : ''}" data-a="${a}">${keyWait === a ? 'Appuie sur une touche…' : keysOf(a).map(keyName).join(' / ')}</button></div>`).join('')}
-    <div class="desc">La souris vise et lance (clic maintenu). Clic sur un coéquipier : tu le prends. Molette : hauteur de la passe (pendant le pull : courbe). Clic droit : avec le disque, appel d’un cut ; sinon saut (en défense, ou pour ton receveur pendant le vol) ; 1 à 5 prennent aussi un joueur.</div>
+    <div class="desc">La souris vise et lance (clic maintenu). Clic sur un coéquipier : tu le prends. Molette : hauteur de la passe (pendant le pull : courbe). Clic droit : avec le disque, appel d’un cut (sur un coéquipier : il est désigné, c’est lui qui partira au prochain appel) ; sinon saut (en défense, ou pour ton receveur pendant le vol) ; 1 à 5 prennent aussi un joueur.</div>
     <button id="keysReset" class="ghost">Touches par défaut</button>
     ${typeof accGet === 'function' && accGet() && accGet().admin ? `<h2>Admin</h2>
     <div class="row"><span>Performances</span>${b('perf', false, 'Masquées')}${b('perf', true, 'Afficher')}</div>

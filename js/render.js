@@ -360,6 +360,11 @@ function draw() {
     }
   }
 
+  // coéquipier désigné pour ton prochain appel de cut : anneau doré qui pulse
+  const pk = myAttack && myPick();
+  if (pk) { ctx.save(); ctx.strokeStyle = 'rgba(250,204,21,.9)'; ctx.lineWidth = 2; ctx.setLineDash([4, 3]); ctx.lineDashOffset = -G.time * 12;
+    circle(X(pk.x), Y(pk.y), (1.6 + Math.sin(G.time * 6) * 0.12) * S); ctx.stroke(); ctx.restore(); }
+
   // Courses en cours de tes coéquipiers
   if (myAttack) for (const p of TEAMS[ME]) {
     if (p.state === 'jab' || p.state === 'cut') arrow(p.x, p.y, p.cx, p.cy, 'rgba(255,255,255,.55)');

@@ -105,7 +105,22 @@ function catchPoint(p) {
     const [x, y] = seenAt(p, u);
     if (!inField(x, y) || (u < 0.45 && u * len < 3)) continue;   // pas hors du terrain, ni collé au lanceur
     const extra = z > REACH_STAND ? JUMP_PREP + JUMP_T * 0.4 : 0;
-    if (recvTime(p, x, y) <= Math.max(0, (u - u0) * disc.dur - 0.06 - extra)) return [x, y, true];
+    if (recvTime(p, x, y) <= Math.max(0, (u - u0) * disc.dur - 0.06 - extra)) return lateCatch(p, u, x, y) || [x, y, true];
   }
   return null;
+}
+// seul (ou il le croit : défenseurs vus, vision.js) : au lieu d'attraper le disque au plus tôt, il le laisse venir pour
+// gagner du terrain — le plus loin possible sur la trajectoire tant qu'aucun défenseur ne peut le disputer (marge LATE.M s)
+const LATE = { M: 0.55, GAIN: 1.5 };
+function lateCatch(p, ue, ex, ey) {
+  if (disc.pull || G.tuto || G.practice) return null;
+  const u0 = disc.t / disc.dur, dir = dirOf(p.team), opp = TEAMS[1 - p.team].map(d => seen(p, d));
+  let best = null;
+  for (let u = ue; u <= 0.97; u += 0.025) {
+    const z = discZ(u), [x, y] = seenAt(p, u), tA = (u - u0) * disc.dur;
+    if (!inField(x, y)) break;
+    if (opp.some(d => touchTime(d, x, y, z, 0.15) < tA + LATE.M)) break;   // un défenseur pourrait arriver : on ne va pas plus loin
+    if (z <= REACH_STAND && recvTime(p, x, y) <= tA - 0.06) best = [x, y];
+  }
+  return best && dir * (best[0] - ex) >= LATE.GAIN ? [best[0], best[1], true] : null;
 }

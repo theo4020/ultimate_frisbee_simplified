@@ -72,6 +72,15 @@ export default async function (t) {
     t.ok(drawn.out.length === 20 + nWx, 'chaque combinaison est dessinée (vue de dessus et inclinée), et chaque temps de chaque terrain', drawn.out.length);
     t.ok(drawn.snowDisc === 'orange', 'lisibilité : sur la neige, le disque blanc devient orange', drawn.snowDisc);
 
+    t.group('Appel de cut sur un coéquipier (dans un vrai navigateur)');
+    const pkb = await p.evaluate(async () => {
+      G.phase = 'play'; G.off = G.me; G.pickup = null; const h = TEAMS[G.me][0]; holdDisc(h); h.think = 99;
+      const q = TEAMS[G.me][3]; doCall(q.x, q.y);
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const on = myPick() === q; doCall(q.x, q.y); return { on, off: !myPick() };
+    });
+    t.ok(pkb.on && pkb.off, 'clic droit / tap sur un coéquipier : il est désigné (anneau doré), un 2e appel l’annule', pkb);
+
     t.group('Écran de fin : panneau du score, moment du match, équipes, joueurs en ligne');
     const sm = await p.evaluate(() => {
       newMatchStats(); G.score = [5, 3]; G.ms.points = [[0, 30], [1, 20]]; G.ms.team[0].thr = 10; G.ms.team[0].comp = 9;
