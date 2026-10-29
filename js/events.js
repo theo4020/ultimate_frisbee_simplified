@@ -3,7 +3,17 @@
 // =====================================================================
 //  Événements de jeu
 // =====================================================================
+// à plusieurs humains dans une équipe : un coéquipier IA attrape le disque → le dernier humain qui l'a eu en prend le
+// contrôle (option d'équipe « Disque attrapé par l'IA », activée par défaut)
+function takeOver(p) {
+  const hs = teamHumans(p.team);
+  if (hs.length < 2 || hs.some(h => h.sel === p) || (cfg(p.team) || {}).take === 'non' || G.tuto || G.practice) return;
+  const id = G.lastHumanHolder && G.lastHumanHolder[p.team], h = id != null && humanById(id);
+  if (!h || h.team !== p.team) return;
+  h.sel = p; inputOf(h).last = -1e9;                           // (comme un changement de joueur ; il lance tout de suite d'ici)
+}
 function holdDisc(p) {
+  takeOver(p);
   disc.mode = 'held'; disc.holder = p; disc.x = p.x; disc.y = p.y; disc.z = 0; G.carryTo = null;
   players.forEach(q => { q.windup = null; q.jumpAt = 0; q.bluffed = false; }); G.tellSeen = false;
   // il garde son élan et freine (sim.js) ; il regarde d'abord dans la direction de sa course (lecture du jeu, throwing.js)

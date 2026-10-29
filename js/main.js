@@ -53,7 +53,7 @@ function frame(now, visible) {
     if (G.net === 'host') { netT += dt; if (netT >= 0.05) { netT = 0; sendSnapshot(); } }
   }
   const ctNow = canThrow();                                   // on perd le disque : on revient à la passe normale
-  if (G.lastCt && !ctNow) setLoft(LOFT.N, true);
+  if (G.lastCt && !ctNow) { setLoft(LOFT.N, true); if (G.phase === 'play' && typeof setCurve === 'function') setCurve(0); }   // et la courbe repart de zéro pour la prochaine passe
   G.lastCt = ctNow;
   if (G.tuto) tutoFrame(dt);
   if (G.practice) practiceFrame(dt);

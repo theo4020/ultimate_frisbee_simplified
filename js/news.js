@@ -8,6 +8,10 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
+  { id: 40, date: '2026-10-29', tag: 'Jeu', title: 'À plusieurs : on garde la main 🤝',
+    body: `• À plusieurs dans la même équipe, quand un <b>coéquipier IA attrape le disque</b>, le dernier de vous à l'avoir eu
+      en prend le contrôle et lance (option « Disque attrapé par l'IA » dans le menu entre les points, activée par défaut).<br>
+      • Après ta passe, la <b>courbe revient à zéro</b> pour la suivante.` },
   { id: 39, date: '2026-10-29', tag: 'Jeu', title: 'Retours du premier playtest 🧪',
     body: `• La <b>fête</b> après un point se fait sur tout le terrain.<br>
       • La <b>mark aimantée</b> ne s'active qu'après un instant dans le cercle : passer à côté du porteur ne t'aspire plus.<br>

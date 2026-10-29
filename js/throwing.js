@@ -71,6 +71,7 @@ function throwDisc(h, tx, ty, curve, errScale, kind) {
   disc.cone = r0; disc.coneOff = [Math.cos(oa) * om, Math.sin(oa) * om];
   makeGuesses(h);
   msThrow(h, d, loftLabel(loft));
+  { const u = teamHumans(h.team).find(x => x.sel === h) || (teamHumans(h.team).length === 1 ? teamHumans(h.team)[0] : null); if (u) (G.lastHumanHolder = G.lastHumanHolder || {})[h.team] = u.id; }   // dernier humain porteur (takeOver)
   if (G.dplay && G.dplay.team !== h.team) G.dplay.throws++;
   disc.intended = nearest(TEAMS[h.team], ex, ey, h);
   players.forEach(p => { p.diveTried = false; p.diveArmed = false; p.jumpTried = false; if (p.team !== h.team) p.react = rand(0.2, 0.3) * aiLvl(p.team).react; });   // la défense voit le lancer, puis réagit (course, plongeon)

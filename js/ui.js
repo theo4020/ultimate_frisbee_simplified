@@ -105,6 +105,9 @@ function refreshOptions() {
   const os = pickedSys('osys'), ds = pickedSys('dsys');
   $('descOff').textContent = os ? `Ta formation « ${os.name} » : chacun prend sa place et attaque l’espace libre depuis là.` : DESCS[G.form.off];
   $('descRestart').textContent = DESCS['restart_' + G.form.restart];
+  $('rowTake').style.display = $('descTake').style.display = teamHumans(G.me).length > 1 ? '' : 'none';   // seulement à plusieurs dans l'équipe
+  $('descTake').textContent = G.form.take === 'non' ? 'Un coéquipier IA qui attrape le disque le garde et lance lui-même.'
+    : 'Quand un coéquipier IA attrape le disque, le dernier de vous à l’avoir eu en prend le contrôle et lance.';
   $('descFlow').textContent = G.form.flow === 'flow' ? 'Le jeu continue dès la réception : un cutter propose tout de suite la passe suivante.'
     : 'Après chaque passe, chacun se replace dans la formation ; on n’enchaîne que si un cutter est déjà lancé.';
   $('descDef').textContent = ds ? `Ta défense « ${ds.name} » : ${sysInfo(ds)}, chaque défenseur suit ses consignes.` + (ds.mark.force !== 'menu' ? ` ${MARK_OPTS.force[ds.mark.force]} (choisie dans la défense).` : '') : DESCS[G.form.def];
@@ -346,7 +349,7 @@ document.querySelectorAll('.swatches').forEach(box => {
 for (const id of ['tname', 'oname']) $(id).addEventListener('input', e => { G.form[id] = e.target.value.slice(0, 16); hudKey = ''; computeTeams(); saveSettings(); });
 
 const myCfg = () => ({ off: G.form.off, def: G.form.def, force: G.form.force, play: G.form.play, dplay: G.form.dplay, allyLevel: G.form.allyLevel,
-  tname: G.form.tname, tcol: G.form.tcol, puller: G.form.puller, restart: G.form.restart, flow: G.form.flow, huck: G.form.huck, high: G.form.high, risk: G.form.risk, help: G.form.help,
+  tname: G.form.tname, tcol: G.form.tcol, puller: G.form.puller, restart: G.form.restart, take: G.form.take, flow: G.form.flow, huck: G.form.huck, high: G.form.high, risk: G.form.risk, help: G.form.help,
   osys: pickedSys('osys'), dsys: pickedSys('dsys'), play1: G.form.play1, play2: G.form.play2,
   p1sys: G.form.play1 === 'sys' ? playOut(pickedSys('p1sys')) : null, p2sys: G.form.play2 === 'sys' ? playOut(pickedSys('p2sys')) : null });   // en ligne, les systèmes entiers partent chez l'hôte
 $('replayB').addEventListener('click', startReplay);

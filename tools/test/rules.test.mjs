@@ -507,6 +507,24 @@ export default async function (t, { quick }) {
     disc.dur = flightTime(30); const slow = catchOdds(p); disc.dur = flightTime(30) * 0.55; const fast = catchOdds(p); return { slow, fast }; })()`);
   t.ok(fd.fast > fd.slow + 0.02, 'une passe trop rapide se droppe plus souvent', fd);
 
+  t.group('À plusieurs : le dernier porteur reprend le disque attrapé par l’IA');
+  const tk = R(`(() => {
+    const keepH = G.humans, keepTake = G.form.take, out = {};
+    for (const take of ['oui', 'non']) {
+      G.score = [0, 0]; G.receiving = 0; newWind(); startPoint();
+      for (let f = 0; f < 6000 && !(G.phase === 'play' && disc.mode === 'held' && !G.pullPending); f++) __tick();
+      const A0 = TEAMS[0][0], B0 = TEAMS[0][1], C = TEAMS[0][3];
+      G.humans = [{ id: 0, team: 0, sel: A0 }, { id: 5, team: 0, sel: B0, name: 'Léa' }]; G.myId = 0; G.form.take = take; G.off = 0;
+      holdDisc(A0); throwDisc(A0, A0.x + dirOf(0) * 8, A0.y, 0, 0, 0.3);   // A (humain 0) lance…
+      holdDisc(C);                                                       // … un coéquipier IA attrape
+      out[take] = { aHasC: G.humans[0].sel === C, bSame: G.humans[1].sel === B0 };
+    }
+    G.humans = keepH; G.form.take = keepTake; G.myId = 0; syncMe(); G.lastHumanHolder = {};
+    return out;
+  })()`);
+  t.ok(tk.oui.aHasC && tk.oui.bSame, 'activé : l’humain qui vient de lancer prend le contrôle du coéquipier IA qui attrape', tk);
+  t.ok(!tk.non.aHasC, 'désactivé (« L’IA le garde ») : le coéquipier IA garde le disque', tk);
+
   t.group('Appel de cut : désigner le coéquipier qui partira');
   const pk = R(`(() => {
     G.score = [0, 0]; G.receiving = 0; newWind(); startPoint();

@@ -94,6 +94,14 @@ export default async function (t) {
     t.ok(!pt2.early && pt2.later, 'juste après la réception, on ne peut pas encore relancer (un instant de stabilisation)', pt2);
     t.ok(pt2.arrowFor, 'coéquipier désigné puis endroit : il y part, avec une flèche jusqu’à l’endroit voulu', pt2);
     t.ok(pt2.pivFlip, 'avec le disque, Espace change de pied de pivot', pt2);
+    const cv = await p.evaluate(async () => {
+      const fr = n => new Promise(r => { let k = 0; const f = () => (++k >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); });
+      G.phase = 'play'; G.off = G.me; G.checkT = 0; const h = TEAMS[G.me][0]; holdDisc(h); h.think = 99; await new Promise(r => setTimeout(r, 600));
+      setCurve(0.6); await fr(3); const before = G.curve;
+      throwDisc(h, h.x + dirOf(G.me) * 10, h.y, G.curve, 1, 0.3); await fr(3);              // ta passe part : la courbe repart de zéro
+      return { before, after: G.curve };
+    });
+    t.ok(cv.before > 0.5 && cv.after === 0, 'après ta passe, la courbe revient à zéro pour la suivante', cv);
     const hw = await p.evaluate(() => { const was = HALLO.on, b = document.getElementById('halloB2'); const inCard = !!b && b.closest('#stratCard') !== null;
       b.click(); const on = HALLO.on !== was && b.classList.contains('on') === HALLO.on; b.click(); return { inCard, on, back: HALLO.on === was }; });
     t.ok(hw.inCard && hw.on && hw.back, 'la citrouille du mode Halloween est aussi dans le menu entre les points', hw);
@@ -116,7 +124,9 @@ export default async function (t) {
     t.group('Habillage : caméra qui suit le jeu, police');
     const cam = await p.evaluate(async () => {
       const fr = n => new Promise(r => { let k = 0; const f = () => (++k >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); });
-      CTRL.view = 'top'; resize(); CTRL.cam = 'suivi'; G.phase = 'play'; await fr(90);
+      CTRL.view = 'top'; resize(); CTRL.cam = 'suivi'; G.phase = 'play'; G.paused = true;   // joueurs groupés (et figés) : la caméra zoome
+      holdDisc(TEAMS[G.me][0]); players.forEach((q, i) => { q.x = 50 + (i % 4) * 2; q.y = 16 + (i % 3) * 2; q.vx = q.vy = 0; }); disc.x = 50; disc.y = 16;
+      await fr(90); G.paused = false;
       const z = CAM.z, rect = canvas.getBoundingClientRect(), pt = { x: 61.3, y: 12.7 };
       const w = toWorld({ clientX: rect.left + X(pt.x), clientY: rect.top + Y(pt.y) });
       CTRL.cam = 'fixe'; for (let k = 0; k < 40 && CAM.z !== 1; k++) await new Promise(r => setTimeout(r, 100));   // (en temps réel : le rythme des images varie)
