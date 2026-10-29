@@ -96,7 +96,12 @@ function ctrlFor(sx, sy, ex, ey, curve) {
   const dx = ex - sx, dy = ey - sy, d = Math.hypot(dx, dy) || 0.01;
   return [(sx + ex) / 2 - dy / d * curve * d * 0.4, (sy + ey) / 2 + dx / d * curve * d * 0.4];
 }
+// trajectoire du disque (u = part du temps de vol écoulée) : il part vite et ralentit en fin de course
+// (vitesse ×(1 + DISC_EASE) au lâcher, ×(1 - DISC_EASE) à l'arrivée ; même durée totale)
+const DISC_EASE = 0.5;
+const discS = u => u + DISC_EASE * u * (1 - u);
 function bez(sx, sy, cx, cy, ex, ey, u) {
+  u = discS(u);
   const a = 1 - u;
   return [a * a * sx + 2 * a * u * cx + u * u * ex, a * a * sy + 2 * a * u * cy + u * u * ey];
 }

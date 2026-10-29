@@ -274,9 +274,11 @@ export default async function (t) {
     t.ok(await guest.isVisible('#lobbyOnline'), 'l’invité quitte et retrouve la section En ligne');
     await host.waitForFunction(() => G.humans.length === 1, null, { timeout: 15000 });
     t.ok(await guest.isVisible('#rejoinB') && (await guest.textContent('#rejoinTxt')).includes(code), 'bouton pour revenir dans la partie quittée');
-    await guest.click('#rejoinB');
+    await guest.bringToFront(); await guest.click('#rejoinB');   // (onglet au premier plan : sinon le navigateur le ralentit)
     await host.waitForFunction(() => G.humans.length === 2, null, { timeout: 20000 }).catch(() => {});
-    t.ok(await host.evaluate(() => G.humans.length === 2), 'il revient dans la partie');
+    const back = await host.evaluate(() => ({ n: G.humans.length, conns: Object.keys(G.conns || {}).length, phase: G.phase }));
+    const gst = await guest.evaluate(() => ({ net: G.net, phase: G.phase, reconn: !!G.reconn, lobby: document.getElementById('lobbyOnline').offsetParent !== null, status: (document.getElementById('joinStatus') || {}).textContent, log: typeof NETLOG !== 'undefined' ? NETLOG.ev.slice(-8) : null }));
+    t.ok(back.n === 2, 'il revient dans la partie', { back, gst });
     await guest.evaluate(() => netError(''));
     await host.waitForFunction(() => G.humans.length === 1, null, { timeout: 15000 });
     t.ok(await host.evaluate(() => G.net === 'host' && (G.phase === 'play' || G.phase === 'between' || G.phase === 'pull' || G.phase === 'over')), 'la partie continue chez l’hôte');
