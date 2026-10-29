@@ -432,14 +432,14 @@ export default async function (t, { quick }) {
   const deepR = R(`(() => {
     const keepAi = G.ai.def; G.ai.def = 'man';
     const out = [];
-    for (let k = 0; k < 6; k++) {
+    for (let k = 0; k < 20 && out.length < 4; k++) {           // 4 essais valides (parfois l'attaque perd le disque avant)
       G.score = [0, 0]; G.receiving = 0; newWind(); startPoint();
       for (let f = 0; f < 6000 && !(G.phase === 'play' && disc.mode === 'held' && !G.pullPending && disc.holder.team === 0); f++) __tick();
       if (G.phase !== 'play' || disc.holder.team !== 0) continue;
       const h = disc.holder, dir = dirOf(0), a = TEAMS[0].find(p => p !== h), d = TEAMS[1].find(q => q.match === a);
       if (!d) continue;
       const gx = dir > 0 ? W - 6 : 6;                            // il file au fond de l'en-but adverse
-      a.x = clamp(h.x + dir * 6, 1, W - 1); a.y = 6 + k * 4; d.x = a.x - dir * 1.5; d.y = a.y;
+      a.x = clamp(h.x + dir * 6, 1, W - 1); a.y = 6 + (k % 6) * 4; d.x = a.x - dir * 1.5; d.y = a.y;
       for (let f = 0; f < 60 * 12; f++) {                       // il court ~7 s puis attend au fond : 5 s pour que son défenseur arrive
         h.think = 99; G.stall = 0;
         const y0 = a.y, nx = Math.abs(gx - a.x) < 0.2 ? gx : a.x + dir * 7.6 / 60;   // il court à 7,6 m/s (vitesse d'un cut), puis s'arrête au fond
