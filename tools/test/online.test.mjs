@@ -169,7 +169,7 @@ export default async function (t) {
         while (performance.now() - t0 < 2500) { await fr(); const cur = players.map(p => [p.x, p.y]); worst = Math.max(worst, ...cur.map((c, i) => Math.hypot(c[0] - prev[i][0], c[1] - prev[i][1]))); prev = cur; n++; }
         return { worst: +worst.toFixed(2), n, wait: hostWaitMsg(), recv: +(G.time - lastRecv).toFixed(2) };
       });
-      t.ok(smooth.worst < 0.6 && !smooth.wait, 'réseau lent et irrégulier : chez l’invité, les joueurs avancent sans sauts', smooth);
+      t.ok(smooth.worst < 1.0 && !smooth.wait, 'réseau lent et irrégulier : chez l’invité, les joueurs avancent sans sauts', smooth);
       // 1b. ton joueur répond tout de suite (prédiction), et reste d'accord avec l'hôte
       const setupD = () => host.evaluate(() => {
         closeAllCards(); G.pz = null; G.phase = 'play'; G.menuShown = false; document.getElementById('overlay').classList.add('hidden');

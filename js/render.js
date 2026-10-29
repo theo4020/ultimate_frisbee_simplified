@@ -282,6 +282,7 @@ function draw() {
   }
   groundT();
   drawField();
+  if (!iso) { const fid = styleOf('field'); drawGrassWind(fid); drawCrowd(fid); }   // herbe qui ondule, public (scenery.js)
 
   drawStreaks();
   drawPractice();
@@ -400,7 +401,9 @@ function draw() {
     const spd = Math.hypot(p.vx, p.vy), hop = celebrateHop(p);
     p.stride = (p.stride || 0) + spd * (FX.dt || 0.016) * 1.6;
     if (!iso) groundFx(p, spd);                              // herbe soulevée par un plongeon, poussière en courant
-    const near = disc.mode === 'air' && !disc.pull && (disc.intended === p || dist(p.x, p.y, disc.x, disc.y) < 3.2) && (disc.z || 0) < 3.6;
+    // bras tendus seulement dans les derniers instants : le receveur juste avant l'arrivée, un défenseur quand le disque le frôle
+    const left = disc.mode === 'air' ? disc.dur - disc.t : 9;
+    const near = disc.mode === 'air' && !disc.pull && (disc.z || 0) < 3.6 && ((disc.intended === p && left < 0.38 && dist(p.x, p.y, disc.ex, disc.ey) < 3) || dist(p.x, p.y, disc.x, disc.y) < 1.7);
     return { jl, lying, face, scale: (1 + jl * 0.25 + hop * 0.18) * (crouch ? 0.84 : 1), throwing: p.throwT > 0, throwK: 1 - Math.max(0, p.throwT || 0) / 0.32, side: p.throwSide || 1,
       jumping: jl > 0.05, swing: spd > 1 ? Math.sin(p.stride) : 0, stride: p.stride, run: Math.min(1, spd / 4),
       reach: near && !lying ? Math.atan2(disc.y - p.y, disc.x - p.x) : undefined, cele: hop > 0.05,

@@ -13,8 +13,26 @@ function throwSoon() {
   if (disc.mode === 'ground') return mine(G.pickup);
   return disc.mode === 'carry' && mine(disc.holder);
 }
+// chiffres du panneau de score : des points lumineux (matrice 5 × 7), allumés ou éteints
+const LED_FONT = ['01110100011000110001100011000101110', '00100011000010000100001000010001110', '01110100010000100010001000100011111', '11111000100010000010000011000101110',
+  '00010001100101010010111110001000010', '11111100001111000001000011000101110', '00110010001000011110100011000101110', '11111000010001000100010000100001000',
+  '01110100011000101110100011000101110', '01110100011000101111000010001001100'];
+function ledDigits(n) {
+  const d = String(Math.max(0, n | 0)).split(''), w = d.length * 6 - 1;
+  let c = '';
+  d.forEach((ch, k) => { const f = LED_FONT[+ch] || LED_FONT[0]; for (let i = 0; i < 35; i++) c += `<circle cx="${k * 6 + (i % 5) + 0.5}" cy="${Math.floor(i / 5) + 0.5}" r="0.4" class="${f[i] === '1' ? 'on' : 'off'}"/>`; });
+  return `<svg class="led" viewBox="0 0 ${w} 7" style="aspect-ratio:${w}/7" aria-label="${n}">${c}</svg>`;
+}
+let ledShown = '';
+// aide des commandes sous le terrain (ordinateur) : repliée sur une ligne, un clic la déplie (gardé dans le navigateur)
+if (typeof document !== 'undefined' && document.getElementById('hint')) {
+  const hintSet = () => document.getElementById('hint').classList.toggle('folded', !storeGet('uf-hint-open', false));
+  document.getElementById('hint').addEventListener('click', () => { storeSet('uf-hint-open', !storeGet('uf-hint-open', false)); hintSet(); });
+  hintSet();
+}
 function updateHud() {
-  $('s0').textContent = G.score[0]; $('s1').textContent = G.score[1];
+  const sk = G.score[0] + ':' + G.score[1];
+  if (sk !== ledShown) { ledShown = sk; $('s0').innerHTML = ledDigits(G.score[0]); $('s1').innerHTML = ledDigits(G.score[1]); }
   $('dot').style.left = ((G.curve + 1) / 2 * 100) + '%';
   const ME = G.me, OP = 1 - ME, pulling = localPuller(), att = G.off === ME && G.phase !== 'pull';
   const op = G.oplay ? G.oplay.type : '', dp = G.dplay ? G.dplay.type : '';

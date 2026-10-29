@@ -23,7 +23,7 @@ if (CTRL.v < 3) { if (CTRL.move === 'tap' && CTRL.sling === true) Object.assign(
 if (!['gestes', 'boutons'].includes(CTRL.throwUI)) CTRL.throwUI = 'gestes';
 if (!['tap', 'follow', 'joystick'].includes(CTRL.move)) CTRL.move = 'tap';
 if (!['top', 'iso'].includes(CTRL.view)) CTRL.view = 'top';
-if (!['fixe', 'suivi'].includes(CTRL.cam)) CTRL.cam = 'fixe';               // caméra (scenery.js) : fixe par défaut
+if (!['fixe', 'suivi'].includes(CTRL.cam)) CTRL.cam = typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: coarse)').matches ? 'suivi' : 'fixe';   // caméra (scenery.js) : suit le jeu sur téléphone, fixe sur ordinateur
 CTRL.perf = !!CTRL.perf;
 if (CTRL.markAssist === undefined) CTRL.markAssist = true;
 if (!CTRL.music) CTRL.music = 'menus';                                 // musique (audio.js) : dans les menus par défaut

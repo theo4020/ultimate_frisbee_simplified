@@ -52,6 +52,11 @@ const TEX_OF = { gazon: 'herbe', stade: 'herbe', plage: 'sable', terre: 'terre',
 function paintField(c, F, fid, tR, S0, cw, ch) {
   const px = x => (x + M) * S0, py = y => (y + M) * S0, grass = F === FIELDS.gazon || F === FIELDS.stade;
   c.fillStyle = F.bg; c.fillRect(0, 0, cw, ch);
+  if (fid === 'plage') {                                         // plage : du sable autour, la mer seulement en haut
+    c.fillStyle = '#c9a66b'; c.fillRect(0, py(-1.1), cw, ch);
+    const g = c.createLinearGradient(0, 0, 0, py(-1.1)); g.addColorStop(0, '#0369a1'); g.addColorStop(1, '#38bdf8');
+    c.fillStyle = g; c.fillRect(0, 0, cw, py(-1.1));
+  }
   const tile = texTile(TEX_OF[fid]);
   const texture = (x, y, w, h, a) => {                         // texture répétée sur un rectangle
     if (!tile) return;
@@ -102,61 +107,156 @@ function paintField(c, F, fid, tR, S0, cw, ch) {
   }
 }
 
-// abords : tout reste dans la marge (M = 2 m) autour des lignes, discret, sous les joueurs
+// abords, dans la marge (M = 3,2 m) : à l'extérieur le public (animé, voir drawCrowd), puis les panneaux (stade), puis,
+// près des lignes, le banc des remplaçants, les sacs, les gourdes, les disques… ; tout reste sous les joueurs
+const CROWD_BAND = 1.25;                                         // profondeur du public, au bord extérieur de la marge
 function paintSurroundings(c, F, fid, px, py, S0, cw, ch) {
   const s = S0, R = seeded(4242);
   const rr = (x, y, w, h, r, fill) => { c.fillStyle = fill; c.beginPath(); if (c.roundRect) c.roundRect(x, y, w, h, r); else c.rect(x, y, w, h); c.fill(); };
-  const top = -M * 0.62, bot = H + M * 0.62;                     // au milieu de la marge, en haut et en bas
-  if (fid === 'stade') {                                         // panneaux autour du terrain
-    const band = M * 0.42 * s, txt = ['ULTIMATE', 'SPIRIT OF THE GAME', 'FAIR-PLAY', 'ULTIMATE FRISBEE'];
-    c.font = `800 ${Math.max(8, band * 0.62)}px ${UI_FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle';
-    for (const y of [0, ch - band]) for (let i = 0, x = 0; x < cw; i++, x += cw / 6) {
-      rr(x + 2, y + 1, cw / 6 - 4, band - 2, 3, i % 2 ? '#1e3a8a' : '#0f172a');
-      c.fillStyle = i % 2 ? '#bfdbfe' : '#facc15'; c.fillText(txt[i % txt.length], x + cw / 12, y + band / 2 + 1);
+  const inner = M - CROWD_BAND, top = -inner * 0.55, bot = H + inner * 0.55;   // milieu de la bande proche des lignes
+  if (fid !== 'espace' && fid !== 'plage') {                     // gradins sous le public : un sol plus sombre
+    c.fillStyle = 'rgba(15,23,42,.28)';
+    c.fillRect(0, 0, cw, CROWD_BAND * s); c.fillRect(0, ch - CROWD_BAND * s, cw, CROWD_BAND * s);
+    c.fillRect(0, 0, CROWD_BAND * s, ch); c.fillRect(cw - CROWD_BAND * s, 0, CROWD_BAND * s, ch);
+  }
+  if (fid === 'stade') {                                         // panneaux entre le public et le terrain
+    const band = 0.8 * s, txt = ['ULTIMATE', 'SPIRIT OF THE GAME', 'FAIR-PLAY', 'ULTIMATE FRISBEE'];
+    c.font = `800 ${Math.max(8, band * 0.66)}px ${UI_FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle';
+    for (const y of [CROWD_BAND * s, ch - CROWD_BAND * s - band]) for (let i = 0, x = CROWD_BAND * s; x < cw - CROWD_BAND * s - 4; i++, x += (cw - 2 * CROWD_BAND * s) / 6) {
+      const w = (cw - 2 * CROWD_BAND * s) / 6;
+      rr(x + 2, y + 1, w - 4, band - 2, 3, i % 2 ? '#1e3a8a' : '#0f172a');
+      c.fillStyle = i % 2 ? '#bfdbfe' : '#facc15'; c.fillText(txt[i % txt.length], x + w / 2, y + band / 2 + 1);
     }
     c.textBaseline = 'alphabetic';
   }
-  if (fid === 'plage') {                                         // la mer en haut : écume
-    c.strokeStyle = 'rgba(255,255,255,.55)'; c.lineWidth = Math.max(1.5, s * 0.12);
-    for (let k = 0; k < 2; k++) { c.beginPath(); for (let x = 0; x <= cw; x += 6) { const y = py(-M * (0.35 + k * 0.3)) + Math.sin(x / (s * 2.2) + k * 1.7) * s * 0.18; x ? c.lineTo(x, y) : c.moveTo(x, y); } c.stroke(); }
-    for (const [x, col] of [[18, '#f472b6'], [52, '#facc15'], [80, '#22d3ee']]) {   // serviettes rayées et parasols, en bas
-      const X0 = px(x), Y0 = py(H + 0.35), w = 1.2 * s, h = 1.5 * s;
-      rr(X0, Y0, w, h, 2, col); c.fillStyle = 'rgba(255,255,255,.7)'; for (let j = 1; j < 4; j += 2) c.fillRect(X0, Y0 + h * j / 4, w, h / 8);
-      softShadow(c, px(x + 2.4) + s * 0.4, py(H + 1.1) + s * 0.5, s * 1.1, 0.25);
-      for (let j = 0; j < 8; j++) { c.fillStyle = j % 2 ? '#fff' : col; c.beginPath(); c.moveTo(px(x + 2.4), py(H + 1.1)); c.arc(px(x + 2.4), py(H + 1.1), s * 0.95, j * Math.PI / 4, (j + 1) * Math.PI / 4); c.fill(); }
+  if (fid === 'plage') {                                         // serviettes rayées et parasols, en bas (la mer est en haut, animée)
+    for (const [x, col] of [[14, '#f472b6'], [40, '#facc15'], [64, '#22d3ee'], [86, '#a78bfa']]) {
+      const X0 = px(x), Y0 = py(H + 0.5), w = 1.6 * s, h = 2.1 * s;
+      softShadow(c, X0 + w / 2 + s * 0.4, Y0 + h / 2 + s * 0.5, s * 1.4, 0.2);
+      rr(X0, Y0, w, h, 3, col); c.fillStyle = 'rgba(255,255,255,.7)'; for (let j = 1; j < 4; j += 2) c.fillRect(X0, Y0 + h * j / 4, w, h / 8);
+      const ux = px(x + 3.2), uy = py(H + 1.6);
+      softShadow(c, ux + s * 0.6, uy + s * 0.8, s * 1.6, 0.25);
+      for (let j = 0; j < 8; j++) { c.fillStyle = j % 2 ? '#fff' : col; c.beginPath(); c.moveTo(ux, uy); c.arc(ux, uy, s * 1.35, j * Math.PI / 4, (j + 1) * Math.PI / 4); c.fill(); }
     }
     return;
   }
   if (fid === 'neige') {                                         // congères le long des côtés
-    for (const y of [-M * 0.75, H + M * 0.75]) for (let x = -1; x < W + 2; x += 2.6 + R() * 2) {
-      softShadow(c, px(x) + s * 0.4, py(y) + s * 0.5, s * (0.9 + R() * 0.6), 0.12);
-      c.fillStyle = '#f8fafc'; c.beginPath(); c.arc(px(x), py(y), s * (0.7 + R() * 0.55), 0, 7); c.fill();
+    for (const y of [top, bot]) for (let x = -1; x < W + 2; x += 3 + R() * 2.5) {
+      softShadow(c, px(x) + s * 0.5, py(y) + s * 0.6, s * (1.2 + R() * 0.7), 0.13);
+      c.fillStyle = '#f8fafc'; c.beginPath(); c.arc(px(x), py(y), s * (0.9 + R() * 0.6), 0, 7); c.fill();
     }
     return;
   }
   if (fid === 'espace') return;
   // banc des remplaçants de chaque équipe (en haut : équipe 0, en bas : équipe 1), sacs, gourdes, disques de rechange
   for (const [t, y] of [[0, top], [1, bot]]) {
-    const bx = W / 2 - 4 + (t ? 3 : -3), Y0 = py(y) - 0.32 * s;
-    softShadow(c, px(bx + 3) + s * 0.4, Y0 + s * 0.6, s * 3.2, 0.18);
-    rr(px(bx), Y0, 6 * s, 0.64 * s, 3, '#475569'); rr(px(bx), Y0, 6 * s, 0.22 * s, 3, '#64748b');
-    for (let j = 0; j < 3; j++) {                                 // remplaçants (vus de dessus : épaules et tête)
-      const x = px(bx + 1 + j * 2), yy = Y0 + 0.32 * s;
-      c.fillStyle = tcol(t); c.beginPath(); c.ellipse(x, yy, 0.62 * s, 0.38 * s, 0, 0, 7); c.fill();
-      c.fillStyle = HAIR[(j + t * 2) % HAIR.length]; c.beginPath(); c.arc(x, yy, 0.28 * s, 0, 7); c.fill();
+    const bx = W / 2 - 5 + (t ? 4 : -4), Y0 = py(y) - 0.5 * s;
+    softShadow(c, px(bx + 4) + s * 0.5, Y0 + s * 0.8, s * 4.2, 0.2);
+    rr(px(bx), Y0, 8 * s, 1.0 * s, 4, '#475569'); rr(px(bx), Y0, 8 * s, 0.32 * s, 4, '#64748b');
+    for (let j = 0; j < 4; j++) {                                 // remplaçants (vus de dessus : épaules et tête)
+      const x = px(bx + 1 + j * 2), yy = Y0 + 0.5 * s;
+      c.fillStyle = tcol(t); c.beginPath(); c.ellipse(x, yy, 0.8 * s, 0.5 * s, 0, 0, 7); c.fill();
+      c.fillStyle = HAIR[(j + t * 2) % HAIR.length]; c.beginPath(); c.arc(x, yy, 0.36 * s, 0, 7); c.fill();
     }
     for (let j = 0; j < 3; j++) {                                 // sacs aux couleurs de l'équipe
-      const x = px(bx - 2.2 - j * 1.4 + R() * 0.3), yy = py(y) - 0.25 * s;
-      softShadow(c, x + s * 0.55, yy + s * 0.55, s * 0.7, 0.2);
-      rr(x, yy, 0.9 * s, 0.6 * s, 0.2 * s, j === 1 ? '#334155' : tdark(t)); rr(x + 0.15 * s, yy + 0.1 * s, 0.6 * s, 0.18 * s, 0.08 * s, 'rgba(255,255,255,.18)');
+      const x = px(bx - 2.6 - j * 1.9 + R() * 0.4), yy = py(y) - 0.42 * s;
+      softShadow(c, x + s * 0.75, yy + s * 0.7, s * 1.0, 0.22);
+      rr(x, yy, 1.35 * s, 0.85 * s, 0.28 * s, j === 1 ? '#334155' : tdark(t)); rr(x + 0.22 * s, yy + 0.14 * s, 0.9 * s, 0.24 * s, 0.1 * s, 'rgba(255,255,255,.2)');
     }
-    for (let j = 0; j < 2; j++) {                                 // gourdes
-      const x = px(bx + 6.6 + j * 0.6), yy = py(y);
-      c.fillStyle = j ? '#38bdf8' : '#e2e8f0'; c.beginPath(); c.arc(x, yy, 0.2 * s, 0, 7); c.fill();
-      c.fillStyle = '#0f172a'; c.beginPath(); c.arc(x, yy, 0.09 * s, 0, 7); c.fill();
+    for (let j = 0; j < 3; j++) {                                 // gourdes
+      const x = px(bx + 8.8 + j * 0.85), yy = py(y);
+      softShadow(c, x + s * 0.2, yy + s * 0.25, s * 0.4, 0.25);
+      c.fillStyle = ['#e2e8f0', '#38bdf8', '#f472b6'][j]; c.beginPath(); c.arc(x, yy, 0.3 * s, 0, 7); c.fill();
+      c.fillStyle = '#0f172a'; c.beginPath(); c.arc(x, yy, 0.13 * s, 0, 7); c.fill();
     }
-    const dx = px(bx + 8.2), dy = py(y);                          // pile de disques
-    for (let j = 0; j < 3; j++) { c.fillStyle = ['#f8fafc', '#facc15', '#f97316'][j]; c.strokeStyle = 'rgba(15,23,42,.35)'; c.lineWidth = 1; c.beginPath(); c.arc(dx + j * 0.12 * s, dy - j * 0.1 * s, 0.42 * s, 0, 7); c.fill(); c.stroke(); }
+    const dx = px(bx + 11.6), dy = py(y);                         // pile de disques
+    softShadow(c, dx + s * 0.35, dy + s * 0.4, s * 0.9, 0.25);
+    for (let j = 0; j < 3; j++) { c.fillStyle = ['#f8fafc', '#facc15', '#f97316'][j]; c.strokeStyle = 'rgba(15,23,42,.35)'; c.lineWidth = 1; c.beginPath(); c.arc(dx + j * 0.16 * s, dy - j * 0.14 * s, 0.6 * s, 0, 7); c.fill(); c.stroke(); }
+  }
+}
+
+// ---------- animations du terrain (chaque image, peu coûteuses) ----------
+// public : une rangée de spectateurs vus de dessus tout autour, qui bougent, applaudissent, et explosent de joie sur un point
+// (CAM.hype : 1 sur un point, ~0,6 sur un beau geste, retombe en quelques secondes)
+let CROWD = null;
+function crowdPeople() {
+  if (CROWD) return CROWD;
+  const R = seeded(777), P = [], shirt = ['#ef4444', '#3b82f6', '#facc15', '#22c55e', '#f8fafc', '#f97316', '#a855f7', '#0ea5e9', '#e11d48', '#334155'];
+  const add = (x, y) => P.push({ x, y, c: shirt[Math.floor(R() * shirt.length)], h: HAIR[Math.floor(R() * HAIR.length)], ph: R() * 6.3, clap: R() < 0.45, fan: R() < 0.12 });
+  const y0 = -M + CROWD_BAND * 0.5, y1 = H + M - CROWD_BAND * 0.5, x0 = -M + CROWD_BAND * 0.5, x1 = W + M - CROWD_BAND * 0.5;
+  for (let x = -M + 0.6; x < W + M - 0.4; x += 0.95 + R() * 0.5) { add(x, y0 + (R() - 0.5) * 0.35); add(x + 0.3, y1 + (R() - 0.5) * 0.35); }
+  for (let y = -M + CROWD_BAND + 0.5; y < H + M - CROWD_BAND - 0.4; y += 1 + R() * 0.5) { add(x0 + (R() - 0.5) * 0.3, y); add(x1 + (R() - 0.5) * 0.3, y); }
+  return (CROWD = P);
+}
+function drawCrowd(fid) {
+  if (fid === 'espace') return;
+  const P = crowdPeople(), t = G.time, hype = CAM.hype || 0, s = S, toCenter = q => Math.atan2(H / 2 - q.y, W / 2 - q.x);
+  const shirts = new Map();
+  for (const q of P) {
+    if (fid === 'plage' && q.y < 0) continue;                    // la mer est en haut
+    const x = X(q.x), y = Y(q.y); if (x < -20 || y < -20 || x > canvas.width / dpr + 20 || y > canvas.height / dpr + 20) continue;
+    const jump = hype > 0.3 ? Math.max(0, Math.sin(t * 9 + q.ph)) * hype : 0, bob = 1 + Math.sin(t * 2 + q.ph) * 0.03 + jump * 0.22;
+    const a = toCenter(q), ca = Math.cos(a), sa = Math.sin(a), w = 0.5 * s * bob;
+    // bras : applaudissements (mains qui se rejoignent devant), bras levés et agités sur un point
+    const armsUp = hype > 0.45 || q.fan, clapK = q.clap || hype > 0.2 ? (Math.sin(t * (hype > 0.2 ? 16 : 11) + q.ph) + 1) / 2 : 0.5;
+    const lx = -sa, ly = ca;                                       // côté (perpendiculaire au regard)
+    if (armsUp || q.clap || hype > 0.2) {                          // bras visibles seulement quand il applaudit ou lève les bras
+      const reach = armsUp ? 0.7 + Math.sin(t * 10 + q.ph) * 0.1 : 0.38, spread = armsUp ? 0.5 : 0.08 + clapK * 0.2;
+      ctx.strokeStyle = '#d6a77a'; ctx.lineWidth = Math.max(1, 0.13 * s); ctx.beginPath();
+      for (const sd of [1, -1]) { ctx.moveTo(x + lx * sd * w * 0.7, y + ly * sd * w * 0.7); ctx.lineTo(x + (ca * reach + lx * sd * spread) * s, y + (sa * reach + ly * sd * spread) * s); }
+      ctx.stroke();
+    }
+    if (!shirts.has(q.c)) shirts.set(q.c, []); shirts.get(q.c).push([x, y, w, a]);
+    q._x = x; q._y = y; q._w = w;
+  }
+  for (const [col, L] of shirts) { ctx.fillStyle = col; ctx.beginPath(); for (const [x, y, w, a] of L) { const r = a + Math.PI / 2; ctx.moveTo(x + w * Math.cos(r), y + w * Math.sin(r)); ctx.ellipse(x, y, w, w * 0.62, r, 0, 7); } ctx.fill(); }
+  ctx.beginPath();
+  const heads = new Map();                                        // têtes (couleur de cheveux), un peu vers l'arrière
+  for (const q of P) if (q._x !== undefined && !(fid === 'plage' && q.y < 0)) { const a = toCenter(q), hx = q._x - Math.cos(a) * q._w * 0.12, hy = q._y - Math.sin(a) * q._w * 0.12; if (!heads.has(q.h)) heads.set(q.h, []); heads.get(q.h).push([hx, hy, q._w * 0.46]); }
+  for (const [col, L] of heads) { ctx.fillStyle = col; ctx.beginPath(); for (const [x, y, r] of L) { ctx.moveTo(x + r, y); ctx.arc(x, y, r, 0, 7); } ctx.fill(); }
+  for (const q of P) q._x = undefined;
+  CAM.hype = Math.max(0, hype - (FX.dt || 0.016) * 0.28);
+}
+// herbe qui bouge : des vagues de vent qui passent sur le terrain (bandes claires), et des touffes qui ondulent
+let TUFTS = null;
+function drawGrassWind(fid) {
+  if (fid === 'plage') { drawSea(); return; }
+  if (fid !== 'gazon' && fid !== 'stade') return;
+  const t = G.time, wk = Math.min(1, (G.wind ? G.wind.kmh : 10) / 25), ang = G.wind && G.wind.kmh > 1 ? Math.atan2(G.wind.y, G.wind.x) : 0.3;
+  const ux = Math.cos(ang), uy = Math.sin(ang), L = 60;
+  ctx.save(); ctx.beginPath(); ctx.rect(X(0), Y(0), W * S, H * S); ctx.clip();
+  for (let k = 0; k < 3; k++) {                                   // vagues : une bande claire qui glisse dans le sens du vent
+    const d = ((t * (3 + wk * 7) + k * L / 3) % L) - L / 2, cx = W / 2 + ux * d, cy = H / 2 + uy * d;
+    const g = ctx.createLinearGradient(X(cx - ux * 7), Y(cy - uy * 7), X(cx + ux * 7), Y(cy + uy * 7));
+    const a = 0.035 + wk * 0.04;
+    g.addColorStop(0, 'rgba(255,255,230,0)'); g.addColorStop(0.5, `rgba(255,255,230,${a})`); g.addColorStop(1, 'rgba(255,255,230,0)');
+    ctx.fillStyle = g; ctx.fillRect(X(0), Y(0), W * S, H * S);
+  }
+  ctx.restore();
+  if (!TUFTS) { const R = seeded(99); TUFTS = []; for (let i = 0; i < 170; i++) TUFTS.push({ x: R() * (W + 2 * M) - M, y: R() * (H + 2 * M) - M, ph: R() * 6.3, l: 0.35 + R() * 0.35, d: R() < 0.5 }); }
+  const sway = (q, i) => (Math.sin(t * (1.6 + wk * 2.4) + q.ph + q.x * 0.15) * 0.5 + 0.5) * (0.15 + wk * 0.5);
+  for (const dark of [false, true]) {
+    ctx.strokeStyle = dark ? 'rgba(10,50,20,.35)' : 'rgba(190,242,100,.28)'; ctx.lineWidth = Math.max(1, S * 0.07); ctx.beginPath();
+    for (const q of TUFTS) {
+      if (q.d !== dark) continue;
+      const x = X(q.x), y = Y(q.y), b = sway(q), l = q.l * S;
+      for (let j = -1; j <= 1; j++) {
+        const bx = x + j * S * 0.12; ctx.moveTo(bx, y);
+        ctx.quadraticCurveTo(bx + (ux * b * 0.5 + j * 0.08) * l, y - l * 0.6 + uy * b * l * 0.5, bx + (ux * b + j * 0.2) * l, y - l + uy * b * l);
+      }
+    }
+    ctx.stroke();
+  }
+}
+// plage : la mer en haut, l'écume avance et recule
+function drawSea() {
+  const t = G.time, s = S;
+  ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = Math.max(1.5, s * 0.13);
+  for (let k = 0; k < 3; k++) {
+    ctx.beginPath();
+    const base = -M * (0.3 + k * 0.22) + Math.sin(t * 0.9 + k * 2) * 0.25;
+    for (let x = -M; x <= W + M; x += 0.8) { const y = base + Math.sin(x * 0.45 + t * 1.3 + k * 1.7) * 0.18; x === -M ? ctx.moveTo(X(x), Y(y)) : ctx.lineTo(X(x), Y(y)); }
+    ctx.stroke();
   }
 }
 

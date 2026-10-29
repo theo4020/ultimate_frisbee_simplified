@@ -125,12 +125,12 @@ function fxPlay(name, x, y, team) {
     }
     case 'catch': pop(x, y, '#fff', 1.3, 0.25); ring(x, y, 'rgba(255,255,255,.9)', 2, 0.32); break;
     case 'pickup': pop(x, y, '#fff', 0.9, 0.2); break;
-    case 'block': burst(x, y, 14, { color: ['#f87171', '#fb923c', '#fde68a'], speed: 9, life: 0.5 }); ring(x, y, '#f87171', 3, 0.4); FX.shake = Math.max(FX.shake, 7); vibrate(60); break;
-    case 'int': burst(x, y, 18, { color: [c, '#fde68a', '#fff'], speed: 10, life: 0.6 }); ring(x, y, c, 3.5, 0.5); FX.shake = Math.max(FX.shake, 9); vibrate([40, 30, 60]); break;
-    case 'layout': burst(x, y, 10, { color: ['#a3e635', '#65a30d', '#d9f99d'], speed: 4, life: 0.5, size: 0.3 }); vibrate(25); break;
+    case 'block': CAM.hype = Math.max(CAM.hype || 0, 0.6); burst(x, y, 14, { color: ['#f87171', '#fb923c', '#fde68a'], speed: 9, life: 0.5 }); ring(x, y, '#f87171', 3, 0.4); FX.shake = Math.max(FX.shake, 7); vibrate(60); break;
+    case 'int': CAM.hype = Math.max(CAM.hype || 0, 0.6); burst(x, y, 18, { color: [c, '#fde68a', '#fff'], speed: 10, life: 0.6 }); ring(x, y, c, 3.5, 0.5); FX.shake = Math.max(FX.shake, 9); vibrate([40, 30, 60]); break;
+    case 'layout': CAM.hype = Math.max(CAM.hype || 0, 0.6); burst(x, y, 10, { color: ['#a3e635', '#65a30d', '#d9f99d'], speed: 4, life: 0.5, size: 0.3 }); vibrate(25); break;
     case 'turn': burst(x, y, 8, { color: ['#cbd5e1', '#94a3b8'], speed: 3, life: 0.5, size: 0.28 }); ring(x, y, 'rgba(226,232,240,.7)', 1.8, 0.35); break;
     case 'score': {
-      CAM.punch = 1;                                         // caméra « suit le jeu » : petit à-coup de zoom
+      CAM.punch = 1; CAM.hype = 1;                           // caméra « suit le jeu » : petit à-coup de zoom ; le public explose
       const ex = dirOf(team) > 0 ? W - EZ / 2 : EZ / 2;
       if (!celebrate(team, ex)) for (let i = 0; i < 70; i++) {
         FX.parts.push({ x: ex + (Math.random() - 0.5) * EZ, y: Math.random() * H, vx: (Math.random() - 0.5) * 4, vy: -2 - Math.random() * 5,
@@ -144,10 +144,11 @@ function fxPlay(name, x, y, team) {
     case 'double': if (disc.holder) ring(disc.holder.x, disc.holder.y, '#f87171', STALL_R, 0.6); break;
     case 'stall': FX.shake = Math.max(FX.shake, 4); vibrate(80); break;
     case 'pull': ring(x, y, 'rgba(255,255,255,.8)', 3, 0.5); break;
-    case 'duel': burst(x, y, 12, { color: [c, '#fde68a', '#fff'], speed: 7, life: 0.5 }); ring(x, y, c, 2.6, 0.45); FX.shake = Math.max(FX.shake, 5); vibrate(40); break;
+    case 'duel': CAM.hype = Math.max(CAM.hype || 0, 0.6); burst(x, y, 12, { color: [c, '#fde68a', '#fff'], speed: 7, life: 0.5 }); ring(x, y, c, 2.6, 0.45); FX.shake = Math.max(FX.shake, 5); vibrate(40); break;
     case 'jump': ring(x, y, 'rgba(255,255,255,.5)', 1.4, 0.3); break;
     case 'call': ring(x, y, '#facc15', 2.2, 0.6); ring(x, y, 'rgba(250,204,21,.6)', 3.4, 0.8); break;
-    case 'callahan': {                                       // rare et spectaculaire : ondes dorées, pluie d'étoiles, gros tremblement
+    case 'callahan': {
+      CAM.hype = 1;                                       // rare et spectaculaire : ondes dorées, pluie d'étoiles, gros tremblement
       [[0, 4], [-0.14, 6.5], [-0.28, 9]].forEach(([t0, r]) => FX.parts.push({ x, y, t: t0, life: 0.7, color: '#facc15', maxR: r, kind: 'ring', vx: 0, vy: 0 }));
       burst(x, y, 34, { color: ['#facc15', '#fde68a', '#fff', c], speed: 13, life: 1.3, size: 0.75, kind: 'star', drag: 1.6 });
       burst(x, y, 20, { color: ['#facc15', '#fff'], speed: 6, life: 0.9, size: 0.3 });
