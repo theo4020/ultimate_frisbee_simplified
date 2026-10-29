@@ -219,7 +219,7 @@ function showMenu(kind) {
   $('stratCard').classList.toggle('newbie', newbie && kind !== 'over');
   $('newbieBox').style.display = newbie && kind !== 'over' ? '' : 'none';
   $('newbieTuto').style.display = storeGet('uf-tuto', false) ? 'none' : '';
-  $('replayB').style.display = kind !== 'first' && REPLAY.last && !G.net ? '' : 'none';
+  $('replayB').style.display = kind !== 'first' && (REPLAY.last || REPLAY.pend) && !G.net ? '' : 'none';
   $('stratCard').scrollTop = 0;
   G.readyIds = new Set(); G.lastMenu = kind;
   $('go').disabled = false;

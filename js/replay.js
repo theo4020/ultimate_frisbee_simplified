@@ -1,18 +1,29 @@
 // replay.js — Ralenti du dernier point marqué, et petite célébration des buteurs.
 // Solo uniquement (pas de ralenti en multijoueur).
 
-const REPLAY = { frames: [], acc: 0, last: null, STEP: 0.05, KEEP: 7 };   // une image toutes les 50 ms, on garde les 7 dernières secondes
+// une image toutes les 50 ms, on garde les 7 dernières secondes ; AFTER : on continue d'enregistrer un peu après le point
+const REPLAY = { frames: [], acc: 0, last: null, pend: null, STEP: 0.05, KEEP: 7, AFTER: 1.6 };
 
-function replayReset() { REPLAY.frames = []; REPLAY.acc = 0; }
+function replayReset() { REPLAY.frames = []; REPLAY.acc = 0; if (REPLAY.pend) replayDone(); }
+const replayFrame = () => ({
+  p: players.map(p => [p.x, p.y, p.dive > 0 ? 1 : p.down > 0 ? 2 : 0, p.vx, p.vy]),
+  d: [disc.mode, disc.x, disc.y, disc.z || 0, disc.holder ? players.indexOf(disc.holder) : -1]
+});
 function replayRecord(dt) {
-  if (G.phase !== 'play' || G.net || G.tuto || G.attract || G.practice) return;
+  if (G.net || G.tuto || G.attract || G.practice) return;
+  const P = REPLAY.pend;
+  if (P) {                                                   // après le point : la réception et la joie, puis on range le ralenti
+    if (G.paused) return;
+    P.t += dt; REPLAY.acc += dt;
+    if (REPLAY.acc >= REPLAY.STEP) { REPLAY.acc = 0; P.frames.push(replayFrame()); }
+    if (P.t >= REPLAY.AFTER) replayDone();
+    return;
+  }
+  if (G.phase !== 'play') return;
   REPLAY.acc += dt;
   if (REPLAY.acc < REPLAY.STEP) return;
   REPLAY.acc = 0;
-  REPLAY.frames.push({
-    p: players.map(p => [p.x, p.y, p.dive > 0 ? 1 : p.down > 0 ? 2 : 0, p.vx, p.vy]),
-    d: [disc.mode, disc.x, disc.y, disc.z || 0, disc.holder ? players.indexOf(disc.holder) : -1]
-  });
+  REPLAY.frames.push(replayFrame());
   const max = Math.round(REPLAY.KEEP * 1.5 / REPLAY.STEP);
   if (REPLAY.frames.length > max) REPLAY.frames.splice(0, REPLAY.frames.length - max);
 }
@@ -22,21 +33,31 @@ function replaySave(team) {
   const n = Math.round(REPLAY.KEEP / REPLAY.STEP);
   const fr = REPLAY.frames.slice(-n);
   if (fr.length < 10) return;
-  // on ajoute quelques images figées sur le point
-  for (let i = 0; i < 12; i++) fr.push(fr[fr.length - 1]);
-  REPLAY.last = { frames: fr, team, score: G.score.slice() };
-  if (G.ms && G.ms.momFresh) { REPLAY.mom = REPLAY.last; G.ms.momFresh = false; }   // le plus beau point du match : gardé pour l'écran de fin
+  fr.push(replayFrame());                                    // l'instant de la réception
+  if (REPLAY.pend) replayDone();
+  REPLAY.pend = { frames: fr, team, score: G.score.slice(), t: 0, mom: !!(G.ms && G.ms.momFresh) };
+  if (G.ms) G.ms.momFresh = false;
+  REPLAY.acc = 0;
+}
+// fin de l'enregistrement après le point : le ralenti est prêt (et gardé comme moment du match si c'est le plus beau)
+function replayDone() {
+  const P = REPLAY.pend; if (!P) return;
+  REPLAY.pend = null;
+  for (let i = 0; i < 6; i++) P.frames.push(P.frames[P.frames.length - 1]);   // un court arrêt sur image à la fin
+  REPLAY.last = { frames: P.frames, team: P.team, score: P.score };
+  if (P.mom) REPLAY.mom = REPLAY.last;
 }
 function startReplay(which) {
+  if (REPLAY.pend) replayDone();
   const R = which === 'mom' ? REPLAY.mom : REPLAY.last;
   if (!R || G.net) return;
-  G.replay = { t: 0, frames: R.frames, team: R.team };
+  G.replay = { t: 0, frames: R.frames, team: R.team, hid: $('overlay').classList.contains('hidden') };
   $('overlay').classList.add('hidden');
 }
 function stopReplay() {
   if (!G.replay) return;
-  G.replay = null;
-  $('overlay').classList.remove('hidden');
+  const hid = G.replay.hid; G.replay = null;
+  if (!hid) $('overlay').classList.remove('hidden');        // on revient comme avant (menu ouvert, ou la ronde)
 }
 function replayTick(dt) {
   if (!G.replay) return;

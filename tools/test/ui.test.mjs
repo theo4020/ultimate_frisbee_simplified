@@ -77,6 +77,19 @@ export default async function (t) {
     t.ok((await p.textContent('#go')).includes('Match suivant'), 'victoire : bouton « Match suivant »');
     t.ok(await vis(p, '#ringUI') && (await p.textContent('#ringGo')).includes('Match suivant') && await vis(p, '#ringMenu') && !(await p.evaluate(() => !document.getElementById('overlay').classList.contains('hidden'))),
       'fin de match : la ronde au centre, les boutons autour (le résumé reste fermé)');
+    const rp = await p.evaluate(async () => {                   // ralenti : il continue après le point, et rien ne le cache
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      REPLAY.frames = Array.from({ length: 30 }, () => replayFrame()); replaySave(G.me);
+      const n0 = REPLAY.pend ? REPLAY.pend.frames.length : 0;
+      await wait(2200);
+      const n1 = REPLAY.last ? REPLAY.last.frames.length : 0, pend = !!REPLAY.pend;
+      startReplay(); await wait(150);
+      const ring = getComputedStyle(document.getElementById('ringUI')).display;
+      stopReplay(); await wait(150);
+      return { n0, n1, pend, ring, after: getComputedStyle(document.getElementById('ringUI')).display, hidden: document.getElementById('overlay').classList.contains('hidden') };
+    });
+    t.ok(rp.n0 === 31 && !rp.pend && rp.n1 >= rp.n0 + 25, 'ralenti : l’enregistrement continue ~1,5 s après le point (la réception et la joie)', rp);
+    t.ok(rp.ring === 'none' && rp.after !== 'none' && rp.hidden, 'pendant le ralenti, les boutons de la ronde disparaissent ; ils reviennent après', rp);
     await p.click('#ringOpen');
     t.ok(await vis(p, '#stratCard') && await vis(p, '#ovRing'), '« Résumé du match » ouvre le résumé (et on peut revenir à la ronde)');
     await p.click('#ovRing');

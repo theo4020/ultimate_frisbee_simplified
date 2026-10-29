@@ -37,7 +37,7 @@ function ringFace(p) {
 // boutons autour de la ronde (positions à l'écran recalculées à chaque image)
 function ringUIFrame() {
   const box = $('ringUI'); if (!box) return;
-  const show = ringOn() && $('overlay').classList.contains('hidden');
+  const show = ringOn() && !G.replay && $('overlay').classList.contains('hidden');   // pendant le ralenti : rien par-dessus
   if (box.style.display !== (show ? '' : 'none')) box.style.display = show ? '' : 'none';
   if (!show) return;
   const r = canvas.getBoundingClientRect(), sx = r.width / (canvas.width / dpr), sy = r.height / (canvas.height / dpr);

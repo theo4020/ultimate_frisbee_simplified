@@ -19,7 +19,7 @@ function newMatchStats() {
     hu: {},                                                   // par humain (id) : ce que TOI tu as fait (en ligne, chacun sa ligne)
     mom: null                                                  // moment du match : la plus belle action qui a marqué
   };
-  if (typeof REPLAY !== 'undefined') REPLAY.mom = null;
+  if (typeof REPLAY !== 'undefined') { REPLAY.mom = null; if (REPLAY.pend) REPLAY.pend.mom = false; }
 }
 // humain qui joue ce joueur (pour ses stats) : lanceur → celui qui lance pour lui ; sinon celui qui le dirige
 function msHumOf(p, throwing) {
@@ -132,7 +132,7 @@ function renderSummary(sum) {
   }).join('');
   const dots = sum.points.map(([t], k) => `<i style="background:${col(t)}" title="Point ${k + 1}"></i>`).join('');
   const m = sum.mom;
-  const canReplay = !G.net && typeof REPLAY !== 'undefined' && REPLAY.mom;
+  const canReplay = !G.net && typeof REPLAY !== 'undefined' && (REPLAY.mom || (REPLAY.pend && REPLAY.pend.mom));
   const KIND = { callahan: '🦅 Callahan', layout: '🤸 Layout décisif', huck: '🚀 Huck', pass: '🥏 Le point' };
   const momHtml = m ? `<div class="sumMom" style="--tc:${col(m.t)}"><div class="smHead"><span>Moment du match</span><b>${KIND[m.k] || ''}</b></div>
       <p>${esc(m.txt)}${m.sc ? ` <small>(${m.t === 0 ? m.sc[0] + 1 : m.sc[0]}–${m.t === 1 ? m.sc[1] + 1 : m.sc[1]})</small>` : ''}</p>
