@@ -581,10 +581,11 @@ function draw() {
     if (disc.mode === 'ground' || disc.mode === 'dead') { dx += L.ox; dy += L.oy; const [sx, sy] = sunOff(hop); softShadow(ctx, X(dx + sx), Y(dy + sy), 0.6 * S, 0.35 - hop * 0.3); }
     const dR = 0.5 * S * (1 + Math.min(0.4, (z + hop) * 0.07)), cx = X(dx), cy = Y(dy) - lift;
     ctx.save();
-    if (L.wob) { ctx.translate(cx, cy); ctx.rotate(L.spin * 0.3); ctx.scale(1 + L.wob, 1 - L.wob); ctx.rotate(-L.spin * 0.3); ctx.translate(-cx, -cy); }
+    const spin = disc.mode === 'air' ? 0 : L.spin;              // en l'air : pas de rotation du logo (seulement au sol, quand il roule)
+    if (L.wob) { ctx.translate(cx, cy); ctx.rotate(spin * 0.3); ctx.scale(1 + L.wob, 1 - L.wob); ctx.rotate(-spin * 0.3); ctx.translate(-cx, -cy); }
     discShape(cx, cy, dR, false);                              // penché selon sa courbe : vu d'en haut, il s'amincit
     ctx.save(); ctx.clip();
-    ctx.translate(cx, cy); ctx.rotate(L.spin); ctx.beginPath(); ctx.arc(0, 0, dR * 1.3, 0, 7);
+    ctx.translate(cx, cy); ctx.rotate(spin); ctx.beginPath(); ctx.arc(0, 0, dR * 1.3, 0, 7);
     paintDisc(ctx, 0, 0, dR);
     ctx.strokeStyle = 'rgba(15,23,42,.28)'; ctx.lineWidth = Math.max(1, dR * 0.16); ctx.beginPath(); ctx.arc(0, 0, dR * 0.6, 0.2, 1.4); ctx.stroke();   // le logo qui tourne
     ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.beginPath(); ctx.arc(0, 0, dR * 0.6, 3.3, 4.1); ctx.stroke();
