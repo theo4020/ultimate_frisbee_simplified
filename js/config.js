@@ -3,7 +3,7 @@
 // =====================================================================
 //  Constantes (unités : mètres, secondes)
 // =====================================================================
-const W = 100, H = 37, EZ = 18, M = 3.2, N = 5, WIN = 5;   // M : marge autour des lignes (abords, public : scenery.js)   // WIN : points pour gagner par défaut (réglable, voir winPts)
+const W = 100, H = 37, EZ = 18, M = 2, N = 5, WIN = 5;   // WIN : points pour gagner par défaut (réglable, voir winPts)
 const SPD = { jog: 4.6, cut: 7.6, def: 7.4, user: 7.5, sprint: 7.8 };
 // plongeon : il s'ajoute à l'élan (+boost dans sa direction, au moins min) ; l'élan sur le côté est gardé
 const DIVE = { boost: 2.5, min: 6.5 };

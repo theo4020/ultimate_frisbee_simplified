@@ -107,23 +107,19 @@ function paintField(c, F, fid, tR, S0, cw, ch) {
   }
 }
 
-// abords, dans la marge (M = 3,2 m) : à l'extérieur le public (animé, voir drawCrowd), puis les panneaux (stade), puis,
-// près des lignes, le banc des remplaçants, les sacs, les gourdes, les disques… ; tout reste sous les joueurs
-const CROWD_BAND = 1.25;                                         // profondeur du public, au bord extérieur de la marge
+// abords, dans la marge (M = 2 m), au même niveau que le banc : remplaçants, sacs, gourdes, disques, et quelques spectateurs
+// debout le long des lignes de côté (animés, voir drawCrowd), comme au bord d'un vrai terrain d'ultimate ; panneaux au
+// bord extérieur (stade) ; tout reste sous les joueurs
+const SIDE_Y = 1.0;                                              // distance (m) de la ligne de côté au banc et au public
 function paintSurroundings(c, F, fid, px, py, S0, cw, ch) {
   const s = S0, R = seeded(4242);
   const rr = (x, y, w, h, r, fill) => { c.fillStyle = fill; c.beginPath(); if (c.roundRect) c.roundRect(x, y, w, h, r); else c.rect(x, y, w, h); c.fill(); };
-  const inner = M - CROWD_BAND, top = -inner * 0.55, bot = H + inner * 0.55;   // milieu de la bande proche des lignes
-  if (fid !== 'espace' && fid !== 'plage') {                     // gradins sous le public : un sol plus sombre
-    c.fillStyle = 'rgba(15,23,42,.28)';
-    c.fillRect(0, 0, cw, CROWD_BAND * s); c.fillRect(0, ch - CROWD_BAND * s, cw, CROWD_BAND * s);
-    c.fillRect(0, 0, CROWD_BAND * s, ch); c.fillRect(cw - CROWD_BAND * s, 0, CROWD_BAND * s, ch);
-  }
+  const top = -SIDE_Y, bot = H + SIDE_Y;
   if (fid === 'stade') {                                         // panneaux entre le public et le terrain
-    const band = 0.8 * s, txt = ['ULTIMATE', 'SPIRIT OF THE GAME', 'FAIR-PLAY', 'ULTIMATE FRISBEE'];
+    const band = 0.5 * s, txt = ['ULTIMATE', 'SPIRIT OF THE GAME', 'FAIR-PLAY', 'ULTIMATE FRISBEE'];
     c.font = `800 ${Math.max(8, band * 0.66)}px ${UI_FONT}`; c.textAlign = 'center'; c.textBaseline = 'middle';
-    for (const y of [CROWD_BAND * s, ch - CROWD_BAND * s - band]) for (let i = 0, x = CROWD_BAND * s; x < cw - CROWD_BAND * s - 4; i++, x += (cw - 2 * CROWD_BAND * s) / 6) {
-      const w = (cw - 2 * CROWD_BAND * s) / 6;
+    for (const y of [0, ch - band]) for (let i = 0, x = 0; x < cw - 4; i++, x += cw / 6) {
+      const w = cw / 6;
       rr(x + 2, y + 1, w - 4, band - 2, 3, i % 2 ? '#1e3a8a' : '#0f172a');
       c.fillStyle = i % 2 ? '#bfdbfe' : '#facc15'; c.fillText(txt[i % txt.length], x + w / 2, y + band / 2 + 1);
     }
@@ -183,9 +179,12 @@ function crowdPeople() {
   if (CROWD) return CROWD;
   const R = seeded(777), P = [], shirt = ['#ef4444', '#3b82f6', '#facc15', '#22c55e', '#f8fafc', '#f97316', '#a855f7', '#0ea5e9', '#e11d48', '#334155'];
   const add = (x, y) => P.push({ x, y, c: shirt[Math.floor(R() * shirt.length)], h: HAIR[Math.floor(R() * HAIR.length)], ph: R() * 6.3, clap: R() < 0.45, fan: R() < 0.12 });
-  const y0 = -M + CROWD_BAND * 0.5, y1 = H + M - CROWD_BAND * 0.5, x0 = -M + CROWD_BAND * 0.5, x1 = W + M - CROWD_BAND * 0.5;
-  for (let x = -M + 0.6; x < W + M - 0.4; x += 0.95 + R() * 0.5) { add(x, y0 + (R() - 0.5) * 0.35); add(x + 0.3, y1 + (R() - 0.5) * 0.35); }
-  for (let y = -M + CROWD_BAND + 0.5; y < H + M - CROWD_BAND - 0.4; y += 1 + R() * 0.5) { add(x0 + (R() - 0.5) * 0.3, y); add(x1 + (R() - 0.5) * 0.3, y); }
+  // petits groupes le long des deux lignes de côté, hors de la zone du banc (milieu du terrain)
+  for (const y of [-SIDE_Y - 0.15, H + SIDE_Y + 0.15]) for (let x = 1; x < W; x += 0.9 + R() * 1.1) {
+    if (Math.abs(x - 52) < 19) continue;                         // le banc, les sacs, les gourdes
+    if (R() < 0.12) { x += 2 + R() * 3; continue; }              // des trous entre les groupes
+    add(x, y + (R() - 0.5) * 0.4);
+  }
   return (CROWD = P);
 }
 function drawCrowd(fid) {
@@ -196,7 +195,7 @@ function drawCrowd(fid) {
     if (fid === 'plage' && q.y < 0) continue;                    // la mer est en haut
     const x = X(q.x), y = Y(q.y); if (x < -20 || y < -20 || x > canvas.width / dpr + 20 || y > canvas.height / dpr + 20) continue;
     const jump = hype > 0.3 ? Math.max(0, Math.sin(t * 9 + q.ph)) * hype : 0, bob = 1 + Math.sin(t * 2 + q.ph) * 0.03 + jump * 0.22;
-    const a = toCenter(q), ca = Math.cos(a), sa = Math.sin(a), w = 0.5 * s * bob;
+    const a = toCenter(q), ca = Math.cos(a), sa = Math.sin(a), w = 0.58 * s * bob;
     // bras : applaudissements (mains qui se rejoignent devant), bras levés et agités sur un point
     const armsUp = hype > 0.45 || q.fan, clapK = q.clap || hype > 0.2 ? (Math.sin(t * (hype > 0.2 ? 16 : 11) + q.ph) + 1) / 2 : 0.5;
     const lx = -sa, ly = ca;                                       // côté (perpendiculaire au regard)
@@ -217,32 +216,36 @@ function drawCrowd(fid) {
   for (const q of P) q._x = undefined;
   CAM.hype = Math.max(0, hype - (FX.dt || 0.016) * 0.28);
 }
-// herbe qui bouge : des vagues de vent qui passent sur le terrain (bandes claires), et des touffes qui ondulent
+// herbe qui bouge : des brins d'herbe dessinés un par un, qui ondulent chacun à leur rythme, plus fort quand le vent
+// souffle (et dans son sens). Ils sont fins et courts : décor, sans gêner la lecture du jeu.
 let TUFTS = null;
 function drawGrassWind(fid) {
   if (fid === 'plage') { drawSea(); return; }
   if (fid !== 'gazon' && fid !== 'stade') return;
   const t = G.time, wk = Math.min(1, (G.wind ? G.wind.kmh : 10) / 25), ang = G.wind && G.wind.kmh > 1 ? Math.atan2(G.wind.y, G.wind.x) : 0.3;
-  const ux = Math.cos(ang), uy = Math.sin(ang), L = 60;
-  ctx.save(); ctx.beginPath(); ctx.rect(X(0), Y(0), W * S, H * S); ctx.clip();
-  for (let k = 0; k < 3; k++) {                                   // vagues : une bande claire qui glisse dans le sens du vent
-    const d = ((t * (3 + wk * 7) + k * L / 3) % L) - L / 2, cx = W / 2 + ux * d, cy = H / 2 + uy * d;
-    const g = ctx.createLinearGradient(X(cx - ux * 7), Y(cy - uy * 7), X(cx + ux * 7), Y(cy + uy * 7));
-    const a = 0.035 + wk * 0.04;
-    g.addColorStop(0, 'rgba(255,255,230,0)'); g.addColorStop(0.5, `rgba(255,255,230,${a})`); g.addColorStop(1, 'rgba(255,255,230,0)');
-    ctx.fillStyle = g; ctx.fillRect(X(0), Y(0), W * S, H * S);
+  const ux = Math.cos(ang), uy = Math.sin(ang);
+  if (!TUFTS) {
+    const R = seeded(99); TUFTS = [];
+    for (let i = 0; i < 420; i++) {                               // touffes de 2 à 4 brins, partout (un peu plus sur les bords)
+      const edge = R() < 0.35, x = edge ? (R() < 0.5 ? -M + R() * (M + 1) : W - 1 + R() * (M + 1)) : R() * (W + 2 * M) - M;
+      const y = edge ? R() * (H + 2 * M) - M : R() < 0.25 ? (R() < 0.5 ? -M + R() * (M + 0.6) : H - 0.6 + R() * (M + 0.6)) : R() * (H + 2 * M) - M;
+      const n = 2 + Math.floor(R() * 3), blades = [];
+      for (let k = 0; k < n; k++) blades.push({ dx: (R() - 0.5) * 0.35, l: 0.3 + R() * 0.45, lean: (R() - 0.5) * 0.5, ph: R() * 6.3 });
+      TUFTS.push({ x, y, blades, dark: R() < 0.5 });
+    }
   }
-  ctx.restore();
-  if (!TUFTS) { const R = seeded(99); TUFTS = []; for (let i = 0; i < 170; i++) TUFTS.push({ x: R() * (W + 2 * M) - M, y: R() * (H + 2 * M) - M, ph: R() * 6.3, l: 0.35 + R() * 0.35, d: R() < 0.5 }); }
-  const sway = (q, i) => (Math.sin(t * (1.6 + wk * 2.4) + q.ph + q.x * 0.15) * 0.5 + 0.5) * (0.15 + wk * 0.5);
+  const cw = canvas.width / dpr, ch = canvas.height / dpr, lw = Math.max(1, S * 0.07);
   for (const dark of [false, true]) {
-    ctx.strokeStyle = dark ? 'rgba(10,50,20,.35)' : 'rgba(190,242,100,.28)'; ctx.lineWidth = Math.max(1, S * 0.07); ctx.beginPath();
+    ctx.strokeStyle = dark ? 'rgba(12,60,24,.55)' : 'rgba(170,230,110,.45)'; ctx.lineWidth = lw; ctx.lineCap = 'round'; ctx.beginPath();
     for (const q of TUFTS) {
-      if (q.d !== dark) continue;
-      const x = X(q.x), y = Y(q.y), b = sway(q), l = q.l * S;
-      for (let j = -1; j <= 1; j++) {
-        const bx = x + j * S * 0.12; ctx.moveTo(bx, y);
-        ctx.quadraticCurveTo(bx + (ux * b * 0.5 + j * 0.08) * l, y - l * 0.6 + uy * b * l * 0.5, bx + (ux * b + j * 0.2) * l, y - l + uy * b * l);
+      if (q.dark !== dark) continue;
+      const x = X(q.x), y = Y(q.y); if (x < -20 || y < -20 || x > cw + 20 || y > ch + 20) continue;
+      for (const b of q.blades) {
+        // chaque brin : penché au repos, et une oscillation propre (rafales du vent + petit frémissement)
+        const sw = Math.sin(t * (1.3 + wk * 2.2) + b.ph + q.x * 0.21) * (0.12 + wk * 0.45) + Math.sin(t * 5.3 + b.ph * 3) * 0.04;
+        const bend = b.lean + sw, l = b.l * S, bx = x + b.dx * S;
+        const tx = bx + (ux * bend + b.lean * 0.3) * l, ty = y - l * 0.85 + uy * bend * l * 0.6;
+        ctx.moveTo(bx, y); ctx.quadraticCurveTo(bx + (tx - bx) * 0.35, y - l * 0.5, tx, ty);
       }
     }
     ctx.stroke();
