@@ -206,12 +206,13 @@ function fxUpdate(dt) {
 function drawTrail() {
   const tr = FX.trail; if (tr.length < 2) return;
   ctx.save(); ctx.lineCap = 'round';
+  const lk = isoView() ? 1.2 : 0;                              // vue de dessus : la traînée suit le disque à sa vraie place
   for (let i = 1; i < tr.length; i++) {
     const a = i / tr.length;
     ctx.strokeStyle = trailColor((a * 0.5).toFixed(3)); ctx.lineWidth = Math.max(1, a * 0.5 * S);
     ctx.beginPath();
-    ctx.moveTo(X(tr[i - 1][0]), Y(tr[i - 1][1]) - tr[i - 1][2] * S * 1.2);
-    ctx.lineTo(X(tr[i][0]), Y(tr[i][1]) - tr[i][2] * S * 1.2);
+    ctx.moveTo(X(tr[i - 1][0]), Y(tr[i - 1][1]) - tr[i - 1][2] * S * lk);
+    ctx.lineTo(X(tr[i][0]), Y(tr[i][1]) - tr[i][2] * S * lk);
     ctx.stroke();
   }
   ctx.restore();
