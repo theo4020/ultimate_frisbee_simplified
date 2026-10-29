@@ -225,7 +225,10 @@ function showMenu(kind) {
   $('go').disabled = false;
   refreshOptions();
   refreshCaptainUI();
-  $('overlay').classList.remove('hidden');
+  // fin de match : la ronde au centre du terrain, les boutons autour (moments.js) ; le résumé s'ouvre sur demande
+  G.ringOn = kind === 'over' && !G.tuto && !G.practice && !G.attract;
+  $('ovRing').style.display = G.ringOn ? '' : 'none';
+  if (!G.ringOn) $('overlay').classList.remove('hidden'); else $('overlay').classList.add('hidden');
   if (G.net === 'host') netSend({ t: 'menu', kind, score: G.score, rec: G.receiving, wind: G.wind, teams: G.teams, pts: winPts(), sum: kind === 'over' ? G.lastSummary : null, ser: coopSer() });
 }
 // en ligne : seul le capitaine de chaque équipe choisit la stratégie et se déclare prêt

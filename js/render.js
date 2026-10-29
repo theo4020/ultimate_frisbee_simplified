@@ -215,6 +215,9 @@ function drawBody(p, x, y, r, face, o) {
       const t = o.throwK, sd = o.side || 1, a = sd * (2.4 - t * 2.9);   // de l'arrière vers l'avant, en travers
       armTo(sd, a, 1.55); armTo(-sd, -sd * 1.9, 0.85);
     } else if (o.reach !== undefined) { const a = o.reach - face; armTo(1, a, 1.5); armTo(-1, a, 1.5); }
+    else if (o.ring) { armTo(1, 1.45, 1.55); armTo(-1, -1.45, 1.55); }   // ronde : bras sur les épaules des voisins
+    else if (o.sad) { arm(0, r * 0.85, r * 0.15, r * 0.42); arm(0, -r * 0.85, r * 0.15, -r * 0.42); }   // mains sur la tête
+    else if (o.five !== undefined) { const a = o.five - face, sd = Math.sin(a) >= 0 ? 1 : -1; armTo(sd, a, 1.7); arm(0, -sd * r * 0.85, sw * r * 0.5, -sd * r * 1.12); }
     else if (o.cele) { armTo(1, 0.55, 1.45); armTo(-1, -0.55, 1.45); }
     else if (o.jumping) { arm(0, r * 0.8, r * 0.5, r * 1.5); arm(0, -r * 0.8, r * 0.5, -r * 1.5); }
     else if (o.hold) { armTo(1, 0.45, 1.25); arm(0, -r * 0.85, -sw * r * 0.5, -r * 1.12); }
@@ -282,7 +285,7 @@ function draw() {
   }
   groundT();
   drawField();
-  if (!iso) { const fid = styleOf('field'); drawGrassWind(fid); drawCrowd(fid); }   // herbe qui ondule, public (scenery.js)
+  if (!iso) { const fid = styleOf('field'); drawGrassWind(fid); drawCrowd(fid); drawWindLife(fid); }   // herbe, public, drapeaux et feuilles (scenery.js)
 
   drawStreaks();
   drawPractice();
@@ -396,7 +399,10 @@ function draw() {
   };
   const bodyO = p => {
     const jv = jumpVis(p), jl = Math.max(0, jv), crouch = jv < 0;   // saut : accroupi, puis il grossit et s'élève
-    const lying = p.dive > 0 || p.down > 0, face = lying ? (Math.atan2(p.vy, p.vx) || faceOf(p)) : faceOf(p);
+    const lying = p.dive > 0 || p.down > 0, rf = lying ? null : ringFace(p);   // ronde de fin de match : tourné vers le centre
+    let face;
+    if (rf !== null) { if (p.face === undefined) p.face = rf; const d = Math.atan2(Math.sin(rf - p.face), Math.cos(rf - p.face)); p.face += d * Math.min(1, (FX.dt || 0.016) * 6); face = p.face; }
+    else face = lying ? (Math.atan2(p.vy, p.vx) || faceOf(p)) : faceOf(p);
     if (lying) p.face = face;
     const spd = Math.hypot(p.vx, p.vy), hop = celebrateHop(p);
     p.stride = (p.stride || 0) + spd * (FX.dt || 0.016) * 1.6;
@@ -404,9 +410,17 @@ function draw() {
     // bras tendus seulement dans les derniers instants : le receveur juste avant l'arrivée, un défenseur quand le disque le frôle
     const left = disc.mode === 'air' ? disc.dur - disc.t : 9;
     const near = disc.mode === 'air' && !disc.pull && (disc.z || 0) < 3.6 && ((disc.intended === p && left < 0.38 && dist(p.x, p.y, disc.ex, disc.ey) < 3) || dist(p.x, p.y, disc.x, disc.y) < 1.7);
+    if (p.sadT > 0) p.sadT -= FX.dt || 0.016;                  // après une erreur : mains sur la tête (moments.js : sadAt)
+    // après un point : main tendue vers le coéquipier le plus proche (on se tape dans la main)
+    let five;
+    if (FX.celebrate && FX.celebrate.team === p.team && FX.celebrate.t < 3 && !lying) {
+      const q = TEAMS[p.team].filter(o => o !== p).reduce((a, b) => (dist(p.x, p.y, b.x, b.y) < dist(p.x, p.y, a.x, a.y) ? b : a));
+      if (q && dist(p.x, p.y, q.x, q.y) < 2.8) five = Math.atan2(q.y - p.y, q.x - p.x);
+    }
     return { jl, lying, face, scale: (1 + jl * 0.25 + hop * 0.18) * (crouch ? 0.84 : 1), throwing: p.throwT > 0, throwK: 1 - Math.max(0, p.throwT || 0) / 0.32, side: p.throwSide || 1,
       jumping: jl > 0.05, swing: spd > 1 ? Math.sin(p.stride) : 0, stride: p.stride, run: Math.min(1, spd / 4),
-      reach: near && !lying ? Math.atan2(disc.y - p.y, disc.x - p.x) : undefined, cele: hop > 0.05,
+      reach: near && !lying ? Math.atan2(disc.y - p.y, disc.x - p.x) : undefined, cele: hop > 0.05 && five === undefined, five,
+      sad: p.sadT > 0 && !lying, ring: rf !== null,
       hold: disc.holder === p && (disc.mode === 'held' || disc.mode === 'carry') };
   };
   if (!iso) for (const p of players) {
@@ -519,10 +533,23 @@ function draw() {
       softShadow(ctx, X(dx + sx), Y(dy + sy), (0.6 + z * 0.09) * S, Math.max(0.12, 0.45 - z * 0.055));
       ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.lineWidth = 4.5; circle(X(dx), Y(dy), 1.05 * S); ctx.stroke();   // contour sombre : lisible sur tous les terrains
       ctx.strokeStyle = heightColor(disc.z, 0.95); ctx.lineWidth = 2.5; circle(X(dx), Y(dy), 1.05 * S); ctx.stroke();
-    } else if (disc.mode === 'ground' || disc.mode === 'dead') softShadow(ctx, X(dx + 0.12), Y(dy + 0.18), 0.6 * S, 0.35);
-    const dR = 0.5 * S * (1 + Math.min(0.4, z * 0.07));
-    discShape(X(dx), Y(dy) - lift, dR, false);               // penché selon sa courbe : vu d'en haut, il s'amincit
-    paintDisc(ctx, X(dx), Y(dy) - lift, dR); ctx.strokeStyle = '#475569'; ctx.lineWidth = 1.5; ctx.stroke();
+    }
+    // disque vivant (scenery.js : discLife) : il tourne sur lui-même, tremble s'il est mal lancé, rebondit et roule à
+    // l'atterrissage (purement visuel : il finit exactement là où le jeu l'a posé)
+    const L = discLife(), hop = L.hop;
+    if (disc.mode === 'ground' || disc.mode === 'dead') { dx += L.ox; dy += L.oy; const [sx, sy] = sunOff(hop); softShadow(ctx, X(dx + sx), Y(dy + sy), 0.6 * S, 0.35 - hop * 0.3); }
+    const dR = 0.5 * S * (1 + Math.min(0.4, (z + hop) * 0.07)), cx = X(dx), cy = Y(dy) - lift;
+    ctx.save();
+    if (L.wob) { ctx.translate(cx, cy); ctx.rotate(L.spin * 0.3); ctx.scale(1 + L.wob, 1 - L.wob); ctx.rotate(-L.spin * 0.3); ctx.translate(-cx, -cy); }
+    discShape(cx, cy, dR, false);                              // penché selon sa courbe : vu d'en haut, il s'amincit
+    ctx.save(); ctx.clip();
+    ctx.translate(cx, cy); ctx.rotate(L.spin); ctx.beginPath(); ctx.arc(0, 0, dR * 1.3, 0, 7);
+    paintDisc(ctx, 0, 0, dR);
+    ctx.strokeStyle = 'rgba(15,23,42,.28)'; ctx.lineWidth = Math.max(1, dR * 0.16); ctx.beginPath(); ctx.arc(0, 0, dR * 0.6, 0.2, 1.4); ctx.stroke();   // le logo qui tourne
+    ctx.strokeStyle = 'rgba(255,255,255,.55)'; ctx.beginPath(); ctx.arc(0, 0, dR * 0.6, 3.3, 4.1); ctx.stroke();
+    ctx.restore();
+    discShape(cx, cy, dR, false); ctx.strokeStyle = '#475569'; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.restore();
     }
   }
 

@@ -56,6 +56,12 @@
     <div id="loftV" title="Hauteur de la passe"><span class="cvl">⤒</span><div class="cvtrack"><div class="lvmid"></div><div id="loftVThumb"></div></div><span class="cvl">⤓</span></div>
     <button id="highB">Pivot</button>
     <div id="playBtns"><button id="play1B"></button><button id="play2B"></button></div>
+    <div id="ringUI" style="display:none">
+      <div id="ringTitle" class="ringT"></div>
+      <button id="ringMenu" class="ringB ghost">← Menu principal</button>
+      <button id="ringGo" class="ringB primary">Rejouer ▶</button>
+      <button id="ringOpen" class="ringB">📊 Résumé du match</button>
+    </div>
   </div>
   <div id="controls">
     <button id="curveL">↶ Courbe (A)</button>
@@ -425,7 +431,7 @@
       <b>Plays de départ</b> : avant chaque point, tu peux lancer une combinaison préparée. Les joueurs concernés portent un repère (★, 1, 2, S) pendant le play.<br><br>
       On marque en attrapant le disque dans l'en-but adverse.
     </details>
-    <div class="back stratFoot"><button id="go" class="primary">Jouer le point ▶</button><button id="menuBack" class="ghost">← Menu principal</button></div>
+    <div class="back stratFoot"><button id="go" class="primary">Jouer le point ▶</button><button id="menuBack" class="ghost">← Menu principal</button><button id="ovRing" class="ghost" style="display:none">🤝 Revoir la ronde</button></div>
     <div id="oppReady"></div>
   </div>
 </div>
@@ -453,6 +459,7 @@
 <script src="js/pull.js"></script>
 <script src="js/replay.js"></script>
 <script src="js/scenery.js"></script>
+<script src="js/moments.js"></script>
 <script src="js/render.js"></script>
 <script src="js/render-iso.js"></script>
 <script src="js/ui.js"></script>

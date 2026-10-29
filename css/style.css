@@ -499,3 +499,9 @@ body.touch #hud .score #s0,body.touch #hud .score #s1{padding:2px 5px}
 /* barre du haut (ordinateur) : Menu, son à gauche ; vent, courbe, plein écran à droite ; le panneau de score au milieu */
 #hud{justify-content:flex-start}
 #windBox{margin-left:auto}
+/* ronde de fin de match : boutons autour (moments.js) */
+#ringUI{position:absolute;inset:0;pointer-events:none;z-index:6}
+#ringUI .ringB{position:absolute;width:auto;margin:0;transform:translate(-50%,-50%);pointer-events:auto;white-space:nowrap;font-family:'Barlow Condensed',system-ui,sans-serif;font-weight:800;font-size:20px;padding:10px 18px;box-shadow:0 6px 18px rgba(0,0,0,.45)}
+#ringUI .ringT{position:absolute;transform:translate(-50%,-50%);font-family:'Barlow Condensed',system-ui,sans-serif;font-weight:800;font-size:34px;color:#fff;text-shadow:0 3px 10px rgba(0,0,0,.6);white-space:nowrap;pointer-events:none}
+body.touch #ringUI .ringB{font-size:16px;padding:8px 12px}
+body.touch #ringUI .ringT{font-size:24px}

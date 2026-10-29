@@ -46,7 +46,7 @@ function frame(now, visible) {
     else if (G.phase === 'play') { G.gt += gdt; update(gdt); }
     else if (G.phase === 'pull') pullTick(dt, gdt);
     else if (G.phase === 'between' || G.phase === 'over') {
-      if (G.menuShown && G.phase === 'between' && !G.attract) regroupTick(gdt); else celebrateTick(gdt);
+      if (G.menuShown && G.phase === 'between' && !G.attract) regroupTick(gdt); else if (ringOn()) ringTick(gdt); else celebrateTick(gdt);   // fin de match : la ronde (moments.js)
       if (G.attract) attractTick(dt);
       else if (!G.menuShown) { G.betweenT -= dt; if (G.betweenT <= 0) showMenu(G.phase); }
     }
@@ -77,7 +77,8 @@ function frame(now, visible) {
   $('menuB').style.visibility = G.attract || ($('lobbyCard').style.display !== 'none' && !$('overlay').classList.contains('hidden') && !G.net) ? 'hidden' : 'visible';
   if (!visible) return;
   const t1 = performance.now();
-  camFrame(dt);                                              // caméra (scenery.js : option « suit le jeu »)
+  camFrame(dt);
+  ringUIFrame();                                             // boutons autour de la ronde de fin de match (moments.js)                                              // caméra (scenery.js : option « suit le jeu »)
   if (G.replay) drawReplay(); else draw();
   updateHud();
   perfFrame(now, t0, t1);

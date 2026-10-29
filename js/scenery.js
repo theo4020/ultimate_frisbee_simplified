@@ -346,6 +346,70 @@ function groundFx(p, spd) {
     FX.parts.push({ x: p.x - p.vx * 0.04, y: p.y - p.vy * 0.04, vx: -p.vx * 0.1, vy: -p.vy * 0.1, t: 0, life: 0.5, color: cols[1] || cols[0], size: 0.32, kind: 'dot', rot: 0, vr: 0, drag: 4 });
 }
 
+// ---------- disque vivant ----------
+// rotation (rapide en vol, elle ralentit au sol), tremblement d'un lancer imprécis (grand cône), rebond et roulé à
+// l'atterrissage : il arrive de 0,9 m en arrière et finit à sa place exacte
+const DL = { spin: 0, mode: '', land: null };
+function discLife() {
+  const dt = FX.dt || 0.016, air = disc.mode === 'air';
+  if (DL.mode === 'air' && disc.mode === 'ground') {                 // (attrapé ou point marqué : pas de rebond)
+    const vx = disc.ex - disc.cx, vy = disc.ey - disc.cy, l = Math.hypot(vx, vy) || 1;
+    DL.land = { t: 0, ux: vx / l, uy: vy / l };
+  }
+  if (disc.mode !== 'ground') DL.land = null;
+  DL.mode = disc.mode;
+  const sp = air ? 16 + Math.min(14, discLen() * 0.25) : DL.land && DL.land.t < 0.7 ? 9 * (1 - DL.land.t / 0.7) : 0;
+  DL.spin = (DL.spin + dt * sp) % (Math.PI * 200);
+  let ox = 0, oy = 0, hop = 0;
+  if (DL.land) {
+    const L = DL.land, k = Math.min(1, L.t / 0.7), e = 1 - Math.pow(1 - k, 3);
+    ox = -L.ux * 0.9 * (1 - e); oy = -L.uy * 0.9 * (1 - e);
+    hop = L.t < 0.45 ? Math.abs(Math.sin(L.t / 0.45 * Math.PI * 2)) * 0.35 * (1 - L.t / 0.45) : 0;
+    L.t += dt;
+  }
+  const wob = air && !disc.pull ? clamp(((disc.cone || 0) - 1.5) / 6, 0, 1) * 0.16 * Math.sin(G.time * 24) : 0;
+  return { spin: DL.spin, ox, oy, hop, wob };
+}
+
+// ---------- vent visible : drapeaux aux coins du terrain, feuilles par grand vent ----------
+const LEAVES = [];
+function drawWindLife(fid) {
+  if (fid === 'espace' || fid === 'salle') return;
+  const t = G.time, dt = FX.dt || 0.016, wv = G.wind || { x: 0, y: 0, kmh: 0 }, kmh = wv.kmh || 0;
+  const ang = kmh > 0.5 ? Math.atan2(wv.y, wv.x) : Math.PI / 2, wk = Math.min(1, kmh / 30), s = S;
+  // drapeaux : le tissu part dans le sens du vent ; il pend presque sans vent, claque et ondule quand ça souffle
+  for (const [fx, fy] of [[-0.9, -0.9], [W + 0.9, -0.9], [-0.9, H + 0.9], [W + 0.9, H + 0.9]]) {
+    const px = X(fx), py = Y(fy), len = (1.7 + wk * 1.3) * s, wid = 1.1 * s;
+    const a = ang + Math.sin(t * (2 + wk * 6) + fx) * (0.12 + wk * 0.12) * (kmh < 2 ? 0.2 : 1), ca = Math.cos(a), sa = Math.sin(a), nx = -sa, ny = ca;
+    softShadow(ctx, px + s * 0.25, py + s * 0.3, s * 0.35, 0.35);
+    ctx.fillStyle = (fx < 0) === (fy < 0) ? '#facc15' : '#ef4444';
+    ctx.beginPath(); ctx.moveTo(px, py);
+    for (let k = 0; k <= 6; k++) {                               // bord ondulé du tissu
+      const u = k / 6, w = Math.sin(u * 5 - t * (6 + wk * 10)) * wid * 0.18 * (0.3 + wk) * u;
+      ctx.lineTo(px + ca * len * u + nx * w, py + sa * len * u + ny * w);
+    }
+    ctx.lineTo(px + nx * wid * (1 - 0.15 * wk), py + ny * wid * (1 - 0.15 * wk));
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#f8fafc'; ctx.strokeStyle = '#334155'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(px, py, Math.max(2, s * 0.24), 0, 7); ctx.fill(); ctx.stroke();   // le poteau, vu d'en haut
+  }
+  // feuilles : seulement par vent fort, elles traversent le terrain en tourbillonnant
+  if (kmh > 15 && !G.attract && LEAVES.length < 22 && Math.random() < dt * (kmh - 12) * 0.12) {
+    const ux = Math.cos(ang), uy = Math.sin(ang), along = Math.random();
+    const sx = ux > 0 ? -M : W + M, sy = uy > 0 ? -M : H + M;     // elles entrent par le côté d'où vient le vent
+    const fromSide = Math.abs(ux) > Math.abs(uy) ? Math.random() < 0.8 : Math.random() < 0.2;
+    LEAVES.push({ x: fromSide ? sx : -M + along * (W + 2 * M), y: fromSide ? -M + along * (H + 2 * M) : sy, r: Math.random() * 6, vr: (Math.random() - 0.5) * 6,
+      c: ['#a16207', '#ca8a04', '#9a3412', '#65a30d'][Math.floor(Math.random() * 4)], ph: Math.random() * 6, sz: 0.25 + Math.random() * 0.15 });
+  }
+  for (let i = LEAVES.length - 1; i >= 0; i--) {
+    const L = LEAVES[i], v = kmh / 3.6 * 0.55;
+    L.x += (Math.cos(ang) * v + Math.sin(t * 2 + L.ph) * 0.8) * dt; L.y += (Math.sin(ang) * v + Math.cos(t * 1.7 + L.ph) * 0.8) * dt; L.r += L.vr * dt;
+    if (L.x < -M - 2 || L.x > W + M + 2 || L.y < -M - 2 || L.y > H + M + 2 || kmh < 10) { LEAVES.splice(i, 1); continue; }
+    const x = X(L.x), y = Y(L.y), w = L.sz * s;
+    ctx.save(); ctx.translate(x, y); ctx.rotate(L.r); ctx.fillStyle = L.c;
+    ctx.beginPath(); ctx.ellipse(0, 0, w, w * 0.5 * Math.abs(Math.cos(t * 3 + L.ph)) + w * 0.12, 0, 0, 7); ctx.fill(); ctx.restore();
+  }
+}
+
 // ---------- caméra ----------
 // suit le jeu : zoom léger (téléphone : plus fort, les joueurs sont plus gros), centré sur le disque (en vol : vers son
 // arrivée), sans jamais montrer le vide autour du terrain. À-coup de zoom sur un point (CAM.punch).

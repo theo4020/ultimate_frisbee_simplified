@@ -75,14 +75,19 @@ export default async function (t) {
     };
     await finish(true);
     t.ok((await p.textContent('#go')).includes('Match suivant'), 'victoire : bouton « Match suivant »');
-    await p.click('#go');
+    t.ok(await vis(p, '#ringUI') && (await p.textContent('#ringGo')).includes('Match suivant') && await vis(p, '#ringMenu') && !(await p.evaluate(() => !document.getElementById('overlay').classList.contains('hidden'))),
+      'fin de match : la ronde au centre, les boutons autour (le résumé reste fermé)');
+    await p.click('#ringOpen');
+    t.ok(await vis(p, '#stratCard') && await vis(p, '#ovRing'), '« Résumé du match » ouvre le résumé (et on peut revenir à la ronde)');
+    await p.click('#ovRing');
+    await p.click('#ringGo');
     t.ok((await p.textContent('#ovTitle')).includes('Match 2'), 'match 2 contre un nouvel adversaire', await p.textContent('#ovTitle'));
     await p.click('#go');                                           // « Jouer le point » lance bien le match 2 (et ne saute pas au 3)
     await p.waitForFunction(() => G.phase === 'pull' || G.phase === 'play', null, { timeout: 5000 }).catch(() => {});
     t.ok(await p.evaluate(() => (G.phase === 'pull' || G.phase === 'play') && G.series.cur === 1), 'le match 2 se joue vraiment', await p.evaluate(() => [G.phase, G.series.cur]));
     await finish(false);
     t.ok((await p.textContent('#go')).includes('classement'), 'défaite : bouton « Voir le classement »');
-    await p.click('#go');
+    await p.click('#ringGo');
     t.ok(await vis(p, '#endSave'), 'fin de série : on propose d’enregistrer le score');
     t.ok((await p.inputValue('#endSaveName')) === 'Testeur', 'le pseudo est déjà rempli');
     t.ok(srv.board('SELECT * FROM scores').length === 0, 'rien n’est envoyé avant d’avoir choisi');
@@ -94,7 +99,7 @@ export default async function (t) {
     t.ok((await p.textContent('#endBoard li.me')).includes('Champion'), 'ma ligne est en évidence avec mon pseudo');
     t.ok((await p.textContent('#endBest')).includes('1 match'), 'record personnel affiché');
     t.ok(srv.board('SELECT * FROM scores')[0].wins === 1 && srv.board('SELECT * FROM scores')[0].diff === 0, 'le serveur a reçu 1 match, écart 0 (2–0 puis 0–2)', srv.board('SELECT * FROM scores'));
-    await p.click('#endGo'); await finish(false); await p.click('#go');           // 2e série, perdue d'entrée : on n'enregistre pas
+    await p.click('#endGo'); await finish(false); await p.click('#ringGo');           // 2e série, perdue d'entrée : on n'enregistre pas
     await p.fill('#endSaveName', ''); await p.click('#endSaveB');
     t.ok((await p.textContent('#endStatus')).includes('non enregistré') && srv.board('SELECT * FROM scores').length === 1, 'pseudo vide : score non enregistré');
     await p.click('#endBack');

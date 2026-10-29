@@ -17,7 +17,7 @@ export default async function (t) {
   const endRun = async p => {                                   // une série du mode infini perdue d'entrée, jusqu'à la proposition d'enregistrer
     await p.click('#soloMenuB'); await p.click('#endlessB'); await p.click('#endGo');
     await p.evaluate(() => { G.score = [0, 1]; G.phase = 'play'; G.lastMenu = null; $('overlay').classList.add('hidden'); G.menuShown = false; scorePoint(1 - G.me, 'T'); });
-    await p.waitForFunction(() => G.lastMenu === 'over' && G.menuShown); await p.click('#go');
+    await p.waitForFunction(() => G.lastMenu === 'over' && G.menuShown); await p.click('#ringGo');
   };
   try {
     t.group('Créer un compte (ordinateur)');

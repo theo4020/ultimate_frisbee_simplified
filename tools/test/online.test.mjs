@@ -320,11 +320,11 @@ export default async function (t) {
     await finish(2, 1);
     await g2.waitForFunction(() => G.series && G.series.wins === 1, null, { timeout: 5000 });
     t.ok(/1 match gagné/.test(await g2.textContent('#ovText')), 'match gagné : l’invité voit la série avancer', await g2.textContent('#ovText'));
-    await h2.click('#go');
+    await h2.click('#ringGo');
     await g2.waitForFunction(() => /Match 2/.test(document.getElementById('ovTitle').textContent), null, { timeout: 5000 });
     t.ok(true, 'le capitaine enchaîne : match 2 pour tout le monde');
     await finish(0, 2);
-    await h2.click('#go');
+    await h2.click('#ringGo');
     await g2.waitForFunction(() => document.getElementById('endlessCard').style.display !== 'none', null, { timeout: 5000 });
     t.ok(!(await g2.isVisible('#endGo')) && (await g2.textContent('#endText')).includes('1 match gagné'), 'défaite : fin de série chez l’invité');
     t.ok(await h2.isVisible('#endSave') && (await h2.inputValue('#endSaveName')) === 'Théo + Léa', 'chez l’hôte : enregistrer l’équipe, nom proposé', await h2.inputValue('#endSaveName'));
