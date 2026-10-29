@@ -8,6 +8,17 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
+  { id: 36, date: '2026-10-29', tag: 'Visuel', title: 'Le temps qu’il fait, et une vraie fin de match 🌇',
+    body: `• Dans <b>Mon style</b>, chaque terrain s'ouvre comme un dossier : choisis-y le <b>temps</b> — coucher de soleil,
+      pluie, brume du matin, nuit étoilée, chute de neige (débloqués par tes succès). Les joueurs et le disque restent
+      toujours bien visibles.<br>
+      • Le terrain bouge : <b>drapeaux</b> et <b>feuilles</b> au vent, un <b>disque</b> qui tourne, tremble et rebondit.<br>
+      • Chaque joueur a son allure : <b>peau, coupe de cheveux, chaussures</b> (même taille pour tous ; tes couleurs de
+      Mon style restent prioritaires).<br>
+      • Fin de match : les joueurs font la <b>ronde</b> au milieu du terrain, Rejouer et Menu principal tout autour.<br>
+      • Nouvel <b>écran de fin</b> : le score en points lumineux, le <b>moment du match</b> (à revoir au ralenti en solo),
+      les deux équipes comparées (passes, possession, blocks, hucks…), et en ligne une carte pour <b>chaque joueur</b>.<br>
+      • Des <b>menus</b> au style du panneau de score.` },
   { id: 35, date: '2026-10-29', tag: 'Visuel', title: 'Un terrain plus vivant 🌿',
     body: `Le jeu fait peau neuve, toujours vu de dessus :<br>
       • des ombres au soleil, des lignes à la craie ;<br>

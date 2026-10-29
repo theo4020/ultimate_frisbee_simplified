@@ -344,7 +344,7 @@ function avoidDoubleTeam(d, form) {
 function diveTo(p, x, y) {
   if (p.dive > 0 || p.down > 0 || p.jump > 0 || p.jprep > 0) return;
   [p.vx, p.vy] = diveVel(p, x, y);
-  p.dive = DIVE_T; G.stats.dives++;
+  p.dive = DIVE_T; G.stats.dives++; msLayout(p);
   fxEvent('layout', p.x, p.y, p.team);
 }
 

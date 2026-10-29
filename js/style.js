@@ -74,7 +74,7 @@ const FIELDS = {
   neige: { bg: '#cbd5e1', s: ['#e2e8f0', '#f1f5f9'], line: 'rgba(30,58,138,.8)', sky: ['#94a3b8', '#cbd5e1'], ez: 0.3, txt: 'rgba(30,41,59,.45)', vg: 0.1 }
 };
 
-const STYLE0 = { disc: 'blanc', field: 'gazon', jersey: 'uni', hair: 'naturel', acc: 'aucun', cele: 'confettis' };
+const STYLE0 = { disc: 'blanc', field: 'gazon', jersey: 'uni', hair: 'naturel', acc: 'aucun', cele: 'confettis', wx: {} };   // wx : le temps choisi pour chaque terrain (weather.js)
 function styleGet() { const s = storeGet('uf-style', null); return Object.assign({}, STYLE0, s && typeof s === 'object' ? s : {}); }
 function styleSet(s) { storeSet('uf-style', s); }
 const styleItem = (cat, id) => STYLES[cat].find(x => x.id === id) || STYLES[cat][0];
@@ -269,8 +269,20 @@ function showStyle() {
   $('styleCard').style.display = ''; $('overlay').classList.remove('hidden');
   renderStyle();
 }
+// terrains « en dossiers » : un clic sur un terrain le choisit et ouvre son dossier, où l'on choisit le temps
+let styleFolder = null;
+const WX_TINT = { jour: '', coucher: 'sepia(.5) saturate(1.6) hue-rotate(-15deg)', pluie: 'saturate(.55) brightness(.8)', brume: 'contrast(.6) brightness(1.15)', nuit: 'brightness(.55) saturate(.8) hue-rotate(15deg)', flocons: 'brightness(1.05) saturate(.6)' };
+function wxFolder(fid) {
+  const f = styleItem('field', fid), list = fieldWx(fid), cur = weatherOf(fid), st = FIELDS[fid].s;
+  return `<div class="sfolder" data-field="${fid}"><div class="sfHead">📂 ${esc(f.name)} <span>› choisis le temps</span></div><div class="sgrid">` + list.map(w => {
+    const ok = styleUnlocked(w), on = cur === w.id, A = w.ach && ACH.find(x => x.id === w.ach);
+    return `<button class="stile wx${on ? ' on' : ''}${ok ? '' : ' locked'}" data-cat="wx" data-id="${w.id}"><span class="sfield"><s style="background:repeating-linear-gradient(90deg,${st[0]} 0 8px,${st[1]} 8px 16px);filter:${WX_TINT[w.id] || 'none'}"></s><i>${w.icon}</i></span><b>${esc(w.name)}</b>`
+      + (ok ? (on ? '<small>✓ choisi</small>' : '') : `<small>🔒 ${A ? esc(A.icon + ' ' + A.name) : ''}<br>${A ? esc(A.desc) : ''}</small>`) + '</button>';
+  }).join('') + '</div></div>';
+}
 function renderStyle() {
   const S0 = styleGet(), a = achGet();
+  if (!styleFolder || !styleUnlocked(styleItem('field', styleFolder))) styleFolder = styleOf('field');
   $('styleBody').innerHTML = Object.keys(STYLES).map(cat => `<h2>${STYLE_CAT[cat]}</h2><div class="sgrid">` + STYLES[cat].map(it => {
     const ok = styleUnlocked(it), on = styleOf(cat) === it.id, A = it.ach && ACH.find(x => x.id === it.ach);
     const prev = cat === 'disc' ? `<canvas class="sprev" width="44" height="44" data-skin="${it.id}"></canvas>`
@@ -278,9 +290,10 @@ function renderStyle() {
       : cat === 'jersey' ? `<canvas class="sprev" width="44" height="44" data-jersey="${it.id}"></canvas>`
       : cat === 'hair' ? `<span class="shair" style="background:${it.id === 'arcenciel' ? 'conic-gradient(#ef4444,#facc15,#22c55e,#3b82f6,#a855f7,#ef4444)' : ({ naturel: '#3b2f2a', rose: '#f472b6', bleu: '#3b82f6', vert: '#84cc16', platine: '#fef3c7' })[it.id]}"></span>`
       : `<span class="sicon">${it.icon}</span>`;
-    return `<button class="stile${on ? ' on' : ''}${ok ? '' : ' locked'}" data-cat="${cat}" data-id="${it.id}">${prev}<b>${esc(it.name)}</b>`
-      + (ok ? (on ? '<small>✓ choisi</small>' : '') : `<small>🔒 ${A ? esc(A.icon + ' ' + A.name) : ''}<br>${A ? esc(A.desc) : ''}</small>`) + '</button>';
-  }).join('') + '</div>').join('');
+    const nW = cat === 'field' ? fieldWx(it.id).length : 0, open = cat === 'field' && styleFolder === it.id;
+    return `<button class="stile${on ? ' on' : ''}${ok ? '' : ' locked'}${open ? ' open' : ''}" data-cat="${cat}" data-id="${it.id}">${prev}<b>${esc(it.name)}</b>`
+      + (ok ? (on ? '<small>✓ choisi</small>' : '') + (nW > 1 ? `<small class="sfold">${open ? '📂' : '📁'} ${nW} temps</small>` : '') : `<small>🔒 ${A ? esc(A.icon + ' ' + A.name) : ''}<br>${A ? esc(A.desc) : ''}</small>`) + '</button>';
+  }).join('') + '</div>' + (cat === 'field' && fieldWx(styleFolder).length > 1 ? wxFolder(styleFolder) : '')).join('');
   for (const cv of document.querySelectorAll('#styleBody canvas.sprev')) {
     const c = cv.getContext('2d'); c.beginPath(); c.ellipse(22, 22, 16, 13, -0.2, 0, Math.PI * 2);
     paintDisc(c, 22, 22, 16, cv.dataset.skin); c.strokeStyle = '#0f172a'; c.lineWidth = 2; c.stroke();
@@ -299,7 +312,13 @@ if (typeof document !== 'undefined' && document.getElementById('styleCard')) {
   $('styleBack').addEventListener('click', () => { $('styleCard').style.display = 'none'; showLobby(); });
   $('styleBody').addEventListener('click', e => {
     const b = e.target.closest('.stile'); if (!b) return;
+    if (b.dataset.cat === 'wx') {                                  // un temps, dans le dossier du terrain ouvert
+      const w = wxItem(b.dataset.id), fid = b.closest('.sfolder').dataset.field;
+      if (!styleUnlocked(w)) { const A = ACH.find(x => x.id === w.ach); if (A) toast(`🔒 Pour débloquer : <b>${A.name}</b> — ${A.desc}`); return; }
+      const s = styleGet(); s.wx = Object.assign({}, s.wx, { [fid]: w.id }); s.field = fid; styleSet(s); renderStyle(); return;
+    }
     const it = styleItem(b.dataset.cat, b.dataset.id);
+    if (b.dataset.cat === 'field' && styleUnlocked(it)) styleFolder = it.id;
     if (!styleUnlocked(it)) { const A = ACH.find(x => x.id === it.ach); if (A) toast(`🔒 Pour débloquer : <b>${A.name}</b> — ${A.desc}`); return; }
     const s = styleGet(); s[b.dataset.cat] = it.id; styleSet(s); renderStyle();
   });

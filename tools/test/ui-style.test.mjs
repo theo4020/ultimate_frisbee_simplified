@@ -17,7 +17,7 @@ export default async function (t) {
     await p.evaluate(() => storeSet('uf-ach', { high: 1 }));
     await p.click('#styleB');
     t.ok(await p.isVisible('#styleCard'), 'la carte « Mon style » s’ouvre depuis le menu principal');
-    const tiles = await p.evaluate(() => ({ n: document.querySelectorAll('.stile').length, all: Object.values(STYLES).flat().length, locked: document.querySelectorAll('.stile.locked').length }));
+    const tiles = await p.evaluate(() => ({ n: document.querySelectorAll('.stile:not(.wx)').length, all: Object.values(STYLES).flat().length, locked: document.querySelectorAll('.stile.locked').length }));
     t.ok(tiles.n === tiles.all && tiles.locked > 5, 'tous les visuels sont listés, la plupart verrouillés au départ', tiles);
     await p.click('.stile[data-cat=disc][data-id=flamme]');
     t.ok(await p.evaluate(() => styleGet().disc === 'blanc' && /Roi des airs/.test(document.getElementById('toast').textContent)), 'un visuel verrouillé ne se choisit pas : on dit quel succès le débloque');
@@ -31,6 +31,22 @@ export default async function (t) {
     await p.evaluate(() => storeSet('uf-acc', { name: 'Admin', token: 'x', admin: true }));
     t.ok(await p.evaluate(() => Object.values(STYLES).flat().every(styleUnlocked) && styleOf('disc') === 'arcenciel'), 'compte admin : tous les visuels sont débloqués');
     await p.evaluate(() => { try { localStorage.removeItem('uf-acc'); } catch (e) { } });
+
+    t.group('Mon style : le temps, dans le dossier de chaque terrain');
+    await p.evaluate(() => { const a = {}; ACH.forEach(x => a[x.id] = 1); delete a.wins10; storeSet('uf-ach', a); showStyle(); });
+    await p.click('.stile[data-cat=field][data-id=plage]');
+    const fo = await p.evaluate(() => ({ field: styleGet().field, folder: (document.querySelector('.sfolder') || {}).dataset?.field, n: document.querySelectorAll('.sfolder .stile').length, want: FIELD_WX.plage.length,
+      nightLocked: document.querySelector('.sfolder .stile[data-id=nuit]').classList.contains('locked') }));
+    t.ok(fo.field === 'plage' && fo.folder === 'plage' && fo.n === fo.want, 'choisir un terrain ouvre son dossier, avec ses temps', fo);
+    await p.click('.sfolder .stile[data-id=nuit]');
+    t.ok(await p.evaluate(() => weatherOf('plage') === 'jour' && /Habitué/.test(document.getElementById('toast').textContent)), 'un temps verrouillé ne se choisit pas : on dit quel succès le débloque');
+    await p.click('.sfolder .stile[data-id=coucher]');
+    const wx = await p.evaluate(() => ({ plage: weatherOf('plage'), gazon: weatherOf('gazon'), on: document.querySelector('.sfolder .stile[data-id=coucher]').classList.contains('on'), salle: document.querySelectorAll('.stile[data-id=salle] .sfold').length }));
+    t.ok(wx.plage === 'coucher' && wx.gazon === 'jour' && wx.on, 'le temps est gardé pour ce terrain seulement', wx);
+    t.ok(wx.salle === 0, 'la salle n’a pas de météo (pas de dossier)', wx);
+    await p.evaluate(() => { const s = styleGet(); s.field = 'salle'; s.wx = { salle: 'pluie' }; styleSet(s); });
+    t.ok(await p.evaluate(() => weatherOf() === 'jour'), 'un temps impossible pour ce terrain revient au temps normal');
+    await p.evaluate(() => { closeAllCards(); showLobby(); });
 
     t.group('Mon style : le jeu se dessine avec chaque visuel');
     await p.evaluate(() => { const a = {}; ACH.forEach(x => a[x.id] = 1); storeSet('uf-ach', a); });
@@ -49,10 +65,27 @@ export default async function (t) {
         }
       }
       CTRL.view = 'top'; resize();
+      for (const [f, ws] of Object.entries(FIELD_WX)) for (const w of ws) { styleSet({ field: f, wx: { [f]: w } }); await wait(); if (weatherOf() === w) out.push(f + '/' + w); }
       return { out, snowDisc: (styleSet({ disc: 'blanc', field: 'neige' }), discSkin()) };
     });
-    t.ok(drawn.out.length === 20, 'chaque combinaison est dessinée (vue de dessus et inclinée)', drawn.out.length);
+    const nWx = await p.evaluate(() => Object.values(FIELD_WX).flat().length);
+    t.ok(drawn.out.length === 20 + nWx, 'chaque combinaison est dessinée (vue de dessus et inclinée), et chaque temps de chaque terrain', drawn.out.length);
     t.ok(drawn.snowDisc === 'orange', 'lisibilité : sur la neige, le disque blanc devient orange', drawn.snowDisc);
+
+    t.group('Écran de fin : panneau du score, moment du match, équipes, joueurs en ligne');
+    const sm = await p.evaluate(() => {
+      newMatchStats(); G.score = [5, 3]; G.ms.points = [[0, 30], [1, 20]]; G.ms.team[0].thr = 10; G.ms.team[0].comp = 9;
+      const R = { frames: [], team: 0 }; REPLAY.mom = R;
+      G.ms.mom = { s: 1000, k: 'callahan', t: 0, sc: [4, 3], txt: 'Callahan de Théo' };
+      renderSummary(matchSummary()); const el = document.getElementById('summary');
+      const one = { led: el.querySelectorAll('.sumBoard .led').length, mom: /Callahan de Théo/.test(el.textContent), rows: el.querySelectorAll('.cmp').length, ai: el.querySelectorAll('.sumP').length, players: el.querySelectorAll('.huCard').length, replay: !!document.getElementById('momReplayB') };
+      G.ms.hu = { 0: { n: 'Théo', t: 0, thr: 3, comp: 2, ast: 1, gol: 0, blk: 0, lay: 0, to: 1 }, 3: { n: 'Max', t: 1, thr: 1, comp: 1, ast: 0, gol: 1, blk: 1, lay: 1, to: 0 } };
+      renderSummary(matchSummary()); one.players2 = el.querySelectorAll('.huCard').length; one.txt = el.querySelector('.huCard').textContent.replace(/\s+/g, ' ');
+      renderSummary(null); REPLAY.mom = null; return one;
+    });
+    t.ok(sm.led === 2 && sm.mom && sm.rows >= 6 && sm.ai === 0, 'le score en points lumineux, le moment du match, les équipes comparées, sans stats par joueur IA', sm);
+    t.ok(sm.replay, 'en solo : le moment du match se revoit au ralenti', sm);
+    t.ok(sm.players === 0 && sm.players2 === 2 && /Théo/.test(sm.txt) && /1décisive0point/.test(sm.txt), 'en ligne (plusieurs humains) : une carte par joueur humain', sm);
 
     t.group('Habillage : caméra qui suit le jeu, police');
     const cam = await p.evaluate(async () => {

@@ -153,8 +153,31 @@ function drawEmotes() {
 // état visuel du saut : -1 = accroupi (préparation), sinon hauteur gagnée en l'air
 const jumpVis = p => (G.net === 'guest' && !(typeof PRED !== 'undefined' && PRED.p === p) ? (p.lift || 0) : p.jprep > 0 ? -1 : jumpLift(p));   // ton joueur prédit : son propre saut
 // ---------- joueurs vus de dessus : épaules (maillot), tête, bras, numéro ----------
-const SKIN = ['#f1c7a3', '#d9a37a', '#a8714f', '#7a4b32', '#e8b88f'];
-const HAIR = ['#3b2f2a', '#1f2937', '#a16207', '#7c2d12', '#57534e'];
+// allure de chaque joueur (peau, cheveux, coupe, chaussures) : fixe pour un même joueur, différente d'un joueur à l'autre.
+// Même taille pour tous (la coupe reste dans le gabarit de la tête). « Mon style » garde la priorité sur la couleur des cheveux.
+const SKIN = ['#f1c7a3', '#d9a37a', '#a8714f', '#7a4b32', '#e8b88f', '#5c3a24', '#c68a5e'];
+const HAIR = ['#3b2f2a', '#1f2937', '#a16207', '#7c2d12', '#57534e', '#d6b370', '#0b0b0f'];
+const CUTS = ['court', 'long', 'queue', 'rase', 'boucles', 'chignon'];
+const SHOES = ['#1e293b', '#f8fafc', '#ef4444', '#22c55e', '#f97316', '#3b82f6', '#facc15', '#a855f7'];
+function lookOf(p) {
+  const k = p.team * 5 + p.i;
+  return p._look && p._look.k === k ? p._look : (p._look = {
+    k, skin: SKIN[(k * 3 + 1) % SKIN.length], hair: HAIR[(k * 5 + 2) % HAIR.length], cut: CUTS[(k * 7 + p.team) % CUTS.length],
+    shoe: SHOES[(k * 5 + 3) % SHOES.length] });
+}
+// cheveux vus de dessus, tête au centre (hx, 0), rayon hr, le joueur regarde vers +x
+function hairTop(c, L, col, hx, hr) {
+  c.fillStyle = col;
+  switch (L.cut) {
+    case 'long': c.beginPath(); c.ellipse(hx - hr * 0.45, 0, hr * 0.95, hr * 0.92, 0, 0, 7); c.fill(); circle(hx, 0, hr); c.fill(); break;
+    case 'queue': c.beginPath(); c.ellipse(hx - hr * 1.12, 0, hr * 0.48, hr * 0.28, 0, 0, 7); c.fill(); circle(hx, 0, hr); c.fill();
+      c.fillStyle = 'rgba(255,255,255,.55)'; circle(hx - hr * 0.86, 0, hr * 0.14); c.fill(); break;
+    case 'rase': c.fillStyle = L.skin; circle(hx, 0, hr); c.fill(); c.globalAlpha = 0.5; c.fillStyle = col; circle(hx - hr * 0.08, 0, hr * 0.88); c.fill(); c.globalAlpha = 1; break;
+    case 'boucles': circle(hx, 0, hr * 0.8); c.fill(); for (let j = 0; j < 8; j++) { const a = j / 8 * Math.PI * 2; circle(hx + Math.cos(a) * hr * 0.72, Math.sin(a) * hr * 0.72, hr * 0.32); c.fill(); } break;
+    case 'chignon': circle(hx, 0, hr); c.fill(); c.fillStyle = 'rgba(0,0,0,.28)'; circle(hx - hr * 0.3, 0, hr * 0.44); c.fill(); c.fillStyle = col; circle(hx - hr * 0.33, -hr * 0.04, hr * 0.36); c.fill(); break;
+    default: circle(hx, 0, hr); c.fill();
+  }
+}
 // orientation lissée : sens de la course, sinon vers le disque (ou vers la cible pendant un lancer)
 function faceOf(p) {
   let target;
@@ -178,11 +201,11 @@ function pivLean(p) {
   return [bx * k, by * k];
 }
 function drawBody(p, x, y, r, face, o) {
-  const k = (p.team * 5 + p.i) % 5, light = (G.teams[p.team] || {}).color === 'blanc' || (G.teams[p.team] || {}).color === 'jaune';
+  const L = lookOf(p), light = (G.teams[p.team] || {}).color === 'blanc' || (G.teams[p.team] || {}).color === 'jaune';
   ctx.save(); ctx.translate(x, y); ctx.rotate(face); ctx.scale(o.scale || 1, o.scale || 1);
   ctx.lineCap = 'round';
   const arm = (x1, y1, x2, y2) => {                           // bras (peau) avec la main un peu plus foncée
-    ctx.strokeStyle = SKIN[k]; ctx.lineWidth = r * 0.36; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    ctx.strokeStyle = L.skin; ctx.lineWidth = r * 0.36; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
     ctx.fillStyle = 'rgba(0,0,0,.12)'; ctx.beginPath(); ctx.arc(x2, y2, r * 0.17, 0, 7); ctx.fill();
   };
   const armTo = (side, ang, len) => arm(0, side * r * 0.82, Math.cos(ang) * r * len, side * r * 0.82 + Math.sin(ang) * r * len);
@@ -190,12 +213,12 @@ function drawBody(p, x, y, r, face, o) {
   const shine = (w, h) => { const a = -2.35 - face, g = ctx.createRadialGradient(Math.cos(a) * w * 0.3, Math.sin(a) * h * 0.3, 0, 0, 0, Math.max(w, h) * 0.75);
     g.addColorStop(0, 'rgba(255,255,255,.28)'); g.addColorStop(1, 'rgba(255,255,255,0)'); return g; };
   const head = (hx, hr) => {
-    ctx.fillStyle = hairOf(p, HAIR[k]); circle(hx, 0, hr); ctx.fill();
+    hairTop(ctx, L, hairOf(p, L.hair), hx, hr);
     ctx.fillStyle = 'rgba(255,255,255,.18)'; const a = -2.35 - face; circle(hx + Math.cos(a) * hr * 0.35, Math.sin(a) * hr * 0.35, hr * 0.42); ctx.fill();
   };
   if (o.lying) {                                            // allongé, bras tendus vers l'avant
     arm(r * 0.5, -r * 0.45, r * 1.9, -r * 0.35); arm(r * 0.5, r * 0.45, r * 1.9, r * 0.35);
-    ctx.fillStyle = '#1e293b'; ctx.beginPath(); ctx.ellipse(-r * 1.55, -r * 0.3, r * 0.32, r * 0.18, 0, 0, 7); ctx.ellipse(-r * 1.55, r * 0.3, r * 0.32, r * 0.18, 0, 0, 7); ctx.fill();   // pieds
+    ctx.fillStyle = L.shoe; ctx.beginPath(); ctx.ellipse(-r * 1.55, -r * 0.3, r * 0.32, r * 0.18, 0, 0, 7); ctx.ellipse(-r * 1.55, r * 0.3, r * 0.32, r * 0.18, 0, 0, 7); ctx.fill();   // pieds
     ctx.fillStyle = tcol(p.team); ctx.strokeStyle = tdark(p.team); ctx.lineWidth = 2;
     roundRectPath(-r * 1.3, -r * 0.62, r * 2.2, r * 1.24, r * 0.6); ctx.fill();
     if (mineStyle(p)) jerseyPattern(ctx, -r * 1.3, -r * 0.62, r * 2.2, r * 1.24, light);   // maillot de ton équipe (Mon style)
@@ -206,8 +229,8 @@ function drawBody(p, x, y, r, face, o) {
     const sw = o.swing || 0, run = o.run || 0;
     // pieds : ils avancent l'un après l'autre en courant, côte à côte à l'arrêt
     const st = Math.sin(o.stride || 0) * r * 0.95 * run;
-    ctx.fillStyle = '#1e293b';
-    ctx.beginPath(); ctx.ellipse(st, r * 0.34, r * 0.36, r * 0.21, 0, 0, 7); ctx.ellipse(-st, -r * 0.34, r * 0.36, r * 0.21, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = L.shoe; ctx.strokeStyle = 'rgba(15,23,42,.55)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(st, r * 0.34, r * 0.36, r * 0.21, 0, 0, 7); ctx.ellipse(-st, -r * 0.34, r * 0.36, r * 0.21, 0, 0, 7); ctx.fill(); ctx.stroke();
     ctx.fillStyle = 'rgba(255,255,255,.35)';
     ctx.beginPath(); ctx.ellipse(st + r * 0.14, r * 0.34, r * 0.13, r * 0.08, 0, 0, 7); ctx.ellipse(-st + r * 0.14, -r * 0.34, r * 0.13, r * 0.08, 0, 0, 7); ctx.fill();
     // bras : lancer (armé puis relâché, côté coup droit ou revers), réception (vers le disque), joie, course
@@ -286,6 +309,7 @@ function draw() {
   groundT();
   drawField();
   if (!iso) { const fid = styleOf('field'); drawGrassWind(fid); drawCrowd(fid); drawWindLife(fid); }   // herbe, public, drapeaux et feuilles (scenery.js)
+  drawWeatherGround();                                      // le temps (Mon style) : teinte du sol seulement (weather.js)
 
   drawStreaks();
   drawPractice();
@@ -554,6 +578,7 @@ function draw() {
   }
 
   drawParticles();
+  drawWeatherSky();                                         // pluie, flocons, brume : très légers, par-dessus
   drawHalloween();                                          // mode Halloween : le noir, sauf dans son cône de vision
   drawPullUI();
   drawStartUI();                                            // feux du départ au pull, bandeau du check

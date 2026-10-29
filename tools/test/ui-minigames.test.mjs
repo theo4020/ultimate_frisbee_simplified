@@ -26,8 +26,10 @@ export default async function (t) {
     t.ok(await p.evaluate(() => !G.paused && (storeGet('uf-tips', {}) || {}).start === 1), 'le conseil est noté : il ne reviendra pas');
     await p.keyboard.press(' ');
     t.ok(await p.evaluate(() => G.offside && G.offside.team === G.me), 'Espace pendant les feux : faux départ, hors-jeu de ton équipe');
+    await p.evaluate(() => { window.__dc = dropChance; window.dropChance = () => -1; });   // pas de pull droppé (hasard) pendant ce test
     await p.waitForFunction(() => G.phase === 'play' && disc.mode === 'held', null, { timeout: 20000 });
     const ck = await p.evaluate(() => ({ ck: G.checkT, can: canThrow(), holder: disc.holder.team === G.me }));
+    await p.evaluate(() => { window.dropChance = window.__dc; });
     t.ok(ck.ck > 1 && !ck.can && ck.holder, 'à la réception : check, on ne peut pas encore lancer', ck);
     await p.waitForFunction(() => G.checkT === 0, null, { timeout: 6000 }).catch(() => { });
     t.ok(await p.evaluate(() => G.checkT === 0), 'le check se termine tout seul');
@@ -75,7 +77,7 @@ export default async function (t) {
     const m1 = await look();
     t.ok(await p.isVisible('#coachTip') && /mark/.test(await p.textContent('#ctText')), 'première mark : Coach Disco explique l’aimant et comment la quitter', await p.textContent('#ctText'));
     t.ok(m1.on && m1.mk && m1.dx > 0.6 && m1.dx < 1.6 && Math.abs(m1.dy - 1.2) < 0.5 && m1.stall > 0, 'dans le cercle : ton joueur se cale devant le porteur, du côté visé, et compte le stall', m1);
-    await p.evaluate(() => { G.pointer.y = disc.holder.y - 1.2; }); await gwait(1.0);
+    await p.evaluate(() => { G.pointer.y = disc.holder.y - 1.2; }); await gwait(1.5);
     const m2 = await look();
     t.ok(m2.on && Math.abs(m2.dy + 1.2) < 0.5 && Math.sign(m2.shade) !== Math.sign(m1.shade), 'viser de l’autre côté : la mark ferme l’autre côté', { m1, m2 });
     await p.evaluate(() => { const h = disc.holder; G.pointer.x = h.x + dirOf(h.team) * 12; G.pointer.y = h.y + 8; }); await gwait(1.6);

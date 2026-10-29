@@ -81,7 +81,7 @@ function blockOdds(p, diving, reachOver) {
   return 0.92 - 0.42 * r * r;
 }
 function update(dt) {
-  if (G.ms) G.ms.ptT += dt;
+  if (G.ms) { G.ms.ptT += dt; const T = G.ms.team[G.off]; if (T) T.pos += dt; }
   const off = G.off, def = 1 - off, dir = dirOf(off);
   const atk = TEAMS[off], dfn = TEAMS[def];
   const [ax, ay] = anchorFor(off), [dax, day] = anchorFor(def);   // chaque équipe se place selon l'arrivée qu'elle devine

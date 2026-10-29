@@ -428,6 +428,34 @@ export default async function (t, { quick }) {
   t.ok(cal.ok === 20, 'Callahan à chaque fois (20 essais)', cal.ok);
   t.ok(cal.fx.stars >= 30 && cal.fx.rings >= 3 && /CALLAHAN/.test(cal.fx.msg), 'un Callahan se fête en grand : ondes dorées, pluie d’étoiles, « 🦅 CALLAHAN ! »', cal.fx);
 
+  t.group('Écran de fin : stats par équipe, par humain, moment du match');
+  const es = R(`(() => {
+    const humans0 = G.humans; newMatchStats(); G.score = [0, 0]; G.receiving = 0; newWind(); startPoint();
+    for (let f = 0; f < 6000 && !(G.phase === 'play' && disc.mode === 'held'); f++) __tick();
+    for (let f = 0; f < 600; f++) __tick();
+    const pos = G.ms.team[0].pos + G.ms.team[1].pos;
+    // deux humains dans la même équipe : chacun sa ligne (lanceur, receveur qui marque, défenseur)
+    const A = TEAMS[0][0], B = TEAMS[0][1], D = TEAMS[1][2];
+    G.humans = [{ id: 0, team: 0, sel: A, name: 'Théo' }, { id: 4, team: 0, sel: B, name: 'Léa' }, { id: 7, team: 1, sel: D, name: 'Max' }];
+    G.off = 0; disc.mode = 'held'; disc.holder = A; msThrow(A, 40, 'normal');
+    Object.assign(disc, { thrower: A, sx: 10, sy: 10, pull: false }); B.x = 50; B.y = 10; B.dive = 0.2;
+    msCatch(B, true);
+    disc.thH = 0; msTurnover(A, 'block', D);
+    const sum = matchSummary(); G.humans = humans0; B.dive = 0;
+    return { pos, hu: sum.hu, mom: sum.mom, pl: 'pl' in sum, team: sum.team[0] };
+  })()`);
+  const hu = id => es.hu.find(o => o.id === id) || {};
+  t.ok(es.pos > 5, 'temps de possession compté pendant le jeu', es.pos);
+  t.ok(hu(0).thr === 1 && hu(0).comp === 1 && hu(0).ast === 1 && hu(0).to === 1 && hu(4).gol === 1 && hu(7).blk === 1 && hu(0).n === 'Théo',
+    'chaque humain a sa ligne : passe décisive, point, block, perte', es.hu);
+  t.ok(es.mom && es.mom.k === 'layout' && /Léa/.test(es.mom.txt) && /Théo/.test(es.mom.txt) && /40 m/.test(es.mom.txt), 'moment du match : le point en plongeon, avec les pseudos', es.mom);
+  t.ok(!es.pl, 'plus de stats par joueur IA dans le résumé', es.pl);
+  const eca = R(`(() => { newMatchStats(); G.score = [0, 0]; G.receiving = 0; newWind(); startPoint();
+    for (let f = 0; f < 6000 && !(G.phase === 'play' && disc.mode === 'held'); f++) __tick();
+    const d = 1 - G.off, p = TEAMS[d][0]; let x = 0; while (x < W && !inScoreZone(d, x)) x += 1;
+    x += 3; disc.x = x; disc.y = H / 2; p.x = x; p.y = H / 2; interception(p); return matchSummary().mom; })()`);
+  t.ok(eca && eca.k === 'callahan', 'un Callahan devient le moment du match', eca);
+
   t.group('Mode infini');
   const lv = R(`[0, 0.5, 1, 2, 4, 6, 9, 11, 14, 20].map(d => endlessLevel(d))`);
   let mono = true;

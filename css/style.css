@@ -185,17 +185,37 @@ body.touch #coachTip{bottom:10px;font-size:12.5px;padding:6px 10px;max-width:min
 #tutoSkip{background:var(--accent);color:#1e293b;font-weight:700}
 @media (max-height:520px){#tutoBox{font-size:12px;padding:4px 8px;margin-bottom:4px}.tutoHead b{font-size:14px}#tutoBox .tutoHead{min-width:0}}
 /* résumé de fin de match */
-#summary{background:var(--bg);border-radius:10px;padding:10px 12px;margin:6px 0 10px;font-size:14px}
-.sumScore{text-align:center;font-size:18px;font-weight:700}
-.sumScore b{font-size:24px;margin:0 8px;color:var(--text)}
-.sumDots{display:flex;gap:4px;justify-content:center;margin:6px 0}
-.sumDots i{width:12px;height:12px;border-radius:50%;display:inline-block;border:1px solid rgba(255,255,255,.3)}
-.mvp{text-align:center;margin:6px 0 8px;color:var(--text)}
-.sumT,.sumP{width:100%;border-collapse:collapse;font-size:13px;margin-top:4px}
-.sumT td,.sumT th,.sumP td,.sumP th{padding:3px 6px;text-align:center;border-bottom:1px solid var(--panel2)}
-.sumT td:first-child,.sumP td:first-child,.sumP th:first-child{text-align:left;color:var(--muted)}
-.sumP td:first-child{color:var(--text)}
-#summary details{margin:8px 0 0}
+#summary{margin:6px 0 10px;font-size:14px;display:flex;flex-direction:column;gap:8px}
+/* panneau du score, comme celui du haut de l'écran (chiffres en points lumineux) */
+.sumBoard{display:flex;align-items:stretch;justify-content:center;font-family:'Barlow Condensed',system-ui,sans-serif;font-weight:800;font-size:20px;
+  background:#0b1020;border:2px solid #1c2438;border-radius:10px;overflow:hidden;box-shadow:0 6px 18px rgba(0,0,0,.35)}
+.sbName{flex:1;min-width:0;display:flex;align-items:center;justify-content:flex-end;padding:6px 12px;text-transform:uppercase;letter-spacing:.5px;color:var(--tc);border-left:6px solid var(--tc);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sbName.r{justify-content:flex-start;border-left:0;border-right:6px solid var(--tc)}
+.sbLed{display:flex;align-items:center;background:#05070d;padding:6px 10px;box-shadow:inset 0 0 8px rgba(0,0,0,.9)}
+.sbLed .led{height:34px}
+.sbSep{display:flex;align-items:center;background:#05070d;color:#7c5c12;padding:0 2px}
+.sumDots{display:flex;gap:4px;justify-content:center;flex-wrap:wrap}
+.sumDots i{width:11px;height:11px;border-radius:50%;display:inline-block;border:1px solid rgba(255,255,255,.3)}
+.smHead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;font-family:'Barlow Condensed',system-ui,sans-serif;font-weight:800;text-transform:uppercase;letter-spacing:.6px;font-size:14px;color:#ffd23f;margin-bottom:4px}
+.smHead b{font-weight:700;color:var(--text);text-transform:none;letter-spacing:0;font-size:15px}
+.sumMom,.sumCmp,.sumH{background:#0b1020;border:1px solid #1c2438;border-radius:10px;padding:9px 12px}
+.sumMom{border-left:5px solid var(--tc)}
+.sumMom p{margin:0;color:var(--text);line-height:1.35}
+.sumMom small{color:var(--muted)}
+.sumMom .ghost{margin-top:8px;width:auto;padding:6px 12px}
+.cmp{display:grid;grid-template-columns:1fr auto 1fr;align-items:baseline;gap:2px 8px;padding:4px 0}
+.cmp > span{font-variant-numeric:tabular-nums;font-weight:600;color:var(--muted)}
+.cmp > span:last-of-type{text-align:right}
+.cmp > span.best{color:var(--text);font-weight:800}
+.cmp small{font-weight:400;color:var(--muted);font-size:12px}
+.cmp em{font-style:normal;text-align:center;color:var(--muted);font-size:13px}
+.cbar{grid-column:1/-1;display:flex;height:4px;border-radius:2px;overflow:hidden;background:var(--panel2);opacity:.85}
+.cbar b{display:block;height:100%}
+.huCard{display:grid;grid-template-columns:repeat(6,1fr);gap:2px 6px;padding:6px 0 6px 10px;border-left:4px solid var(--tc);margin:6px 0}
+.huCard > b{grid-column:1/-1;color:var(--tc);font-family:'Barlow Condensed',system-ui,sans-serif;font-weight:800;font-size:17px;letter-spacing:.3px}
+.huCard span{display:flex;flex-direction:column;font-size:11px;color:var(--muted);text-align:center}
+.huCard span i{font-style:normal;font-weight:800;font-size:16px;color:var(--text);font-variant-numeric:tabular-nums}
+@media (max-width:480px){.huCard{grid-template-columns:repeat(3,1fr)} .sumBoard{font-size:16px} .sbLed .led{height:26px}}
 #summary small{color:var(--muted)}
 #replayB{width:100%;margin:0 0 8px}
 /* tournoi */
@@ -505,3 +525,25 @@ body.touch #hud .score #s0,body.touch #hud .score #s1{padding:2px 5px}
 #ringUI .ringT{position:absolute;transform:translate(-50%,-50%);font-family:'Barlow Condensed',system-ui,sans-serif;font-weight:800;font-size:34px;color:#fff;text-shadow:0 3px 10px rgba(0,0,0,.6);white-space:nowrap;pointer-events:none}
 body.touch #ringUI .ringB{font-size:16px;padding:8px 12px}
 body.touch #ringUI .ringT{font-size:24px}
+/* menus dans le style du panneau de score : fond de panneau sombre, liseré, titres condensés en capitales,
+   petit trait lumineux ambre sous les titres, gros boutons avec un liseré de couleur à gauche */
+.card,.askCard{--panel:#161f30;background:var(--panel);border:2px solid #222c42}
+.card h1{text-transform:uppercase;letter-spacing:.8px}
+.card h1::after,.card h2::after{content:'';display:block;width:42px;height:3px;margin-top:4px;border-radius:2px;background:#ffd23f;box-shadow:0 0 6px rgba(255,190,60,.7)}
+.card h2{font-family:'Barlow Condensed',system-ui,sans-serif;font-weight:800;text-transform:uppercase;letter-spacing:.6px}
+.bigbtn{font-family:'Barlow Condensed',system-ui,sans-serif;font-weight:800;font-size:19px;letter-spacing:.3px;background:#0f1626;border:1px solid #243049;border-left:4px solid #3b4a66}
+.bigbtn small{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;letter-spacing:0}
+.bigbtn:hover{border-left-color:#ffd23f}
+.bigbtn.primary{border-color:#ffd23f;border-left-color:#b8860b}
+body.touch .bigbtn{font-size:17px}
+#ovTitle{text-transform:uppercase}
+/* Mon style : le dossier du terrain (choix du temps) */
+.stile.open{box-shadow:0 0 0 2px rgba(255,210,63,.35)}
+.stile .sfold{color:#ffd23f;font-weight:700}
+.sfolder{background:#0b1020;border:1px solid #243049;border-left:4px solid #ffd23f;border-radius:10px;padding:8px 10px;margin:2px 0 10px;animation:sfIn .2s ease-out}
+@keyframes sfIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.sfHead{font-family:'Barlow Condensed',system-ui,sans-serif;font-weight:800;font-size:16px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.sfHead span{color:var(--muted);text-transform:none;font-weight:700}
+.stile.wx .sfield{position:relative;display:grid;place-items:center}
+.stile.wx .sfield{overflow:hidden} .stile.wx .sfield s{position:absolute;inset:0}
+.stile.wx .sfield i{position:relative;font-style:normal;font-size:22px}

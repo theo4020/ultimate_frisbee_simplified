@@ -22,14 +22,16 @@ function inScreen(fn) { const t = isoText; ctx.save(); screenT(); try { fn(); } 
 // joueurs en vue inclinée : le même personnage chibi que vu de dessus (maillot arrondi aux couleurs de l'équipe,
 // grosse tête, cheveux, bras courts), vu de face ou de dos selon où il regarde ; (sx, sy) = ses pieds à l'écran
 function drawChibi(p, sx, sy, r, face, o) {
-  const k = (p.team * 5 + p.i) % 5, u = r * (o.scale || 1), sw = o.swing || 0;
+  const L = lookOf(p), u = r * (o.scale || 1), sw = o.swing || 0;
   const fx = Math.cos(face), back = Math.sin(face) < -0.25;   // il regarde vers le fond : on le voit de dos
   const light = (G.teams[p.team] || {}).color === 'blanc' || (G.teams[p.team] || {}).color === 'jaune';
   ctx.save(); ctx.lineCap = 'round';
   ctx.strokeStyle = '#1e293b'; ctx.lineWidth = Math.max(2, u * 0.26);                 // jambes courtes
   ctx.beginPath(); ctx.moveTo(sx - u * 0.22, sy - u * 0.35); ctx.lineTo(sx - u * 0.24 - sw * u * 0.14, sy - u * 0.05);
   ctx.moveTo(sx + u * 0.22, sy - u * 0.35); ctx.lineTo(sx + u * 0.24 + sw * u * 0.14, sy - u * 0.05); ctx.stroke();
-  const arm = (ax, ay, bx, by) => { ctx.strokeStyle = SKIN[k]; ctx.lineWidth = Math.max(2, u * 0.26); ctx.beginPath(); ctx.moveTo(sx + ax * u, sy - ay * u); ctx.lineTo(sx + bx * u, sy - by * u); ctx.stroke(); };
+  ctx.fillStyle = L.shoe; ctx.beginPath(); ctx.ellipse(sx - u * 0.26 - sw * u * 0.14, sy - u * 0.03, u * 0.17, u * 0.09, 0, 0, 7);
+  ctx.ellipse(sx + u * 0.26 + sw * u * 0.14, sy - u * 0.03, u * 0.17, u * 0.09, 0, 0, 7); ctx.fill();   // chaussures
+  const arm = (ax, ay, bx, by) => { ctx.strokeStyle = L.skin; ctx.lineWidth = Math.max(2, u * 0.26); ctx.beginPath(); ctx.moveTo(sx + ax * u, sy - ay * u); ctx.lineTo(sx + bx * u, sy - by * u); ctx.stroke(); };
   if (o.jumping) { arm(-0.45, 0.95, -0.6, 1.75); arm(0.45, 0.95, 0.6, 1.75); }      // bras levés
   else if (o.throwing) { arm(-0.45 * fx, 0.9, -0.62 * fx, 0.55); arm(0.45 * fx, 0.9, 1.05 * fx, 0.85); }
   else { arm(-0.48, 0.9, -0.62 - sw * 0.2, 0.5); arm(0.48, 0.9, 0.62 + sw * 0.2, 0.5); }
@@ -42,11 +44,16 @@ function drawChibi(p, sx, sy, r, face, o) {
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(String(p.i + 1), sx, sy - u * 0.74); ctx.textBaseline = 'alphabetic';
   }
   const hy = sy - u * 1.62, hr = u * 0.56;                   // grosse tête
-  ctx.fillStyle = SKIN[k]; circle(sx, hy, hr); ctx.fill();
-  ctx.fillStyle = hairOf(p, HAIR[k]);
-  if (back) { circle(sx, hy - u * 0.04, hr * 0.98); ctx.fill(); }                    // de dos : les cheveux
+  const hc = hairOf(p, L.hair);
+  if (L.cut === 'long') { ctx.fillStyle = hc; roundRectPath(sx - hr * 1.0, hy - hr * 0.2, hr * 2.0, hr * 1.25, hr * 0.5); ctx.fill(); }   // cheveux longs sur les épaules
+  ctx.fillStyle = L.skin; circle(sx, hy, hr); ctx.fill();
+  ctx.fillStyle = hc;
+  if (L.cut === 'queue') { ctx.beginPath(); ctx.ellipse(sx - fx * hr * 0.9, hy + hr * 0.2, hr * 0.28, hr * 0.5, 0, 0, 7); ctx.fill(); }
+  if (L.cut === 'chignon') { circle(sx - fx * hr * 0.3, hy - hr * 0.95, hr * 0.38); ctx.fill(); }
+  if (L.cut === 'rase') ctx.globalAlpha = 0.5;
+  if (back) { circle(sx, hy - u * 0.04, hr * 0.98); ctx.fill(); ctx.globalAlpha = 1; }                    // de dos : les cheveux
   else {
-    ctx.beginPath(); ctx.arc(sx, hy - u * 0.05, hr * 1.0, Math.PI * 1.05, Math.PI * 1.95); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.arc(sx, hy - u * 0.05, hr * (L.cut === 'boucles' ? 1.12 : 1.0), Math.PI * 1.05, Math.PI * 1.95); ctx.closePath(); ctx.fill(); ctx.globalAlpha = 1;
     const ex = sx + fx * hr * 0.32, ey = hy + hr * 0.12;     // les yeux, tournés vers où il regarde
     ctx.fillStyle = '#0f172a'; circle(ex - hr * 0.25, ey, Math.max(1, hr * 0.11)); ctx.fill(); circle(ex + hr * 0.25, ey, Math.max(1, hr * 0.11)); ctx.fill();
   }

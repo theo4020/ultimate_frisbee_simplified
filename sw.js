@@ -33,6 +33,7 @@ const FILES = [
   'js/pull.js',
   'js/replay.js',
   'js/scenery.js',
+  'js/weather.js',
   'js/moments.js',
   'js/render.js',
   'js/render-iso.js',

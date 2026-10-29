@@ -25,10 +25,12 @@ function replaySave(team) {
   // on ajoute quelques images figées sur le point
   for (let i = 0; i < 12; i++) fr.push(fr[fr.length - 1]);
   REPLAY.last = { frames: fr, team, score: G.score.slice() };
+  if (G.ms && G.ms.momFresh) { REPLAY.mom = REPLAY.last; G.ms.momFresh = false; }   // le plus beau point du match : gardé pour l'écran de fin
 }
-function startReplay() {
-  if (!REPLAY.last || G.net) return;
-  G.replay = { t: 0, frames: REPLAY.last.frames, team: REPLAY.last.team };
+function startReplay(which) {
+  const R = which === 'mom' ? REPLAY.mom : REPLAY.last;
+  if (!R || G.net) return;
+  G.replay = { t: 0, frames: R.frames, team: R.team };
   $('overlay').classList.add('hidden');
 }
 function stopReplay() {
@@ -47,7 +49,7 @@ function drawReplay() {
   const cw = canvas.width / dpr, ch = canvas.height / dpr, r = 0.95 * S;
   screenT(); if (isoView()) { ctx.fillStyle = '#0b1220'; ctx.fillRect(0, 0, cw, ch); }
   groundT();                                                // vue inclinée : le ralenti se joue au sol (vu de biais)
-  drawField();
+  drawField(); drawWeatherGround();
   const lerp = (a, b) => a + (b - a) * u;
   const iso = isoView(), stand = [];
   players.forEach((p, j) => {
