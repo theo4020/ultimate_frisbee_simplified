@@ -45,12 +45,12 @@ function texTile(kind) {
   } else return (TEX[k] = null);
   return (TEX[k] = cv);
 }
-const TEX_OF = { gazon: 'herbe', stade: 'herbe', prairie: 'herbe', plage: 'sable', terre: 'terre', neige: 'neige', salle: 'bois' };
+const TEX_OF = { gazon: 'herbe', herbes: 'herbe', stade: 'herbe', prairie: 'herbe', plage: 'sable', terre: 'terre', neige: 'neige', salle: 'bois' };
 
 // ---------- le terrain (dans le contexte c, à l'échelle S0, sans caméra) ----------
 // tR : l'équipe qui marque à droite (en-but de droite à sa couleur)
 function paintField(c, F, fid, tR, S0, cw, ch) {
-  const px = x => (x + M) * S0, py = y => (y + M) * S0, grass = F === FIELDS.gazon || F === FIELDS.stade;
+  const px = x => (x + M) * S0, py = y => (y + M) * S0, grass = F === FIELDS.gazon || F === FIELDS.stade || F === FIELDS.herbes;
   c.fillStyle = F.bg; c.fillRect(0, 0, cw, ch);
   if (fid === 'plage') {                                         // plage : du sable autour, la mer seulement en haut
     c.fillStyle = '#c9a66b'; c.fillRect(0, py(-1.1), cw, ch);
@@ -287,7 +287,7 @@ function grassFrames(dense) {
 }
 function drawGrassWind(fid) {
   if (fid === 'plage') { drawSea(); return; }
-  if (fid !== 'gazon' && fid !== 'stade' && fid !== 'prairie') return;
+  if (fid !== 'herbes' && fid !== 'prairie') return;            // (gazon, stade : tondus ras, pas de brins qui dépassent)
   const dense = fid === 'prairie', fr = grassFrames(dense), wk = Math.min(1, (G.wind ? G.wind.kmh : 10) / 25);
   if (!fr.length) return;
   const n = fr.length < GRASS.N ? 1 : GRASS.N;                    // (images pas encore toutes prêtes : la première)
@@ -332,7 +332,7 @@ function drawSea() {
 }
 
 // ---------- au sol : herbe soulevée par un plongeon, poussière ou neige en courant ----------
-const GROUND_BITS = { prairie: ['#4ade80', '#16a34a', '#86efac'], gazon: ['#4ade80', '#16a34a', '#86efac'], stade: ['#22c55e', '#15803d'], plage: ['#e7c98f', '#c9a66b'], terre: ['#fb923c', '#c2410c'], neige: ['#ffffff', '#e2e8f0'], salle: null, espace: null };
+const GROUND_BITS = { prairie: ['#4ade80', '#16a34a', '#86efac'], herbes: ['#4ade80', '#16a34a', '#86efac'], gazon: ['#4ade80', '#16a34a', '#86efac'], stade: ['#22c55e', '#15803d'], plage: ['#e7c98f', '#c9a66b'], terre: ['#fb923c', '#c2410c'], neige: ['#ffffff', '#e2e8f0'], salle: null, espace: null };
 function groundFx(p, spd) {
   const cols = GROUND_BITS[styleOf('field')]; if (!cols || G.attract && Math.random() < 0.5) return;
   const dt = FX.dt || 0.016;
@@ -341,7 +341,7 @@ function groundFx(p, spd) {
     FX.parts.push({ x: p.x, y: p.y, vx: Math.cos(a) * v + p.vx * 0.3, vy: Math.sin(a) * v + p.vy * 0.3, t: 0, life: 0.45 + Math.random() * 0.3,
       color: cols[Math.floor(Math.random() * cols.length)], size: 0.16 + Math.random() * 0.1, kind: 'dot', rot: 0, vr: 0, drag: 3.5 });
   }
-  const loose = cols && !['gazon', 'stade', 'prairie'].includes(styleOf('field'));   // sable, terre, neige : petite poussière au sprint
+  const loose = cols && !['gazon', 'herbes', 'stade', 'prairie'].includes(styleOf('field'));   // sable, terre, neige : petite poussière au sprint
   if (loose && spd > 5 && !(p.dive > 0) && Math.random() < dt * 6)
     FX.parts.push({ x: p.x - p.vx * 0.04, y: p.y - p.vy * 0.04, vx: -p.vx * 0.1, vy: -p.vy * 0.1, t: 0, life: 0.5, color: cols[1] || cols[0], size: 0.32, kind: 'dot', rot: 0, vr: 0, drag: 4 });
 }

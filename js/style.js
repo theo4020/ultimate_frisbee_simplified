@@ -20,6 +20,7 @@ const STYLES = {
   ],
   field: [
     { id: 'gazon', name: 'Gazon' },
+    { id: 'herbes', name: 'Gazon et herbes folles', ach: 'goal' },
     { id: 'stade', name: 'Stade de nuit', ach: 'win' },
     { id: 'plage', name: 'Plage', ach: 'pull' },
     { id: 'salle', name: 'Salle', ach: 'layout' },
@@ -63,6 +64,7 @@ const STYLE_CAT = { disc: 'Disque', field: 'Terrain', jersey: 'Maillot de ton é
 // couleurs des terrains : fond, bandes, lignes, ciel (vue inclinée), opacité des en-buts
 const FIELDS = {
   gazon: { bg: '#1a6b35', s: ['#1f7a3d', '#22843f'], line: 'rgba(255,255,255,.85)', sky: ['#0b1220', '#14301f'], ez: 0.22, txt: 'rgba(255,255,255,.35)', vg: 0.22 },
+  herbes: { bg: '#1a6b35', s: ['#1f7a3d', '#22843f'], line: 'rgba(255,255,255,.85)', sky: ['#0b1220', '#14301f'], ez: 0.22, txt: 'rgba(255,255,255,.35)', vg: 0.22 },
   stade: { bg: '#0b2a17', s: ['#14532d', '#166534'], line: 'rgba(255,255,255,.95)', sky: ['#020617', '#0b1a12'], ez: 0.25, txt: 'rgba(255,255,255,.4)', vg: 0.5, lights: true },
   plage: { bg: '#0ea5e9', s: ['#d6b77c', '#cfae70'], line: 'rgba(30,58,138,.75)', sky: ['#7dd3fc', '#bae6fd'], ez: 0.28, txt: 'rgba(30,41,59,.45)', vg: 0.12 },
   salle: { bg: '#334155', s: ['#b9783f', '#c4844a'], line: 'rgba(255,255,255,.9)', sky: ['#1e293b', '#334155'], ez: 0.3, txt: 'rgba(255,255,255,.45)', vg: 0.18, planks: true },
