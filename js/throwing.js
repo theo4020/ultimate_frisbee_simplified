@@ -64,7 +64,7 @@ function throwDisc(h, tx, ty, curve, errScale, kind) {
   const [sx, sy] = releasePoint(h, ax, ay), [cx, cy] = ctrlFor(sx, sy, ax, ay, curve);
   disc.mark = (G.tuto && !G.tuto.mark) || G.practice ? null : markOf(h);           // elle peut se fendre vers le disque au lâcher (sim.js)
   Object.assign(disc, { mode: 'air', holder: null, sx, sy, ex, ey, cx, cy,
-    t: 0, dur, thrower: h, team: h.team, rolled: new Set(), kind: loftLabel(loft), loft, curveV: curve, pull: false,
+    t: 0, dur, thrower: h, team: h.team, rolled: new Set(), bd: new Map(), wa: windAlong(sx, sy, ex, ey), kind: loftLabel(loft), loft, curveV: curve, pull: false,
     rx: tx + wx0, ry: ty + wy0 });                                          // là où la passe devait arriver (sans erreur)
   // cône d'incertitude (voir CONE) : rayon au lâcher, décalage du cercle affiché, et l'idée que chacun se fait de l'arrivée
   const r0 = coneR(d, curve, loft, wx0, wy0), oa = rand(0, Math.PI * 2), om = r0 * CONE.SHOW * Math.sqrt(Math.random());
@@ -105,7 +105,8 @@ function laneSlack(h, aimX, aimY, tx, ty, curve, opp, kind, side, misread) {
   // la mark : là où elle est, ou là où elle sera si le porteur doit encore pivoter (elle suit son pivot)
   const mk = disc.holder === h ? markOf(h) : null, piv = side !== undefined && Math.abs((h.pivY || 0) - side) > 0.35;
   const mark = mk ? { p: mk, ...(([x, y]) => ({ x, y }))(piv ? markSpotFor(mk.team, h.x, h.y, side) : [mk.x, mk.y]) } : null;
-  return pathSlack({ sx, sy, cx, cy, ex: tx, ey: ty, dur, z: u => heightAt(u, peak, kind, len, curve) }, opp, mark, misread || 0);
+  const wa = windAlong(sx, sy, tx, ty);
+  return pathSlack({ sx, sy, cx, cy, ex: tx, ey: ty, dur, z: u => heightAt(u, peak, kind, len, curve, wa) }, opp, mark, misread || 0);
 }
 
 // release = fin de l'armement d'une passe haute : on choisit la meilleure passe haute à cet instant

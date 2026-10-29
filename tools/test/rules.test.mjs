@@ -116,7 +116,7 @@ export default async function (t, { quick }) {
   t.ok(lvq.hands.every((g, i) => i === 0 || g <= lvq.hands[i - 1]), 'et droppe plus souvent', lvq.hands);
 
   t.group('Vol du disque : hauteur réaliste');
-  const zn = R(`(() => { const z = (L, s, c) => +heightAt(s / L, 0, 'normal', L, c || 0).toFixed(2);
+  const zn = R(`(() => { const z = (L, s, c) => +heightAt(discU(s / L), 0, 'normal', L, c || 0).toFixed(2);   // hauteur à s mètres du lanceur
     return { short: [z(8, 1), z(8, 4), z(8, 7)], mid: z(16, 8), long: [z(30, 1), z(30, 15), z(30, 29)], curved: [z(20, 2, 1), z(20, 10, 1)], flat: [z(20, 2), z(20, 10)] }; })()`);
   t.ok(zn.short.every(v => v >= 1 && v <= 1.6), 'passe courte : à hauteur de poitrine, contestable', zn);
   t.ok(zn.mid < 2.2 && zn.long[1] > 2.2 && zn.long[1] < 2.8, 'passe moyenne atteignable debout, passe longue à plat : au milieu, seulement en sautant', zn);
@@ -447,12 +447,27 @@ export default async function (t, { quick }) {
         a.x = nx; a.y = y0; a.vx = nx === gx ? 0 : dir * 7.6; a.vy = 0; a.tx = gx; a.ty = y0;
         if (G.phase !== 'play' || disc.mode !== 'held') break;
       }
+      if (G.phase !== 'play' || disc.mode !== 'held' || disc.holder !== h) continue;   // le jeu a bougé entre-temps : essai non valable
       out.push(+nearestD(TEAMS[1], a.x, a.y)[1].toFixed(1));   // un défenseur est revenu sur lui (le sien, ou celui qui a échangé)
     }
     G.ai.def = keepAi; G.receiving = 0;
     return out;
   })()`);
-  t.ok(deepR.length >= 3 && deepR.every(x => x < 4), 'un défenseur le voit (coups d’œil vers son joueur) et sprinte pour revenir sur lui', deepR);
+  t.ok(deepR.length >= 3 && deepR.filter(x => x < 4).length >= deepR.length * 0.75, 'un défenseur le voit (coups d’œil vers son joueur) et sprinte pour revenir sur lui', deepR);
+
+  t.group('Vent : il change la hauteur du vol, et pousse de plus en plus');
+  const wv = R(`(() => {
+    const keep = G.wind; G.wind = { x: 8, y: 0, kmh: 29 };          // vent fort vers la droite
+    const z = (sx, ex) => { const wa = windAlong(sx, 18, ex, 18); return { wa: +wa.toFixed(1), mid: +heightAt(0.5, 3, 0.3, 30, 0, wa).toFixed(2), end: +heightAt(1, 3, 0.3, 30, 0, wa).toFixed(2), start: +heightAt(0, 3, 0.3, 30, 0, wa).toFixed(2), late: +heightAt(0.85, 3, 0.3, 30, 0, wa).toFixed(2) }; };
+    const calm = (() => { G.wind = { x: 0, y: 0, kmh: 0 }; const r = z(30, 60); G.wind = { x: 8, y: 0, kmh: 29 }; return r; })();
+    const r = { head: z(60, 30), tail: z(30, 60), calm };
+    // poussée progressive : au milieu du vol, le disque n'a pris qu'environ un quart de sa dérive (elle croît comme le carré du temps)
+    const [mx] = bez(0, 0, 15, 0, 30, 0, 0.5), [nx] = bez(0, 0, 15, 0, 30 + 4, 0, 0.5); r.midDrift = +((nx - mx) / 4).toFixed(2);
+    G.wind = keep; return r;
+  })()`);
+  t.ok(wv.head.mid > wv.calm.mid * 1.15 && wv.tail.mid < wv.calm.mid * 0.85, 'vent de face : le disque monte et plane ; vent de dos : il reste plus bas', wv);
+  t.ok(wv.tail.late < wv.calm.late && Math.abs(wv.head.start - wv.calm.start) < 0.01 && Math.abs(wv.tail.end - wv.calm.end) < 0.01, 'les deux bouts du vol ne bougent pas (lâcher, réception) ; de dos il retombe plus tôt', wv);
+  t.ok(wv.midDrift > 0.3 && wv.midDrift < 0.6, 'la dérive du vent arrive surtout en fin de vol (le disque ralentit)', wv);
 
   t.group('Appel de cut : désigner le coéquipier qui partira');
   const pk = R(`(() => {

@@ -100,6 +100,7 @@ function ctrlFor(sx, sy, ex, ey, curve) {
 // (vitesse ×(1 + DISC_EASE) au lâcher, ×(1 - DISC_EASE) à l'arrivée ; même durée totale)
 const DISC_EASE = 0.5;
 const discS = u => u + DISC_EASE * u * (1 - u);
+const discU = s => (DISC_EASE ? ((1 + DISC_EASE) - Math.sqrt((1 + DISC_EASE) ** 2 - 4 * DISC_EASE * s)) / (2 * DISC_EASE) : s);   // l'inverse : instant où il a fait cette part du trajet
 function bez(sx, sy, cx, cy, ex, ey, u) {
   u = discS(u);
   const a = 1 - u;
@@ -121,7 +122,27 @@ const PASS_Z0 = 1.0, PASS_ZEND = 1.3, CURVE_RISE = 0.8;
 const cruiseZ = (L, curve) => { const c = Math.min(1, Math.abs(curve || 0));
   return clamp(1.4 + Math.max(0, L - 10) * (0.055 + 0.025 * c), 1.4, 3 + c) + CURVE_RISE * c; };
 const smooth = x => x * x * (3 - 2 * x);                   // montée progressive : le disque reste longtemps à portée près du lanceur
-function heightAt(u, peak, kind, len, curve) {
+// vent le long de la passe (m/s) : > 0 = vent de face, < 0 = vent de dos (vent moyen, sans les rafales)
+function windAlong(sx, sy, ex, ey) {
+  if (typeof G !== 'undefined' && G.tuto) return 0;            // tutoriel : vols réglés à l'avance, sans effet du vent sur la hauteur
+  const dx = ex - sx, dy = ey - sy, d = Math.hypot(dx, dy) || 1, w = (typeof G !== 'undefined' && G.wind) || { x: 0, y: 0 };
+  return -((w.x || 0) * dx + (w.y || 0) * dy) / d;
+}
+// le vent change la hauteur du vol : de face, le disque prend de la portance (il monte et plane) ; de dos, il en perd
+// (il reste bas et retombe plus tôt). wa : vent de face en m/s (windAlong). Les deux bouts du vol ne bougent pas.
+const WIND_LIFT = { K: 0.045, MIN: 0.6, MAX: 1.45 };
+// (u : part du temps de vol, comme bez ; la hauteur suit la position sur la trajectoire, donc elle aussi « part vite »)
+function heightAt(u, peak, kind, len, curve, wa) {
+  if (kind !== 'pull') u = discS(u);                            // (le pull : il monte et redescend en suivant le temps, il plane)
+  const z = heightAt0(u, peak, kind, len, curve);
+  if (!wa) return z;
+  const f = clamp(1 + WIND_LIFT.K * wa, WIND_LIFT.MIN, WIND_LIFT.MAX), z0 = kind === 'pull' ? PASS_Z0 : PASS_Z0, z1 = kind === 'pull' ? PASS_Z0 : PASS_ZEND;
+  const chord = z0 + (z1 - z0) * u;
+  // vent de dos : la chute arrive plus tôt (la fin du vol s'écrase un peu plus que le début)
+  const g = f >= 1 ? f : 1 - (1 - f) * (0.6 + 0.8 * u);
+  return Math.max(0.15, chord + (z - chord) * g);
+}
+function heightAt0(u, peak, kind, len, curve) {
   if (kind === 'pull') return PASS_Z0 + (Math.max(peak, 3) - PASS_Z0) * Math.sin(Math.PI * u);
   const l = loftOf(kind), w = loftW(l);
   // passe normale : une vraie courbe (pas de palier) ; elle monte en ralentissant jusqu'au sommet, puis redescend vers le
@@ -139,7 +160,7 @@ function heightAt(u, peak, kind, len, curve) {
 }
 const discLen = () => dist(disc.sx, disc.sy, disc.ex, disc.ey);
 const discKind = () => (disc.pull ? 'pull' : disc.loft);
-const discZ = u => heightAt(u, discPeak(), discKind(), discLen(), disc.curveV);
+const discZ = u => heightAt(u, discPeak(), discKind(), discLen(), disc.curveV, disc.wa || 0);
 // Course : temps pour parcourir d mètres en partant à la vitesse v0 dans cette direction (négative : il s'éloigne),
 // avec l'accélération et le freinage de RUN, jusqu'à la vitesse de pointe vmax
 function runTime(d, v0, vmax) {

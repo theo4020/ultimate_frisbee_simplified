@@ -76,8 +76,12 @@ function avoidDir(p, ux, uy, l) {
 }
 
 // chance de contrer un disque à portée : ~90 % en plein dans les bras, ~50 % du bout des doigts
-function blockOdds(p, diving, reachOver) {
-  const reach = reachOver || (diving ? DIVE_R : ARM_R), r = clamp(dist(p.x, p.y, disc.x, disc.y) / reach, 0, 1);
+// (disque qui passe dans le corps du défenseur, debout, à hauteur : contre assuré — sinon on le verrait « traverser » le joueur)
+const BODY_R = 0.55;
+function blockOdds(p, diving, reachOver, dAt) {
+  const d = dAt !== undefined ? dAt : dist(p.x, p.y, disc.x, disc.y);   // dAt : distance la plus courte du disque au défenseur
+  if (!diving && d < BODY_R) return 1;
+  const reach = reachOver || (diving ? DIVE_R : ARM_R), r = clamp(d / reach, 0, 1);
   return 0.92 - 0.42 * r * r;
 }
 function update(dt) {
@@ -245,15 +249,21 @@ function update(dt) {
       fxEvent('duel', disc.x, disc.y, b.team);
       defStop(b, 'Duel : défendu !'); return;
     }
+    if (disc.bd) for (const p of disc.bd.keys()) if (!disc.rolled.has(p) && !blockers.includes(p) && !(p.down > 0)) blockers.push(p);   // le disque s'éloigne déjà : son essai, au plus près
     for (const p of blockers) {
+      // on attend que le disque soit au plus près du défenseur (il entre dans sa portée par le bord) avant de tenter le contre :
+      // sinon un disque qui lui passait en plein dans les bras ne comptait que comme « du bout des doigts »
+      const dNow = dist(p.x, p.y, disc.x, disc.y), bd = disc.bd || (disc.bd = new Map()), prev = bd.get(p);
+      if (!catcher && !G.tuto && u < 0.98 && dNow >= BODY_R && !(p.jump > 0) && !(p.dive > 0) && (prev === undefined || dNow < prev - 0.005)) { bd.set(p, dNow); continue; }   // (plongeon, saut : tout de suite)
       disc.rolled.add(p);
+      const dMin = prev !== undefined ? Math.min(prev, dNow) : dNow;
       const r = Math.random(), diving = p.dive > 0, L = aiLvl(p.team);
       if (!diving && p.jump > 0 && disc.z > REACH_STAND) {      // saut au bon endroit, au bon moment : contre assuré
         achEvent('skyblock', p.team);
         if (G.tuto) G.tuto.blocked = true;
         defStop(p, 'Block en l’air !'); return;
       }
-      if (r < (G.tuto && (G.tuto.wall || G.tuto.sure || diving) ? 1 : (diving ? 0.95 : L.block) * blockOdds(p, diving, p === disc.mark && disc.t < MARK_LUNGE_T ? ARM_R + MARK_LUNGE : 0))) {   // tutoriel : bien placé = contré
+      if (r < (G.tuto && (G.tuto.wall || G.tuto.sure || diving) ? 1 : (bo => (bo >= 1 ? 1 : (diving ? 0.95 : L.block) * bo))(blockOdds(p, diving, p === disc.mark && disc.t < MARK_LUNGE_T ? ARM_R + MARK_LUNGE : 0, dMin)))) {   // tutoriel : bien placé = contré
         if (diving) { achEvent('layoutblock', p.team); if (G.tuto) G.tuto.lblock = true; } defStop(p, diving ? 'Layout block !' : p.jump > 0 ? 'Block en l’air !' : 'Block !'); return; }
     }
     if (catcher) {

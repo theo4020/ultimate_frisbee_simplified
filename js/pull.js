@@ -197,7 +197,7 @@ function launchPull(ax, ay, curve, q) {
   const [wx, wy] = drift(dur);
   const [cx, cy] = ctrlFor(h.x, h.y, aimX, aimY, curve);
   Object.assign(disc, { mode: 'air', holder: null, sx: h.x, sy: h.y, ex: aimX + wx, ey: aimY + wy, cx, cy,
-    t: 0, dur, thrower: h, team: r, rolled: new Set(), pull: true, kind: 'normal', loft: LOFT.N, curveV: curve, cone: 0, coneOff: null });
+    t: 0, dur, thrower: h, team: r, rolled: new Set(), bd: new Map(), pull: true, wa: 0, kind: 'normal', loft: LOFT.N, curveV: curve, cone: 0, coneOff: null });
   players.forEach(p => { p.guess = null; });
   disc.intended = nearest(TEAMS[r], disc.ex, disc.ey);
   G.phase = 'play'; G.off = r; G.pullPending = true; G.pull = null;

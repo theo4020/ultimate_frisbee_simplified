@@ -91,7 +91,7 @@ function drawCone(G_, u0, r, alpha, zf) {
 }
 // trajectoire colorée selon la hauteur (visée du lanceur, pull) ; une passe en vol ne montre que son cône (drawCone)
 function drawFlightPath(sx, sy, cx, cy, ex, ey, peak, u0, alpha, width, dash, kind, curve) {
-  const step = 0.025, len = dist(sx, sy, ex, ey), iso = isoView(), keep = isoText;
+  const step = 0.025, len = dist(sx, sy, ex, ey), iso = isoView(), keep = isoText, wa = kind === 'pull' ? 0 : windAlong(sx, sy, ex, ey);
   const Gp = v => bez(sx, sy, cx, cy, ex, ey, v);
   if (iso) {                                                 // vue inclinée : l'ombre de la trajectoire au sol…
     ctx.save(); ctx.strokeStyle = `rgba(10,30,18,${0.55 * alpha})`; ctx.lineWidth = width + 1; ctx.lineCap = 'round'; ctx.beginPath();
@@ -103,11 +103,11 @@ function drawFlightPath(sx, sy, cx, cy, ex, ey, peak, u0, alpha, width, dash, ki
   }
   ctx.save(); if (iso) screenT();                             // … et la trajectoire elle-même, à sa vraie hauteur
   ctx.lineWidth = width; ctx.lineCap = 'round'; if (dash) ctx.setLineDash(dash);
-  const P = u => { const [x, y] = Gp(Math.min(1, u)); return iso ? [X(x), IY(y, heightAt(Math.min(1, u), peak, kind, len, curve))] : [X(x), Y(y)]; };
+  const P = u => { const [x, y] = Gp(Math.min(1, u)); return iso ? [X(x), IY(y, heightAt(Math.min(1, u), peak, kind, len, curve, wa))] : [X(x), Y(y)]; };
   let [px, py] = P(u0);
   for (let u = u0 + step; u <= 1.0001; u += step) {
     const [x, y] = P(u), um = u - step / 2;
-    ctx.strokeStyle = heightColor(heightAt(um, peak, kind, len, curve), alpha);
+    ctx.strokeStyle = heightColor(heightAt(um, peak, kind, len, curve, wa), alpha);
     ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(x, y); ctx.stroke();
     px = x; py = y;
   }

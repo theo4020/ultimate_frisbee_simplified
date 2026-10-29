@@ -8,6 +8,11 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
+  { id: 38, date: '2026-10-29', tag: 'Jeu', title: 'Un disque plus vrai 🌬️',
+    body: `• Le disque <b>part vite et ralentit</b> pendant sa course (même durée de vol qu'avant).<br>
+      • Le <b>vent</b> change la hauteur du vol : <b>de face</b>, le disque monte et plane ; <b>de dos</b>, il reste bas et
+      retombe plus tôt. Sa poussée se fait surtout sentir en fin de vol.<br>
+      • Un disque qui passe <b>en plein dans un défenseur</b> est contré à coup sûr (il ne le traverse plus).` },
   { id: 37, date: '2026-10-29', tag: 'Jeu', title: 'Choisis qui fait le cut 🎯',
     body: `Avec le disque, fais ton appel de cut <b>sur un coéquipier</b> (clic droit, ou tap au téléphone) : un anneau doré
       le désigne, et c'est <b>lui</b> qui partira à ton prochain appel, là où tu le demandes. Un 2e appel sur lui annule.<br>
