@@ -104,8 +104,9 @@ function markSpotFor(defT, ax, ay, shade) {
 function anchor() {
   if (disc.mode === 'air') {                                   // (la vraie arrivée : pour les règles et l'affichage, pas pour les IA)
     if (!disc.pull) return [disc.ex, disc.ey];
-    const out = disc.ex < 0 || disc.ex > W || disc.ey < 0 || disc.ey > H;   // pull : sorti → brick ; dans l'en-but → ramené à la ligne
-    if (out) return [brickX(G.receiving), H / 2];
+    const out = disc.ex < 0 || disc.ex > W || disc.ey < 0 || disc.ey > H;   // pull : sorti → brick ou point de sortie (le meilleur) ; dans l'en-but → ramené à la ligne
+    if (pullerOffside()) { const b = offsideSpot(); return [b.x, b.y]; }
+    if (out) { const [cx, cy] = crossPoint(), c = pullOutChoice(cx, cy).spot; return [c.x, c.y]; }
     const L = lineSpot(disc.ex, disc.ey); return L ? [L.x, L.y] : [disc.ex, disc.ey];
   }
   if ((disc.mode === 'carry' || disc.mode === 'ground') && G.carryTo) return [G.carryTo.x, G.carryTo.y];   // ramené à la ligne / au brick : le jeu reprendra là

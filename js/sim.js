@@ -183,7 +183,7 @@ function update(dt) {
     h.pivY = pv + clamp(pt - pv, -dt / pT, dt / pT);
     // la mark suit le pivot avec son temps de réaction (une feinte la décale du mauvais côté)
     const mk = G.marker;
-    // feinte : la mark IA réagit à l'intention du porteur (le pivot qui commence) plus qu'au pivot réel, d'autant plus
+    // feinte : la mark IA réagit à l'intention du thrower (le pivot qui commence) plus qu'au pivot réel, d'autant plus
     // qu'elle lit mal le jeu ; un aller-retour rapide de pivot (feinte) la fait partir du mauvais côté, une bonne mark mord moins
     if (mk && !userControls(mk)) {
       const Lm = aiLvl(mk.team), rd = Lm.k ? Lm.k.read : 0.5, bite = clamp(1.15 - rd, 0.2, 1);
@@ -218,7 +218,7 @@ function update(dt) {
         const lunge = p === disc.mark && disc.t < MARK_LUNGE_T ? MARK_LUNGE : 0;   // la mark se fend vers le disque au lâcher
         const reach = diving ? DIVE_R : ARM_R + lunge, high = diving ? REACH_DIVE : REACH_STAND + lift;
         if (u > 0.03 && d < reach && disc.z < high && !disc.rolled.has(p)) blockers.push(p);
-      } else if (inField(disc.x, disc.y) && (u > 0.45 || dist(disc.x, disc.y, disc.sx, disc.sy) > 3) && (p.dive > 0 ? (d < DIVE_R + 0.2 && disc.z < REACH_DIVE + 0.3) : (d < ARM_R + 0.2 && disc.z < REACH_STAND + 0.1 + lift))) {   // pas de réception tant que le disque est dehors (ni dans les 3 premiers mètres)
+      } else if (!(disc.pull && pullerOffside()) && inField(disc.x, disc.y) && (u > 0.45 || dist(disc.x, disc.y, disc.sx, disc.sy) > 3) && (p.dive > 0 ? (d < DIVE_R + 0.2 && disc.z < REACH_DIVE + 0.3) : (d < ARM_R + 0.2 && disc.z < REACH_STAND + 0.1 + lift))) {   // pas de réception tant que le disque est dehors (ni dans les 3 premiers mètres)
         if (d < cd) { cd = d; catcher = p; }
       }
     }
@@ -266,7 +266,7 @@ function update(dt) {
       if (G.practice) { practiceLanded(disc.ex, disc.ey); return; }
       if (disc.pull) {
         const [c, cd] = nearestD(TEAMS[disc.team], disc.ex, disc.ey);
-        if (c && cd < 1.9 && inField(disc.ex, disc.ey)) catchDisc(c); else pullLanded(disc.ex, disc.ey);
+        if (c && cd < 1.9 && inField(disc.ex, disc.ey) && !pullerOffside()) catchDisc(c); else pullLanded(disc.ex, disc.ey);   // hors-jeu de l'équipe qui pulle : on le laisse tomber
         return;
       }
       const out = disc.ex < 0 || disc.ex > W || disc.ey < 0 || disc.ey > H;

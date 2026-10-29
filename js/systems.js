@@ -20,13 +20,13 @@
 const SYS_MAX = 12, SYS_STEPS = 12;
 // consignes d'un poste d'attaque (formation perso) ; la première valeur est celle par défaut
 const POSTE_OPTS = {
-  role: { cutter: 'Coupeur', dump: 'Relais', deep: 'Profond' },
-  zone: { auto: 'Au choix de l’IA', open: 'Côté open', break: 'Côté break', deep: 'En profondeur', under: 'Vers le disque' },
+  role: { cutter: 'Cutter', dump: 'Handler', deep: 'Deep' },
+  zone: { auto: 'Au choix de l’IA', open: 'Côté open', break: 'Côté break', deep: 'Deep', under: 'Under (vers le disque)' },
   when: { auto: 'Dès que l’espace s’ouvre', turn: 'À son tour', catch: 'Juste après une réception', stall: 'Quand le stall monte', never: 'Jamais (reste placé)' },
-  after: { auto: 'Au choix de l’IA', back: 'Revient à sa place', clear: 'Dégage côté break', chain: 'Reste où il est' },
+  after: { auto: 'Au choix de l’IA', back: 'Revient à sa place', clear: 'Clear côté break', chain: 'Reste où il est' },
   fake: { yes: 'Avec feinte', no: 'Sans feinte' }
 };
-const POSTE_LBL = { role: 'Rôle', zone: 'Zone de coupe', when: 'Quand couper', after: 'Après la coupe', fake: 'Feinte' };
+const POSTE_LBL = { role: 'Rôle', zone: 'Zone du cut', when: 'Quand cutter', after: 'Après le cut', fake: 'Feinte' };
 const POSTE_DEF = { role: 'cutter', zone: 'auto', when: 'auto', after: 'auto', fake: 'yes' };
 const cleanPoste = o => { const r = {}; for (const k in POSTE_OPTS) r[k] = o && POSTE_OPTS[k][o[k]] ? o[k] : POSTE_DEF[k]; return r; };
 const SYS_F = [-12, 40], SYS_S = [-18, 18];                    // limites des positions dans l'éditeur
@@ -49,10 +49,10 @@ const MARK_OPTS = {
 };
 const MARK_LBL = { force: 'Force', dist: 'Distance de la mark', double: 'Double team' };
 const DEF_OPTS = {
-  mission: { zone: 'Zone', man: 'Individuelle' },
-  side: { auto: 'Entre lui et le disque', deep: 'Côté profondeur', open: 'Côté open', break: 'Côté break' },
+  mission: { zone: 'Zone', man: 'Man' },
+  side: { auto: 'Entre lui et le disque', deep: 'Côté deep', open: 'Côté open', break: 'Côté break' },
   gap: { normal: 'Normal', serre: 'Serré', lache: 'Lâche' },
-  behave: { shift: 'Suit l’attaquant proche', place: 'Garde sa place', deep: 'Suit le plus profond', press: 'Presse le porteur' },
+  behave: { shift: 'Suit l’attaquant proche', place: 'Garde sa place', deep: 'Suit le plus deep', press: 'Presse le thrower' },
   help: { oui: 'Peut aider', non: 'N’aide jamais' },
   swap: { oui: 'Peut échanger', non: 'Garde son joueur' }
 };

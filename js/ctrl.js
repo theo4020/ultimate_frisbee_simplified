@@ -61,7 +61,7 @@ function renderCtrl() {
     <h2>Téléphone : avec le disque</h2>
     <div class="row"><span>Lancer</span>${b('sling', true, 'Lance-pierre (tirer en arrière)')}${b('sling', false, 'Glisser vers la cible')}</div>
     <div class="row"><span>Courbe et hauteur</span>${b('throwUI', 'gestes', 'Gestes')}${b('throwUI', 'boutons', 'Curseurs sur le bord')}</div>
-    <div class="desc">${CTRL.throwUI === 'gestes' ? 'Pendant la visée, un 2<sup>e</sup> doigt glisse : sur le côté = courbe ; vers ton porteur = passe plus haute, vers la cible = plus basse. Taper ton porteur : changer de pied.'
+    <div class="desc">${CTRL.throwUI === 'gestes' ? 'Pendant la visée, un 2<sup>e</sup> doigt glisse : sur le côté = courbe ; vers ton joueur = passe plus haute, vers la cible = plus basse. Taper ton joueur : changer de pied.'
       : 'Courbe et hauteur : curseurs sur le bord droit. Pied de pivot : bouton sous les curseurs.'} Taper ailleurs appelle un cut.</div>
     <h2>Téléphone : sans le disque (défense, attaque à plusieurs)</h2>
     <div class="row"><span>Déplacement</span>${b('move', 'tap', 'Taper / glisser')}${b('move', 'follow', 'Suivre le doigt')}${b('move', 'joystick', 'Joystick et boutons')}</div>
@@ -72,7 +72,7 @@ function renderCtrl() {
     <div class="desc">Effets : lancers, réceptions, sifflet… Une petite musique dans les menus (et en fond pendant les matchs si tu veux). Le public applaudit les points et les beaux gestes, réagit aux blocks et aux drops (à 0 : plus de public). Le bouton 🔊 en haut coupe tout.</div>
     <h2>Défense</h2>
     <div class="row"><span>Mark aimantée</span>${b('markAssist', true, 'Oui')}${b('markAssist', false, 'Non')}</div>
-    <div class="desc">${CTRL.markAssist ? 'Dans le cercle du porteur, ton joueur se cale tout seul face à lui : déplace-toi à gauche ou à droite pour fermer un côté. Vise plus loin (ou change de joueur) pour quitter la mark, comme en match.' : 'Ton joueur suit toujours ta souris ou ton doigt, même en mark.'}</div>
+    <div class="desc">${CTRL.markAssist ? 'Dans le cercle du thrower, ton joueur se cale tout seul face à lui : déplace-toi à gauche ou à droite pour fermer un côté. Vise plus loin (ou change de joueur) pour quitter la mark, comme en match.' : 'Ton joueur suit toujours ta souris ou ton doigt, même en mark.'}</div>
     <h2>Clavier</h2>
     ${KEY_ACTIONS.map(([a, l]) => `<div class="row"><span>${l}</span><button class="kbtn${keyWait === a ? ' on' : ''}" data-a="${a}">${keyWait === a ? 'Appuie sur une touche…' : keysOf(a).map(keyName).join(' / ')}</button></div>`).join('')}
     <div class="desc">La souris vise et lance (clic maintenu). Clic sur un coéquipier : tu le prends. Molette : hauteur de la passe (pendant le pull : courbe). Clic droit : avec le disque, appel d’un cut ; sinon saut (en défense, ou pour ton receveur pendant le vol) ; 1 à 5 prennent aussi un joueur.</div>

@@ -348,7 +348,7 @@ export default async function (t, { quick }) {
   t.group('Tutoriel : contrer une passe haute');
   const tj = R(`(() => {
     const keepH = G.humans, keepS = G.series; G.series = null; G.humans = [{ id: 0, team: 0, sel: null }]; G.myId = 0; syncMe();
-    tutoStart(); tutoGo(TUTO_STEPS.findIndex(s => s.title === 'Contrer une passe haute')); tutoPlayStep();
+    tutoStart(); tutoGo(TUTO_STEPS.findIndex(s => s.title === 'Blocker une passe haute')); tutoPlayStep();
     const msgs = []; let last = '', cue = -1;
     for (let f = 0; f < 60 * 8 && !G.tuto.done; f++) {
       const me = TEAMS[0][0]; Object.assign(G.pointer, { x: me.x, y: me.y, last: G.time, active: true });
@@ -427,6 +427,34 @@ export default async function (t, { quick }) {
   })()`);
   t.ok(cal.ok === 20, 'Callahan à chaque fois (20 essais)', cal.ok);
   t.ok(cal.fx.stars >= 30 && cal.fx.rings >= 3 && /CALLAHAN/.test(cal.fx.msg), 'un Callahan se fête en grand : ondes dorées, pluie d’étoiles, « 🦅 CALLAHAN ! »', cal.fx);
+
+  t.group('Pull sorti : brick seulement s’il fait gagner du terrain (WFDF 7.12), hors-jeu (7.5.2)');
+  const po = R(`(() => {
+    const out = [];
+    for (const r of [0, 1]) {
+      G.receiving = r; G.offside = null; const d = dirOf(r), gl = goalLine(r), b = brickX(r);
+      const deep = pullOutChoice(gl + d * 40, -1), short = pullOutChoice(gl + d * 6, H + 1), ez = pullOutChoice(gl - d * 5, -1);
+      out.push({ r, deep: deep.brick ? 'brick' : +deep.spot.x.toFixed(1), want: gl + d * 40, short: short.brick, ez: ez.brick, ezx: ez.spot.x, b });
+    }
+    G.receiving = 0; G.offside = { team: 1 }; const off = offsideSpot(); G.offside = null;
+    return { out, off, brick0: brickX(0) };
+  })()`);
+  t.ok(po.out.every(o => o.deep === o.want), 'pull sorti loin chez l’adversaire : repris là où il est sorti (pas de brick qui fait reculer)', po.out);
+  t.ok(po.out.every(o => o.short && o.ez && o.ezx === o.b), 'pull sorti près de son en-but (ou dedans) : brick', po.out);
+  t.ok(po.off.x === po.brick0 && po.off.y > 18 && po.off.y < 19, 'hors-jeu de l’équipe qui pulle : brick', po);
+  const pl = R(`(() => {                                      // hors-jeu de l'équipe qui pulle : personne n'attrape le pull
+    let caught = 0, n = 0;
+    for (let k = 0; k < 6; k++) {
+      G.score = [0, 0]; G.receiving = k % 2; newWind(); startPoint();
+      for (let f = 0; f < 6000 && G.phase !== 'pull'; f++) __tick();
+      for (let f = 0; f < 6000 && !(G.phase === 'play' && disc.pull); f++) { if (G.phase === 'pull' && !G.offside) G.offside = { team: 1 - G.receiving }; __tick(); }
+      for (let f = 0; f < 6000 && disc.mode === 'air'; f++) __tick();
+      n++; if (disc.mode !== 'ground') caught++;                // il est par terre (personne ne l'a attrapé), en attente d'être ramassé
+    }
+    const res = { caught, n, mode: disc.mode, carry: G.carryTo, brick: brickX(G.receiving) };
+    G.offside = null; G.receiving = 0; return res;
+  })()`);
+  t.ok(pl.caught === 0 && pl.carry && Math.abs(pl.carry.x - pl.brick) < 0.6, 'hors-jeu de l’équipe qui pulle : le pull n’est pas attrapé, le disque repart du brick', pl);
 
   t.group('Écran de fin : stats par équipe, par humain, moment du match');
   const es = R(`(() => {
@@ -509,7 +537,8 @@ export default async function (t, { quick }) {
   const cn = R(`(() => {
     G.score = [0, 0]; G.receiving = 0; newWind(); startPoint();
     for (let f = 0; f < 3000 && !(G.phase === 'play' && disc.mode === 'held' && disc.holder && !disc.pull); f++) __tick();
-    const h = disc.holder, out = { n: 0, facile: 0, difficile: 0, cone: 0, end: 0, seenStart: 0 };
+    const h = disc.holder.team === 0 ? disc.holder : TEAMS[0][0], out = { n: 0, facile: 0, difficile: 0, cone: 0, end: 0, seenStart: 0 };   // lanceur des Bleus : la défense est l'IA réglée par le niveau
+    G.off = 0;
     for (let k = 0; k < 40; k++) {
       for (const lv of ['facile', 'difficile']) {
         G.form.level = lv; holdDisc(h); throwDisc(h, h.x + dirOf(h.team) * 25, h.y, 0, 1, 0.3);

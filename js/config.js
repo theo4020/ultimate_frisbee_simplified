@@ -80,11 +80,11 @@ const PEERJS_URLS = ['https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.5/peerjs
 
 const PLAYS = {
   none: 'Pas de play.',
-  huck: 'Le coupeur le plus en avant et le plus libre (★) part tout de suite en profondeur. Lance long, devant lui.',
-  split: 'Deux coupeurs (1) partent en même temps vers le disque, un côté open et un côté break. Prends celui qui est libre (côté break, il faut de la courbe).',
+  huck: 'Le cutter le plus en avant et le plus libre (★) part tout de suite en deep. Lance long, devant lui.',
+  split: 'Deux cutters (1) partent en même temps vers le disque, un côté open et un côté break. Prends celui qui est libre (côté break, il faut de la courbe).',
   give: 'Le joueur le plus en arrière vient à côté de toi (1) : passe-lui le disque et file aussitôt vers l’avant (2) pour recevoir le retour.',
-  flood: 'Iso : tout le monde dégage côté break, un seul coupeur (1) attaque l’open side, d’abord vers toi puis en profondeur.',
-  swing: 'Le joueur le plus en arrière se place derrière toi côté break (1). Dès qu’il a le disque, un coupeur (2) attaque l’autre côté.'
+  flood: 'Iso : tout le monde dégage côté break, un seul cutter (1) attaque l’open side, d’abord vers toi puis en deep.',
+  swing: 'Le joueur le plus en arrière se place derrière toi côté break (1). Dès qu’il a le disque, un cutter (2) attaque l’autre côté.'
 };
 const DPLAYS = {
   none: 'Pas de play : ta défense de base dès le début.',
@@ -98,12 +98,12 @@ const PLAY_NAMES = { none: 'aucun', huck: 'Huck', split: 'Double cut', give: 'Gi
 const NAMES = { vert: 'Vertical stack', ho: 'Horizontal stack', side: 'Side stack', man: 'Man', zone: 'Zone', clam: 'Clam', mix: 'Défense perso',
   haut: 'force haut', bas: 'force bas', middle: 'force middle', straight: 'straight up' };
 const DESCS = {
-  vert: 'Les coupeurs s’alignent au centre et attaquent l’espace libre (vers toi ou en profondeur), un à la fois, puis retournent au bout du stack.',
-  ho: 'Trois coupeurs en largeur, chacun dans son couloir. Ils attaquent l’espace que la défense laisse libre.',
+  vert: 'Les cutters s’alignent au centre et attaquent l’espace libre (under ou deep), un à la fois, puis retournent au bout du stack.',
+  ho: 'Trois cutters en largeur, chacun dans son couloir. Ils attaquent l’espace que la défense laisse libre.',
   man: 'Chaque défenseur suit son attaquant et se place côté open pour couper les passes. La mark impose la force choisie.',
   side: 'Les cutters s’alignent le long de la ligne côté break : tout l’open side reste libre pour les cuts. Très lisible, mais la défense sait de quel côté ça arrive.',
-  zone: 'Un cup de 3 joueurs autour du disque, un middle au centre et un deep en profondeur. En zone, la mark force toujours middle.',
-  clam: 'Hybride : la mark, deux défenseurs qui gênent les under cuts devant le disque, et deux deep qui se partagent la profondeur. Les hucks deviennent très durs ; l’attaque doit avancer à petites passes, patiemment.',
+  zone: 'Un cup de 3 joueurs autour du disque, un middle au centre et un deep au fond. En zone, la mark force toujours middle.',
+  clam: 'Hybride : la mark, deux défenseurs qui gênent les under cuts devant le disque, et deux deep qui se partagent le fond. Les hucks deviennent très durs ; l’attaque doit avancer à petites passes, patiemment.',
   haut: 'La mark bloque le bas : le handler est obligé de lancer vers le haut du terrain, où tes défenseurs l’attendent.',
   bas: 'La mark bloque le haut : le handler est obligé de lancer vers le bas du terrain, où tes défenseurs l’attendent.',
   middle: 'La mark se place côté ligne : le handler est obligé de jouer vers le centre du terrain.',
@@ -150,9 +150,9 @@ const DEFAULT_TEAMS = [{ name: 'Bleus', color: 'bleu' }, { name: 'Rouges', color
 // Mini-tournoi : trois adversaires de plus en plus forts
 // style : stratégies qu'ils choisissent, goût pour les hucks et les passes hautes, bluff (armer une passe haute pour feinter)
 const SERIES = [
-  { name: 'Écureuils', color: 'orange', level: 'facile', blurb: 'Une équipe sympa qui débute : petites passes, défense en individuelle. Idéal pour se chauffer.',
+  { name: 'Écureuils', color: 'orange', level: 'facile', blurb: 'Une équipe sympa qui débute : petites passes, défense man. Idéal pour se chauffer.',
     style: { off: ['vert'], def: ['man'], force: ['haut', 'bas'], play: ['none', 'none', 'give'], dplay: ['none'], huck: 0.5, high: 0.4, bluff: 0 } },
-  { name: 'Faucons', color: 'violet', level: 'normal', blurb: 'Des chasseurs de profondeur : ils lancent long dès qu’un cutter s’échappe. Protège le deep !',
+  { name: 'Faucons', color: 'violet', level: 'normal', blurb: 'Des spécialistes du huck : ils lancent long dès qu’un cutter s’échappe. Protège le deep !',
     style: { off: ['vert', 'side'], def: ['man', 'zone'], force: ['haut', 'bas', 'middle'], play: ['huck', 'huck', 'split', 'flood'], dplay: ['none', 'safety'], huck: 1.9, high: 0.8, bluff: 0.05 } },
   { name: 'Titans', color: 'noir', level: 'difficile', blurb: 'Les champions en titre : zone étouffante, mark agressive, et des passes hautes avec du bluff.',
     style: { off: ['ho', 'vert'], def: ['zone', 'clam', 'man'], force: ['straight', 'haut', 'bas'], play: ['swing', 'split', 'huck', 'none'], dplay: ['double', 'junk', 'none'], huck: 1.1, high: 2.2, bluff: 0.35 } }

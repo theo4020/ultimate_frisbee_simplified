@@ -90,9 +90,9 @@ function updateHud() {
     + ' · <i>' + K('pivot') + '</i> pied de pivot · <i>clic droit sur le terrain</i> appel de cut · <i>clic sur un coéquipier</i> le prendre'
     + ' · pendant le vol : <i>' + K('jump') + ' / clic droit</i> saut, <i>' + K('dive') + ' / clic</i> layout du receveur.'
     + ' Anneau vert = coéquipier démarqué ; pointillés = zone de stall.'
-    : '<i>Défense</i> : ton joueur (anneau jaune) suit la souris · <i>clic / ' + K('dive') + '</i> layout · <i>' + K('jump') + ' / clic droit</i> saut (contre au lâcher ou à l’arrivée)'
-    + ' · <i>' + K('switch') + '</i> switch vers le joueur en gris, <i>1 à 5</i> prendre ce joueur.' + (CTRL.markAssist ? ' En mark (dans le cercle du porteur), ton joueur se cale face à lui : gauche / droite pour fermer un côté, vise plus loin pour la quitter.' : '')
-    + ' Entre dans le cercle du porteur pour lancer le compte (un seul défenseur dedans, sinon double team).';
+    : '<i>Défense</i> : ton joueur (anneau jaune) suit la souris · <i>clic / ' + K('dive') + '</i> layout · <i>' + K('jump') + ' / clic droit</i> saut (block au lâcher ou à l’arrivée)'
+    + ' · <i>' + K('switch') + '</i> switch vers le joueur en gris, <i>1 à 5</i> prendre ce joueur.' + (CTRL.markAssist ? ' En mark (dans le cercle du thrower), ton joueur se cale face à lui : gauche / droite pour fermer un côté, vise plus loin pour la quitter.' : '')
+    + ' Entre dans le cercle du thrower pour lancer le compte (un seul défenseur dedans, sinon double team).';
   if (G.gpActive) $('hint').innerHTML = '🎮 <i>Manette</i> : stick gauche = déplacer le curseur de visée / courir (stick droit = visée fine) · A ou RT = lancer au curseur (sans le disque : saut) · B = layout · X = appel de cut au curseur (sans le disque : switch) · Y = pivot · croix ↑/↓ = hauteur de passe · LB/RB = courbe · Start = menu. ' + $('hint').innerHTML;
   $('emoBar').style.display = G.net && G.started ? '' : 'none';
   resize();
@@ -105,8 +105,8 @@ function refreshOptions() {
   const os = pickedSys('osys'), ds = pickedSys('dsys');
   $('descOff').textContent = os ? `Ta formation « ${os.name} » : chacun prend sa place et attaque l’espace libre depuis là.` : DESCS[G.form.off];
   $('descRestart').textContent = DESCS['restart_' + G.form.restart];
-  $('descFlow').textContent = G.form.flow === 'flow' ? 'Le jeu continue dès la réception : un coupeur propose tout de suite la passe suivante.'
-    : 'Après chaque passe, chacun se replace dans la formation ; on n’enchaîne que si un coupeur est déjà lancé.';
+  $('descFlow').textContent = G.form.flow === 'flow' ? 'Le jeu continue dès la réception : un cutter propose tout de suite la passe suivante.'
+    : 'Après chaque passe, chacun se replace dans la formation ; on n’enchaîne que si un cutter est déjà lancé.';
   $('descDef').textContent = ds ? `Ta défense « ${ds.name} » : ${sysInfo(ds)}, chaque défenseur suit ses consignes.` + (ds.mark.force !== 'menu' ? ` ${MARK_OPTS.force[ds.mark.force]} (choisie dans la défense).` : '') : DESCS[G.form.def];
   $('descForce').textContent = DESCS[G.form.force];
   $('rowForce').style.display = (ds ? ds.mark.force === 'menu' : G.form.def !== 'zone') ? '' : 'none';
@@ -158,7 +158,7 @@ function showLobby(err, view) {
   $('tutoBaseB').classList.toggle('primary', !tutoDone); $('tutoAdvB').classList.toggle('primary', tutoDone && !tuto2);
 const tStars = c => { const b = storeGet('uf-tuto-stars', {}) || {}, st = TUTO_COURSES[c].steps; return st.reduce((n, t) => n + (b[t] || 0), 0) + ' / ' + st.length * 3 + ' ★ · '; };
   $('tutoBaseTxt').textContent = (tutoDone ? tStars('base') : '') + 'Avec Coach Disco : se déplacer, lancer, courber, lire le cône, appeler un cut, défendre (3 minutes)';
-  $('tutoAdvTxt').textContent = (tuto2 ? tStars('adv') : '') + 'Pied de pivot, hauteur de passe, plays, duels en l’air, contre au lâcher, pull (3 minutes)';
+  $('tutoAdvTxt').textContent = (tuto2 ? tStars('adv') : '') + 'Pied de pivot, hauteur de passe, plays, duels en l’air, block au lâcher, pull (3 minutes)';
   $('seriesTxt').textContent = s.round >= SERIES.length ? 'Champion ! 🏆 Rejoue quand tu veux'
     : s.round > 0 || s.tries[0] ? `En cours : tour ${s.round + 1} sur 3 contre les ${SERIES[s.round].name}` : 'Trois matchs contre des équipes de plus en plus fortes';
   if (!G.net && !G.attract) startAttract();                     // un vrai match se joue derrière le menu
@@ -280,7 +280,7 @@ const pickedSys = k => (sysAllowed() && G.form[k] ? sysById(G.form[k]) : null);
 // menus déroulants du menu d'avant-point : classiques, puis « Mes systèmes » (attaque et défense)
 const SEL_LISTS = {
   off: [['vert', 'Vertical stack'], ['ho', 'Horizontal stack'], ['side', 'Side stack']],
-  def: [['man', 'Man (individuelle)'], ['zone', 'Zone'], ['clam', 'Clam']],
+  def: [['man', 'Man'], ['zone', 'Zone'], ['clam', 'Clam']],
   force: [['haut', 'Force haut'], ['bas', 'Force bas'], ['middle', 'Force middle'], ['straight', 'Straight up']],
   play1: [['none', 'Aucun'], ['huck', 'Huck'], ['split', 'Double cut'], ['give', 'Give and go'], ['flood', 'Iso'], ['swing', 'Dump-swing']],
   dplay: [['none', 'Aucun'], ['safety', 'Deep safety'], ['double', 'Poach'], ['junk', 'Junk']]

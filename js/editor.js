@@ -1,5 +1,5 @@
 // editor.js — « Mes systèmes » : créer, modifier, supprimer ses formations, plays et défenses.
-// Le terrain de l'éditeur montre le porteur (H) et son repère : vers la droite = vers l'en-but attaqué,
+// Le terrain de l'éditeur montre le thrower (H) et son repère : vers la droite = vers l'en-but attaqué,
 // vers le haut = côté open, vers le bas = côté break (voir systems.js).
 //  • Formation : glisser ①–④ pour les placer ; « Consignes » : rôle, zone de coupe, quand couper… de chaque poste.
 //  • Play : choisir la formation de départ, puis glisser depuis un joueur jusqu'à sa destination (courses).
@@ -35,9 +35,9 @@ function showSystems() {
 const KIND_LABEL = { off: 'Formation', play: 'Play', def: 'Défense' };
 function sysInfo(s) {
   if (s.kind === 'play') return `${s.steps.length} course${s.steps.length > 1 ? 's' : ''} · depuis ${esc(baseName(s.base))}`;
-  if (s.kind === 'off') return s.postes.filter(P => P.role === 'dump').length ? 'avec relais' : '4 coupeurs';
+  if (s.kind === 'off') return s.postes.filter(P => P.role === 'dump').length ? 'avec handler' : '4 cutters';
   const z = s.postes.filter(P => P.mission === 'zone').length;
-  return z === 4 ? 'zone' : z === 0 ? 'individuelle' : 'mixte (' + z + ' en zone)';
+  return z === 4 ? 'zone' : z === 0 ? 'man' : 'mixte (' + z + ' en zone)';
 }
 function unpickDeleted() {
   for (const k of ['osys', 'dsys']) if (G.form[k] && !sysById(G.form[k])) G.form[k] = null;
@@ -75,11 +75,11 @@ function edRender() {
   if ($('edPlay')) $('edPlay').onclick = startAnim;
   if ($('edBaseSel')) $('edBaseSel').onchange = e => { s.base = e.target.value; edRender(); };
   $('edHelp').textContent = ED.ro ? (K === 'play' ? 'Aperçu en lecture seule : ▶ Aperçu montre ses courses. Ajoute-le à tes systèmes pour le modifier.' : 'Aperçu en lecture seule. Ajoute-le à tes systèmes pour le modifier.')
-    : K === 'off' ? (ED.mode === 'place' ? 'Glisse ①–④ pour placer ta formation autour du porteur (H). Après chaque passe, le joueur le plus proche de chaque place prend ce poste.'
+    : K === 'off' ? (ED.mode === 'place' ? 'Glisse ①–④ pour placer ta formation autour du thrower (H). Après chaque passe, le joueur le plus proche de chaque place prend ce poste.'
       : 'Consignes de chaque poste. « Au choix de l’IA » : elle lit l’espace comme dans les formations du jeu.')
     : K === 'play' ? 'Les joueurs partent des places de la formation choisie. Glisse depuis un joueur (ou le bout de sa flèche) jusqu’à sa destination. Le play se joue quand tu l’appelles (Play 1 ou Play 2).'
-    : ED.mode === 'place' ? 'Glisse 1–4 pour placer tes défenseurs. En zone, il garde cette place ; en individuelle, il garde l’attaquant le plus proche de cette place. M marque le porteur.'
-    : 'Consignes de la mark et de chaque défenseur. Tu peux mélanger zone et individuelle.';
+    : ED.mode === 'place' ? 'Glisse 1–4 pour placer tes défenseurs. En zone, il garde cette place ; en man, il garde l’attaquant le plus proche de cette place. M marque le thrower.'
+    : 'Consignes de la mark et de chaque défenseur. Tu peux mélanger zone et man.';
   edCanvas().style.display = '';
   $('edSteps').innerHTML = K === 'off' ? (ED.mode === 'post' ? postesHtml(s) : '')
     : K === 'play' ? `<label class="edSetup"><input type="checkbox" id="edSetupCb"${s.setup ? ' checked' : ''}> Se mettre en place avant de partir
@@ -122,7 +122,7 @@ function postesHtml(s) {
   s.postes = (s.postes || []).concat([]).slice(0, 4); while (s.postes.length < 4) s.postes.push(cleanPoste(null));
   return '<div class="postes">' + s.postes.map((P, i) => `<div class="poste"><b>${NUM[i]} ${esc(POSTE_OPTS.role[P.role])}</b>`
     + Object.keys(POSTE_OPTS).map(k => `<label>${POSTE_LBL[k]}<select data-p="${i}" data-k="${k}">${Object.entries(POSTE_OPTS[k]).map(([v, l]) => `<option value="${v}"${v === P[k] ? ' selected' : ''}>${l}</option>`).join('')}</select></label>`).join('')
-    + '</div>').join('') + '</div><p class="net">Relais : se propose derrière le porteur et vient le chercher quand le stall monte · Profond : reste loin devant et attaque la profondeur · À son tour : dans l’ordre des postes, un seul à la fois.</p>';
+    + '</div>').join('') + '</div><p class="net">Handler : se propose derrière le thrower et vient le chercher quand le stall monte · Deep : reste loin devant et attaque le deep · À son tour : dans l’ordre des postes, un seul à la fois.</p>';
 }
 // consignes d'une défense : la mark, puis chaque défenseur (les réglages affichés dépendent de sa mission)
 function defHtml(s) {
@@ -130,7 +130,7 @@ function defHtml(s) {
   const mark = '<div class="poste"><b>M · la mark</b>' + Object.keys(MARK_OPTS).map(k => `<label>${MARK_LBL[k]}${sel(`data-mk="${k}"`, MARK_OPTS[k], s.mark[k])}</label>`).join('') + '</div>';
   return '<div class="postes">' + mark + s.postes.map((P, i) => `<div class="poste"><b>${i + 1} · ${DEF_OPTS.mission[P.mission]}</b>`
     + DEF_SHOW[P.mission].map(k => `<label>${DEF_LBL[k]}${sel(`data-dp="${i}" data-k="${k}"`, DEF_OPTS[k], P[k])}</label>`).join('') + '</div>').join('')
-    + '</div><p class="net">Individuelle : il garde l’attaquant le plus proche de sa place · Suit le plus profond : un deep qui protège le fond · Presse le porteur : se rapproche du disque (hors du cercle) · Double team : le défenseur le plus proche qui peut aider vient presser le porteur.</p>';
+    + '</div><p class="net">Man : il garde l’attaquant le plus proche de sa place · Suit le plus deep : un deep qui protège le fond · Presse le thrower : se rapproche du disque (hors du cercle) · Double team : le défenseur le plus proche qui peut aider vient presser le thrower.</p>';
 }
 function bindSteps(s) {
   const q = sel => $('edSteps').querySelectorAll(sel);

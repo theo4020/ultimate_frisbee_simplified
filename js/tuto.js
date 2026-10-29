@@ -17,13 +17,13 @@ const pickLine = a => a[Math.floor(Math.random() * a.length)];
 // ---------- conseils de Coach Disco, la première fois qu'on rencontre un petit jeu ----------
 // une bulle en haut de l'écran, sans mettre le jeu en pause ni bloquer de clic (elle part seule) ; une seule fois par conseil
 const TIPS = {
-  start: () => `Trois feux rouges, puis le vert : ${isTouchUI() ? 'tape l’écran' : 'clic ou Espace'} pile au vert et ton équipe part en trombe. Trop tôt ? Hors-jeu, et je siffle.`,
+  start: () => `Compte à rebours : 3, 2, 1… PULL ! ${isTouchUI() ? 'Tape l’écran' : 'Clic ou Espace'} pile au « PULL » et ton équipe part en trombe. Trop tôt ? Hors-jeu, et je siffle.`,
   offside: () => 'Hors-jeu ! Quand ton équipe pulle, l’adversaire repart du brick ; quand elle reçoit, elle attend que la défense se place. On ne vole pas le départ !',
   // les bases, pour qui n'a pas fait le tutoriel
   throw: () => isTouchUI() ? (CTRL.sling ? 'Le disque est à toi ! Tire le doigt en arrière, à l’opposé d’un coéquipier démarqué (anneau vert), et lâche.' : 'Le disque est à toi ! Glisse le doigt vers un coéquipier démarqué (anneau vert) et lâche pour lancer.')
     : 'Le disque est à toi ! Vise un coéquipier démarqué (anneau vert), maintiens le clic et relâche pour lancer.',
   defend: () => 'En défense, tu diriges le joueur à l’anneau jaune : ' + (isTouchUI() ? (CTRL.move === 'joystick' ? 'pose le doigt et glisse pour courir, bouton Layout pour plonger sur le disque.' : 'tape ou glisse pour le déplacer, glisse vite pour plonger.') : 'il suit ta souris, clic pour plonger sur le disque.'),
-  mark: () => `Te voilà en mark ! ${isTouchUI() ? 'Gauche, droite' : 'Souris à gauche, à droite'} : tu fermes un côté du porteur. Pour la quitter, vise plus loin, je ne te retiens pas.`
+  mark: () => `Te voilà en mark ! ${isTouchUI() ? 'Gauche, droite' : 'Souris à gauche, à droite'} : tu fermes un côté du thrower. Pour la quitter, vise plus loin, je ne te retiens pas.`
 };
 let tipT = 0, tipSeen = null, tutoC = { t: -99, v: false };
 function coachTip(k) {
@@ -139,7 +139,7 @@ const TUTO_STEPS = [
     ctx: 'throw',
     text: {
       mouse: () => `Ta mark ferme le côté de ton coéquipier (sa zone rouge). <b>${keysOf('pivot').map(keyName).join(' / ')}</b> change de pied : le disque passe de l’autre côté de la mark. Pivote, attends que le disque soit passé de l’autre côté, puis lance.`,
-      touch: 'Ta mark ferme le côté de ton coéquipier (sa zone rouge). <b>Tape ton porteur</b> pour changer de pied : le disque passe de l’autre côté de la mark. Pivote, attends que le disque soit passé de l’autre côté, puis lance.',
+      touch: 'Ta mark ferme le côté de ton coéquipier (sa zone rouge). <b>Tape ton joueur</b> pour changer de pied : le disque passe de l’autre côté de la mark. Pivote, attends que le disque soit passé de l’autre côté, puis lance.',
       joy: 'Ta mark ferme le côté de ton coéquipier (sa zone rouge). Un appui sur <b>Pivot</b> (bord droit) change de pied : le disque passe de l’autre côté de la mark. Pivote, attends que le disque soit passé de l’autre côté, puis lance.',
       pad: 'Ta mark ferme le côté de ton coéquipier (sa zone rouge). Un appui sur <b>Y</b> change de pied : le disque passe de l’autre côté de la mark. Pivote, attends que le disque soit passé de l’autre côté, puis lance avec A.'
     },
@@ -167,8 +167,8 @@ const TUTO_STEPS = [
     coach: 'Un mur de défenseurs ? On passe par-dessus. Plus c’est haut, plus c’est beau… et plus ça part de travers.', par: 16,
     ctx: 'throw',
     text: {
-      mouse: () => `Un mur bloque le passage. Monte ta passe tout en haut (<b>${tutoCmd('loftUp')}</b>, jauge à côté de ton porteur), puis lance par-dessus. Plus elle est haute, plus elle vole longtemps et part de travers.`,
-      touch: 'Un mur bloque le passage. Pendant la visée, glisse un <b>2<sup>e</sup> doigt vers ton porteur</b> pour monter la passe tout en haut (jauge à côté de lui), puis lance par-dessus.',
+      mouse: () => `Un mur bloque le passage. Monte ta passe tout en haut (<b>${tutoCmd('loftUp')}</b>, jauge à côté de ton joueur), puis lance par-dessus. Plus elle est haute, plus elle vole longtemps et part de travers.`,
+      touch: 'Un mur bloque le passage. Pendant la visée, glisse un <b>2<sup>e</sup> doigt vers ton joueur</b> pour monter la passe tout en haut (jauge à côté de lui), puis lance par-dessus.',
       joy: 'Un mur bloque le passage. Monte le <b>curseur de hauteur</b> (bord droit) tout en haut, puis lance par-dessus.',
       pad: 'Un mur bloque le passage. <b>Croix ↑</b> pour monter la passe tout en haut, puis lance par-dessus avec A.'
     },
@@ -266,9 +266,9 @@ const TUTO_STEPS = [
     coach: 'Un play, c’est une chorégraphie : toi tu appelles, eux ils dansent.', par: 16,
     plays: true,                                               // les plays sont permis à cette étape
     text: {
-      mouse: () => `Tu as choisi un <b>Play 1 : Huck</b>. Appelle-le : touche <b>${tutoCmd('play1')}</b> ou bouton <b>▶ Huck</b> en haut du terrain. Le coupeur ★ part en profondeur : lance long, devant lui.`,
-      touch: 'Tu as choisi un <b>Play 1 : Huck</b>. Touche le bouton <b>▶ Huck</b> en haut du terrain : le coupeur ★ part en profondeur. Lance long, devant lui.',
-      pad: 'Tu as choisi un <b>Play 1 : Huck</b>. Appuie sur la croix <b>←</b> : le coupeur ★ part en profondeur. Lance long, devant lui.'
+      mouse: () => `Tu as choisi un <b>Play 1 : Huck</b>. Appelle-le : touche <b>${tutoCmd('play1')}</b> ou bouton <b>▶ Huck</b> en haut du terrain. Le cutter ★ part en deep : lance long, devant lui.`,
+      touch: 'Tu as choisi un <b>Play 1 : Huck</b>. Touche le bouton <b>▶ Huck</b> en haut du terrain : le cutter ★ part en deep. Lance long, devant lui.',
+      pad: 'Tu as choisi un <b>Play 1 : Huck</b>. Appuie sur la croix <b>←</b> : le cutter ★ part en deep. Lance long, devant lui.'
     },
     setup() {
       tutoReset(); G.tuto.wall = true;
@@ -293,7 +293,7 @@ const TUTO_STEPS = [
     },
     on(ev, p) {
       if (ev === 'catch' && p.team === 0) { if (G.tuto.played) tutoSuccess('Bien joué : un play bien appelé, et c’est une passe facile !'); else tutoFail('Passé, mais appelle d’abord ton play !'); }
-      if (ev === 'turnover') tutoFail(G.tuto.played ? 'Raté ! Lance un peu plus devant le coupeur ★.' : `Bloqué ! Appelle d’abord ton play (${tutoCmd('play1')} ou ▶).`);
+      if (ev === 'turnover') tutoFail(G.tuto.played ? 'Raté ! Lance un peu plus devant le cutter ★.' : `Bloqué ! Appelle d’abord ton play (${tutoCmd('play1')} ou ▶).`);
     }
   },
   {
@@ -393,14 +393,14 @@ const TUTO_STEPS = [
     }
   },
   {
-    title: 'Contrer une passe haute',
-    coach: 'Le porteur lève le disque : il prépare une passe haute. Devine quand il lâche… et saute !', par: 10,
+    title: 'Blocker une passe haute',
+    coach: 'Le thrower lève le disque : il prépare une passe haute. Devine quand il lâche… et saute !', par: 10,
     ctx: 'move',
     text: {
-      mouse: () => `Le porteur a armé une passe haute (compte à rebours en bas). Dès que <b>SAUTE !</b> s'affiche, saute (${tutoCmd('jump')} ou clic droit) : tu contres au lâcher.`,
-      touch: 'Le porteur a armé une passe haute (compte à rebours en bas). Dès que <b>SAUTE !</b> s\'affiche, <b>tape ton joueur</b> pour sauter : tu contres au lâcher.',
-      joy: 'Le porteur a armé une passe haute (compte à rebours en bas). Dès que <b>SAUTE !</b> s\'affiche, touche <b>Saut</b> : tu contres au lâcher.',
-      pad: 'Le porteur a armé une passe haute (compte à rebours en bas). Dès que <b>SAUTE !</b> s\'affiche, <b>A</b> pour sauter : tu contres au lâcher.'
+      mouse: () => `Le thrower a armé une passe haute (compte à rebours en bas). Dès que <b>SAUTE !</b> s'affiche, saute (${tutoCmd('jump')} ou clic droit) : tu blockes au lâcher.`,
+      touch: 'Le thrower a armé une passe haute (compte à rebours en bas). Dès que <b>SAUTE !</b> s\'affiche, <b>tape ton joueur</b> pour sauter : tu blockes au lâcher.',
+      joy: 'Le thrower a armé une passe haute (compte à rebours en bas). Dès que <b>SAUTE !</b> s\'affiche, touche <b>Saut</b> : tu blockes au lâcher.',
+      pad: 'Le thrower a armé une passe haute (compte à rebours en bas). Dès que <b>SAUTE !</b> s\'affiche, <b>A</b> pour sauter : tu blockes au lâcher.'
     },
     setup() {
       tutoReset(); G.tuto.level = 'facile';
@@ -431,7 +431,7 @@ const TUTO_STEPS = [
       return true;
     },
     on(ev, p) {
-      if (ev === 'turnover' && G.off === 0) { if (G.tuto.blocked) tutoSuccess('Contré au lâcher ! 💪'); else tutoFail('Passe ratée par le lanceur : on recommence.'); }
+      if (ev === 'turnover' && G.off === 0) { if (G.tuto.blocked) tutoSuccess('Contré au lâcher ! 💪'); else tutoFail('Passe ratée par le thrower : on recommence.'); }
       if (ev === 'catch' && p.team === 1) tutoFail(G.tuto.jumped ? 'Mauvais moment… recommence !' : `Il est passé : saute (${tutoCmd('jump')}) au bon moment !`);
     }
   },
@@ -457,7 +457,7 @@ const TUTO_STEPS = [
 // deux parcours : débutant (de quoi jouer un premier match) puis avancé ; les étapes sont rangées dans cet ordre
 const TUTO_COURSES = {
   base: { name: 'Débutant', steps: ['Se déplacer', 'Lancer', 'La courbe', 'Lire le cône', 'Appeler un cut', 'Changer de joueur', 'Plonger en défense'] },
-  adv: { name: 'Avancé', steps: ['Le pied de pivot', 'La hauteur de passe', 'Appeler un play', 'Duel en l’air', 'Contrer une passe haute', 'Le pull'] }
+  adv: { name: 'Avancé', steps: ['Le pied de pivot', 'La hauteur de passe', 'Appeler un play', 'Duel en l’air', 'Blocker une passe haute', 'Le pull'] }
 };
 { const order = TUTO_COURSES.base.steps.concat(TUTO_COURSES.adv.steps); TUTO_STEPS.sort((a, b) => order.indexOf(a.title) - order.indexOf(b.title)); }
 const TUTO_BASE_N = TUTO_COURSES.base.steps.length;
@@ -554,7 +554,7 @@ function tutoCmd(a, touchAlt) {
   if (a === 'play1') return inp === 'pad' ? 'croix ←' : 'bouton ▶';
   if (inp === 'pad') return { pivot: 'Y', loftUp: 'croix ↑', jump: 'A', dive: 'B', switch: 'X', curveL: 'LB', curveR: 'RB' }[a];
   if (inp === 'joy') return { pivot: 'bouton Pivot', loftUp: 'curseur de hauteur', jump: 'bouton Saut', dive: 'bouton Layout', switch: 'bouton Switch', curveL: 'curseur', curveR: 'curseur' }[a];
-  return touchAlt || { pivot: 'tape ton porteur', loftUp: '2e doigt vers ton porteur', jump: 'tape ton joueur', dive: 'glisse vite', switch: 'tape un coéquipier', curveL: '2e doigt', curveR: '2e doigt' }[a];
+  return touchAlt || { pivot: 'tape ton joueur', loftUp: '2e doigt vers ton joueur', jump: 'tape ton joueur', dive: 'glisse vite', switch: 'tape un coéquipier', curveL: '2e doigt', curveR: '2e doigt' }[a];
 }
 function tutoText(force) {
   const T = G.tuto, S = TUTO_STEPS[T.step], inp = tutoInput(S), sig = inp + JSON.stringify(CTRL);
@@ -618,7 +618,7 @@ function tutoFinish() {
   $('tutoStep').textContent = `${TUTO_COURSES[T.course].name} terminé · ${got} / ${max} ★`;
   $('tutoText').innerHTML = coachHtml(end) + '<div class="tins tstars">' + steps.map(t => `<span>${t} <b>${starStr(T.stars[t] || 0)}</b></span>`).join('') + '</div>'
     + '<div class="tins">' + (adv
-      ? 'Pied de pivot, hauteur de passe, plays, duels en l’air, contre au lâcher, pull : tu as tout vu. Dans le menu d’avant-point, choisis ta formation, ta défense, tes consignes et deux plays à appeler en jeu. Allez, viens défier mon équipe !'
+      ? 'Pied de pivot, hauteur de passe, plays, duels en l’air, block au lâcher, pull : tu as tout vu. Dans le menu d’avant-point, choisis ta formation, ta défense, tes consignes et deux plays à appeler en jeu. Allez, viens défier mon équipe !'
       : 'Tu sais te déplacer, lancer, courber, lire le cône, appeler un cut, changer de joueur et plonger : de quoi jouer ton premier match. L’avancé t’apprend ensuite à battre la mark, les plays, les duels en l’air et le pull.') + '</div>';
   $('tutoSkip').textContent = adv ? 'Défier l’équipe du coach ▶' : 'Continuer avec l’avancé ▶';
   $('tutoMatch').style.display = adv ? 'none' : '';

@@ -210,7 +210,7 @@ function runCutSequencer(t, ax, ay, dir, open, form, dt) {
   const ready = ord.filter(p => {
     if (!cutReady(p, t, restless) || (P && P.targets.includes(p))) return false;
     const sl = cutterSlot(p, t, ax, ay, dir, form);
-    // structuré : on se replace d'abord ; mais si le porteur attend déjà depuis un moment, on coupe d'où l'on est
+    // structuré : on se replace d'abord ; mais si le thrower attend déjà depuis un moment, on coupe d'où l'on est
     if (!flow && !restless && dist(p.x, p.y, sl.x, sl.y) > CUT_FROM && G.holdT < 1.2 && G.stall < 3) return false;
     const w = posteOf(p).when;
     if (w === 'never' || w === 'catch' || (w === 'stall' && G.stall < 4.5)) return false;

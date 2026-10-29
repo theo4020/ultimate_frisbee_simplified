@@ -15,7 +15,7 @@ function startCut(c, x, y, deep) {
   if ((c.poste && c.poste.fake === 'no') || (l > 0.5 && sp > 2 && (c.vx * dx + c.vy * dy) / (l * sp) > 0.5)) { c.state = 'cut'; c.timer = Math.max(2.4, l / SPD.cut + 0.6); }
 }
 
-// ---------- plays d'attaque : appelés en jeu par le porteur (touches, boutons, ou l'IA), joués depuis là où sont les joueurs ----------
+// ---------- plays d'attaque : appelés en jeu par le thrower (touches, boutons, ou l'IA), joués depuis là où sont les joueurs ----------
 // Chaque équipe choisit Play 1 et Play 2 avant le point (cfg.play1 / cfg.play2 ; 'sys' = système perso, voir systems.js).
 const playOf = (t, n) => { const c = cfg(t); return c ? c['play' + n] || 'none' : 'none'; };
 function playSys(t, n) { const s = sysOf(t, 'p' + n + 'sys'); return s && (s.kind === 'play' || (s.kind === 'off' && s.steps)) ? s : null; }

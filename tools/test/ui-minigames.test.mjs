@@ -21,11 +21,11 @@ export default async function (t) {
     await p.evaluate(() => { storeSet('uf-tuto', true); storeSet('uf-showopts', true); });   // joueur qui a fait le tutoriel : pas les conseils de base
     await startMatch('0');                                    // on reçoit : l'IA adverse pulle avec les feux
     await p.waitForFunction(() => G.phase === 'pull' && G.pull && lightsOn(G.pull.cd) >= 2, null, { timeout: 20000 });
-    t.ok(await p.evaluate(() => startOn() && G.pull.by == null), 'l’IA pulle : les feux s’allument');
-    t.ok(await p.isVisible('#coachTip') && /vert/.test(await p.textContent('#ctText')), 'première fois : Coach Disco explique les feux (sans pause)', await p.textContent('#ctText'));
+    t.ok(await p.evaluate(() => startOn() && G.pull.by == null), 'l’IA pulle : le compte à rebours démarre');
+    t.ok(await p.isVisible('#coachTip') && /PULL/.test(await p.textContent('#ctText')), 'première fois : Coach Disco explique le compte à rebours (sans pause)', await p.textContent('#ctText'));
     t.ok(await p.evaluate(() => !G.paused && (storeGet('uf-tips', {}) || {}).start === 1), 'le conseil est noté : il ne reviendra pas');
     await p.keyboard.press(' ');
-    t.ok(await p.evaluate(() => G.offside && G.offside.team === G.me), 'Espace pendant les feux : faux départ, hors-jeu de ton équipe');
+    t.ok(await p.evaluate(() => G.offside && G.offside.team === G.me), 'Espace pendant le compte à rebours : faux départ, hors-jeu de ton équipe');
     await p.evaluate(() => { window.__dc = dropChance; window.dropChance = () => -1; });   // pas de pull droppé (hasard) pendant ce test
     await p.waitForFunction(() => G.phase === 'play' && disc.mode === 'held', null, { timeout: 20000 });
     const ck = await p.evaluate(() => ({ ck: G.checkT, can: canThrow(), holder: disc.holder.team === G.me }));
@@ -39,7 +39,7 @@ export default async function (t) {
     await p.waitForFunction(() => G.phase === 'play' && G.startGo != null, null, { timeout: 20000, polling: 'raf' });
     await p.keyboard.press(' ');
     const bo = await p.evaluate(() => ({ n: TEAMS[G.me].filter(q => q.boostT > 0).length, opp: TEAMS[1 - G.me].filter(q => q.boostT > 0).length, off: G.offside }));
-    t.ok(bo.n >= 4 && bo.opp === 0 && !bo.off, 'Espace au vert : ton équipe part en trombe (pas l’adversaire), sans hors-jeu', bo);
+    t.ok(bo.n >= 4 && bo.opp === 0 && !bo.off, 'Espace au « PULL » : ton équipe part en trombe (pas l’adversaire), sans hors-jeu', bo);
 
     t.group('Départ au pull : faux départ de l’équipe qui pulle → brick');
     await p.evaluate(() => { G.form.puller = 'ai'; G.score = [1, 1]; G.receiving = 1 - G.me; G.phase = 'between'; G.menuShown = false; startPoint(); });
@@ -49,7 +49,7 @@ export default async function (t) {
     await p.waitForFunction(() => G.phase === 'play' && (disc.mode === 'held' || disc.mode === 'carry') && disc.holder && disc.holder.team !== G.me, null, { timeout: 20000 });
     await p.waitForFunction(() => disc.mode === 'held', null, { timeout: 15000 }).catch(() => { });
     const br = await p.evaluate(() => { const r = G.receiving; return { x: +disc.holder.x.toFixed(1), brick: brickX(r), ahead: dirOf(r) * (disc.holder.x - brickX(r)) }; });
-    t.ok(br.ahead >= -0.5, 'l’équipe adverse repart du brick (ou de plus loin)', br);
+    t.ok(Math.abs(br.ahead) < 0.6, 'l’équipe adverse laisse tomber le disque et repart du brick (règle 7.5.2)', br);
     await p.evaluate(() => { G.form.puller = 'cap'; });
 
     t.group('Départ au pull : l’IA aussi part parfois trop tôt');
@@ -57,7 +57,7 @@ export default async function (t) {
     await p.waitForFunction(() => G.offside || G.phase === 'play', null, { timeout: 20000 });
     t.ok(await p.evaluate(() => G.offside && G.offside.team !== G.me), 'faux départ de l’équipe IA qui pulle : hors-jeu signalé');
     await p.waitForFunction(() => disc.mode === 'held' && disc.holder.team === G.me, null, { timeout: 20000 }).catch(() => { });
-    t.ok(await p.evaluate(() => dirOf(G.me) * (disc.holder.x - brickX(G.me)) >= -0.5), 'ton équipe repart du brick (ou de plus loin)');
+    t.ok(await p.evaluate(() => Math.abs(dirOf(G.me) * (disc.holder.x - brickX(G.me))) < 0.6), 'ton équipe laisse tomber le disque et repart du brick (règle 7.5.2)');
     await p.evaluate(() => { START.AI_OFF = 0.045; });
 
     t.group('Mark aimantée');

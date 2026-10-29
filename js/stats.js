@@ -63,7 +63,7 @@ function msCatch(p, scored) {
   if (scored) {
     const by = msName(th, tu && humanById(disc.thH)), to = msName(p, cu), lay = p.dive > 0;
     msMoment({ s: d + (lay ? 40 : 0), k: lay ? 'layout' : d > 25 ? 'huck' : 'pass', t: p.team, d: Math.round(d),
-      txt: lay ? `Point en plongeon de ${to}, sur une passe de ${Math.round(d)} m de ${by}` : `Passe de ${Math.round(d)} m de ${by} pour ${to}` });
+      txt: lay ? `Point en layout de ${to}, sur une passe de ${Math.round(d)} m de ${by}` : `Passe de ${Math.round(d)} m de ${by} pour ${to}` });
   }
 }
 function msLayout(p) {
@@ -118,11 +118,11 @@ function renderSummary(sum) {
   const rows = [
     ['Passes réussies', o => `${o.comp}/${o.thr} <small>${pct(o.comp, o.thr)} %</small>`, o => pct(o.comp, o.thr), 1],
     ['Possession', o => pct(o.pos || 0, pos) + ' %', o => o.pos || 0, 1, () => pos > 0],
-    ['Pertes de balle', o => o.to, o => o.to, 0],
+    ['Turnovers', o => o.to, o => o.to, 0],
     ['Blocks + interceptions', o => o.blk + o.int, o => o.blk + o.int, 1],
     ['Hucks réussis <small>(> 25 m)</small>', o => `${o.huckOk}/${o.huck}`, o => o.huckOk, 1],
     ['Plus longue passe', o => Math.round(o.long) + ' m', o => o.long, 1],
-    ['Plongeons', o => o.lay || 0, o => o.lay || 0, 1, () => T[0].lay !== undefined]
+    ['Layouts', o => o.lay || 0, o => o.lay || 0, 1, () => T[0].lay !== undefined]
   ].filter(r => !r[4] || r[4]());
   const bar = (a, b) => { const s_ = a + b; return s_ > 0 ? Math.round(100 * a / s_) : 50; };
   const cmp = rows.map(([l, f, v, up]) => {
@@ -133,15 +133,15 @@ function renderSummary(sum) {
   const dots = sum.points.map(([t], k) => `<i style="background:${col(t)}" title="Point ${k + 1}"></i>`).join('');
   const m = sum.mom;
   const canReplay = !G.net && typeof REPLAY !== 'undefined' && REPLAY.mom;
-  const KIND = { callahan: '🦅 Callahan', layout: '🤸 Plongeon décisif', huck: '🚀 Huck', pass: '🥏 Le point' };
+  const KIND = { callahan: '🦅 Callahan', layout: '🤸 Layout décisif', huck: '🚀 Huck', pass: '🥏 Le point' };
   const momHtml = m ? `<div class="sumMom" style="--tc:${col(m.t)}"><div class="smHead"><span>Moment du match</span><b>${KIND[m.k] || ''}</b></div>
       <p>${esc(m.txt)}${m.sc ? ` <small>(${m.t === 0 ? m.sc[0] + 1 : m.sc[0]}–${m.t === 1 ? m.sc[1] + 1 : m.sc[1]})</small>` : ''}</p>
       ${canReplay ? '<button id="momReplayB" class="ghost">🎬 Revoir au ralenti</button>' : ''}</div>` : '';
   const hu = (sum.hu || []).slice().sort((a, b) => a.t - b.t || (b.gol + b.ast + b.blk) - (a.gol + a.ast + a.blk));
   const huHtml = hu.length >= 2 ? `<div class="sumH"><div class="smHead"><span>Les joueurs</span></div>${hu.map(o => `
       <div class="huCard" style="--tc:${col(o.t)}"><b>${esc(o.n)}</b>
-        <span><i>${o.comp}/${o.thr}</i>passes</span><span><i>${o.ast}</i>${pl_(o.ast, 'décisive')}</span><span><i>${o.gol}</i>${pl_(o.gol, 'point')}</span>
-        <span><i>${o.blk}</i>${pl_(o.blk, 'block')}</span><span><i>${o.lay}</i>${pl_(o.lay, 'plongeon')}</span><span><i>${o.to}</i>${pl_(o.to, 'perte')}</span></div>`).join('')}</div>` : '';
+        <span><i>${o.comp}/${o.thr}</i>passes</span><span><i>${o.ast}</i>${pl_(o.ast, 'assist')}</span><span><i>${o.gol}</i>${pl_(o.gol, 'point')}</span>
+        <span><i>${o.blk}</i>${pl_(o.blk, 'block')}</span><span><i>${o.lay}</i>${pl_(o.lay, 'layout')}</span><span><i>${o.to}</i>${pl_(o.to, 'perte')}</span></div>`).join('')}</div>` : '';
   el.innerHTML = `
     <div class="sumBoard">
       <span class="sbName" style="--tc:${col(0)}">${nm(0)}</span>

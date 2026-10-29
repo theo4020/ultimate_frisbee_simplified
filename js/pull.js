@@ -3,7 +3,14 @@
 //   1) on choisit la zone visée et la courbe,
 //   2) on arrête une jauge (QTE) : dans le vert = pull long et haut, ce qui laisse
 //      le temps à sa défense de monter ; trop tôt = pull court ; tout au bout = trop fort.
-// Si le pull sort des limites, l'équipe qui reçoit repart du « brick ».
+// Règles WFDF 2025-2028 (section 7) :
+//  • pull attrapé : on joue de là (ramené à la ligne s'il est attrapé dans son en-but) ;
+//  • pull qui tombe dans le terrain : on joue là où il s'arrête ;
+//  • pull qui sort sans toucher le terrain (7.12) : le « brick » est une option, pas une obligation : l'équipe qui
+//    reçoit choisit le brick OU l'endroit où le disque est sorti — l'IA prend le meilleur des deux (jamais de terrain perdu) ;
+//  • hors-jeu de l'équipe qui pulle (7.5.2) : l'équipe qui reçoit laisse tomber le disque sans le toucher, puis joue
+//    comme si elle avait appelé « brick » ;
+//  • hors-jeu de l'équipe qui reçoit (7.5.1) : le jeu reprend comme après un temps mort (check), là où elle a le disque.
 
 const PULL = { BRICK: 12, MAX: 72, AUTO_T: 60, GAUGE_HZ: 0.8, PERFECT: [0.82, 0.95] };
 const goalLine = t => (dirOf(t) > 0 ? EZ : W - EZ);   // ligne d'en-but que l'équipe t défend
@@ -209,7 +216,7 @@ function launchPull(ax, ay, curve, q) {
 function pullCaught(p) {
   disc.pull = false;
   const off = pullerOffside();
-  if (off) { const b = offsideSpot(p.x, p.y); startCarry(p, b.x, b.y, ''); return; }   // hors-jeu de l'équipe qui pulle : brick (ou mieux)
+  if (off) { const b = offsideSpot(); startCarry(p, b.x, b.y, ''); return; }   // hors-jeu de l'équipe qui pulle : brick (normalement on ne l'attrape pas, voir sim.js)
   // un pull se droppe (3 fois moins souvent qu'une passe) : l'équipe qui a pullé récupère le disque là où il tombe
   if (Math.random() < dropChance() * PULL_DROP) { G.pullPending = false; G.dplay = null; G.stats.drops = (G.stats.drops || 0) + 1; msTurnover(p, 'drop'); turnover(p.x, p.y, 'Pull droppé ! Turnover'); return; }
   fxEvent('catch', p.x, p.y, p.team);
@@ -235,10 +242,21 @@ function pullLanded(ex, ey) {
   disc.pull = false;
   const out = ex < 0 || ex > W || ey < 0 || ey > H;
   // le disque est ramassé là où il s'arrête (ou là où il est sorti), puis ramené si besoin
-  const x = clamp(ex, 0.5, W - 0.5), y = clamp(ey, 0.5, H - 0.5);
-  G.carryTo = out ? { x: brickX(r), y: H / 2 } : lineSpot(x, y);
-  if (pullerOffside()) { const b = offsideSpot(x, y); G.carryTo = b.x === x && b.y === y ? null : b; }   // hors-jeu : brick (ou mieux)
-  pullToSpot(x, y, null, out ? 'Out ! Brick' : '');
+  let [x, y] = out ? crossPoint() : [ex, ey];
+  x = clamp(x, 0.5, W - 0.5); y = clamp(y, 0.5, H - 0.5);
+  let msg = '';
+  if (pullerOffside()) { G.carryTo = offsideSpot(); msg = ''; }   // hors-jeu de l'équipe qui pulle (7.5.2) : brick
+  else if (out) {                                                // 7.12 : brick, ou là où il est sorti (ramené hors de l'en-but)
+    const c = pullOutChoice(x, y); G.carryTo = c.spot; msg = c.brick ? 'Out ! Brick' : 'Out ! Repris où il est sorti';
+  } else G.carryTo = lineSpot(x, y);
+  pullToSpot(x, y, null, msg);
+}
+// pull sorti sans toucher le terrain : le brick, ou le point de sortie (dans la zone centrale) s'il fait gagner du terrain
+function pullOutChoice(x, y) {
+  const r = G.receiving, b = { x: brickX(r), y: H / 2 };
+  const here = { x: clamp(x, EZ, W - EZ), y: clamp(y, 0.5, H - 0.5) };
+  const gain = q => dirOf(r) * (q.x - goalLine(r));
+  return gain(here) > gain(b) + 1 ? { spot: here, brick: false } : { spot: b, brick: true };
 }
 function pullToSpot(x, y, catcher, msg) {
   const r = G.receiving;
@@ -259,10 +277,10 @@ function afterPull(p) {
 }
 
 // ---------- départ au pull, façon départ de course (facultatif) ----------
-// Quand l'IA pulle (hors tutoriel), trois feux rouges s'allument puis passent au vert : le pull part au vert.
-//  • appuyer (clic, tape, Espace, A) dans les START.GOOD s après le vert : départ parfait, ton équipe part en trombe ;
-//  • appuyer pendant les feux (dès le 2e) : faux départ = hors-jeu (règles WFDF 7.3 à 7.5) :
-//      – équipe qui pulle : l'équipe qui reçoit joue comme si elle avait appelé « brick » (le brick, ou mieux) ;
+// Quand l'IA pulle (hors tutoriel), un compte à rebours 3, 2, 1 puis « PULL ! » : le pull part au « PULL ».
+//  • appuyer (clic, tape, Espace, A) dans les START.GOOD s après le « PULL » : départ parfait, ton équipe part en trombe ;
+//  • appuyer pendant le compte à rebours (dès le « 2 ») : faux départ = hors-jeu (règles WFDF 7.3 à 7.5) :
+//      – équipe qui pulle : l'équipe qui reçoit laisse tomber le disque et joue comme si elle avait appelé « brick » ;
 //      – équipe qui reçoit : reprise arrêtée (check) : la défense a le temps de se placer avant le premier lancer ;
 //  • ne rien faire : départ normal, comme avant.
 // Une équipe IA (sans humain) part parfois trop tôt, plus souvent en facile.
@@ -291,15 +309,11 @@ function offside(t, p, human) {
   G.offside = { team: t };
   if (p) { p.tx = p.x + dirOf(t) * 1.8; p.ty = p.y; }
   const pt = G.pull ? G.pull.team : 1 - G.receiving;
-  flash((human ? 'Faux départ ! ' : '') + `Hors-jeu des ${tn(t)} : ` + (t === pt ? `les ${tn(1 - t)} repartiront du brick` : 'reprise arrêtée à la réception'), true);
+  flash((human ? 'Faux départ ! ' : '') + `Hors-jeu des ${tn(t)} : ` + (t === pt ? `les ${tn(1 - t)} laissent tomber le disque et repartiront du brick` : 'reprise arrêtée à la réception'), true);
   try { whistle(); } catch (e) { }
 }
-// le meilleur endroit pour l'équipe qui reçoit après un hors-jeu de l'équipe qui pulle : le brick, ou là où elle a le disque s'il est plus loin
-function offsideSpot(x, y) {
-  const r = G.receiving, b = { x: brickX(r), y: H / 2 }, L = lineSpot(x, y);
-  const here = L || { x, y };
-  return dirOf(r) * (here.x - b.x) > 0 ? here : b;
-}
+// hors-jeu de l'équipe qui pulle (7.5.2) : l'équipe qui reçoit joue « comme si elle avait appelé brick »
+function offsideSpot() { const r = G.receiving; return { x: brickX(r), y: H / 2 }; }
 // fenêtre où un appui sert au départ (pendant les feux, ou juste après le vert)
 function startWindow() {
   if (G.net === 'guest') { const s = G.netStart; return !!s && (s[0] > 0 || (s[1] >= 0 && s[1] <= START.GOOD + 0.1)); }
@@ -332,20 +346,36 @@ function startNet() {
   const n = G.phase === 'pull' && G.pull ? lightsOn(G.pull.cd) : 0, go = G.startGo != null && G.phase === 'play' ? G.time - G.startGo : -1;
   return n || (go >= 0 && go < 1) ? [n, go >= 0 && go < 1 ? +go.toFixed(2) : -1] : 0;
 }
-// feux de départ (au-dessus du terrain) et bandeau du check
+// compte à rebours du départ (au-dessus du terrain), façon panneau de score : 3, 2, 1 en points lumineux, puis « PULL ! »
+// (pour l'IA qui pulle ; l'appui pile au « PULL » donne un départ parfait) — et bandeau du check
+function ledDraw(c, txt, cx, cy, dot) {
+  const ds = String(txt).split(''), w = ds.length * 6 - 1;
+  const x0 = cx - w * dot / 2, y0 = cy - 3.5 * dot;
+  ds.forEach((ch, k) => {
+    const f = (typeof LED_FONT !== 'undefined' && LED_FONT[+ch]) || '';
+    for (let i = 0; i < 35; i++) {
+      const on = f[i] === '1'; c.fillStyle = on ? '#ffd23f' : 'rgba(255,190,60,.1)';
+      c.beginPath(); c.arc(x0 + (k * 6 + (i % 5) + 0.5) * dot, y0 + (Math.floor(i / 5) + 0.5) * dot, dot * 0.4, 0, 7); c.fill();
+    }
+  });
+}
 function drawStartUI() {
   const st = G.net === 'guest' ? G.netStart : startNet();
   const fs = Math.max(11, S * 1.5);
   if (st) inScreen(() => {
-    const [n, go] = st, green = go >= 0 && go < 0.6, r = Math.max(8, S * 1.1), cx = X(W / 2), cy = SY(7);
-    ctx.fillStyle = 'rgba(15,23,42,.8)'; ctx.fillRect(cx - r * 5, cy - r * 1.7, r * 10, r * 3.4);
-    for (let k = 0; k < START.N; k++) {
-      ctx.fillStyle = green ? '#22c55e' : k < n ? '#ef4444' : '#334155';
-      circle(cx + (k - 1) * r * 3, cy, r); ctx.fill();
-    }
+    const [n, go] = st, pull = go >= 0 && go < 0.6, cx = X(W / 2), cy = SY(7), dot = Math.max(3, S * 0.42), ph = dot * 9.5, pw = pull ? dot * 26 : dot * 9;
+    ctx.save();
+    ctx.fillStyle = '#05070d'; ctx.strokeStyle = '#1c2438'; ctx.lineWidth = 2;                    // le panneau
+    roundRectPath(cx - pw / 2, cy - ph / 2, pw, ph, dot * 1.2); ctx.fill(); ctx.stroke();
+    ctx.shadowColor = 'rgba(255,180,30,.85)'; ctx.shadowBlur = dot * 0.9;
+    if (pull) {
+      ctx.fillStyle = '#ffd23f'; ctx.font = `800 ${Math.round(dot * 6.4)}px ${UI_FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('PULL !', cx, cy + dot * 0.3);
+    } else if (n > 0) ledDraw(ctx, START.N - n + 1, cx, cy, dot);
+    ctx.restore();
     if (n > 0) {
       ctx.font = `600 ${fs * 0.75}px system-ui`; ctx.textAlign = 'center'; ctx.fillStyle = '#f8fafc';
-      ctx.fillText(isTouchUI() ? 'Tape au vert : départ parfait · trop tôt = hors-jeu' : 'Clic ou Espace au vert : départ parfait · trop tôt = hors-jeu', cx, cy + r * 3.2);
+      ctx.fillText(isTouchUI() ? 'Tape au « PULL » : départ parfait · trop tôt = hors-jeu' : 'Clic ou Espace au « PULL » : départ parfait · trop tôt = hors-jeu', cx, cy + ph / 2 + fs * 1.1);
     }
   });
   // hors-jeu : bandeau jusqu'à la reprise (le message central passe vite)
@@ -354,7 +384,7 @@ function drawStartUI() {
     const pt = G.pull ? G.pull.team : 1 - G.receiving;
     const t = `Hors-jeu des ${tn(off)} : ` + (off === pt ? `les ${tn(1 - off)} repartiront du brick` : 'check à la réception');
     ctx.font = `700 ${fs * 0.85}px system-ui`; ctx.textAlign = 'center';
-    const w = ctx.measureText(t).width + fs * 1.4, y = SY(10.5);   // sous les feux (le bas est pour les conseils du coach)
+    const w = ctx.measureText(t).width + fs * 1.4, y = SY(11.5);   // sous le compte à rebours (le bas est pour les conseils du coach)
     ctx.fillStyle = 'rgba(127,29,29,.85)'; ctx.fillRect(X(W / 2) - w / 2, y - fs * 1.0, w, fs * 1.5);
     ctx.fillStyle = '#fee2e2'; ctx.fillText(t, X(W / 2), y);
   });

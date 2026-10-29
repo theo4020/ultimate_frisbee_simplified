@@ -85,7 +85,7 @@ export default async function (t) {
     });
     t.ok(sm.led === 2 && sm.mom && sm.rows >= 6 && sm.ai === 0, 'le score en points lumineux, le moment du match, les équipes comparées, sans stats par joueur IA', sm);
     t.ok(sm.replay, 'en solo : le moment du match se revoit au ralenti', sm);
-    t.ok(sm.players === 0 && sm.players2 === 2 && /Théo/.test(sm.txt) && /1décisive0point/.test(sm.txt), 'en ligne (plusieurs humains) : une carte par joueur humain', sm);
+    t.ok(sm.players === 0 && sm.players2 === 2 && /Théo/.test(sm.txt) && /1assist0point/.test(sm.txt), 'en ligne (plusieurs humains) : une carte par joueur humain', sm);
 
     t.group('Habillage : caméra qui suit le jeu, police');
     const cam = await p.evaluate(async () => {
