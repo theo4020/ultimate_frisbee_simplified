@@ -77,6 +77,7 @@ function frame(now, visible) {
   $('menuB').style.visibility = G.attract || ($('lobbyCard').style.display !== 'none' && !$('overlay').classList.contains('hidden') && !G.net) ? 'hidden' : 'visible';
   if (!visible) return;
   const t1 = performance.now();
+  camFrame(dt);                                              // caméra (scenery.js : option « suit le jeu »)
   if (G.replay) drawReplay(); else draw();
   updateHud();
   perfFrame(now, t0, t1);

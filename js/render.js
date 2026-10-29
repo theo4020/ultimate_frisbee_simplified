@@ -181,30 +181,56 @@ function drawBody(p, x, y, r, face, o) {
   const k = (p.team * 5 + p.i) % 5, light = (G.teams[p.team] || {}).color === 'blanc' || (G.teams[p.team] || {}).color === 'jaune';
   ctx.save(); ctx.translate(x, y); ctx.rotate(face); ctx.scale(o.scale || 1, o.scale || 1);
   ctx.lineCap = 'round';
-  const arm = (x1, y1, x2, y2) => { ctx.strokeStyle = SKIN[k]; ctx.lineWidth = r * 0.36; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); };
+  const arm = (x1, y1, x2, y2) => {                           // bras (peau) avec la main un peu plus foncée
+    ctx.strokeStyle = SKIN[k]; ctx.lineWidth = r * 0.36; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    ctx.fillStyle = 'rgba(0,0,0,.12)'; ctx.beginPath(); ctx.arc(x2, y2, r * 0.17, 0, 7); ctx.fill();
+  };
+  const armTo = (side, ang, len) => arm(0, side * r * 0.82, Math.cos(ang) * r * len, side * r * 0.82 + Math.sin(ang) * r * len);
+  // volume : reflet du soleil (en haut à gauche de l'écran, quelle que soit l'orientation du joueur)
+  const shine = (w, h) => { const a = -2.35 - face, g = ctx.createRadialGradient(Math.cos(a) * w * 0.3, Math.sin(a) * h * 0.3, 0, 0, 0, Math.max(w, h) * 0.75);
+    g.addColorStop(0, 'rgba(255,255,255,.28)'); g.addColorStop(1, 'rgba(255,255,255,0)'); return g; };
+  const head = (hx, hr) => {
+    ctx.fillStyle = hairOf(p, HAIR[k]); circle(hx, 0, hr); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.18)'; const a = -2.35 - face; circle(hx + Math.cos(a) * hr * 0.35, Math.sin(a) * hr * 0.35, hr * 0.42); ctx.fill();
+  };
   if (o.lying) {                                            // allongé, bras tendus vers l'avant
     arm(r * 0.5, -r * 0.45, r * 1.9, -r * 0.35); arm(r * 0.5, r * 0.45, r * 1.9, r * 0.35);
+    ctx.fillStyle = '#1e293b'; ctx.beginPath(); ctx.ellipse(-r * 1.55, -r * 0.3, r * 0.32, r * 0.18, 0, 0, 7); ctx.ellipse(-r * 1.55, r * 0.3, r * 0.32, r * 0.18, 0, 0, 7); ctx.fill();   // pieds
     ctx.fillStyle = tcol(p.team); ctx.strokeStyle = tdark(p.team); ctx.lineWidth = 2;
     roundRectPath(-r * 1.3, -r * 0.62, r * 2.2, r * 1.24, r * 0.6); ctx.fill();
     if (mineStyle(p)) jerseyPattern(ctx, -r * 1.3, -r * 0.62, r * 2.2, r * 1.24, light);   // maillot de ton équipe (Mon style)
+    ctx.fillStyle = shine(r * 1.1, r * 0.62); roundRectPath(-r * 1.3, -r * 0.62, r * 2.2, r * 1.24, r * 0.6); ctx.fill();
     roundRectPath(-r * 1.3, -r * 0.62, r * 2.2, r * 1.24, r * 0.6); ctx.stroke();
-    ctx.fillStyle = hairOf(p, HAIR[k]); circle(r * 1.05, 0, r * 0.45); ctx.fill();
+    head(r * 1.05, r * 0.45);
   } else {
-    const sw = o.swing || 0;                                // balancement des bras en courant
-    if (o.throwing) { arm(0, r * 0.85, r * 1.75, r * 0.55); arm(0, -r * 0.85, -r * 0.3, -r * 1.15); }
+    const sw = o.swing || 0, run = o.run || 0;
+    // pieds : ils avancent l'un après l'autre en courant, côte à côte à l'arrêt
+    const st = Math.sin(o.stride || 0) * r * 0.95 * run;
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath(); ctx.ellipse(st, r * 0.34, r * 0.36, r * 0.21, 0, 0, 7); ctx.ellipse(-st, -r * 0.34, r * 0.36, r * 0.21, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.35)';
+    ctx.beginPath(); ctx.ellipse(st + r * 0.14, r * 0.34, r * 0.13, r * 0.08, 0, 0, 7); ctx.ellipse(-st + r * 0.14, -r * 0.34, r * 0.13, r * 0.08, 0, 0, 7); ctx.fill();
+    // bras : lancer (armé puis relâché, côté coup droit ou revers), réception (vers le disque), joie, course
+    if (o.throwing) {
+      const t = o.throwK, sd = o.side || 1, a = sd * (2.4 - t * 2.9);   // de l'arrière vers l'avant, en travers
+      armTo(sd, a, 1.55); armTo(-sd, -sd * 1.9, 0.85);
+    } else if (o.reach !== undefined) { const a = o.reach - face; armTo(1, a, 1.5); armTo(-1, a, 1.5); }
+    else if (o.cele) { armTo(1, 0.55, 1.45); armTo(-1, -0.55, 1.45); }
     else if (o.jumping) { arm(0, r * 0.8, r * 0.5, r * 1.5); arm(0, -r * 0.8, r * 0.5, -r * 1.5); }
+    else if (o.hold) { armTo(1, 0.45, 1.25); arm(0, -r * 0.85, -sw * r * 0.5, -r * 1.12); }
     else { arm(0, r * 0.85, sw * r * 0.75, r * 1.12); arm(0, -r * 0.85, -sw * r * 0.75, -r * 1.12); }
     ctx.fillStyle = tcol(p.team); ctx.strokeStyle = tdark(p.team); ctx.lineWidth = 2;
     roundRectPath(-r * 0.58, -r * 1.05, r * 1.16, r * 2.1, r * 0.56); ctx.fill();
     if (mineStyle(p)) jerseyPattern(ctx, -r * 0.58, -r * 1.05, r * 1.16, r * 2.1, light);   // maillot de ton équipe (Mon style)
+    ctx.fillStyle = shine(r * 0.58, r * 1.05); roundRectPath(-r * 0.58, -r * 1.05, r * 1.16, r * 2.1, r * 0.56); ctx.fill();
     roundRectPath(-r * 0.58, -r * 1.05, r * 1.16, r * 2.1, r * 0.56); ctx.stroke();
     if (r >= 8) {                                           // numéro dans le dos
-      ctx.save(); ctx.rotate(-face); ctx.fillStyle = light ? 'rgba(15,23,42,.75)' : 'rgba(255,255,255,.85)';
-      ctx.font = `800 ${Math.round(r * 0.78)}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.save(); ctx.rotate(-face); ctx.fillStyle = light ? 'rgba(15,23,42,.75)' : 'rgba(255,255,255,.88)';
+      ctx.font = `800 ${Math.round(r * 0.82)}px ${UI_FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       const bx = -Math.cos(face) * r * 0.62, by = -Math.sin(face) * r * 0.62;
       ctx.fillText(String(p.i + 1), bx, by); ctx.restore();
     }
-    ctx.fillStyle = hairOf(p, HAIR[k]); circle(r * 0.12, 0, r * 0.5); ctx.fill();
+    head(r * 0.12, r * 0.5);
     if (accOn(p)) accTop(ctx, r * 0.12, 0, r * 0.5);            // tenue de ton équipe (Mon style)
   }
   ctx.restore();
@@ -221,42 +247,32 @@ function arrow(x1, y1, x2, y2, color) {
   ctx.restore();
 }
 
+// terrain : image pré-rendue (scenery.js : paintField), redessinée seulement quand la taille, le terrain ou les équipes
+// changent ; en vue inclinée, dessinée directement (les textes y sont redressés)
+let fieldCache = null, fieldKey = '';
 function drawField() {
   const cw = canvas.width / dpr, ch = canvas.height / dpr;
-  const F = fieldTheme();                                    // thème du terrain (Mon style)
-  ctx.fillStyle = F.bg; ctx.fillRect(0, 0, cw, ch);
+  const F = fieldTheme(), fid = styleOf('field');
+  ctx.fillStyle = F.bg; ctx.fillRect(-cw, -ch, cw * 3, ch * 3);
   if (FX.shake > 0) ctx.translate((Math.random() - 0.5) * FX.shake, (Math.random() - 0.5) * FX.shake);   // secousse
-  for (let i = 0; i < 10; i++) { ctx.fillStyle = F.s[i % 2 ? 0 : 1]; ctx.fillRect(X(i * 10), Y(0), 10 * S, H * S); }
-  if (F.stars) { ctx.fillStyle = 'rgba(255,255,255,.7)'; for (let i = 0; i < 90; i++) { const sx = (i * 37.3) % W, sy = (i * 23.7 + (i % 7) * 5.1) % H; circle(X(sx), Y(sy), Math.max(0.6, S * (0.06 + (i % 3) * 0.04))); ctx.fill(); } }   // espace : étoiles
-  if (F.planks) { ctx.strokeStyle = 'rgba(0,0,0,.12)'; ctx.lineWidth = 1; for (let y = 1.5; y < H; y += 1.5) { ctx.beginPath(); ctx.moveTo(X(0), Y(y)); ctx.lineTo(X(W), Y(y)); ctx.stroke(); } }   // lattes du parquet
   // l'équipe qui attaque vers la droite (on change de côté à chaque point ; pendant la célébration, on garde les zones
   // du point qui vient d'être marqué)
   const cele = (G.phase === 'between' || G.phase === 'over') && G.celebrate && (!G.menuShown || G.attract) && G.betweenT > 0 && !G.tuto && !G.practice;
   const tR = (dirOf(0) > 0) !== !!cele ? 0 : 1;
-  ctx.fillStyle = rgba(tcol(tR), F.ez); ctx.fillRect(X(W - EZ), Y(0), EZ * S, H * S);
-  ctx.fillStyle = rgba(tcol(1 - tR), F.ez); ctx.fillRect(X(0), Y(0), EZ * S, H * S);
-  ctx.fillStyle = F.txt; ctx.font = `600 ${Math.max(10, S * 1.6)}px system-ui`; ctx.textAlign = 'center';
-  ctx.fillText('Les ' + tn(tR), X(W - EZ / 2), Y(H / 2 - 1)); ctx.fillText('marquent ici', X(W - EZ / 2), Y(H / 2 + 1.5));
-  ctx.fillText('Les ' + tn(1 - tR), X(EZ / 2), Y(H / 2 - 1)); ctx.fillText('marquent ici', X(EZ / 2), Y(H / 2 + 1.5));
-  ctx.strokeStyle = F.line; ctx.lineWidth = 2;
-  ctx.strokeRect(X(0), Y(0), W * S, H * S);
-  ctx.beginPath(); ctx.moveTo(X(EZ), Y(0)); ctx.lineTo(X(EZ), Y(H)); ctx.moveTo(X(W - EZ), Y(0)); ctx.lineTo(X(W - EZ), Y(H)); ctx.stroke();
-  // points de brick (croix) et plots orange aux coins des en-buts
-  ctx.strokeStyle = F.line; ctx.lineWidth = 2; const kx = 0.6 * S;
-  for (const bx of [EZ + 12, W - EZ - 12]) { ctx.beginPath(); ctx.moveTo(X(bx) - kx, Y(H / 2) - kx); ctx.lineTo(X(bx) + kx, Y(H / 2) + kx); ctx.moveTo(X(bx) + kx, Y(H / 2) - kx); ctx.lineTo(X(bx) - kx, Y(H / 2) + kx); ctx.stroke(); }
-  for (const cx of [0, EZ, W - EZ, W]) for (const cy of [0, H]) {
-    ctx.fillStyle = '#f97316'; ctx.beginPath(); ctx.moveTo(X(cx), Y(cy) - 0.7 * S); ctx.lineTo(X(cx) + 0.55 * S, Y(cy) + 0.4 * S); ctx.lineTo(X(cx) - 0.55 * S, Y(cy) + 0.4 * S); ctx.closePath(); ctx.fill();
+  if (isoView()) { paintField(ctx, F, fid, tR, CAM.S0, cw, ch); return; }
+  const key = [canvas.width, canvas.height, CAM.S0, dpr, fid, tR, tcol(0), tcol(1), tdark(0), tdark(1), tn(0), tn(1), fontsReady].join('|');
+  if (key !== fieldKey || !fieldCache) {
+    fieldKey = key;
+    if (!fieldCache) fieldCache = document.createElement('canvas');
+    fieldCache.width = canvas.width; fieldCache.height = canvas.height;
+    const c = fieldCache.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    paintField(c, F, fid, tR, CAM.S0, cw, ch);
   }
-  // léger vignettage
-  const vg = ctx.createRadialGradient(cw / 2, ch / 2, Math.min(cw, ch) * 0.35, cw / 2, ch / 2, Math.max(cw, ch) * 0.7);
-  vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, `rgba(0,0,0,${F.vg})`);
-  ctx.fillStyle = vg; ctx.fillRect(-20, -20, cw + 40, ch + 40);
-  if (F.lights) for (const [lx, ly] of [[0, 0], [W, 0], [0, H], [W, H], [W / 2, 0], [W / 2, H]]) {   // stade de nuit : halos des projecteurs
-    const g = ctx.createRadialGradient(X(lx), Y(ly), 0, X(lx), Y(ly), 30 * S);
-    g.addColorStop(0, 'rgba(254,249,195,.22)'); g.addColorStop(1, 'rgba(254,249,195,0)');
-    ctx.fillStyle = g; ctx.fillRect(X(lx) - 30 * S, Y(ly) - 30 * S, 60 * S, 60 * S);
-  }
+  ctx.drawImage(fieldCache, CAM.ox, CAM.oy, cw * CAM.z, ch * CAM.z);
 }
+// police embarquée chargée : on redessine le terrain (ses textes) une fois
+let fontsReady = 0;
+if (typeof document !== 'undefined' && document.fonts && document.fonts.load) document.fonts.load(`800 20px 'Barlow Condensed'`).then(() => { fontsReady = 1; }).catch(() => { });
 function draw() {
   const cw = canvas.width / dpr, ch = canvas.height / dpr, iso = isoView();
   screenT();
@@ -349,8 +365,12 @@ function draw() {
   if (playing && (disc.mode === 'air' || (canThrow() && G.pointer.active))) { if (iso) inScreen(drawHeightLegend); else drawHeightLegend(); }
 
   // Joueurs
-  const r = 0.95 * S, swT = switchTarget(meH());
-  for (const p of players) {
+  const r = 1.05 * S, swT = switchTarget(meH());
+  // ombres au soleil : elles s'écartent quand le joueur saute (ou saute de joie) ; le joueur, lui, reste à sa place
+  if (!iso) for (const p of players) {
+    const jl = Math.max(0, jumpVis(p)) + celebrateHop(p) * 0.7, [lx, ly] = pivLean(p), [sx, sy] = sunOff(jl * 1.3);
+    softShadow(ctx, X(p.x + lx + sx * 1.4), Y(p.y + ly + sy * 1.4), r * (1.4 - Math.min(0.3, jl * 0.2)), 0.5 - Math.min(0.2, jl * 0.12));
+  } else for (const p of players) {
     const jl = Math.max(0, jumpVis(p)), [lx, ly] = pivLean(p);
     ctx.fillStyle = `rgba(0,0,0,${0.25 - jl * 0.08})`; circle(X(p.x + lx) + 2 + jl * 3, Y(p.y + ly) + 3 + jl * 3, r * (1 - jl * 0.15)); ctx.fill();
   }
@@ -377,14 +397,20 @@ function draw() {
     const jv = jumpVis(p), jl = Math.max(0, jv), crouch = jv < 0;   // saut : accroupi, puis il grossit et s'élève
     const lying = p.dive > 0 || p.down > 0, face = lying ? (Math.atan2(p.vy, p.vx) || faceOf(p)) : faceOf(p);
     if (lying) p.face = face;
-    p.stride = (p.stride || 0) + Math.hypot(p.vx, p.vy) * (FX.dt || 0.016) * 1.6;
-    return { jl, lying, face, scale: (1 + jl * 0.22) * (crouch ? 0.84 : 1), throwing: p.throwT > 0, jumping: jl > 0.05, swing: Math.hypot(p.vx, p.vy) > 1 ? Math.sin(p.stride) : 0 };
+    const spd = Math.hypot(p.vx, p.vy), hop = celebrateHop(p);
+    p.stride = (p.stride || 0) + spd * (FX.dt || 0.016) * 1.6;
+    if (!iso) groundFx(p, spd);                              // herbe soulevée par un plongeon, poussière en courant
+    const near = disc.mode === 'air' && !disc.pull && (disc.intended === p || dist(p.x, p.y, disc.x, disc.y) < 3.2) && (disc.z || 0) < 3.6;
+    return { jl, lying, face, scale: (1 + jl * 0.25 + hop * 0.18) * (crouch ? 0.84 : 1), throwing: p.throwT > 0, throwK: 1 - Math.max(0, p.throwT || 0) / 0.32, side: p.throwSide || 1,
+      jumping: jl > 0.05, swing: spd > 1 ? Math.sin(p.stride) : 0, stride: p.stride, run: Math.min(1, spd / 4),
+      reach: near && !lying ? Math.atan2(disc.y - p.y, disc.x - p.x) : undefined, cele: hop > 0.05,
+      hold: disc.holder === p && (disc.mode === 'held' || disc.mode === 'carry') };
   };
   if (!iso) for (const p of players) {
     ctx.globalAlpha = p.down > 0 ? 0.6 : 1;
-    const o = bodyO(p), hop = celebrateHop(p) * S + o.jl * S * 0.9;   // (et saut de joie après un point)
+    const o = bodyO(p);                                        // (saut, saut de joie : il grossit, son ombre s'écarte)
     const [lx, ly] = pivLean(p);                                // porteur : le corps se penche du côté de son pied de pivot
-    drawBody(p, X(p.x + lx), Y(p.y + ly) - hop, r * 1.06, o.face, o);
+    drawBody(p, X(p.x + lx), Y(p.y + ly), r, o.face, o);
     ctx.globalAlpha = 1;
     rings(p);
   } else {                                                    // vue inclinée : repères et joueurs au sol, puis les joueurs debout
@@ -447,7 +473,7 @@ function draw() {
   if (disc.mode === 'held' && G.stall > 0) overHead(() => {
     const n = Math.min(10, Math.floor(G.stall) + 1);
     ctx.fillStyle = n >= 8 ? '#f87171' : '#facc15';
-    ctx.font = `700 ${Math.max(12, S * 2)}px system-ui`; ctx.textAlign = 'center';
+    ctx.font = `800 ${Math.max(14, S * 2.4)}px ${UI_FONT}`; ctx.textAlign = 'center';
     ctx.fillText(n, X(disc.x), headY(disc.holder) - 8);
   });
 
@@ -474,7 +500,9 @@ function draw() {
     }
     if (iso) drawIsoDisc(dx, dy, tell, lf);
     else {
-    const lift = disc.mode === 'air' ? disc.z * S * 1.2 : tell ? loftZ(lf) * 0.83 * S : 0;
+    // en vol : le disque reste à sa vraie place, c'est son ombre qui s'écarte avec la hauteur (la couleur de l'anneau dit
+    // si on peut le toucher) ; levé dans la main (passe haute préparée) : il monte au-dessus du porteur
+    const lift = tell ? loftZ(lf) * 0.83 * S : 0, z = disc.mode === 'air' ? disc.z || 0 : 0;
     if (tell) {
       ctx.save(); ctx.strokeStyle = 'rgba(196,181,253,.9)'; ctx.lineWidth = 2; ctx.setLineDash([2, 3]);
       ctx.beginPath(); ctx.moveTo(X(dx), Y(dy)); ctx.lineTo(X(dx), Y(dy) - lift); ctx.stroke();
@@ -483,14 +511,13 @@ function draw() {
       ctx.restore();
     }
     if (shown) drawLoftGauge(disc.holder, X(disc.holder.x), Y(disc.holder.y), lf);
-    if (disc.mode === 'air') {                                // ombre + anneau coloré = hauteur, trait = altitude
-      ctx.fillStyle = 'rgba(0,0,0,.3)'; circle(X(dx), Y(dy), 0.45 * S); ctx.fill();
+    if (disc.mode === 'air') {                                // ombre au soleil + anneau coloré = hauteur
+      const [sx, sy] = sunOff(z);
+      softShadow(ctx, X(dx + sx), Y(dy + sy), (0.6 + z * 0.09) * S, Math.max(0.12, 0.45 - z * 0.055));
       ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.lineWidth = 4.5; circle(X(dx), Y(dy), 1.05 * S); ctx.stroke();   // contour sombre : lisible sur tous les terrains
       ctx.strokeStyle = heightColor(disc.z, 0.95); ctx.lineWidth = 2.5; circle(X(dx), Y(dy), 1.05 * S); ctx.stroke();
-      ctx.strokeStyle = heightColor(disc.z, 0.7); ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.moveTo(X(dx), Y(dy)); ctx.lineTo(X(dx), Y(dy) - lift); ctx.stroke();
-    }
-    const dR = 0.5 * S * (1 + disc.z * 0.12);
+    } else if (disc.mode === 'ground' || disc.mode === 'dead') softShadow(ctx, X(dx + 0.12), Y(dy + 0.18), 0.6 * S, 0.35);
+    const dR = 0.5 * S * (1 + Math.min(0.4, z * 0.07));
     discShape(X(dx), Y(dy) - lift, dR, false);               // penché selon sa courbe : vu d'en haut, il s'amincit
     paintDisc(ctx, X(dx), Y(dy) - lift, dR); ctx.strokeStyle = '#475569'; ctx.lineWidth = 1.5; ctx.stroke();
     }
@@ -516,7 +543,7 @@ function draw() {
     const sc = 1 + FX.pop * 0.5 + Math.max(0, G.msgT - 1.5) * 0.6;
     ctx.save(); ctx.translate(cw / 2, G.tuto ? ch * 0.86 : ch / 2); ctx.scale(sc, sc);   // tutoriel : en bas, hors de l'action (au milieu du terrain)
     ctx.globalAlpha = Math.min(1, G.msgT);
-    ctx.font = `800 ${Math.max(18, S * 3.4)}px system-ui`; ctx.textAlign = 'center';
+    ctx.font = `800 ${Math.max(22, CAM.S0 * 4.2)}px ${UI_FONT}`; ctx.textAlign = 'center';   // (taille fixe, même caméra zoomée)
     const txt = hiddenFromMe(G.msgTeam) ? G.msgAlt : G.msg;
     ctx.fillStyle = 'rgba(0,0,0,.45)'; ctx.fillText(txt, 2, 2);
     ctx.fillStyle = '#fff'; ctx.fillText(txt, 0, 0);

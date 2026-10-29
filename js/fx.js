@@ -119,7 +119,7 @@ function fxPlay(name, x, y, team) {
   switch (name) {
     case 'throw': {                                          // geste du lanceur
       const p = nearest(players, x, y);
-      if (p) { p.throwT = 0.32; p.throwA = disc.mode === 'air' ? Math.atan2(disc.ey - p.y, disc.ex - p.x) : p.face; }
+      if (p) { p.throwT = 0.32; p.throwA = disc.mode === 'air' ? Math.atan2(disc.ey - p.y, disc.ex - p.x) : p.face; p.throwSide = (p.pivY || 0) < -0.1 || ((p.pivY || 0) === 0 && (disc.curveV || 0) < 0) ? -1 : 1; }   // côté du geste (coup droit / revers)
       ring(x, y, 'rgba(255,255,255,.55)', 1.2, 0.22);          // petit souffle au lâcher
       break;
     }
@@ -130,6 +130,7 @@ function fxPlay(name, x, y, team) {
     case 'layout': burst(x, y, 10, { color: ['#a3e635', '#65a30d', '#d9f99d'], speed: 4, life: 0.5, size: 0.3 }); vibrate(25); break;
     case 'turn': burst(x, y, 8, { color: ['#cbd5e1', '#94a3b8'], speed: 3, life: 0.5, size: 0.28 }); ring(x, y, 'rgba(226,232,240,.7)', 1.8, 0.35); break;
     case 'score': {
+      CAM.punch = 1;                                         // caméra « suit le jeu » : petit à-coup de zoom
       const ex = dirOf(team) > 0 ? W - EZ / 2 : EZ / 2;
       if (!celebrate(team, ex)) for (let i = 0; i < 70; i++) {
         FX.parts.push({ x: ex + (Math.random() - 0.5) * EZ, y: Math.random() * H, vx: (Math.random() - 0.5) * 4, vy: -2 - Math.random() * 5,

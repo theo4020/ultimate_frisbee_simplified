@@ -32,7 +32,7 @@ function userJump() { if (canJump()) { doJump(); G.pointer.last = G.time; } }
 function userDive() { if (canLayout()) { doDive(G.pointer.x, G.pointer.y); G.pointer.last = G.time; } }
 function toWorld(e) {
   const r = canvas.getBoundingClientRect(), sy = e.clientY - r.top;
-  return { x: (e.clientX - r.left) / S - M, y: (isoView() ? (sy - ISO_HEAD * S) / isoK : sy) / S - M };   // vue inclinée : on « redresse » le sol
+  return { x: (e.clientX - r.left - CAM.ox) / S - M, y: (isoView() ? (sy - ISO_HEAD * S) / isoK : sy - CAM.oy) / S - M };   // (caméra : zoom et décalage)   // vue inclinée : on « redresse » le sol
 }
 // distance (m) entre un point touché du terrain et un joueur : vu de dessus, jusqu'à ses pieds ; en vue inclinée, jusqu'à
 // son corps dressé (on touche le personnage, pas le sol sous lui)

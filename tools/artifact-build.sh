@@ -4,7 +4,7 @@
 set -e
 OUT="$1"; TITLE="$2"
 rm -rf "$OUT"; mkdir -p "$OUT"
-cp -r js css icons sounds "$OUT"/
+cp -r js css icons sounds fonts "$OUT"/
 rm -f "$OUT/js/secrets.js"
 python3 - "$OUT" "$TITLE" <<'PY'
 import sys, re

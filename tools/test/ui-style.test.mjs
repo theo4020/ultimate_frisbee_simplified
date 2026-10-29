@@ -54,6 +54,19 @@ export default async function (t) {
     t.ok(drawn.out.length === 20, 'chaque combinaison est dessinée (vue de dessus et inclinée)', drawn.out.length);
     t.ok(drawn.snowDisc === 'orange', 'lisibilité : sur la neige, le disque blanc devient orange', drawn.snowDisc);
 
+    t.group('Habillage : caméra qui suit le jeu, police');
+    const cam = await p.evaluate(async () => {
+      const fr = n => new Promise(r => { let k = 0; const f = () => (++k >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); });
+      CTRL.view = 'top'; resize(); CTRL.cam = 'suivi'; G.phase = 'play'; await fr(90);
+      const z = CAM.z, rect = canvas.getBoundingClientRect(), pt = { x: 61.3, y: 12.7 };
+      const w = toWorld({ clientX: rect.left + X(pt.x), clientY: rect.top + Y(pt.y) });
+      CTRL.cam = 'fixe'; await fr(150);
+      return { z: +z.toFixed(2), back: +CAM.z.toFixed(3), err: +Math.hypot(w.x - pt.x, w.y - pt.y).toFixed(3), font: document.fonts ? document.fonts.check("800 20px 'Barlow Condensed'") : true };
+    });
+    t.ok(cam.z > 1.1 && cam.err < 0.01, 'caméra « suit le jeu » : elle zoome, et la visée tombe toujours au bon endroit', cam);
+    t.ok(cam.back === 1, 'caméra fixe : tout le terrain revient', cam);
+    t.ok(cam.font, 'la police des titres est chargée (embarquée, marche hors ligne)', cam);
+
     t.group('Son : musique dans les menus, public en match');
     const au = await p.evaluate(async () => {
       const wait = ms => new Promise(r => setTimeout(r, ms));

@@ -6,6 +6,10 @@
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 let S = 10, dpr = 1;
+// caméra (scenery.js : camFrame) : S zoomé et décalage de l'image ; S0 = échelle sans zoom
+const CAM = { ox: 0, oy: 0, z: 1, fx: 50, fy: 18.5, punch: 0, S0: 10 };
+// police des titres, du tableau des scores et des grands messages (fonts/, embarquée : marche hors ligne)
+const UI_FONT = "'Barlow Condensed', system-ui, sans-serif";
 const TOUCH_HUD = 26;                                      // hauteur du bandeau du haut sur écran tactile (px)
 // Vue inclinée (réglage « Vue », côté tribune) : le sol est vu en biais (aplati par isoK), les joueurs et le disque
 // se dressent au-dessus ; ISO_HEAD m de place en haut pour la hauteur des passes. La logique du jeu reste en 2D (mètres).
@@ -37,6 +41,7 @@ function resize() {
   }
   if (isoView()) isoK = clamp((availH / (availW / (W + 2 * M)) - ISO_HEAD) / (H + 2 * M), 0.5, 0.72);   // le terrain occupe la hauteur dispo
   S = Math.max(3, Math.min(availW / (W + 2 * M), availH / fieldH()));
+  CAM.S0 = S; CAM.z = 1; CAM.ox = CAM.oy = 0;
   const w = (W + 2 * M) * S, h = fieldH() * S;
   dpr = window.devicePixelRatio || 1;
   canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
@@ -57,7 +62,7 @@ if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) documen
 // =====================================================================
 //  Outils
 // =====================================================================
-const X = x => (x + M) * S, Y = y => (y + M) * S;
+const X = x => (x + M) * S + CAM.ox, Y = y => (y + M) * S + CAM.oy;
 // vue inclinée : point du terrain (x, y) à la hauteur z (m) → ordonnée à l'écran (px)
 const IY = (y, z) => Y(y) * isoK + ISO_HEAD * S - (z || 0) * S * ISO_Z;
 // ordonnée à l'écran d'un repère dessiné « à l'écran » (étiquettes, bulles, bandeaux), dans les deux vues

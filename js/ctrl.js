@@ -23,6 +23,7 @@ if (CTRL.v < 3) { if (CTRL.move === 'tap' && CTRL.sling === true) Object.assign(
 if (!['gestes', 'boutons'].includes(CTRL.throwUI)) CTRL.throwUI = 'gestes';
 if (!['tap', 'follow', 'joystick'].includes(CTRL.move)) CTRL.move = 'tap';
 if (!['top', 'iso'].includes(CTRL.view)) CTRL.view = 'top';
+if (!['fixe', 'suivi'].includes(CTRL.cam)) CTRL.cam = 'fixe';               // caméra (scenery.js) : fixe par défaut
 CTRL.perf = !!CTRL.perf;
 if (CTRL.markAssist === undefined) CTRL.markAssist = true;
 if (!CTRL.music) CTRL.music = 'menus';                                 // musique (audio.js) : dans les menus par défaut
@@ -54,6 +55,8 @@ function renderCtrl() {
   $('ctrlBody').innerHTML = `
     <h2>Affichage</h2>
     <div class="row"><span>Vue</span>${b('view', 'top', 'De dessus')}${b('view', 'iso', 'Inclinée (tribune)')}</div>
+    <div class="row"><span>Caméra</span>${b('cam', 'fixe', 'Fixe (tout le terrain)')}${b('cam', 'suivi', 'Suit le jeu')}</div>
+    <div class="desc">${CTRL.cam === 'suivi' ? 'Vue de dessus : la caméra zoome un peu et suit le disque (joueurs plus gros, surtout sur téléphone).' : 'Tout le terrain est toujours visible.'}</div>
     <div class="desc">${CTRL.view === 'iso' ? 'Le terrain vu depuis la tribune : on voit les joueurs debout, et le disque monter et descendre (son ombre montre où il passe au sol).' : 'Le terrain vu d’en haut, comme un tableau tactique.'}</div>
     <h2>Téléphone : avec le disque</h2>
     <div class="row"><span>Lancer</span>${b('sling', true, 'Lance-pierre (tirer en arrière)')}${b('sling', false, 'Glisser vers la cible')}</div>
