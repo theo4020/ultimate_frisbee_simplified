@@ -191,7 +191,7 @@ function callFor(h, x, y) {
   h.callPick = null;
   if (!c) return;
   startCut(c, x, y, dirOf(h.team) * (x - c.x) > 12);
-  c.callT = 3; c.called = G.time;
+  c.callT = 3; c.called = G.time; c.callTo = [x, y];          // (flèche jaune jusqu'à l'endroit demandé, render.js)
   G.cutT = Math.max(G.cutT, 1);
   fxEvent('call', x, y, h.team);
 }

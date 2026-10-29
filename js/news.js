@@ -8,6 +8,15 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
+  { id: 39, date: '2026-10-29', tag: 'Jeu', title: 'Retours du premier playtest 🧪',
+    body: `• La <b>fête</b> après un point se fait sur tout le terrain.<br>
+      • La <b>mark aimantée</b> ne s'active qu'après un instant dans le cercle : passer à côté du porteur ne t'aspire plus.<br>
+      • <b>Espace</b> change aussi de pied de pivot quand tu as le disque.<br>
+      • Coéquipier désigné puis endroit demandé : une <b>flèche jaune</b> montre où il part.<br>
+      • Les <b>passes courtes</b> sont plus douces ; une passe très rapide se droppe plus souvent.<br>
+      • Après une réception, un court instant avant de pouvoir relancer.<br>
+      • La <b>citrouille</b> 🎃 est aussi dans le menu entre les points.<br>
+      • La visière de la casquette tient enfin à la casquette.` },
   { id: 38, date: '2026-10-29', tag: 'Jeu', title: 'Un disque plus vrai 🌬️',
     body: `• Le disque <b>part vite et ralentit</b> pendant sa course (même durée de vol qu'avant).<br>
       • Le <b>vent</b> change la hauteur du vol : <b>de face</b>, le disque monte et plane ; <b>de dos</b>, il reste bas et

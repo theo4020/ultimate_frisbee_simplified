@@ -421,10 +421,10 @@ export default async function (t, { quick }) {
       TEAMS[0].forEach(q => { if (q !== h && q !== r) { q.x = 40 - dir * 12; q.y = 3 + q.i * 7; } });   // les autres attaquants loin de la passe
       h.x = 40; h.y = 18; r.x = 40 + dir * 14; r.y = 18; d.x = 40 + dir * 7; d.y = 18.3; h.pivY = 0; h.pivTo = 0;
       TEAMS[1].forEach(q => { if (q !== d) { q.x = 40 - dir * 15; q.y = 3 + q.i * 7; } q.vx = q.vy = 0; q.think = 99; q.react = 99; q.dive = q.down = q.jump = q.jprep = 0; });   // (personne au sol après un plongeon)
-      d.react = 99; holdDisc(h); G.marker = null;
+      d.react = 99; holdDisc(h); G.marker = null; TEAMS[1].forEach(q => { q.tx = q.x; q.ty = q.y; });   // (ils restent sur place)
       const before = G.stats.blocks + G.stats.ints;
       throwDisc(h, r.x, r.y, 0, 0, 0.0); n++;
-      for (let f = 0; f < 300 && disc.mode === 'air'; f++) { TEAMS[1].forEach(q => { q.react = 99; }); __tick(); }
+      for (let f = 0; f < 300 && disc.mode === 'air'; f++) { TEAMS[1].forEach(q => { q.react = 99; q.tx = q.x; q.ty = q.y; q.vx = q.vy = 0; }); __tick(); }
       if (G.stats.blocks + G.stats.ints > before) stops++;
     }
     return { stops, n };
@@ -491,6 +491,21 @@ export default async function (t, { quick }) {
   t.ok(wv.head.mid > wv.calm.mid * 1.15 && wv.tail.mid < wv.calm.mid * 0.85, 'vent de face : le disque monte et plane ; vent de dos : il reste plus bas', wv);
   t.ok(wv.tail.late < wv.calm.late && Math.abs(wv.head.start - wv.calm.start) < 0.01 && Math.abs(wv.tail.end - wv.calm.end) < 0.01, 'les deux bouts du vol ne bougent pas (lâcher, réception) ; de dos il retombe plus tôt', wv);
   t.ok(wv.midDrift > 0.3 && wv.midDrift < 0.6, 'la dérive du vent arrive surtout en fin de vol (le disque ralentit)', wv);
+
+  t.group('Retours de playtest : célébration, vitesse des passes, réception');
+  const pt = R(`(() => {
+    FX.parts.length = 0; fxPlay('score', 80, 18, 0);
+    const xs = FX.parts.filter(q => q.kind === 'confetti').map(q => q.x);
+    const p = TEAMS[0][1]; holdDisc(p); const think = p.think;
+    return { spread: Math.max(...xs) - Math.min(...xs), n: xs.length, think, f5: flightTime(5), f30: flightTime(30), v5: 5 / flightTime(5), v30: 30 / flightTime(30) };
+  })()`);
+  t.ok(pt.n > 50 && pt.spread > 70, 'un point se fête sur tout le terrain (plus de « mauvais côté »)', pt);
+  t.ok(pt.v5 < 6 && pt.v30 > pt.v5 * 2, 'une passe courte est douce, la vitesse grandit avec la distance', pt);
+  t.ok(pt.think >= 0.45, 'après une réception, le porteur IA prend un instant avant de relancer', pt);
+  const fd = R(`(() => { const p = TEAMS[0][1]; p.x = 50; p.y = 18; Object.assign(disc, { sx: 20, sy: 18, ex: 50, ey: 18, x: 50, y: 18, z: 1.2, loft: 0.3, pull: false });
+    TEAMS[1].forEach(d => { d.x = 10; d.y = 2; }); G.wind = { x: 0, y: 0, kmh: 0 };
+    disc.dur = flightTime(30); const slow = catchOdds(p); disc.dur = flightTime(30) * 0.55; const fast = catchOdds(p); return { slow, fast }; })()`);
+  t.ok(fd.fast > fd.slow + 0.02, 'une passe trop rapide se droppe plus souvent', fd);
 
   t.group('Appel de cut : désigner le coéquipier qui partira');
   const pk = R(`(() => {

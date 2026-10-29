@@ -41,13 +41,18 @@ $('gmQuit').addEventListener('click', () => { closeAllCards(); goMainMenu(); });
 $('gmPause').addEventListener('click', () => { togglePause(); closeCard(); });
 $('ctrlB').addEventListener('click', () => openCard('ctrlCard'));
 // mode Halloween (citrouille en haut du menu) : en jeu, on ne voit que dans la direction de sa souris (render-iso.js)
+// (aussi dans le menu entre les points : on peut l'ajouter ou l'enlever en cours de match)
 function refreshHalloB() {
-  const b = $('halloB'); b.classList.toggle('on', HALLO.on); b.innerHTML = HALLO.on ? '🎃<small>ON</small>' : '🎃';
-  b.title = HALLO.on ? 'Mode Halloween : activé (on ne voit que dans la direction de sa souris) — toucher pour le couper' : 'Mode Halloween : désactivé — toucher pour l’activer';
+  for (const id of ['halloB', 'halloB2']) {
+    const b = $(id); if (!b) continue;
+    b.classList.toggle('on', HALLO.on); b.innerHTML = HALLO.on ? '🎃<small>ON</small>' : '🎃';
+    b.title = HALLO.on ? 'Mode Halloween : activé (on ne voit que dans la direction de sa souris) — toucher pour le couper' : 'Mode Halloween : désactivé — toucher pour l’activer';
+  }
 }
-$('halloB').addEventListener('click', () => {
+for (const id of ['halloB', 'halloB2']) $(id).addEventListener('click', () => {
   setHalloween(!HALLO.on);
-  flash(HALLO.on ? '🎃 Mode Halloween : en jeu, tu ne vois que dans la direction de ta souris !' : 'Mode Halloween coupé', true);
+  if (id === 'halloB2') toast(HALLO.on ? '🎃 Mode Halloween pour les prochains points : tu ne vois que dans la direction de ta souris !' : 'Mode Halloween coupé');
+  else flash(HALLO.on ? '🎃 Mode Halloween : en jeu, tu ne vois que dans la direction de ta souris !' : 'Mode Halloween coupé', true);
 });
 refreshHalloB();
 $('ctrlBack').addEventListener('click', closeCard);

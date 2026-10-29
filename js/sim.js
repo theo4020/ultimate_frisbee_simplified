@@ -340,13 +340,13 @@ function pickupSpeed(p) {
 // vise, à 1,6 m au plus de chaque côté). Dès qu'il vise plus loin (ou change de joueur), l'aimant lâche : il court où il veut,
 // et le compte repart comme en vrai (règle de la mark qui sort des 4 m, plus bas). Un coéquipier IA déjà en mark te la
 // laisse et prend ton attaquant ; un autre humain déjà en mark : rien (pas de double team).
-const MARK_AS = { IN: STALL_R + 0.5, OUT: STALL_R + 1.8, AWAY: 2.2, SIDE: 1.6, FRONT: 1.1 };
+const MARK_AS = { IN: STALL_R + 0.5, OUT: STALL_R + 1.8, AWAY: 2.2, SIDE: 1.6, FRONT: 1.1, DWELL: 0.6 };   // DWELL : temps passé dans le cercle avant que l'aimant s'active (s)
 function markAssist(d, inp) {
   const r = markAssistTarget(d, inp); if (!r) return null;
   const h = disc.holder, o = r.o;
   if (o) {                                                     // un coéquipier IA marque : tu prends la mark, il prend ton attaquant (un « switch », comme en match)
     [d.match, o.match] = [o.match, d.match]; [d.zslot, o.zslot] = [o.zslot, d.zslot]; [d.mission, o.mission] = [o.mission, d.mission];
-    G.marker = d; G.stall = 0; o.react = 0;
+    G.marker = d; G.stall = 0; o.react = 0; o.inT = -1.5;       // (le temps de sortir du cercle sans compter comme double team)
   }
   G.mkShade = r.off * closedOf(d.team) / MARK_AS.SIDE;         // la mark humaine choisit son côté (dessin, lecture du porteur)
   d.markAs = G.time;
@@ -358,7 +358,10 @@ function markAssistTarget(d, inp) {
   const h = disc.holder, ctl = controllerOf(d);
   if (G.phase !== 'play' || disc.mode !== 'held' || !h || h.team === d.team || !ctl || G.tuto || G.practice) return null;
   if (ctl.id === G.myId ? !CTRL.markAssist : inp.ma === false) return null;
-  if (dist(d.x, d.y, h.x, h.y) > MARK_AS.IN) return null;        // il faut d'abord entrer dans le cercle
+  if (dist(d.x, d.y, h.x, h.y) > MARK_AS.IN) { d.mkIn = null; return null; }   // il faut d'abord entrer dans le cercle
+  // … et y rester un instant : un joueur qui passe juste à côté du porteur n'est pas aspiré par l'aimant
+  if (d.mkIn == null) d.mkIn = G.gt;
+  if (G.gt - d.mkIn < MARK_AS.DWELL && !(d.markAs && G.time - d.markAs < 0.25)) return null;
   const br = braking(inp), px = br ? d.x : inp.x, py = br ? d.y : inp.y;
   const pd = dist(px, py, h.x, h.y);                           // il vise ailleurs (loin, ou nettement plus loin que lui, ex. joystick
   if (pd > MARK_AS.OUT || pd - dist(d.x, d.y, h.x, h.y) > MARK_AS.AWAY) return null;   // poussé vers l'extérieur) : il quitte la mark

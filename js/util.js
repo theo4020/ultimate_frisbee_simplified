@@ -106,7 +106,7 @@ function bez(sx, sy, cx, cy, ex, ey, u) {
   const a = 1 - u;
   return [a * a * sx + 2 * a * u * cx + u * u * ex, a * a * sy + 2 * a * u * cy + u * u * ey];
 }
-const flightTime = d => 0.45 + d / 19;                    // 10 m : ~1 s · 30 m : ~2 s
+const flightTime = d => 0.75 + d / 21;                    // vitesse qui grandit avec la distance : 5 m : ~1 s (passe douce) · 10 m : ~1,2 s · 30 m : ~2,2 s
 // hauteur max d'une passe haute ou d'un pull (une passe haute monte bien plus haut)
 // (passe normale ou rasante, et pull : la formule normale ; plus haute : celle de la passe haute, à durée égale)
 const peakOf = (dur, kind) => { const l = loftOf(kind); return l > LOFT.N ? (0.8 + dur / throwK(l).dur * 1.1) * 2.4 : 0.8 + dur * 1.1; };

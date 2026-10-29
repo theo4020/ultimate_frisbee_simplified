@@ -477,7 +477,7 @@ function playBtnsFrame() {
 function doCall(x, y) {
   const h = meH(), q = h && G.phase === 'play' && G.off === h.team ? pickAt(h.team, x, y) : null;
   if (q) { const on = myPick() !== q; ring(q.x, q.y, on ? '#facc15' : 'rgba(255,255,255,.6)', 1.6, 0.45); if (on) vibrate(15); }
-  if (G.net === 'guest') { G.myPick = q ? (G.myPick === q ? null : q) : null; netSend({ t: 'call', x, y }); return; }
+  if (G.net === 'guest') { if (!q && G.myPick) { G.myPick.called = G.time; G.myPick.callTo = [x, y]; } G.myPick = q ? (G.myPick === q ? null : q) : null; netSend({ t: 'call', x, y }); return; }
   callFor(h, x, y);
 }
 // ton coéquipier désigné pour le prochain cut (l'invité garde sa propre copie pour l'affichage)

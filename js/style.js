@@ -188,8 +188,10 @@ function accTop(c, hx, hy, hr) {
   c.save();
   if (a === 'bandeau') { c.strokeStyle = '#ef4444'; c.lineWidth = Math.max(1.5, hr * 0.32); c.beginPath(); c.arc(hx, hy, hr * 0.92, 0, Math.PI * 2); c.stroke(); }
   else if (a === 'casquette') {
+    // visière vers l'avant, dessinée d'abord : sa base passe sous la calotte (elle y est bien rattachée)
+    c.fillStyle = '#ef4444'; c.beginPath(); c.ellipse(hx + hr * 0.45, hy, hr * 1.0, hr * 0.78, 0, -Math.PI / 2, Math.PI / 2); c.closePath(); c.fill();
     c.fillStyle = '#1e293b'; c.beginPath(); c.arc(hx, hy, hr * 0.95, 0, Math.PI * 2); c.fill();
-    c.fillStyle = '#ef4444'; c.beginPath(); c.ellipse(hx + hr * 0.95, hy, hr * 0.55, hr * 0.8, 0, -Math.PI / 2, Math.PI / 2); c.fill();   // visière vers l'avant
+    c.fillStyle = 'rgba(255,255,255,.18)'; c.beginPath(); c.arc(hx, hy, hr * 0.16, 0, Math.PI * 2); c.fill();   // le bouton du dessus
   } else if (a === 'lunettes') { c.fillStyle = '#0f172a'; c.fillRect(hx + hr * 0.45, hy - hr * 0.95, hr * 0.42, hr * 1.9); c.fillStyle = '#38bdf8'; c.fillRect(hx + hr * 0.55, hy - hr * 0.8, hr * 0.2, hr * 0.55); c.fillRect(hx + hr * 0.55, hy + hr * 0.25, hr * 0.2, hr * 0.55); }
   else if (a === 'couronne') {
     c.fillStyle = '#facc15'; c.strokeStyle = '#a16207'; c.lineWidth = 1;
@@ -222,12 +224,13 @@ function accChibi(c, sx, hy, hr, back, fx) {
 
 // ---------- célébration (quand ton équipe marque) ----------
 // renvoie true si elle a remplacé les confettis
-function celebrate(team, ex) {
+function celebrate(team) {
+  const rx = () => Math.random() * W;                          // sur tout le terrain
   if (G.attract || G.spectator || team !== G.me || !meH()) return false;
   const k = styleOf('cele'), c = teamColor(team);
   if (k === 'feu') {
-    for (let b = 0; b < 5; b++) {
-      const x = ex + (Math.random() - 0.5) * EZ * 0.8, y = 4 + Math.random() * (H - 8), col = [c, '#facc15', '#f472b6', '#38bdf8', '#fff'][b];
+    for (let b = 0; b < 8; b++) {
+      const x = 6 + Math.random() * (W - 12), y = 4 + Math.random() * (H - 8), col = [c, '#facc15', '#f472b6', '#38bdf8', '#fff'][b];
       for (let i = 0; i < 22; i++) {
         const a = i / 22 * Math.PI * 2, sp = 6 + Math.random() * 4;
         FX.parts.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, t: -b * 0.18, life: 0.9 + b * 0.18, color: col, size: 0.32, drag: 2.2, grav: 2 });
@@ -236,15 +239,15 @@ function celebrate(team, ex) {
     return true;
   }
   if (k === 'etoiles') {
-    for (let i = 0; i < 45; i++) {
-      FX.parts.push({ x: ex + (Math.random() - 0.5) * EZ, y: Math.random() * H, vx: (Math.random() - 0.5) * 2, vy: -1 - Math.random() * 3, t: 0, life: 1.4 + Math.random() * 0.8,
+    for (let i = 0; i < 90; i++) {
+      FX.parts.push({ x: rx(), y: Math.random() * H, vx: (Math.random() - 0.5) * 2, vy: -1 - Math.random() * 3, t: 0, life: 1.4 + Math.random() * 0.8,
         color: ['#facc15', '#fff', '#fde68a'][i % 3], size: 0.9, kind: 'star', rot: Math.random() * 6, vr: (Math.random() - 0.5) * 6, drag: 0.4, grav: 0 });
     }
     return true;
   }
   if (k === 'coeurs' || k === 'bulles') {
-    for (let i = 0; i < 40; i++) {
-      FX.parts.push({ x: ex + (Math.random() - 0.5) * EZ, y: 2 + Math.random() * (H - 4), vx: (Math.random() - 0.5) * 1.5, vy: -1.5 - Math.random() * 2.5, t: -Math.random() * 0.4, life: 1.5 + Math.random() * 0.8,
+    for (let i = 0; i < 80; i++) {
+      FX.parts.push({ x: rx(), y: 2 + Math.random() * (H - 4), vx: (Math.random() - 0.5) * 1.5, vy: -1.5 - Math.random() * 2.5, t: -Math.random() * 0.4, life: 1.5 + Math.random() * 0.8,
         color: k === 'coeurs' ? ['#f43f5e', '#fb7185', '#fda4af'][i % 3] : 'rgba(186,230,253,.85)', size: 0.8 + Math.random() * 0.5, kind: k === 'coeurs' ? 'heart' : 'bubble', drag: 0.3, grav: 0 });
     }
     return true;

@@ -12,7 +12,8 @@ function holdDisc(p) {
   if (p.dive > 0 || p.down > 0) { p.vx *= 0.5; p.vy *= 0.5; }
   p.dive = p.down = 0; p.jump = p.jprep = p.jrec = 0;           // réception en layout ou en saut : il se relève avec le disque
   G.stall = 0; G.holdT = 0; G.marker = null; G.dbl = null; G.pickup = null;
-  players.forEach(q => { q.inT = 0; }); p.think = Math.max(0.35 * aiLvl(p.team).react, aiLvl(p.team).lift || 0);   // le temps de lever la tête et lire le jeu
+  G.recvHolder = p; G.recvAt = G.time;                        // délai de réception (render.js : recvReady)
+  players.forEach(q => { q.inT = 0; }); p.think = Math.max(0.45, 0.35 * aiLvl(p.team).react, aiLvl(p.team).lift || 0);   // le temps de lever la tête et lire le jeu
   visCatch(p);
   assignRoles(p.team, p);
   if (!G.pullPending) continuationCut(p.team, p);
@@ -36,7 +37,7 @@ function catchOdds(p) {
   const v = discLen() / Math.max(0.2, disc.dur), reachD = dist(p.x, p.y, disc.x, disc.y);
   const near = nearestD(TEAMS[1 - p.team], p.x, p.y)[1];
   return 0.001
-    + Math.max(0, v - 19) * 0.001                                       // 25 m/s : +0,6 %
+    + Math.min(0.06, Math.max(0, v - 10) * 0.006)                      // passe rapide, plus dure à attraper : 14 m/s (huck de 30 m) : +2,4 % · 16 m/s : +3,6 %
     + Math.max(0, reachD - 0.9) * 0.008 + (p.dive > 0 ? 0.008 : 0) + (p.jump > 0 && disc.z > REACH_STAND ? 0.005 : 0)
     + Math.max(0, 1.2 - near) * 0.015                                   // défenseur au contact : +1,5 %
     + dropChance();

@@ -131,9 +131,9 @@ function fxPlay(name, x, y, team) {
     case 'turn': if (typeof sadAt === 'function') sadAt(x, y, 1 - team); burst(x, y, 8, { color: ['#cbd5e1', '#94a3b8'], speed: 3, life: 0.5, size: 0.28 }); ring(x, y, 'rgba(226,232,240,.7)', 1.8, 0.35); break;
     case 'score': {
       CAM.punch = 1; CAM.hype = 1;                           // caméra « suit le jeu » : petit à-coup de zoom ; le public explose
-      const ex = dirOf(team) > 0 ? W - EZ / 2 : EZ / 2;
-      if (!celebrate(team, ex)) for (let i = 0; i < 70; i++) {
-        FX.parts.push({ x: ex + (Math.random() - 0.5) * EZ, y: Math.random() * H, vx: (Math.random() - 0.5) * 4, vy: -2 - Math.random() * 5,
+      // la fête sur tout le terrain (plus de « mauvais côté » quand les équipes changent de sens après le point)
+      if (!celebrate(team)) for (let i = 0; i < 140; i++) {
+        FX.parts.push({ x: Math.random() * W, y: Math.random() * H, vx: (Math.random() - 0.5) * 4, vy: -2 - Math.random() * 5,
           t: 0, life: 1.2 + Math.random() * 0.8, color: [c, '#facc15', '#fff'][i % 3], size: 0.85, kind: 'confetti', rot: Math.random() * 6, vr: (Math.random() - 0.5) * 14, drag: 0.6, grav: 5 });
       }
       FX.shake = Math.max(FX.shake, 5); FX.pop = 1; vibrate([60, 40, 120]);

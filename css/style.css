@@ -88,9 +88,10 @@ button:hover{filter:brightness(1.15)}
 .card .back{position:sticky;bottom:0;z-index:3;box-shadow:0 0 0 8px var(--panel),0 22px 0 8px var(--panel),0 -14px 14px 4px var(--panel)}
 .card div.back{background:var(--panel)}
 #lobbyCard{position:relative}
-#halloB{position:absolute;top:10px;right:12px;padding:2px 6px;font-size:20px;line-height:1;background:transparent;border:1px solid transparent;border-radius:10px;opacity:.55;filter:grayscale(.6)}
-#halloB small{font-size:10px;font-weight:800;color:#fdba74;margin-left:3px;vertical-align:middle}
-#halloB.on{opacity:1;filter:none;border-color:#f97316;box-shadow:0 0 12px rgba(249,115,22,.7);background:rgba(249,115,22,.15)}
+#stratCard{position:relative}
+.halloBtn{position:absolute;top:10px;right:12px;padding:2px 6px;font-size:20px;line-height:1;background:transparent;border:1px solid transparent;border-radius:10px;opacity:.55;filter:grayscale(.6)}
+#halloB small,#halloB2 small,.halloBtn small{font-size:10px;font-weight:800;color:#fdba74;margin-left:3px;vertical-align:middle}
+#halloB.on,.halloBtn.on{opacity:1;filter:none;border-color:#f97316;box-shadow:0 0 12px rgba(249,115,22,.7);background:rgba(249,115,22,.15)}
 .stratFoot{display:flex;flex-direction:column;gap:6px;margin-top:8px}
 .card p{margin:6px 0 14px;color:var(--muted);line-height:1.45}
 .row{display:flex;align-items:center;gap:8px;margin:10px 0 4px;flex-wrap:wrap}

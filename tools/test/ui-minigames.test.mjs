@@ -66,6 +66,7 @@ export default async function (t) {
       G.oplay = null; G.dplay = null; G.pickup = null; G.off = 1 - G.me; G.phase = 'play'; G.checkT = 0; G.carryTo = null;
       const o = TEAMS[1 - G.me][0]; o.x = 50; o.y = 18.5; o.vx = o.vy = 0; holdDisc(o); o.think = 99;   // le porteur attend
       const h = meH(), d = TEAMS[G.me][0]; selectFor(h, d); d.x = o.x + dirOf(o.team) * 2; d.y = o.y; d.vx = d.vy = 0;
+      TEAMS[G.me].forEach(q => { if (q !== d) { q.x = o.x - dirOf(o.team) * 15; q.y = 3 + q.i * 7; q.vx = q.vy = 0; q.inT = 0; } });   // les coéquipiers loin du cercle (pas de double team)
       G.pointer.bx = undefined; G.pointer.x = o.x + dirOf(o.team) * 0.8; G.pointer.y = o.y + s * 1.2; G.pointer.last = G.time;
     }, side);
     // attente en temps de jeu (la machine de test peut ralentir les images : on ne compte pas en temps réel)
@@ -73,7 +74,7 @@ export default async function (t) {
     const look = () => p.evaluate(() => { const d = meH().sel, h = disc.holder; return { on: !!d.markOn, dx: +(dirOf(h.team) * (d.x - h.x)).toFixed(2), dy: +(d.y - h.y).toFixed(2), mk: G.marker === d, stall: +G.stall.toFixed(1), shade: +G.mkShade.toFixed(2), ph: G.phase, mode: disc.mode, ht: h && h.team, me: G.me, ctl: !!controllerOf(d), pz: G.paused, pull: !!G.pull }; });
     await p.evaluate(() => { tipT = 0; tipSeen = null; document.getElementById('coachTip').style.display = 'none'; const s = storeGet('uf-tips', {}) || {}; delete s.mark; storeSet('uf-tips', s); });
     await setup(1);
-    await gwait(1.2);
+    await gwait(1.8);                                            // (l'aimant attend un instant dans le cercle)
     const m1 = await look();
     t.ok(await p.isVisible('#coachTip') && /mark/.test(await p.textContent('#ctText')), 'première mark : Coach Disco explique l’aimant et comment la quitter', await p.textContent('#ctText'));
     t.ok(m1.on && m1.mk && m1.dx > 0.6 && m1.dx < 1.6 && Math.abs(m1.dy - 1.2) < 0.5 && m1.stall > 0, 'dans le cercle : ton joueur se cale devant le porteur, du côté visé, et compte le stall', m1);
@@ -95,6 +96,9 @@ export default async function (t) {
     const m4 = await look();
     t.ok(!m4.on && m4.dy > 2.3, 'réglage coupé : ton joueur va simplement où tu vises (sans se caler à 1,6 m)', m4);
     await p.evaluate(() => { CTRL.markAssist = true; });
+    await setup(1); await gwait(0.25);                          // il vient d'entrer dans le cercle : pas encore aimanté
+    const m6 = await look(); await gwait(0.8); const m7 = await look();
+    t.ok(!m6.on && m7.on, 'l’aimant ne s’active qu’après un instant dans le cercle (un joueur qui passe à côté n’est pas aspiré)', { m6, m7 });
 
     t.group('Feinte de pivot contre une mark IA');
     const fe = await p.evaluate(async () => {
@@ -103,10 +107,12 @@ export default async function (t) {
       const h = TEAMS[G.me][0]; h.x = 50; h.y = 18; h.vx = h.vy = 0; holdDisc(h); h.think = 99;
       const d = TEAMS[1 - G.me][0]; d.x = h.x + dirOf(G.me) * 1.4; d.y = 18.5;
       const fr = n => new Promise(r => { let k = 0; const f = () => (++k >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); });
-      await fr(40); const s0 = G.mkShade;
-      togglePivot(); await fr(5); togglePivot();                 // aller-retour rapide : la feinte
-      let peak = s0; for (let k = 0; k < 20; k++) { await fr(1); peak = Math.max(peak, G.mkShade); }
-      return { s0: +s0.toFixed(2), peak: +peak.toFixed(2), piv: +h.pivY.toFixed(2) };
+      await fr(40); for (let k = 0; k < 200 && !canThrow(); k++) await fr(1);   // (un instant après la réception avant de pouvoir pivoter)
+      await fr(10); const s0 = G.mkShade;
+      const gw = async sec => { const t0 = G.gt; for (let k = 0; k < 120 && G.gt - t0 < sec; k++) { G.paused = false; await fr(1); } };   // (une page de test peut se mettre en pause si elle perd le focus)   // en temps de jeu (le rythme des images varie)
+      togglePivot(); await gw(0.08); togglePivot();               // aller-retour rapide : la feinte
+      let peak = s0; const t1 = G.gt; for (let k = 0; k < 200 && G.gt - t1 < 0.35; k++) { G.paused = false; await fr(1); peak = Math.max(peak, G.mkShade); }
+      return { s0: +s0.toFixed(2), peak: +peak.toFixed(2), piv: +h.pivY.toFixed(2), dbg: { gt: +(G.gt - t1).toFixed(2), mk: G.marker && players.indexOf(G.marker), d: players.indexOf(d), mkUser: G.marker && !!userControls(G.marker), ph: G.phase, mode: disc.mode, hold: disc.holder === h, th: !!throwerHuman(), pivHolder: G.pivHolder === h, pivSel: G.pivSel, net: G.net, pz: G.paused, menu: G.menuShown } };
     });
     t.ok(fe.peak - fe.s0 > 0.25 && fe.piv < -0.9, 'un aller-retour rapide de pivot décale la mark du mauvais côté (le porteur, lui, est revenu)', fe);
 

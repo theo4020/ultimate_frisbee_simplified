@@ -80,6 +80,23 @@ export default async function (t) {
       const on = myPick() === q; doCall(q.x, q.y); return { on, off: !myPick() };
     });
     t.ok(pkb.on && pkb.off, 'clic droit / tap sur un coéquipier : il est désigné (anneau doré), un 2e appel l’annule', pkb);
+    const pt2 = await p.evaluate(async () => {
+      const fr = n => new Promise(r => { let k = 0; const f = () => (++k >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); });
+      G.phase = 'play'; G.off = G.me; G.checkT = 0; const h = TEAMS[G.me][0]; holdDisc(h); h.think = 99;
+      const early = canThrow(); await new Promise(r => setTimeout(r, 600)); const later = canThrow();   // un instant après la réception
+      const q = TEAMS[G.me][2]; disc.intended = null; let sp = { x: 50, y: 18 }, bd = 0;
+      TEAMS[G.me].forEach((o, i) => { if (o !== h) { o.x = 30 + i * 9; o.y = 30; o.vx = o.vy = 0; } }); sp = { x: 60, y: 6 };   // coéquipiers bien séparés, endroit libre
+      doCall(q.x, q.y); doCall(sp.x, sp.y);                                                   // désigné, puis l'endroit voulu
+      const arrowFor = !!q.callTo && Math.abs(q.callTo[0] - sp.x) < 1.5;
+      const piv0 = G.pivSel; window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ' })); window.dispatchEvent(new KeyboardEvent('keyup', { key: ' ' })); await fr(3);
+      return { early, later, arrowFor, pivFlip: G.pivSel !== piv0 };
+    });
+    t.ok(!pt2.early && pt2.later, 'juste après la réception, on ne peut pas encore relancer (un instant de stabilisation)', pt2);
+    t.ok(pt2.arrowFor, 'coéquipier désigné puis endroit : il y part, avec une flèche jusqu’à l’endroit voulu', pt2);
+    t.ok(pt2.pivFlip, 'avec le disque, Espace change de pied de pivot', pt2);
+    const hw = await p.evaluate(() => { const was = HALLO.on, b = document.getElementById('halloB2'); const inCard = !!b && b.closest('#stratCard') !== null;
+      b.click(); const on = HALLO.on !== was && b.classList.contains('on') === HALLO.on; b.click(); return { inCard, on, back: HALLO.on === was }; });
+    t.ok(hw.inCard && hw.on && hw.back, 'la citrouille du mode Halloween est aussi dans le menu entre les points', hw);
 
     t.group('Écran de fin : panneau du score, moment du match, équipes, joueurs en ligne');
     const sm = await p.evaluate(() => {
@@ -102,7 +119,7 @@ export default async function (t) {
       CTRL.view = 'top'; resize(); CTRL.cam = 'suivi'; G.phase = 'play'; await fr(90);
       const z = CAM.z, rect = canvas.getBoundingClientRect(), pt = { x: 61.3, y: 12.7 };
       const w = toWorld({ clientX: rect.left + X(pt.x), clientY: rect.top + Y(pt.y) });
-      CTRL.cam = 'fixe'; await fr(150);
+      CTRL.cam = 'fixe'; for (let k = 0; k < 40 && CAM.z !== 1; k++) await new Promise(r => setTimeout(r, 100));   // (en temps réel : le rythme des images varie)
       return { z: +z.toFixed(2), back: +CAM.z.toFixed(3), err: +Math.hypot(w.x - pt.x, w.y - pt.y).toFixed(3), font: document.fonts ? document.fonts.check("800 20px 'Barlow Condensed'") : true };
     });
     t.ok(cam.z > 1.1 && cam.err < 0.01, 'caméra « suit le jeu » : elle zoome, et la visée tombe toujours au bon endroit', cam);

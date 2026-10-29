@@ -275,7 +275,7 @@ export default async function (t) {
     t.ok(await guest.isVisible('#lobbyOnline'), 'l’invité quitte et retrouve la section En ligne');
     await host.waitForFunction(() => G.humans.length === 1, null, { timeout: 15000 });
     t.ok(await guest.isVisible('#rejoinB') && (await guest.textContent('#rejoinTxt')).includes(code), 'bouton pour revenir dans la partie quittée');
-    await guest.bringToFront(); await guest.click('#rejoinB');   // (onglet au premier plan : sinon le navigateur le ralentit)
+    await guest.bringToFront(); await guest.evaluate(() => document.getElementById('rejoinB').click());   // (clic direct : la page en arrière-plan ne répond pas toujours aux attentes de stabilité de Playwright)
     await host.waitForFunction(() => G.humans.length === 2, null, { timeout: 20000 }).catch(() => {});
     const back = await host.evaluate(() => ({ n: G.humans.length, conns: Object.keys(G.conns || {}).length, phase: G.phase }));
     const gst = await guest.evaluate(() => ({ net: G.net, phase: G.phase, reconn: !!G.reconn, lobby: document.getElementById('lobbyOnline').offsetParent !== null, status: (document.getElementById('joinStatus') || {}).textContent, log: typeof NETLOG !== 'undefined' ? NETLOG.ev.slice(-8) : null }));

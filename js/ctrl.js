@@ -10,7 +10,7 @@ const KEY_ACTIONS = [
   ['pivot', 'Changer de pied de pivot'], ['loftUp', 'Passe plus haute'], ['loftDown', 'Passe plus basse'], ['curveL', 'Courbe ↶'], ['curveR', 'Courbe ↷'],
   ['jump', 'Sauter'], ['dive', 'Layout'], ['switch', 'Changer de joueur'], ['play1', 'Appeler le play 1'], ['play2', 'Appeler le play 2']
 ];
-const DEFAULT_KEYS = { pivot: ['x'], loftUp: ['z', 'w', 'arrowup'], loftDown: ['s', 'arrowdown'], curveL: ['a', 'q', 'arrowleft'], curveR: ['e', 'd', 'arrowright'], jump: ['s'], dive: ['f', 'shift'], switch: [' '], play1: ['r'], play2: ['t'] };
+const DEFAULT_KEYS = { pivot: [' ', 'x'], loftUp: ['z', 'w', 'arrowup'], loftDown: ['s', 'arrowdown'], curveL: ['a', 'q', 'arrowleft'], curveR: ['e', 'd', 'arrowright'], jump: ['s'], dive: ['f', 'shift'], switch: [' '], play1: ['r'], play2: ['t'] };
 const CTRL = Object.assign({ sling: false, throwUI: 'gestes', move: 'joystick', keys: {}, v: 3 }, (() => {
   try { const o = JSON.parse(localStorage.getItem('uf-ctrl') || 'null'); return o && typeof o === 'object' ? o : {}; } catch (e) { return {}; }
 })());

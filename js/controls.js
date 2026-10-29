@@ -124,7 +124,7 @@ window.addEventListener('keydown', e => {
   if ((k === ' ' || k === 'enter' || keyIs('jump', k) || keyIs('switch', k)) && !localPuller() && startPress()) { e.preventDefault(); return; }   // départ au pull
   if (keyIs('play1', k)) { doPlay(1); return; }
   if (keyIs('play2', k)) { doPlay(2); return; }
-  if (keyIs('pivot', k)) { if (!e.repeat) pivotBtnDown(); return; }
+  if (keyIs('pivot', k) && (canThrow() || !keyIs('switch', k))) { e.preventDefault(); if (!e.repeat) pivotBtnDown(); return; }   // Espace : pied de pivot avec le disque, changer de joueur sinon
   if (canThrow() && (keyIs('loftUp', k) || keyIs('loftDown', k))) { e.preventDefault(); adjustLoft(keyIs('loftUp', k) ? LOFT.STEP : -LOFT.STEP); return; }
   if (keyIs('curveL', k)) { if (k.startsWith('arrow')) e.preventDefault(); adjustCurve(-0.25); }
   else if (keyIs('curveR', k)) { if (k.startsWith('arrow')) e.preventDefault(); adjustCurve(0.25); }

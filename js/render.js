@@ -37,7 +37,15 @@ function drawAim(h, px, py, curve, kind, aiming, ally) {
   }
   ctx.restore();
 }
-function canThrow() { const h = throwerHuman(); return G.phase === 'play' && !!h && h.id === G.myId && !((G.net === 'guest' ? G.netCheck : G.checkT) > 0); }
+// après une réception, il faut un instant (RECV_T s) pour se stabiliser avant de relancer : les enchaînements restent
+// naturels, et un clic pensé pour un plongeon juste au moment du catch ne part pas en passe
+const RECV_T = 0.45;
+function recvReady() {
+  if (disc.mode !== 'held' || !disc.holder) { G.recvHolder = null; return false; }
+  if (G.recvHolder !== disc.holder) { G.recvHolder = disc.holder; G.recvAt = G.time; }
+  return G.time - G.recvAt >= RECV_T || !!G.tuto && !G.tuto.recvWait;
+}
+function canThrow() { const h = throwerHuman(); return G.phase === 'play' && !!h && h.id === G.myId && !((G.net === 'guest' ? G.netCheck : G.checkT) > 0) && recvReady(); }
 function defending() { return G.phase === 'play' && G.off !== G.me; }
 // couleur selon la hauteur : rouge = contrable (même en plongeon), jaune = contrable debout,
 // rose = seulement en sautant, bleu = trop haut
@@ -376,8 +384,15 @@ function draw() {
   if (pk) { ctx.save(); ctx.strokeStyle = 'rgba(250,204,21,.9)'; ctx.lineWidth = 2; ctx.setLineDash([4, 3]); ctx.lineDashOffset = -G.time * 12;
     circle(X(pk.x), Y(pk.y), (1.6 + Math.sin(G.time * 6) * 0.12) * S); ctx.stroke(); ctx.restore(); }
 
+  // cut que tu as demandé : flèche jaune du coéquipier jusqu'à l'endroit voulu (tant qu'il n'y est pas)
+  const called = new Set();
+  if (myAttack) for (const p of TEAMS[ME]) {
+    if (!p.callTo || !(G.time - p.called < 3.5) || p === disc.holder || dist(p.x, p.y, p.callTo[0], p.callTo[1]) < 1.3) continue;
+    called.add(p); arrow(p.x, p.y, p.callTo[0], p.callTo[1], 'rgba(250,204,21,.9)');
+  }
   // Courses en cours de tes coéquipiers
   if (myAttack) for (const p of TEAMS[ME]) {
+    if (called.has(p)) continue;
     if (p.state === 'jab' || p.state === 'cut') arrow(p.x, p.y, p.cx, p.cy, 'rgba(255,255,255,.55)');
     else if (p.role === 'dump' && p.state === 'reset') arrow(p.x, p.y, p.cx, p.cy, 'rgba(250,204,21,.6)');
   }
