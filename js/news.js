@@ -8,6 +8,15 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
+  { id: 35, date: '2026-10-29', tag: 'Visuel', title: 'Un terrain plus vivant 🌿',
+    body: `Le jeu fait peau neuve, toujours vu de dessus :<br>
+      • de l'<b>herbe</b> qui ondule au vent, des ombres au soleil, des lignes à la craie ;<br>
+      • au bord du terrain, le <b>banc des remplaçants</b>, les sacs, les gourdes, et des <b>spectateurs</b> qui applaudissent et
+      explosent de joie sur un point ;<br>
+      • des <b>joueurs</b> plus vivants : foulée, geste du lancer, bras tendus au dernier moment, herbe qui gicle au plongeon ;<br>
+      • en vol, le disque reste à sa vraie place : c'est son <b>ombre</b> qui montre sa hauteur ;<br>
+      • un <b>panneau de score</b> lumineux, et sur téléphone une <b>caméra qui suit le jeu</b> (réglable dans Commandes) ;<br>
+      • nouveau terrain <b>Prairie</b> dans Mon style : de l'herbe haute à perte de vue.` },
   { id: 34, date: '2026-10-28', tag: 'Communauté', title: 'Donne ton avis 💬',
     body: `Nouveau bouton <b>💬 Donner mon avis</b>, dans le menu principal et dans le menu ☰ en partie : quelques
       mots, et ton avis part directement au développeur. Ce que tu aimes, ce qui te manque, ce qui te gêne :
