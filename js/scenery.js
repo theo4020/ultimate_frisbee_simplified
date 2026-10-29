@@ -341,6 +341,11 @@ function groundFx(p, spd) {
     FX.parts.push({ x: p.x, y: p.y, vx: Math.cos(a) * v + p.vx * 0.3, vy: Math.sin(a) * v + p.vy * 0.3, t: 0, life: 0.45 + Math.random() * 0.3,
       color: cols[Math.floor(Math.random() * cols.length)], size: 0.16 + Math.random() * 0.1, kind: 'dot', rot: 0, vr: 0, drag: 3.5 });
   }
+  if (p.boostT > 0 && spd > 1.5 && !(p.dive > 0) && Math.random() < dt * 28) {   // départ parfait : il arrache le sol en démarrant
+    const a = Math.atan2(p.vy, p.vx) + Math.PI + (Math.random() - 0.5) * 0.9, v = 1.5 + Math.random() * 2.5, sd = Math.random() < 0.5 ? -0.3 : 0.3;
+    FX.parts.push({ x: p.x - p.vx / spd * 1.1 - p.vy / spd * sd, y: p.y - p.vy / spd * 1.1 + p.vx / spd * sd, vx: Math.cos(a) * v, vy: Math.sin(a) * v, t: 0, life: 0.35 + Math.random() * 0.2,
+      color: cols[Math.floor(Math.random() * cols.length)], size: 0.13 + Math.random() * 0.08, kind: 'dot', rot: 0, vr: 0, drag: 4 });
+  }
   const loose = cols && !['gazon', 'herbes', 'stade', 'prairie'].includes(styleOf('field'));   // sable, terre, neige : petite poussière au sprint
   if (loose && spd > 5 && !(p.dive > 0) && Math.random() < dt * 6)
     FX.parts.push({ x: p.x - p.vx * 0.04, y: p.y - p.vy * 0.04, vx: -p.vx * 0.1, vy: -p.vy * 0.1, t: 0, life: 0.5, color: cols[1] || cols[0], size: 0.32, kind: 'dot', rot: 0, vr: 0, drag: 4 });

@@ -261,6 +261,17 @@ function drawBody(p, x, y, r, face, o) {
   }
   ctx.restore();
 }
+// départ parfait : trois traits de vitesse derrière le joueur (comme dans une BD), qui s'effacent avec le boost
+function speedLines(p, spd) {
+  const ux = p.vx / spd, uy = p.vy / spd, nx = -uy, ny = ux, a = Math.min(1, p.boostT / 0.6) * 0.75, L = (1.4 + spd * 0.22) * S;
+  ctx.save(); ctx.lineCap = 'round';
+  for (const [o, k] of [[-0.55, 0.75], [0, 1], [0.55, 0.75]]) {
+    const x0 = X(p.x - ux * 1.25 + nx * o), y0 = Y(p.y - uy * 1.25 + ny * o), x1 = x0 - ux * L * k, y1 = y0 - uy * L * k;
+    const g = ctx.createLinearGradient(x0, y0, x1, y1); g.addColorStop(0, `rgba(255,255,255,${a})`); g.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.strokeStyle = g; ctx.lineWidth = Math.max(1.5, S * 0.16); ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+  }
+  ctx.restore();
+}
 function circle(x, y, r) { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); }
 
 function arrow(x1, y1, x2, y2, color) {
@@ -436,6 +447,7 @@ function draw() {
     const spd = Math.hypot(p.vx, p.vy), hop = celebrateHop(p);
     p.stride = (p.stride || 0) + spd * (FX.dt || 0.016) * 1.6;
     if (!iso) groundFx(p, spd);                              // herbe soulevée par un plongeon, poussière en courant
+    if (!iso && p.boostT > 0 && spd > 2) speedLines(p, spd);    // départ parfait : traits de vitesse derrière lui
     // bras tendus seulement dans les derniers instants : le receveur juste avant l'arrivée, un défenseur quand le disque le frôle
     const left = disc.mode === 'air' ? disc.dur - disc.t : 9;
     const near = disc.mode === 'air' && !disc.pull && (disc.z || 0) < 3.6 && ((disc.intended === p && left < 0.38 && dist(p.x, p.y, disc.ex, disc.ey) < 3) || dist(p.x, p.y, disc.x, disc.y) < 1.7);
