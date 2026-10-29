@@ -399,15 +399,38 @@ export default async function (t, { quick }) {
   t.ok(ec.again === 'facile', 'un réglage changé en mode infini est gardé pour la prochaine fois', ec);
 
   t.group('Interceptions');
-  const ir = R(`(() => {                                       // 600 arrêts au milieu du terrain, sans jouer la suite
+  const ir = R(`(() => {                                       // sans hasard : dans le corps = interception, du bout des bras = block
     const keep = [interception, turnover, msTurnover]; let n = 0;
     interception = () => n++; turnover = () => {}; msTurnover = () => {};
-    disc.x = W / 2; disc.y = H / 2;
-    for (let k = 0; k < 600; k++) defStop(TEAMS[1][0], 'Block');
+    disc.x = W / 2; disc.y = H / 2; const d = TEAMS[1][0]; d.dive = 0; d.jump = 0;
+    const r = {};
+    n = 0; defStop(d, 'Block', 0.3); r.body = n;
+    n = 0; defStop(d, 'Block', 0.8); r.arms = n;
+    n = 0; for (let k = 0; k < 50; k++) defStop(d, 'Block', 0.3); r.same = n;
     [interception, turnover, msTurnover] = keep;
-    return n / 600;
+    // et le contre lui-même : un disque à portée est toujours contré (50 passes identiques → 50 blocks)
+    return r;
   })()`);
-  t.ok(ir > 0.26 && ir < 0.41, '1 arrêt sur 3 est une interception (hors en-but)', +ir.toFixed(2));
+  const dt2 = R(`(() => {                                      // la même passe, droit sur un défenseur posé sur la ligne : toujours contrée
+    let stops = 0, n = 0;
+    for (let k = 0; k < 12; k++) {
+      G.score = [0, 0]; G.receiving = 0; newWind(); G.wind = { x: 0, y: 0, kmh: 0 }; startPoint();
+      for (let f = 0; f < 6000 && !(G.phase === 'play' && disc.mode === 'held' && !G.pullPending && disc.holder.team === 0); f++) __tick();
+      if (G.phase !== 'play') continue;
+      const h = disc.holder, dir = dirOf(0), r = TEAMS[0].find(p => p !== h), d = TEAMS[1][1];
+      TEAMS[0].forEach(q => { if (q !== h && q !== r) { q.x = 40 - dir * 12; q.y = 3 + q.i * 7; } });   // les autres attaquants loin de la passe
+      h.x = 40; h.y = 18; r.x = 40 + dir * 14; r.y = 18; d.x = 40 + dir * 7; d.y = 18.3; h.pivY = 0; h.pivTo = 0;
+      TEAMS[1].forEach(q => { if (q !== d) { q.x = 40 - dir * 15; q.y = 3 + q.i * 7; } q.vx = q.vy = 0; q.think = 99; q.react = 99; q.dive = q.down = q.jump = q.jprep = 0; });   // (personne au sol après un plongeon)
+      d.react = 99; holdDisc(h); G.marker = null;
+      const before = G.stats.blocks + G.stats.ints;
+      throwDisc(h, r.x, r.y, 0, 0, 0.0); n++;
+      for (let f = 0; f < 300 && disc.mode === 'air'; f++) { TEAMS[1].forEach(q => { q.react = 99; }); __tick(); }
+      if (G.stats.blocks + G.stats.ints > before) stops++;
+    }
+    return { stops, n };
+  })()`);
+  t.ok(dt2.n >= 8 && dt2.stops === dt2.n, 'la même passe sur un défenseur à portée est contrée à chaque fois', dt2);
+  t.ok(ir.body === 1 && ir.arms === 0 && ir.same === 50, 'pas de hasard : disque dans le corps = interception, du bout des bras = block, toujours pareil', ir);
 
   t.group('Callahan : un arrêt dans l’en-but adverse est toujours une interception qui marque');
   const cal = R(`(() => {
@@ -475,6 +498,7 @@ export default async function (t, { quick }) {
     for (let f = 0; f < 6000 && !(G.phase === 'play' && disc.mode === 'held' && !G.pullPending && disc.holder.team === 0); f++) __tick();
     const h = G.humans[0] || { id: 0, team: 0, sel: null }, d = disc.holder, dir = dirOf(0);
     const mates = TEAMS[0].filter(p => p !== d), A = mates[0], B = mates[1];
+    mates.slice(2).forEach((q, k) => { q.x = d.x - dir * 3; q.y = 14 + k * 4; });   // les autres : loin des points d'appel
     A.x = d.x - dir * 8; A.y = 6; B.x = d.x + dir * 10; B.y = 30; A.callT = 0; B.callT = 0;   // A loin du point visé, B tout près
     callFor(h, A.x + 0.5, A.y);                                  // appel sur A : il est désigné
     const picked = h.callPick === A;

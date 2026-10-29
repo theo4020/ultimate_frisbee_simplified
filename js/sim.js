@@ -78,6 +78,7 @@ function avoidDir(p, ux, uy, l) {
 // chance de contrer un disque à portée : ~90 % en plein dans les bras, ~50 % du bout des doigts
 // (disque qui passe dans le corps du défenseur, debout, à hauteur : contre assuré — sinon on le verrait « traverser » le joueur)
 const BODY_R = 0.55;
+const BLOCK_R = 0.85;                                            // portée d'un contre debout (sans hasard : à portée = contré)
 function blockOdds(p, diving, reachOver, dAt) {
   const d = dAt !== undefined ? dAt : dist(p.x, p.y, disc.x, disc.y);   // dAt : distance la plus courte du disque au défenseur
   if (!diving && d < BODY_R) return 1;
@@ -220,7 +221,7 @@ function update(dt) {
         if (disc.pull) continue;                           // on ne contre pas un pull
         const diving = p.dive > 0;
         const lunge = p === disc.mark && disc.t < MARK_LUNGE_T ? MARK_LUNGE : 0;   // la mark se fend vers le disque au lâcher
-        const reach = diving ? DIVE_R : ARM_R + lunge, high = diving ? REACH_DIVE : REACH_STAND + lift;
+        const reach = diving ? DIVE_R : BLOCK_R + lunge, high = diving ? REACH_DIVE : REACH_STAND + lift;
         if (u > 0.03 && d < reach && disc.z < high && !disc.rolled.has(p)) blockers.push(p);
       } else if (!(disc.pull && pullerOffside()) && inField(disc.x, disc.y) && (u > 0.45 || dist(disc.x, disc.y, disc.sx, disc.sy) > 3) && (p.dive > 0 ? (d < DIVE_R + 0.2 && disc.z < REACH_DIVE + 0.3) : (d < ARM_R + 0.2 && disc.z < REACH_STAND + 0.1 + lift))) {   // pas de réception tant que le disque est dehors (ni dans les 3 premiers mètres)
         if (d < cd) { cd = d; catcher = p; }
@@ -256,15 +257,16 @@ function update(dt) {
       const dNow = dist(p.x, p.y, disc.x, disc.y), bd = disc.bd || (disc.bd = new Map()), prev = bd.get(p);
       if (!catcher && !G.tuto && u < 0.98 && dNow >= BODY_R && !(p.jump > 0) && !(p.dive > 0) && (prev === undefined || dNow < prev - 0.005)) { bd.set(p, dNow); continue; }   // (plongeon, saut : tout de suite)
       disc.rolled.add(p);
-      const dMin = prev !== undefined ? Math.min(prev, dNow) : dNow;
-      const r = Math.random(), diving = p.dive > 0, L = aiLvl(p.team);
+      const dMin = prev !== undefined ? Math.min(prev, dNow) : dNow, diving = p.dive > 0;
+      if (catcher && dist(catcher.x, catcher.y, disc.x, disc.y) < dNow && !(p.jump > 0)) continue;   // le receveur est plus près du disque : il l'attrape avant
       if (!diving && p.jump > 0 && disc.z > REACH_STAND) {      // saut au bon endroit, au bon moment : contre assuré
         achEvent('skyblock', p.team);
         if (G.tuto) G.tuto.blocked = true;
         defStop(p, 'Block en l’air !'); return;
       }
-      if (r < (G.tuto && (G.tuto.wall || G.tuto.sure || diving) ? 1 : (bo => (bo >= 1 ? 1 : (diving ? 0.95 : L.block) * bo))(blockOdds(p, diving, p === disc.mark && disc.t < MARK_LUNGE_T ? ARM_R + MARK_LUNGE : 0, dMin)))) {   // tutoriel : bien placé = contré
-        if (diving) { achEvent('layoutblock', p.team); if (G.tuto) G.tuto.lblock = true; } defStop(p, diving ? 'Layout block !' : p.jump > 0 ? 'Block en l’air !' : 'Block !'); return; }
+      // pas de hasard : un disque qui passe à portée (bras, plongeon, fente de la mark) et à hauteur est contré
+      if (diving) { achEvent('layoutblock', p.team); if (G.tuto) G.tuto.lblock = true; }
+      defStop(p, diving ? 'Layout block !' : p.jump > 0 ? 'Block en l’air !' : 'Block !', dMin); return;
     }
     if (catcher) {
       if (catcher.dive > 0) flash('Layout !');              // réception en plongeon

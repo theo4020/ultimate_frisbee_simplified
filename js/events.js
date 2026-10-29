@@ -76,11 +76,12 @@ function interception(p) {
   flash('Interception !');
   if (G.tuto) tutoEvent('turnover');
 }
-// un défenseur arrête la passe : 1 fois sur 3 il l'intercepte, et toujours dans l'en-but adverse (Callahan) ; sinon block
-const INT_CHANCE = 1 / 3;
-function defStop(p, msg) {
+// un défenseur arrête la passe, sans hasard : le disque lui arrive dans le corps (à moins de INT_R m) = il l'intercepte ;
+// du bout des bras, en plongeon, en l'air = block ; dans l'en-but adverse, toujours une interception (Callahan)
+const INT_R = 0.6;
+function defStop(p, msg, dMin) {
   if (G.tuto) G.tuto.stopBy = p;                                // tutoriel : qui a arrêté la passe
-  if (inScoreZone(p.team, disc.x) || Math.random() < INT_CHANCE) { interception(p); return; }
+  if (inScoreZone(p.team, disc.x) || (dMin !== undefined && dMin < INT_R && !(p.dive > 0) && !(p.jump > 0))) { interception(p); return; }
   G.stats.blocks++; msTurnover(disc.thrower, 'block', p); turnover(disc.x, disc.y, msg, 'block');
 }
 
