@@ -25,7 +25,8 @@ const STYLES = {
     { id: 'salle', name: 'Salle', ach: 'layout' },
     { id: 'neige', name: 'Neige', ach: 'endless5' },
     { id: 'terre', name: 'Terre battue', ach: 'block10' },
-    { id: 'espace', name: 'Espace', ach: 'online' }
+    { id: 'espace', name: 'Espace', ach: 'online' },
+    { id: 'prairie', name: 'Prairie (herbe haute)', ach: 'matches10' }
   ],
   jersey: [
     { id: 'uni', name: 'Uni' },
@@ -67,6 +68,7 @@ const FIELDS = {
   salle: { bg: '#334155', s: ['#b9783f', '#c4844a'], line: 'rgba(255,255,255,.9)', sky: ['#1e293b', '#334155'], ez: 0.3, txt: 'rgba(255,255,255,.45)', vg: 0.18, planks: true },
   terre: { bg: '#7c2d12', s: ['#c2410c', '#b8400f'], line: 'rgba(255,255,255,.9)', sky: ['#431407', '#7c2d12'], ez: 0.26, txt: 'rgba(255,255,255,.4)', vg: 0.2 },
   espace: { bg: '#020617', s: ['#0f172a', '#111c33'], line: 'rgba(165,243,252,.85)', sky: ['#000000', '#020617'], ez: 0.32, txt: 'rgba(255,255,255,.4)', vg: 0.3, stars: true },
+  prairie: { bg: '#14532d', s: ['#166534', '#15803d'], line: 'rgba(255,255,255,.95)', sky: ['#0b1220', '#14301f'], ez: 0.26, txt: 'rgba(255,255,255,.45)', vg: 0.25, dense: true },
   neige: { bg: '#cbd5e1', s: ['#e2e8f0', '#f1f5f9'], line: 'rgba(30,58,138,.8)', sky: ['#94a3b8', '#cbd5e1'], ez: 0.3, txt: 'rgba(30,41,59,.45)', vg: 0.1 }
 };
 

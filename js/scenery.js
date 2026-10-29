@@ -45,7 +45,7 @@ function texTile(kind) {
   } else return (TEX[k] = null);
   return (TEX[k] = cv);
 }
-const TEX_OF = { gazon: 'herbe', stade: 'herbe', plage: 'sable', terre: 'terre', neige: 'neige', salle: 'bois' };
+const TEX_OF = { gazon: 'herbe', stade: 'herbe', prairie: 'herbe', plage: 'sable', terre: 'terre', neige: 'neige', salle: 'bois' };
 
 // ---------- le terrain (dans le contexte c, à l'échelle S0, sans caméra) ----------
 // tR : l'équipe qui marque à droite (en-but de droite à sa couleur)
@@ -239,58 +239,85 @@ function drawCrowd(fid) {
 // herbe qui bouge : des milliers de brins, animés à l'avance. On dessine une fois quelques images d'une « tuile » d'herbe
 // (12 m de côté, brins en touffes qui ondulent chacun à leur rythme, en boucle) ; à chaque image du jeu, on recouvre le
 // terrain avec la tuile du moment (fondu entre deux images : mouvement fluide). Refait seulement si le vent change.
-const GRASS = { frames: null, key: '', T: 12, N: 12 };
-function grassFrames() {
+const GRASS = { frames: null, key: '', T: 12, N: 12, todo: null };
+// dense (terrain « Prairie ») : 10 fois plus de brins, plus longs et couvrants — on ne voit plus que l'herbe. Les images
+// sont fabriquées une par image du jeu (pas d'à-coup) ; en attendant, la première sert pour toutes.
+function grassFrames(dense) {
   const wk = Math.min(1, (G.wind ? G.wind.kmh : 10) / 25), ang = G.wind && G.wind.kmh > 1 ? Math.atan2(G.wind.y, G.wind.x) : 0.3;
-  const key = [CAM.S0.toFixed(2), dpr, Math.round(wk * 10), Math.round(ang * 8)].join('|');
-  if (GRASS.key === key && GRASS.frames) return GRASS.frames;
-  GRASS.key = key;
-  const u = CAM.S0 * dpr, size = Math.max(64, Math.round(GRASS.T * u)), R = seeded(4321), ux = Math.cos(ang), uy = Math.sin(ang);
-  const tufts = [];
-  for (let i = 0; i < GRASS.T * GRASS.T * 0.85; i++) {           // ~0,85 touffe par m², 2 à 4 brins chacune
-    const n = 2 + Math.floor(R() * 3), blades = [];
-    for (let k = 0; k < n; k++) blades.push({ dx: (R() - 0.5) * 0.3, l: 0.22 + R() * 0.38, lean: (R() - 0.5) * 0.5, ph: R() * 6.3, amp: 0.6 + R() * 0.8 });
-    tufts.push({ x: R() * GRASS.T, y: R() * GRASS.T, blades, dark: R() < 0.5 });
+  const key = [CAM.S0.toFixed(2), dpr, Math.round(wk * 10), Math.round(ang * 8), dense ? 1 : 0].join('|');
+  if (GRASS.key !== key) {
+    GRASS.key = key; GRASS.frames = [];
+    const u = CAM.S0 * dpr, size = Math.max(64, Math.round(GRASS.T * u)), R = seeded(dense ? 8765 : 4321), tufts = [];
+    const GREENS = ['rgba(12,60,24,.55)', 'rgba(170,230,110,.42)'];
+    const DENSE = ['#14532d', '#166534', '#15803d', '#16a34a', '#22c55e', '#4d7c0f', '#65a30d', '#3f6212'];
+    const n0 = GRASS.T * GRASS.T * (dense ? 8.5 : 0.85);
+    for (let i = 0; i < n0; i++) {                                  // touffes de 2 à 4 brins
+      const n = 2 + Math.floor(R() * 3), blades = [];
+      for (let k = 0; k < n; k++) blades.push({ dx: (R() - 0.5) * 0.3, l: (dense ? 0.35 : 0.22) + R() * (dense ? 0.5 : 0.38), lean: (R() - 0.5) * 0.5, ph: R() * 6.3, amp: 0.6 + R() * 0.8 });
+      tufts.push({ x: R() * GRASS.T, y: R() * GRASS.T, blades, col: dense ? Math.floor(R() * DENSE.length) : (R() < 0.5 ? 0 : 1) });
+    }
+    tufts.sort((a, b) => a.y - b.y);                                // (dense : les brins du bas recouvrent ceux du haut)
+    GRASS.todo = { size, u, tufts, wk, ux: Math.cos(ang), uy: Math.sin(ang), cols: dense ? DENSE : GREENS, dense, f: 0 };
   }
-  GRASS.frames = [];
-  for (let f = 0; f < GRASS.N; f++) {
-    const cv = document.createElement('canvas'); cv.width = cv.height = size;
-    const c = cv.getContext('2d'), ph = f / GRASS.N * Math.PI * 2;
-    c.lineCap = 'round'; c.lineWidth = Math.max(1, u * 0.06);
-    for (const dark of [false, true]) {
-      c.strokeStyle = dark ? 'rgba(12,60,24,.5)' : 'rgba(170,230,110,.4)'; c.beginPath();
-      for (const q of tufts) {
-        if (q.dark !== dark) continue;
+  const T = GRASS.todo;
+  if (T && T.f < GRASS.N) {                                         // une image de plus à chaque appel
+    const cv = document.createElement('canvas'); cv.width = cv.height = T.size;
+    const c = cv.getContext('2d'), ph = T.f / GRASS.N * Math.PI * 2, size = T.size, u = T.u;
+    c.lineCap = 'round'; c.lineWidth = Math.max(1, u * (T.dense ? 0.08 : 0.06));
+    T.cols.forEach((col, ci) => {
+      c.strokeStyle = col; c.beginPath();
+      for (const q of T.tufts) {
+        if (q.col !== ci) continue;
         for (const b of q.blades) {
-          const sw = Math.sin(ph + b.ph) * (0.1 + wk * 0.38) * b.amp;   // une boucle complète sur les N images
+          const sw = Math.sin(ph + b.ph) * (0.1 + T.wk * 0.38) * b.amp;   // une boucle complète sur les N images
           const bend = b.lean + sw, l = b.l * u;
           for (const [ox, oy] of [[0, 0], [size, 0], [0, size], [-size, 0], [0, -size]]) {   // brins qui débordent : la tuile se raccorde
             const bx = q.x * u + b.dx * u + ox, by = q.y * u + oy;
             if (bx < -l || by < -l * 2 || bx > size + l || by > size + l) continue;
-            const tx = bx + (ux * bend + b.lean * 0.3) * l, ty = by - l * 0.85 + uy * bend * l * 0.6;
+            const tx = bx + (T.ux * bend + b.lean * 0.3) * l, ty = by - l * 0.85 + T.uy * bend * l * 0.6;
             c.moveTo(bx, by); c.quadraticCurveTo(bx + (tx - bx) * 0.35, by - l * 0.5, tx, ty);
           }
         }
       }
       c.stroke();
-    }
-    GRASS.frames.push(cv);
+    });
+    GRASS.frames.push(cv); T.f++;
   }
   return GRASS.frames;
 }
 function drawGrassWind(fid) {
   if (fid === 'plage') { drawSea(); return; }
-  if (fid !== 'gazon' && fid !== 'stade') return;
-  const fr = grassFrames(), wk = Math.min(1, (G.wind ? G.wind.kmh : 10) / 25);
-  const pos = (G.time * (0.45 + wk * 0.9) * GRASS.N) % GRASS.N, i = Math.floor(pos), k = pos - i;   // vitesse selon le vent
+  if (fid !== 'gazon' && fid !== 'stade' && fid !== 'prairie') return;
+  const dense = fid === 'prairie', fr = grassFrames(dense), wk = Math.min(1, (G.wind ? G.wind.kmh : 10) / 25);
+  if (!fr.length) return;
+  const n = fr.length < GRASS.N ? 1 : GRASS.N;                    // (images pas encore toutes prêtes : la première)
+  const pos = (G.time * (0.45 + wk * 0.9) * GRASS.N) % GRASS.N, i = n === 1 ? 0 : Math.floor(pos), k = n === 1 ? 0 : pos - i;   // vitesse selon le vent
   const cw = canvas.width / dpr, ch = canvas.height / dpr;
   const m = typeof DOMMatrix === 'function' ? new DOMMatrix().translate(CAM.ox, CAM.oy).scale(CAM.z / dpr) : null;
-  for (const [img, a] of [[fr[i], 1], [fr[(i + 1) % GRASS.N], k]]) {
+  for (const [img, a] of [[fr[i], 1], [fr[(i + 1) % n], k]]) {
+    if (!img || a <= 0) continue;
     const pat = ctx.createPattern(img, 'repeat'); if (!pat) continue;
     if (m && pat.setTransform) pat.setTransform(m);
     ctx.globalAlpha = a; ctx.fillStyle = pat; ctx.fillRect(0, 0, cw, ch);
   }
   ctx.globalAlpha = 1;
+  if (dense) fieldMarks();
+}
+// herbe dense : les repères du jeu repassent par-dessus (en-buts, lignes, bricks, plots), sinon on ne les verrait plus
+function fieldMarks() {
+  const F = fieldTheme(), cele = (G.phase === 'between' || G.phase === 'over') && G.celebrate && (!G.menuShown || G.attract) && G.betweenT > 0 && !G.tuto && !G.practice;
+  const tR = (dirOf(0) > 0) !== !!cele ? 0 : 1, s = S;
+  ctx.fillStyle = rgba(tcol(tR), 0.22); ctx.fillRect(X(W - EZ), Y(0), EZ * s, H * s);
+  ctx.fillStyle = rgba(tcol(1 - tR), 0.22); ctx.fillRect(X(0), Y(0), EZ * s, H * s);
+  ctx.strokeStyle = F.line; ctx.lineWidth = Math.max(2, s * 0.16);
+  ctx.strokeRect(X(0), Y(0), W * s, H * s);
+  ctx.beginPath(); ctx.moveTo(X(EZ), Y(0)); ctx.lineTo(X(EZ), Y(H)); ctx.moveTo(X(W - EZ), Y(0)); ctx.lineTo(X(W - EZ), Y(H)); ctx.stroke();
+  const kx = 0.6 * s; ctx.lineWidth = Math.max(2, s * 0.12);
+  for (const bx of [EZ + 12, W - EZ - 12]) { ctx.beginPath(); ctx.moveTo(X(bx) - kx, Y(H / 2) - kx); ctx.lineTo(X(bx) + kx, Y(H / 2) + kx); ctx.moveTo(X(bx) + kx, Y(H / 2) - kx); ctx.lineTo(X(bx) - kx, Y(H / 2) + kx); ctx.stroke(); }
+  for (const cx of [0, EZ, W - EZ, W]) for (const cy of [0, H]) { ctx.fillStyle = '#f97316'; ctx.beginPath(); ctx.arc(X(cx), Y(cy), s * 0.55, 0, 7); ctx.fill(); }
+  ctx.fillStyle = F.txt; ctx.font = `700 ${Math.max(11, s * 1.9)}px ${UI_FONT}`; ctx.textAlign = 'center';
+  ctx.fillText('LES ' + tn(tR).toUpperCase(), X(W - EZ / 2), Y(H / 2 - 1)); ctx.fillText('MARQUENT ICI', X(W - EZ / 2), Y(H / 2 + 1.6));
+  ctx.fillText('LES ' + tn(1 - tR).toUpperCase(), X(EZ / 2), Y(H / 2 - 1)); ctx.fillText('MARQUENT ICI', X(EZ / 2), Y(H / 2 + 1.6));
 }
 // plage : la mer en haut, l'écume avance et recule
 function drawSea() {
@@ -305,7 +332,7 @@ function drawSea() {
 }
 
 // ---------- au sol : herbe soulevée par un plongeon, poussière ou neige en courant ----------
-const GROUND_BITS = { gazon: ['#4ade80', '#16a34a', '#86efac'], stade: ['#22c55e', '#15803d'], plage: ['#e7c98f', '#c9a66b'], terre: ['#fb923c', '#c2410c'], neige: ['#ffffff', '#e2e8f0'], salle: null, espace: null };
+const GROUND_BITS = { prairie: ['#4ade80', '#16a34a', '#86efac'], gazon: ['#4ade80', '#16a34a', '#86efac'], stade: ['#22c55e', '#15803d'], plage: ['#e7c98f', '#c9a66b'], terre: ['#fb923c', '#c2410c'], neige: ['#ffffff', '#e2e8f0'], salle: null, espace: null };
 function groundFx(p, spd) {
   const cols = GROUND_BITS[styleOf('field')]; if (!cols || G.attract && Math.random() < 0.5) return;
   const dt = FX.dt || 0.016;
@@ -314,7 +341,7 @@ function groundFx(p, spd) {
     FX.parts.push({ x: p.x, y: p.y, vx: Math.cos(a) * v + p.vx * 0.3, vy: Math.sin(a) * v + p.vy * 0.3, t: 0, life: 0.45 + Math.random() * 0.3,
       color: cols[Math.floor(Math.random() * cols.length)], size: 0.16 + Math.random() * 0.1, kind: 'dot', rot: 0, vr: 0, drag: 3.5 });
   }
-  const loose = cols && styleOf('field') !== 'gazon' && styleOf('field') !== 'stade';   // sable, terre, neige : petite poussière au sprint
+  const loose = cols && !['gazon', 'stade', 'prairie'].includes(styleOf('field'));   // sable, terre, neige : petite poussière au sprint
   if (loose && spd > 5 && !(p.dive > 0) && Math.random() < dt * 6)
     FX.parts.push({ x: p.x - p.vx * 0.04, y: p.y - p.vy * 0.04, vx: -p.vx * 0.1, vy: -p.vy * 0.1, t: 0, life: 0.5, color: cols[1] || cols[0], size: 0.32, kind: 'dot', rot: 0, vr: 0, drag: 4 });
 }
