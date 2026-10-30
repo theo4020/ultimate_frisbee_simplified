@@ -58,6 +58,7 @@ const FILES = [
   'js/controls.js',
   'js/gestures.js',
   'js/menu.js',
+  'js/toss.js',
   'js/account.js',
   'js/editor.js',
   'js/gallery.js',

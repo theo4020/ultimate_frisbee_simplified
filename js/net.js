@@ -302,7 +302,7 @@ function hostOnData(id, m) {
     case 'call': callFor(h, +m.x, +m.y); break;
     case 'pause': setPause(id, !!m.on); break;
     case 'start': startPress(h); break;
-    case 'pull': if (G.phase === 'pull' && G.pull && G.pull.by === h.id) launchPull(+m.x, +m.y, m.curve, m.q); break;
+    case 'pull': if (G.phase === 'pull' && G.pull && G.pull.by === h.id && !G.pull.pend) requestPull(+m.x, +m.y, m.curve, m.q); break;
     case 'cfg': if (captain(h.team) === h) takeCfg(h, m.cfg); break;   // le capitaine change sa stratégie : ses coéquipiers la voient
     case 'ready':
       if (captain(h.team) === h) { takeCfg(h, m.cfg); (G.readyIds = G.readyIds || new Set()).add(id); }

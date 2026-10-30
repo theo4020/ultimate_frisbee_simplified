@@ -525,6 +525,28 @@ export default async function (t, { quick }) {
   t.ok(tk.oui.aHasC && tk.oui.bSame, 'activé : l’humain qui vient de lancer prend le contrôle du coéquipier IA qui attrape', tk);
   t.ok(!tk.non.aHasC, 'désactivé (« L’IA le garde ») : le coéquipier IA garde le disque', tk);
 
+  t.group('Départ pour tous : le pull d’un humain attend le compte à rebours, ses coéquipiers prennent le départ');
+  const hp = R(`(() => {
+    const keepH = G.humans; G.score = [0, 0]; G.receiving = 1; newWind();
+    G.humans = [{ id: 0, team: 0, sel: null }, { id: 5, team: 0, sel: null, name: 'Léa' }]; G.myId = 0; syncMe();
+    G.form.puller = 'cap'; startPoint();
+    for (let f = 0; f < 6000 && !(G.phase === 'pull' && pullReady()); f++) pullTick(1 / 60, 1 / 60);
+    G.pull.by = 0; const r = {};
+    requestPull(70, 18, 0, 0.88); r.waits = G.phase === 'pull' && !!G.pull.pend;      // le pull ne part pas tout de suite
+    for (let f = 0; f < 150 && !(G.pull && lightsOn(G.pull.cd) >= 2); f++) pullTick(1 / 60, 1 / 60);
+    r.pullerPress = startPress(G.humans[0]); r.offAfterPuller = !!G.offside;            // le pulleur, lui, ne prend pas le départ
+    r.matePress = startPress(G.humans[1]); r.off = G.offside && G.offside.team;          // son coéquipier part trop tôt : offside
+    const guilty = TEAMS[0].filter(q => q !== disc.holder).sort((a, b) => Math.abs(b.tx - b.x) - Math.abs(a.tx - a.x))[0];
+    r.runs = Math.abs(guilty.tx - guilty.x) > 4; r.fx = !!G.offFx;
+    for (let f = 0; f < 200 && G.phase === 'pull'; f++) pullTick(1 / 60, 1 / 60);
+    r.launched = disc.mode === 'air' && disc.pull;
+    G.humans = keepH; G.myId = 0; syncMe(); G.offside = null; G.offFx = null; G.receiving = 0;
+    return r;
+  })()`);
+  t.ok(hp.waits && hp.launched, 'le pull d’un humain part au « PULL ! » du compte à rebours', hp);
+  t.ok(hp.pullerPress === false && !hp.offAfterPuller && hp.matePress && hp.off === 0, 'ses coéquipiers prennent le départ (trop tôt = offside), pas le pulleur', hp);
+  t.ok(hp.runs && hp.fx, 'le fautif part trop tôt de quelques mètres, et le signe « offside » s’affiche', hp);
+
   t.group('Appel de cut : désigner le coéquipier qui partira');
   const pk = R(`(() => {
     G.score = [0, 0]; G.receiving = 0; newWind(); startPoint();

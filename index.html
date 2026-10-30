@@ -87,18 +87,27 @@
     <div id="lobbyHome">
       <button id="moveAlert" style="display:none">🚚 <b>Le jeu change d'adresse ! Cette adresse va bientôt s'arrêter.</b><br>Touche ici pour passer sur la nouvelle en gardant ton profil ›</button>
       <p>Ultimate en 5 contre 5, en quelques minutes.</p>
-      <button class="bigbtn" id="tutoB">🎓 Tutoriel<small id="tutoTxt">Coach Disco t’apprend à jouer en petits défis (débutant ou avancé)</small></button>
-      <button class="bigbtn" id="soloMenuB">🤖 Solo<small>Match, mode infini, mini-tournoi, entraînement</small></button>
-      <button class="bigbtn" id="onlineMenuB">🌐 En ligne<small>Mode infini à plusieurs, parties entre amis, rejoindre avec un code</small></button>
-      <button class="bigbtn" id="sysB">📋 Mes systèmes<small>Crée tes propres attaques et défenses</small></button>
-      <button class="bigbtn" id="ctrlB">⚙️ Commandes<small>Gestes ou joystick sur téléphone, touches du clavier</small></button>
-      <button class="bigbtn" id="styleB">🎨 Mon style<small>Disque, terrain, tenue, célébration : débloqués par tes succès</small></button>
-      <button class="bigbtn" id="profileB">🏅 Profil<small>Tes statistiques de carrière et tes succès</small></button>
-      <button class="bigbtn" id="feedbackB">💬 Donner mon avis<small>Une idée, une envie, quelque chose qui gêne : ça part directement au développeur</small></button>
-      <button class="bigbtn" id="fbAdminB" style="display:none">💬 Avis des joueurs <span id="fbBadge" class="badge" style="display:none"></span><small>Admin : les retours envoyés par les joueurs</small></button>
-      <button class="bigbtn" id="repAdminB" style="display:none">🐞 Signalements <span id="repBadge" class="badge" style="display:none"></span><small>Admin : les rapports envoyés par les joueurs</small></button>
-      <button class="bigbtn" id="newsB">📰 Nouveautés <span id="newsBadge" class="badge" style="display:none"></span><small>Ce qui a changé dans le jeu</small></button>
-      <button class="bigbtn" id="installB" style="display:none">📲 Installer le jeu<small>Sur l'écran d'accueil, en plein écran, jouable hors connexion en solo</small></button>
+      <h3 class="mhead">Jouer</h3>
+      <div class="mgrid mplay">
+        <button class="bigbtn" id="tutoB"><span class="mi">🎓</span>Tutoriel<small id="tutoTxt">Coach Disco t’apprend à jouer en petits défis (débutant ou avancé)</small></button>
+        <button class="bigbtn" id="soloMenuB"><span class="mi">🤖</span>Solo<small>Match, mode infini, mini-tournoi, entraînement</small></button>
+        <button class="bigbtn" id="onlineMenuB"><span class="mi">🌐</span>En ligne<small>Mode infini à plusieurs, parties entre amis, rejoindre avec un code</small></button>
+      </div>
+      <h3 class="mhead">Mon jeu</h3>
+      <div class="mgrid">
+        <button class="bigbtn" id="styleB"><span class="mi">🎨</span>Mon style<small>Disque, terrain, tenue, célébration : débloqués par tes succès</small></button>
+        <button class="bigbtn" id="sysB"><span class="mi">📋</span>Mes systèmes<small>Crée tes propres attaques et défenses</small></button>
+        <button class="bigbtn" id="profileB"><span class="mi">🏅</span>Profil<small>Tes statistiques de carrière et tes succès</small></button>
+      </div>
+      <h3 class="mhead">Réglages et infos</h3>
+      <div class="mgrid msmall">
+        <button class="bigbtn" id="ctrlB"><span class="mi">⚙️</span>Commandes<small>Gestes ou joystick sur téléphone, touches du clavier</small></button>
+        <button class="bigbtn" id="newsB"><span class="mi">📰</span>Nouveautés <span id="newsBadge" class="badge" style="display:none"></span><small>Ce qui a changé dans le jeu</small></button>
+        <button class="bigbtn" id="feedbackB"><span class="mi">💬</span>Donner mon avis<small>Une idée, une envie, quelque chose qui gêne : ça part directement au développeur</small></button>
+        <button class="bigbtn" id="installB" style="display:none"><span class="mi">📲</span>Installer le jeu<small>Sur l'écran d'accueil, en plein écran, jouable hors connexion en solo</small></button>
+        <button class="bigbtn" id="fbAdminB" style="display:none"><span class="mi">💬</span>Avis des joueurs <span id="fbBadge" class="badge" style="display:none"></span><small>Admin : les retours envoyés par les joueurs</small></button>
+        <button class="bigbtn" id="repAdminB" style="display:none"><span class="mi">🐞</span>Signalements <span id="repBadge" class="badge" style="display:none"></span><small>Admin : les rapports envoyés par les joueurs</small></button>
+      </div>
       <p class="net" id="iosHint" style="display:none">📲 Pour installer le jeu sur iPhone : bouton Partager, puis « Sur l'écran d'accueil ».</p>
     </div>
     <div id="lobbyTuto" style="display:none">
@@ -290,9 +299,18 @@
     <button id="seriesGo" class="primary">Jouer ▶</button>
     <div class="row back" style="justify-content:space-between"><button id="seriesBack">← Retour</button><button id="seriesReset">Recommencer le tournoi</button></div>
   </div>
+  <div class="card" id="tossCard" style="display:none">
+    <h1>Toss 🥏🥏</h1>
+    <div id="tossDiscs" class="tossDiscs"></div>
+    <p id="tossText"></p>
+    <div id="tossBet" class="tossRow"><button class="bigbtn" id="tossSame">🟰 Même côté</button><button class="bigbtn" id="tossDiff">↔️ Côtés différents</button></div>
+    <div id="tossPick" class="tossRow" style="display:none"><button class="bigbtn primary" id="tossAtk">⚔️ Attaquer<small>Ton équipe reçoit le pull</small></button><button class="bigbtn" id="tossDef">🛡️ Défendre<small>Ton équipe pulle</small></button></div>
+    <button class="bigbtn primary" id="tossGo" style="display:none">Jouer le point ▶</button>
+  </div>
   <div class="card" id="stratCard" style="display:none">
     <button id="halloB2" class="halloBtn" title="Mode Halloween">🎃</button>
     <h1 id="ovTitle">Ultimate Frisbee</h1>
+    <div id="ovBoard" class="sumBoard" style="display:none"></div>
     <p id="ovText">Premier à 5 points. Tu joues les Bleus et tu attaques vers la droite.</p>
     <div id="summary" style="display:none"></div>
     <button id="replayB" style="display:none">🔁 Revoir le dernier point au ralenti</button>
@@ -303,33 +321,9 @@
       <button id="newbieTuto" class="ghost">🎓 Apprendre les commandes d’abord (tutoriel, 3 min)</button>
       <button id="newbieOpts" class="ghost">⚙️ Voir les réglages de l’équipe</button>
     </div>
-    <div id="hostOnlyWind">
-    <div class="row"><span>Vent</span>
-      <button class="opt" data-g="windMode" data-v="random">Aléatoire</button>
-      <button class="opt" data-g="windMode" data-v="fixed">Choisi</button>
-    </div>
-    <div id="windCtl">
-      <div class="row"><span>Direction</span>
-        <button class="wdir" data-d="4">←</button>
-        <button class="wdir" data-d="5">↖</button>
-        <button class="wdir" data-d="6">↑</button>
-        <button class="wdir" data-d="7">↗</button>
-        <button class="wdir" data-d="0">→</button>
-        <button class="wdir" data-d="1">↘</button>
-        <button class="wdir" data-d="2">↓</button>
-        <button class="wdir" data-d="3">↙</button>
-      </div>
-      <div class="row"><span>Force</span>
-        <input type="range" id="windKmh" min="0" max="40" step="1" value="20"><span id="windKmhTxt"></span>
-      </div>
-      <div class="desc">La flèche indique où va le vent : → = vers la droite.</div>
-    </div>
-    </div>
     <div id="stratRows">
-    <div id="rowPuller">
-      <div class="row"><span>Pull</span><span class="pullOpts" id="pullerOpts"></span></div>
-      <div class="desc" id="descPuller"></div>
-    </div>
+    <details class="ssec" id="secAtk"><summary><span class="sti">⚔️</span><b>Attaque</b><small id="secAtkSum"></small></summary>
+      <div class="ssecBody">
     <div class="row"><span>Formation</span><select class="sel" id="selOff"></select></div>
     <div class="desc" id="descOff"></div>
     <div class="row"><span>Style d'attaque</span>
@@ -337,6 +331,11 @@
       <button class="opt" data-g="flow" data-v="flow">Enchaîné</button>
     </div>
     <div class="desc" id="descFlow"></div>
+    <div id="rowPlay">
+      <div class="row"><span>Play 1</span><select class="sel" id="selPlay1"></select></div>
+      <div class="row"><span>Play 2</span><select class="sel" id="selPlay2"></select></div>
+      <div class="desc" id="descPlay"></div>
+    </div>
     <div class="row"><span>Reprise du disque</span>
       <button class="opt" data-g="restart" data-v="pose">Posée</button>
       <button class="opt" data-g="restart" data-v="rapide">Rapide</button>
@@ -347,22 +346,35 @@
       <button class="opt" data-g="take" data-v="non">L’IA le garde</button>
     </div>
     <div class="desc" id="descTake"></div>
+      </div>
+    </details>
+    <details class="ssec" id="secDef"><summary><span class="sti">🛡️</span><b>Défense</b><small id="secDefSum"></small></summary>
+      <div class="ssecBody">
     <div class="row"><span>Ta défense</span><select class="sel" id="selDef"></select></div>
     <div class="desc" id="descDef"></div>
     <div id="rowForce">
       <div class="row"><span>Force</span><select class="sel" id="selForce"></select></div>
       <div class="desc" id="descForce"></div>
     </div>
-    <div id="rowPlay">
-      <div class="row"><span>Play 1</span><select class="sel" id="selPlay1"></select></div>
-      <div class="row"><span>Play 2</span><select class="sel" id="selPlay2"></select></div>
-      <div class="desc" id="descPlay"></div>
-    </div>
     <div id="rowDPlay">
       <div class="row"><span>Play de défense</span><select class="sel" id="selDPlay"></select></div>
       <div class="desc" id="descDPlay"></div>
     </div>
-    <details id="rowOrders" class="orders"><summary>Consignes d'équipe <small id="ordersSum"></small></summary>
+      </div>
+    </details>
+    <details class="ssec" id="secTeam"><summary><span class="sti">👥</span><b>Équipe</b><small id="secTeamSum"></small></summary>
+      <div class="ssecBody">
+    <div id="rowPuller">
+      <div class="row"><span>Pull</span><span class="pullOpts" id="pullerOpts"></span></div>
+      <div class="desc" id="descPuller"></div>
+    </div>
+    <div class="row"><span>Coéquipiers IA</span>
+      <button class="opt" data-g="allyLevel" data-v="facile">Facile</button>
+      <button class="opt" data-g="allyLevel" data-v="normal">Normal</button>
+      <button class="opt" data-g="allyLevel" data-v="difficile">Difficile</button>
+    </div>
+    <div class="desc" id="descAlly"></div>
+    <div id="rowOrders" class="orders"><div class="subhead">Consignes pour tes coéquipiers IA <small id="ordersSum"></small></div>
       <div class="row"><span>Jeu long</span>
         <button class="opt" data-g="huck" data-v="moins">Moins</button><button class="opt" data-g="huck" data-v="normal">Normal</button><button class="opt" data-g="huck" data-v="plus">Plus</button></div>
       <div class="row"><span>Passes hautes</span>
@@ -372,13 +384,7 @@
       <div class="row"><span>Aide en défense</span>
         <button class="opt" data-g="help" data-v="jamais">Jamais</button><button class="opt" data-g="help" data-v="parfois">Parfois</button><button class="opt" data-g="help" data-v="toujours">Toujours</button></div>
       <div class="desc">Pour tes coéquipiers IA. Aide : un défenseur quitte son joueur pour fermer la ligne vers un attaquant libre.</div>
-    </details>
-    <div class="row"><span>Coéquipiers IA</span>
-      <button class="opt" data-g="allyLevel" data-v="facile">Facile</button>
-      <button class="opt" data-g="allyLevel" data-v="normal">Normal</button>
-      <button class="opt" data-g="allyLevel" data-v="difficile">Difficile</button>
     </div>
-    <div class="desc" id="descAlly"></div>
     <div class="row"><span>Ton équipe</span>
       <input id="tname" class="tname" maxlength="16" placeholder="Bleus" autocomplete="off" spellcheck="false">
       <span class="swatches" data-for="tcol"></span>
@@ -387,7 +393,11 @@
       <input id="oname" class="tname" maxlength="16" placeholder="Rouges" autocomplete="off" spellcheck="false">
       <span class="swatches" data-for="ocol"></span>
     </div>
+      </div>
+    </details>
     </div>
+    <details class="ssec" id="secMatch"><summary><span class="sti">🏟️</span><b>Match</b><small id="secMatchSum"></small></summary>
+      <div class="ssecBody">
     <div class="row" id="rowSpeed"><span>Vitesse</span>
       <button class="opt" data-g="speed" data-v="lent">Lente</button>
       <button class="opt" data-g="speed" data-v="normal">Normale</button>
@@ -412,6 +422,30 @@
       <button class="opt" data-g="level" data-v="difficile">Difficile</button>
     </div>
     <div class="desc" id="descLevel"></div>
+    <div id="hostOnlyWind">
+    <div class="row"><span>Vent</span>
+      <button class="opt" data-g="windMode" data-v="random">Aléatoire</button>
+      <button class="opt" data-g="windMode" data-v="fixed">Choisi</button>
+    </div>
+    <div id="windCtl">
+      <div class="row"><span>Direction</span>
+        <button class="wdir" data-d="4">←</button>
+        <button class="wdir" data-d="5">↖</button>
+        <button class="wdir" data-d="6">↑</button>
+        <button class="wdir" data-d="7">↗</button>
+        <button class="wdir" data-d="0">→</button>
+        <button class="wdir" data-d="1">↘</button>
+        <button class="wdir" data-d="2">↓</button>
+        <button class="wdir" data-d="3">↙</button>
+      </div>
+      <div class="row"><span>Force</span>
+        <input type="range" id="windKmh" min="0" max="40" step="1" value="20"><span id="windKmhTxt"></span>
+      </div>
+      <div class="desc">La flèche indique où va le vent : → = vers la droite.</div>
+    </div>
+    </div>
+      </div>
+    </details>
     <details>
       <summary>Comment jouer</summary>
       <b>Le pull</b> : chaque point commence par un pull de l'équipe qui défend. Clique (ou tape) sur la zone visée, règle la courbe (A/E, molette ou barre), puis arrête la jauge dans le <b>vert</b> : le pull part loin et reste longtemps en l'air, ce qui laisse à ta défense le temps de monter. Trop tôt, il est court. Tout au bout (rouge), il part trop fort et imprécis. S'il sort des limites, l'adversaire repart du brick.<br><br>
@@ -486,6 +520,7 @@
 <script src="js/net-link.js"></script>
 <script src="js/net-predict.js"></script>
 <script src="js/menu.js"></script>
+<script src="js/toss.js"></script>
 <script src="js/account.js"></script>
 <script src="js/editor.js"></script>
 <script src="js/gallery.js"></script>

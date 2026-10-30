@@ -466,6 +466,7 @@ function draw() {
     // bras tendus seulement dans les derniers instants : le receveur juste avant l'arrivée, un défenseur quand le disque le frôle
     const left = disc.mode === 'air' ? disc.dur - disc.t : 9;
     const near = disc.mode === 'air' && !disc.pull && (disc.z || 0) < 3.6 && ((disc.intended === p && left < 0.38 && dist(p.x, p.y, disc.ex, disc.ey) < 3) || dist(p.x, p.y, disc.x, disc.y) < 1.7);
+    if (p.sadDelay > 0) { p.sadDelay -= FX.dt || 0.016; if (p.sadDelay <= 0) p.sadT = 2.4; }   // faux départ : il s'arrête, puis se prend la tête
     if (p.sadT > 0) p.sadT -= FX.dt || 0.016;                  // après une erreur : mains sur la tête (moments.js : sadAt)
     // après un point : main tendue vers le coéquipier le plus proche (on se tape dans la main)
     let five;

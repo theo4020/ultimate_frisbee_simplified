@@ -81,7 +81,7 @@ function updateHud() {
   const K = a => keysOf(a).map(keyName).join('/');            // touches réglées dans le panneau Commandes
   $('hint').innerHTML = G.spectator ? '<i>Mode spectateur</i> : tu regardes la partie. Bouton <b>👥 Équipes</b> (en haut) pour rejoindre une équipe s’il reste une place. Les émojis permettent d’encourager les joueurs.'
     : G.phase === 'pull'
-    ? (pulling ? '<i>Pull</i> : clique sur la zone visée (' + K('curveL') + ' / ' + K('curveR') + ' ou molette pour la courbe), puis arrête la jauge dans le vert (clic ou Espace). Échap pour revenir à la visée. Un pull long et haut laisse le temps à ta défense de monter.' : '<i>Pull</i> : les équipes se mettent en place.' + (startOn() ? ' Quand l’IA pulle, trois feux s’allument : <i>clic ou Espace au vert</i> = départ parfait pour ton équipe ; trop tôt = hors-jeu (l’équipe qui pulle donne le brick, celle qui reçoit subit un check).' : ''))
+    ? (pulling ? '<i>Pull</i> : clique sur la zone visée (' + K('curveL') + ' / ' + K('curveR') + ' ou molette pour la courbe), puis arrête la jauge dans le vert (clic ou Espace). Échap pour revenir à la visée. Un pull long et haut laisse le temps à ta défense de monter.' : '<i>Pull</i> : les équipes se mettent en place.' + (startOn() || (G.pull && G.pull.by != null && G.pull.by !== G.myId) ? ' Compte à rebours 3, 2, 1… PULL : <i>clic ou Espace au « PULL »</i> = départ parfait pour ton équipe ; trop tôt = offside (l’équipe qui pulle donne le brick, celle qui reçoit subit un check).' : ''))
     : att
     ? (multi ? '<i>Attaque à plusieurs</i> : ton joueur (anneau jaune) suit la souris ; avec le disque, vise et relâche pour lancer · <i>' + K('switch') + ' / 1 à 5</i> prendre un joueur de l’IA'
              : '<i>Attaque</i> : vise et relâche pour lancer (relâche sur ton joueur pour annuler)')
@@ -148,6 +148,7 @@ function refreshOptions() {
   document.querySelectorAll('.wdir').forEach(b => b.classList.toggle('on', +b.dataset.d === G.form.windDir));
   $('windKmh').value = G.form.windKmh;
   $('windKmhTxt').textContent = G.form.windKmh + ' km/h';
+  secSums();
 }
 function showLobby(err, view) {
   if (typeof endlessCfgOut === 'function') endlessCfgOut();
@@ -212,7 +213,7 @@ function showMenu(kind) {
     if (G.net !== 'guest') { G.receiving = firstReceiver(); placeOnPullLines(); }
     updateFirstText();
   } else {
-    $('ovTitle').textContent = `${tn(0)} ${G.score[0]} – ${G.score[1]} ${tn(1)}`;
+    $('ovTitle').textContent = G.receiving === ME && !G.spectator ? 'À vous d’attaquer' : G.spectator ? 'Point suivant' : 'À vous de défendre';
     $('ovText').textContent = G.spectator ? 'Les capitaines choisissent leur stratégie…' : G.receiving === ME ? 'Tu reçois le disque : choisis ta stratégie.' : 'L’adversaire attaque : prépare ta défense.';
     $('go').textContent = 'Jouer le point ▶';
     renderSummary(null);
@@ -224,6 +225,14 @@ function showMenu(kind) {
   $('newbieTuto').style.display = storeGet('uf-tuto', false) ? 'none' : '';
   $('replayB').style.display = kind !== 'first' && (REPLAY.last || REPLAY.pend) && !G.net ? '' : 'none';
   $('stratCard').scrollTop = 0;
+  // sections du menu : celle qui compte pour ce point est ouverte (attaque si tu reçois, défense sinon) ; Match avant un match
+  const atk = G.receiving === G.me, pre = kind === 'first' || kind === 'over';
+  $('secAtk').open = atk || pre; $('secDef').open = !atk || pre; $('secTeam').open = false; $('secMatch').open = pre;
+  $('stratCard').classList.toggle('preMatch', pre);
+  // entre deux points : le score en grand, façon panneau lumineux
+  const board = kind === 'between';
+  $('ovBoard').style.display = board ? '' : 'none';
+  if (board) { const col = t => esc(tcol(t)); $('ovBoard').innerHTML = `<span class="sbName" style="--tc:${col(0)}">${esc(tn(0))}</span><span class="sbLed">${ledDigits(G.score[0])}</span><span class="sbSep">–</span><span class="sbLed">${ledDigits(G.score[1])}</span><span class="sbName r" style="--tc:${col(1)}">${esc(tn(1))}</span>`; }
   G.readyIds = new Set(); G.lastMenu = kind;
   $('go').disabled = false;
   refreshOptions();
@@ -237,8 +246,8 @@ function showMenu(kind) {
 // en ligne : seul le capitaine de chaque équipe choisit la stratégie et se déclare prêt
 function updateFirstText() {
   if (G.lastMenu !== 'first' || G.spectator) return;
-  const base = $('ovText').textContent.replace(/ (Tu commences en attaque|L’adversaire commence en attaque)\.$/, '');
-  $('ovText').textContent = base + (G.receiving === G.me ? ' Tu commences en attaque.' : ' L’adversaire commence en attaque.');
+  const base = $('ovText').textContent.replace(/ (Tu commences en attaque|L’adversaire commence en attaque|Un toss décidera qui commence en attaque)\.$/, '');
+  $('ovText').textContent = base + (typeof tossWanted === 'function' && tossWanted() ? ' Un toss décidera qui commence en attaque.' : G.receiving === G.me ? ' Tu commences en attaque.' : ' L’adversaire commence en attaque.');
 }
 function refreshCaptainUI() {
   if (!$('stratRows')) return;
@@ -264,6 +273,19 @@ function ordersText(c) {
   return t.join(', ');
 }
 // résumé (lecture seule) de la stratégie d'un capitaine, pour ses coéquipiers
+// résumé en une ligne de chaque section repliable du menu (on voit les choix sans tout ouvrir)
+function secSums() {
+  const c = G.form, lbl = (g, v) => ((SEL_LISTS[g] || []).find(o => o[0] === v) || [0, v || '—'])[1];
+  const os = pickedSys('osys'), ds = pickedSys('dsys'), pl = n => (c['play' + n] === 'none' ? '' : c['play' + n] === 'sys' ? (pickedSys('p' + n + 'sys') || {}).name || '' : lbl('play' + n, c['play' + n]));
+  const plays = [pl(1), pl(2)].filter(Boolean).join(', ');
+  $('secAtkSum').textContent = [os ? '★ ' + os.name : lbl('off', c.off), plays && 'Plays : ' + plays].filter(Boolean).join(' · ');
+  const zone = ds ? ds.mark.force !== 'menu' : c.def === 'zone';
+  $('secDefSum').textContent = [ds ? '★ ' + ds.name : lbl('def', c.def), !zone && lbl('force', c.force), c.dplay !== 'none' && lbl('dplay', c.dplay)].filter(Boolean).join(' · ');
+  $('secTeamSum').textContent = ['IA ' + (LVL_NAME[c.allyLevel] || 'normale').toLowerCase(), ordersText(c)].filter(Boolean).join(' · ');
+  $('secMatchSum').textContent = [G.series ? '' : (c.points || 5) + ' points', 'vitesse ' + ({ lent: 'lente', normal: 'normale', rapide: 'rapide' })[c.speed], G.series ? '' : 'IA ' + (LVL_NAME[c.level] || 'normale').toLowerCase()].filter(Boolean).join(' · ');
+  const anyMatch = ['rowSpeed', 'rowFirst', 'rowPoints', 'rowLevel', 'hostOnlyWind'].some(id => $(id).style.display !== 'none');
+  $('secMatch').style.display = anyMatch ? '' : 'none';
+}
 function stratSummary(c) {
   c = c || DEFAULT_CFG;
   const lbl = (g, v) => esc((SEL_LISTS[g].find(o => o[0] === v) || [0, v || '—'])[1]);
@@ -358,6 +380,7 @@ $('go').addEventListener('click', () => {
   if (!G.net) {                                             // solo
     if (G.series && G.phase === 'over') { if (G.series.endless) endlessNext(); else showSeries(); return; }
     if (G.phase === 'over' || G.phase === 'menu') newMatch();
+    if (G.lastMenu === 'first' && typeof tossWanted === 'function' && tossWanted()) { showToss(startPoint); return; }   // première attaque au hasard : le toss
     startPoint(); return;
   }
   $('go').disabled = true; $('go').textContent = 'Prêt ✓ — en attente des autres…';

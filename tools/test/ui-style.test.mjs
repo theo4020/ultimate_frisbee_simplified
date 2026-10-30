@@ -193,6 +193,25 @@ export default async function (t) {
     t.ok(vo.saved.fx === 40 && vo.saved.music === 0 && vo.saved.crowd === 25 && vo.label === 'Coupé', 'trois curseurs de volume dans Commandes, gardés dans le navigateur', vo);
     t.ok(!vo.ctx || (vo.sfx === 0.4 && vo.music === 0 && vo.cfx === 0.25), 'les volumes s’appliquent (effets, musique, réactions du public)', vo);
 
+    t.group('Toss quand la première attaque est au hasard');
+    const ts = await p.evaluate(async () => {
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      goMainMenu(); await wait(200);
+      document.getElementById('soloMenuB').click(); document.getElementById('soloB').click(); await wait(200);
+      setOpt('first', 'r'); const txt = document.getElementById('ovText').textContent;
+      document.getElementById('go').click(); await wait(100);
+      const shown = document.getElementById('tossCard').style.display !== 'none';
+      document.getElementById('tossSame').click(); await wait(1700);
+      const won = document.getElementById('tossPick').style.display !== 'none';
+      if (won) document.getElementById('tossDef').click();
+      const goShown = document.getElementById('tossGo').style.display !== 'none', rec = G.firstRoll;
+      document.getElementById('tossGo').click(); await wait(300);
+      return { txt: /toss/i.test(txt), shown, won, goShown, rec, receiving: G.receiving, phase: G.phase, faces: document.querySelectorAll('.tdisc.face, .tdisc.back').length };
+    });
+    t.ok(ts.txt && ts.shown && ts.faces === 2, 'au hasard : un toss avec deux disques avant le premier point', ts);
+    t.ok(ts.goShown && (ts.rec === 0 || ts.rec === 1) && (!ts.won || ts.rec === 1 - 0) && ['pull', 'play'].includes(ts.phase), 'gagné : tu choisis (ici défendre) ; perdu : l’adversaire choisit ; puis le point commence', ts);
+    await p.evaluate(() => setOpt('first', '0'));
+
     t.ok(!errs.length, 'aucune erreur', errs);
   } finally { await browser.close(); await srv.close(); }
 }

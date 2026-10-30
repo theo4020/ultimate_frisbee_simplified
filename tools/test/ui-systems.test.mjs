@@ -81,7 +81,7 @@ export default async function (t) {
       await p.click('#sysItems [data-a="del"]'); await p.click('#askYes');
       await p.click('#sysBack');
       t.ok(await p.evaluate(() => !osysOf(0) && ![...document.querySelectorAll('#selOff option')].some(o => o.value.startsWith('sys:')) && document.getElementById('selOff').value === 'ho'), 'système supprimé : il disparaît du menu, la formation de base revient');
-      await p.click('#go');
+      await p.evaluate(() => { G.tossed = true; }); await p.click('#go');
       await p.waitForFunction(() => G.phase === 'pull' || G.phase === 'play');
       t.ok(true, 'le point démarre');
       await c.close();

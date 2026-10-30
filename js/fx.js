@@ -142,6 +142,7 @@ function fxPlay(name, x, y, team) {
       break;
     }
     case 'double': if (disc.holder) ring(disc.holder.x, disc.holder.y, '#f87171', STALL_R, 0.6); break;
+    case 'offside': { const q = nearest(TEAMS[team], x, y); if (q) q.sadDelay = 0.85; G.offFx = { t0: G.time, team }; FX.shake = Math.max(FX.shake, 2); break; }   // (pull.js : drawOffsideCall)
     case 'stall': if (typeof sadAt === 'function' && disc.holder) disc.holder.sadT = 1.6; FX.shake = Math.max(FX.shake, 4); vibrate(80); break;
     case 'pull': ring(x, y, 'rgba(255,255,255,.8)', 3, 0.5); break;
     case 'duel': CAM.hype = Math.max(CAM.hype || 0, 0.6); burst(x, y, 12, { color: [c, '#fde68a', '#fff'], speed: 7, life: 0.5 }); ring(x, y, c, 2.6, 0.45); FX.shake = Math.max(FX.shake, 5); vibrate(40); break;

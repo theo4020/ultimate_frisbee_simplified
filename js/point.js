@@ -38,7 +38,7 @@ function startPoint() {
   G.ai.dplay = st ? pick(st.dplay) : Math.random() < 0.5 ? 'none' : pick(['safety', 'double', 'junk']);
   const r = G.receiving, d = 1 - r;
   if (!G.ms) newMatchStats();
-  G.firstRoll = null;                                          // prochain match : nouveau tirage au sort
+  G.firstRoll = null; G.tossed = false;                        // prochain match : nouveau tirage au sort (ou nouveau toss)
   G.ms.ptT = 0;
   replayReset(); G.celebrate = null; G.scorer = null; FX.celebrate = null; G.loft = LOFT.N;
   G.myPick = null; G.humans.forEach(h => { h.callPick = null; }); G.lastHumanHolder = {};   // coéquipier désigné, dernier porteur humain : oubliés au point suivant

@@ -106,6 +106,7 @@ export default async function (t) {
       G.phase = 'play'; G.off = G.me; G.pickup = null; G.oplay = null; G.dplay = null; G.checkT = 0;
       const h = TEAMS[G.me][0]; h.x = 50; h.y = 18; h.vx = h.vy = 0; holdDisc(h); h.think = 99;
       const d = TEAMS[1 - G.me][0]; d.x = h.x + dirOf(G.me) * 1.4; d.y = 18.5;
+      TEAMS[1 - G.me].forEach(q => { if (q !== d) { if (q.match === h) q.match = d.match; q.x = h.x + dirOf(G.me) * 20; q.y = 3 + q.i * 7; } }); d.match = h;   // c'est lui la mark (les autres loin)
       const fr = n => new Promise(r => { let k = 0; const f = () => (++k >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); });
       await fr(40); for (let k = 0; k < 200 && !canThrow(); k++) await fr(1);   // (un instant après la réception avant de pouvoir pivoter)
       await fr(10); const s0 = G.mkShade;

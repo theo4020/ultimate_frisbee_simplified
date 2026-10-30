@@ -139,7 +139,13 @@ function pullBack() { if (localPuller() && G.pullUI.stage === 'power') G.pullUI.
 function doPull(x, y, curve, q) {
   if (!localPuller()) return;                                 // seul le pulleur désigné peut pulle
   if (G.net === 'guest') netSend({ t: 'pull', x, y, curve, q });
-  else launchPull(x, y, curve, q);
+  else requestPull(x, y, curve, q);
+}
+// un humain a arrêté sa jauge : s'il y a d'autres joueurs humains, le pull attend le « PULL ! » du compte à rebours
+function requestPull(x, y, curve, q) {
+  if (G.phase !== 'pull' || !G.pull) return;
+  G.pull.pend = { x: +x, y: +y, curve: +curve || 0, q: +q || 0 }; G.pull.cd = null;
+  if (!startOn()) { const pd = G.pull.pend; G.pull.pend = null; launchPull(pd.x, pd.y, pd.curve, pd.q); }
 }
 
 // ---------- IA et temps limite ----------
@@ -149,6 +155,7 @@ function pullTick(dt, gdt) {
   if (!pullReady()) return;                                    // on attend que tout le monde soit en place
   G.pull.t += dt;                                              // temps réel : pull automatique au bout de 60 s
   if (G.pull.by != null && !humanById(G.pull.by)) G.pull.by = null;   // le pulleur choisi est parti : l'IA prend le relais
+  if (G.pull.pend) { if (startOn()) startTick(dt); else { const pd = G.pull.pend; G.pull.pend = null; launchPull(pd.x, pd.y, pd.curve, pd.q); } return; }   // pull humain : compte à rebours
   if (G.pull.by == null) {
     if (startOn()) startTick(dt);                              // départ façon course : le pull part au feu vert
     else { G.pull.aiT -= gdt || dt; if (G.pull.aiT <= 0) aiPull(); }
@@ -285,7 +292,10 @@ function afterPull(p) {
 //  • ne rien faire : départ normal, comme avant.
 // Une équipe IA (sans humain) part parfois trop tôt, plus souvent en facile.
 const START = { LIGHT: 0.5, N: 3, GOOD: 0.25, BOOST_T: 1.8, BOOST_K: 1.35, CHECK_T: 2.5, AI_OFF: 0.045 };
-const startOn = () => !G.attract && !G.tuto && !G.practice && !!G.pull && G.pull.by == null && G.humans.some(h => h.team === 0 || h.team === 1);
+// (aussi quand un humain pulle : une fois sa jauge arrêtée, le compte à rebours part pour tous les autres joueurs humains,
+//  coéquipiers compris — son pull part au « PULL ! »)
+const startOn = () => !G.attract && !G.tuto && !G.practice && !!G.pull && (G.pull.by == null ? G.humans.some(h => h.team === 0 || h.team === 1)
+  : !!G.pull.pend && G.humans.some(h => (h.team === 0 || h.team === 1) && h.id !== G.pull.by));
 const lightsOn = cd => (cd == null || cd < 0 ? 0 : Math.min(START.N, Math.floor(cd / START.LIGHT) + 1));
 const pullerOffside = () => !!G.offside && G.offside.team === 1 - G.receiving;
 function startTick(dt) {
@@ -301,15 +311,15 @@ function startTick(dt) {
   const was = lightsOn(P.cd); P.cd += dt; const now = lightsOn(P.cd);
   if (now > was) try { SOUNDS.tick(); } catch (e) { }
   if (P.aiOff && !G.offside && P.cd >= P.aiOff.at) offside(P.team, P.aiOff.p, false);
-  if (P.cd >= START.N * START.LIGHT) { try { SOUNDS.tickHi(); } catch (e) { } G.startGo = G.time; aiPull(); }
+  if (P.cd >= START.N * START.LIGHT) { try { SOUNDS.tickHi(); } catch (e) { } G.startGo = G.time; const pd = P.pend; if (pd) { P.pend = null; launchPull(pd.x, pd.y, pd.curve, pd.q); } else aiPull(); }
 }
 // hors-jeu de l'équipe t (p : le joueur qui est parti trop tôt, il fait un pas au-delà de sa ligne)
 function offside(t, p, human) {
   if (G.offside) return;
   G.offside = { team: t };
-  if (p) { p.tx = p.x + dirOf(t) * 1.8; p.ty = p.y; }
+  if (p) { p.tx = clamp(p.x + dirOf(t) * 5.5, 1, W - 1); p.ty = p.y; fxEvent('offside', p.x, p.y, t); }   // il part trop tôt, s'arrête… et s'en veut
   const pt = G.pull ? G.pull.team : 1 - G.receiving;
-  flash((human ? 'Faux départ ! ' : '') + `Hors-jeu des ${tn(t)} : ` + (t === pt ? `les ${tn(1 - t)} laissent tomber le disque et repartiront du brick` : 'reprise arrêtée à la réception'), true);
+  flash((human ? 'Faux départ ! ' : '') + `Offside des ${tn(t)}`, true);   // (le détail est dans le bandeau sous le compte à rebours)
   try { whistle(); } catch (e) { }
 }
 // hors-jeu de l'équipe qui pulle (7.5.2) : l'équipe qui reçoit joue « comme si elle avait appelé brick »
@@ -324,6 +334,7 @@ function startWindow() {
 function startPress(h) {
   h = h || meH();
   if (!h || (h.team !== 0 && h.team !== 1) || (h.id === G.myId && G.spectator) || !startWindow()) return false;
+  if (G.pull && G.pull.by != null && G.pull.by === h.id) return false;   // le pulleur lui-même ne prend pas le départ
   if (G.net === 'guest') {
     if (!h.startDone) { h.startDone = true; netSend({ t: 'start' }); const s = G.netStart; if (s && s[0] === 0 && s[1] >= 0 && s[1] <= START.GOOD) unlock('start'); }
     return true;
@@ -374,16 +385,17 @@ function drawStartUI() {
       ctx.fillText('PULL !', cx, cy + dot * 0.3);
     } else if (n > 0) ledDraw(ctx, START.N - n + 1, cx, cy, dot);
     ctx.restore();
-    if (n > 0) {
+    if (n > 0 && !(G.net === 'guest' ? G.netOffside === 0 || G.netOffside === 1 : G.offside)) {   // (après un hors-jeu, le bandeau prend sa place)
       ctx.font = `600 ${fs * 0.75}px system-ui`; ctx.textAlign = 'center'; ctx.fillStyle = '#f8fafc';
       ctx.fillText(isTouchUI() ? 'Tape au « PULL » : départ parfait · trop tôt = hors-jeu' : 'Clic ou Espace au « PULL » : départ parfait · trop tôt = hors-jeu', cx, cy + ph / 2 + fs * 1.1);
     }
   });
+  drawOffsideCall();
   // hors-jeu : bandeau jusqu'à la reprise (le message central passe vite)
   const off = G.net === 'guest' ? G.netOffside : G.offside && G.offside.team;
   if (off === 0 || off === 1) inScreen(() => {
     const pt = G.pull ? G.pull.team : 1 - G.receiving;
-    const t = `Hors-jeu des ${tn(off)} : ` + (off === pt ? `les ${tn(1 - off)} repartiront du brick` : 'check à la réception');
+    const t = `Offside des ${tn(off)} : ` + (off === pt ? `les ${tn(1 - off)} laissent tomber le disque et repartiront du brick` : 'check à la réception');
     ctx.font = `700 ${fs * 0.85}px system-ui`; ctx.textAlign = 'center';
     const w = ctx.measureText(t).width + fs * 1.4, y = SY(11.5);   // sous le compte à rebours (le bas est pour les conseils du coach)
     ctx.fillStyle = 'rgba(127,29,29,.85)'; ctx.fillRect(X(W / 2) - w / 2, y - fs * 1.0, w, fs * 1.5);
@@ -460,3 +472,38 @@ function drawPullUI() {
   ctx.restore();
 }
 const isTouchUI = () => typeof document !== 'undefined' && document.body && document.body.classList && document.body.classList.contains('touch');
+
+// hors-jeu : un joueur de l'équipe adverse surgit en grand et fait le signe officiel (WFDF) : les deux bras croisés en X
+// au-dessus de la tête, poings fermés — « OFFSIDE ! » (pendant ~2,5 s ; G.offFx posé par l'effet « offside », fx.js)
+function drawOffsideCall() {
+  const F = G.offFx; if (!F) return;
+  const a = G.time - F.t0; if (a > 2.6) { G.offFx = null; return; }
+  inScreen(() => {
+    const cw = canvas.width / dpr, ch = canvas.height / dpr, u = Math.max(26, Math.min(cw, ch) * 0.09);
+    const pop = a < 0.25 ? 1 - (1 - a / 0.25) ** 3 : 1, fade = a > 2.2 ? 1 - (a - 2.2) / 0.4 : 1;
+    const cx = cw * 0.5, cy = ch * 0.56 + (1 - pop) * u * 3, k = pop * (1 + 0.04 * Math.sin(a * 9));
+    const col = teamColor(1 - F.team), dark = tdark(1 - F.team), skin = '#e8b88f';
+    ctx.save(); ctx.globalAlpha = Math.max(0, fade); ctx.translate(cx, cy); ctx.scale(k, k); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(0, u * 1.9, u * 1.1, u * 0.25, 0, 0, 7); ctx.fill();   // ombre
+    ctx.strokeStyle = '#1e293b'; ctx.lineWidth = u * 0.32;                                              // jambes
+    ctx.beginPath(); ctx.moveTo(-u * 0.3, u * 0.9); ctx.lineTo(-u * 0.4, u * 1.8); ctx.moveTo(u * 0.3, u * 0.9); ctx.lineTo(u * 0.4, u * 1.8); ctx.stroke();
+    ctx.fillStyle = col; ctx.strokeStyle = dark; ctx.lineWidth = 3;                                      // maillot
+    roundRectPath(-u * 0.62, -u * 0.3, u * 1.24, u * 1.35, u * 0.4); ctx.fill(); ctx.stroke();
+    // bras croisés en X au-dessus de la tête (le signe « offside »), poings fermés
+    const sw = Math.sin(Math.min(1, a / 0.35) * Math.PI / 2);
+    ctx.strokeStyle = skin; ctx.lineWidth = u * 0.28;
+    const arm = (sx, ex, ey) => { ctx.beginPath(); ctx.moveTo(sx, -u * 0.15); ctx.quadraticCurveTo(sx * 1.4, -u * 0.9, ex, ey); ctx.stroke(); ctx.fillStyle = skin; ctx.beginPath(); ctx.arc(ex, ey, u * 0.2, 0, 7); ctx.fill(); };
+    arm(-u * 0.55, u * (-0.6 + 1.0 * sw), -u * (1.0 + 0.9 * sw)); arm(u * 0.55, u * (0.6 - 1.0 * sw), -u * (1.0 + 0.9 * sw));   // les deux poings se croisent
+    ctx.fillStyle = skin; ctx.beginPath(); ctx.arc(0, -u * 0.72, u * 0.42, 0, 7); ctx.fill();          // tête
+    ctx.fillStyle = '#3b2f2a'; ctx.beginPath(); ctx.arc(0, -u * 0.8, u * 0.42, Math.PI * 1.05, Math.PI * 1.95); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#0f172a'; ctx.beginPath(); ctx.arc(-u * 0.14, -u * 0.68, u * 0.05, 0, 7); ctx.arc(u * 0.14, -u * 0.68, u * 0.05, 0, 7); ctx.fill();
+    ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, -u * 0.5, u * 0.12, 0, Math.PI); ctx.stroke();   // bouche ouverte : il l'annonce
+    // « OFFSIDE ! » dans une bulle
+    ctx.font = `800 ${Math.round(u * 0.62)}px ${UI_FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const tw = ctx.measureText('OFFSIDE !').width, bx = u * 1.25 + tw / 2, by = -u * 1.55;
+    ctx.fillStyle = '#fff'; roundRectPath(bx - tw / 2 - u * 0.3, by - u * 0.45, tw + u * 0.6, u * 0.9, u * 0.3); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(bx - tw / 2, by + u * 0.3); ctx.lineTo(bx - tw / 2 - u * 0.5, by + u * 0.75); ctx.lineTo(bx - tw / 2 + u * 0.35, by + u * 0.42); ctx.fill();
+    ctx.fillStyle = '#b91c1c'; ctx.fillText('OFFSIDE !', bx, by + 1);
+    ctx.restore();
+  });
+}

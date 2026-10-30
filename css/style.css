@@ -333,10 +333,24 @@ body.touch .pracBtns button{padding:3px 8px;font-size:11px}
 #profileCard .row button{width:auto}
 @media (max-width:560px){.pgrid{grid-template-columns:1fr}}
 /* menu principal : boutons sur deux colonnes */
-#lobbyHome{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-#lobbyHome > p,#lobbyHome #iosHint{grid-column:1 / -1}
-#lobbyHome .bigbtn{margin:0}
-@media (max-width:480px){#lobbyHome{grid-template-columns:1fr}}
+/* menu principal : trois familles (Jouer / Mon jeu / Réglages et infos), pour trouver d'un coup d'œil */
+#lobbyHome{display:flex;flex-direction:column;gap:6px}
+#lobbyHome > p{margin:0 0 2px}
+.mhead{margin:10px 0 2px;font-family:'Barlow Condensed',system-ui,sans-serif;font-weight:800;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:#ffd23f;display:flex;align-items:center;gap:8px}
+.mhead::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(255,210,63,.45),transparent)}
+.mgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.mgrid .bigbtn{margin:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:12px}
+.mgrid .bigbtn .mi{font-size:22px;line-height:1;margin-bottom:4px}
+.mplay .bigbtn{align-items:center;text-align:center;padding:16px 10px;min-height:128px;justify-content:center;background:linear-gradient(180deg,#14203a,#0f1626);border-color:#2b3a5c}
+.mplay .bigbtn .mi{font-size:36px;margin-bottom:6px;filter:drop-shadow(0 3px 6px rgba(0,0,0,.4))}
+.mplay .bigbtn.primary{background:linear-gradient(180deg,#ffd84d,#f5b800);color:#1e293b}
+.mplay .bigbtn:hover{border-color:#ffd23f;transform:translateY(-1px)}
+.msmall{grid-template-columns:repeat(2,1fr)}
+.msmall .bigbtn{flex-direction:row;align-items:center;flex-wrap:wrap;padding:9px 12px;font-size:17px}
+.msmall .bigbtn .mi{font-size:18px;margin:0 8px 0 0}
+.msmall .bigbtn small{flex-basis:100%;font-size:12px}
+@media (max-width:560px){.mgrid{grid-template-columns:1fr 1fr 1fr}.mgrid .bigbtn small{display:none}.mplay .bigbtn{min-height:96px}.msmall{grid-template-columns:1fr 1fr}}
+body.touch .mgrid .bigbtn small{font-size:11px}
 body.touch .bigbtn{padding:8px 12px;font-size:15px}
 body.touch .bigbtn small{font-size:11.5px}
 body.touch .card{padding:10px 14px}
@@ -548,3 +562,55 @@ body.touch .bigbtn{font-size:17px}
 .stile.wx .sfield{position:relative;display:grid;place-items:center}
 .stile.wx .sfield{overflow:hidden} .stile.wx .sfield s{position:absolute;inset:0}
 .stile.wx .sfield i{position:relative;font-style:normal;font-size:22px}
+/* toss : deux disques qui tournent, puis retombent côté face (couleur) ou revers (sombre) */
+.tossDiscs{display:flex;justify-content:center;gap:28px;margin:14px 0 6px;perspective:400px;min-height:96px}
+.tdisc{width:84px;height:84px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 40% 35%,#fff,#e2e8f0 60%,#94a3b8);border:3px solid #cbd5e1;box-shadow:0 8px 18px rgba(0,0,0,.35);font-style:normal}
+.tdisc b{font-family:'Barlow Condensed',system-ui,sans-serif;font-weight:800;font-size:18px;color:#0f172a;text-transform:uppercase;letter-spacing:.5px}
+.tossDiscs.flip .tdisc{animation:tflip .32s linear infinite, tup 1.3s ease-out}
+.tossDiscs.flip .tdisc:nth-child(2){animation-duration:.27s,1.3s}
+.tdisc.back{background:radial-gradient(circle at 40% 35%,#475569,#1e293b 65%,#0f172a);border-color:#334155}
+.tdisc.back b{color:#e2e8f0}
+.tdisc.face{background:radial-gradient(circle at 40% 35%,#fff7cc,#ffd23f 60%,#d4a017);border-color:#fde68a}
+.tossDiscs.landed .tdisc{animation:tland .35s ease-out}
+@keyframes tflip{from{transform:rotateX(0)}to{transform:rotateX(360deg)}}
+@keyframes tup{0%{translate:0 0}40%{translate:0 -60px}100%{translate:0 0}}
+@keyframes tland{0%{transform:scale(1.15)}100%{transform:scale(1)}}
+.tossRow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tossRow .bigbtn{margin:0;text-align:center}
+#tossCard{text-align:center}
+#tossCard p{color:var(--text)}
+
+/* menu d'avant-match et entre les points : sections repliables (Attaque, Défense, Équipe, Match), une ligne de résumé
+   chacune ; l'option choisie ressort comme sur le panneau de score */
+#stratCard h1{margin-bottom:8px}
+#ovBoard{margin:2px 0 10px}
+.ssec{background:#0f1626;border:1px solid #243049;border-radius:12px;margin:8px 0;overflow:hidden}
+.ssec > summary{list-style:none;cursor:pointer;display:grid;grid-template-columns:auto auto 1fr auto;align-items:center;gap:8px;padding:10px 12px;user-select:none}
+.ssec > summary::-webkit-details-marker{display:none}
+.ssec > summary::after{content:'▾';color:var(--muted);transition:transform .15s;font-size:14px}
+.ssec:not([open]) > summary::after{transform:rotate(-90deg)}
+.ssec > summary b{font-family:'Barlow Condensed',system-ui,sans-serif;font-weight:800;font-size:18px;text-transform:uppercase;letter-spacing:.6px}
+.ssec > summary small{color:var(--muted);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.ssec[open] > summary{border-bottom:1px solid #1c2438;background:linear-gradient(90deg,rgba(255,210,63,.08),transparent)}
+.ssec[open] > summary small{display:none}
+.sti{font-size:18px}
+.ssecBody{padding:4px 12px 10px}
+.ssecBody .row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:8px 0 2px}
+.ssecBody .row > span:first-child{flex:0 0 112px;color:var(--muted);font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.ssecBody .row .opt{margin:0}
+.ssecBody .desc{margin:2px 0 6px 126px;font-size:12.5px}
+@media (max-width:560px){.ssecBody .row > span:first-child{flex-basis:100%}.ssecBody .desc{margin-left:0}.ssec > summary small{display:none}}
+.subhead{margin:10px 0 2px;color:var(--text);font-weight:700;font-size:14px}
+.subhead small{color:var(--muted);font-weight:400}
+/* les choix : une rangée de boutons collés, le choisi éclairé en ambre (comme les chiffres du panneau) */
+.opt{background:#1a2438;border:1px solid #2b3a5c;color:var(--text);border-radius:8px;padding:7px 12px;font-size:14px}
+.opt.on{background:#ffd23f;color:#1e293b;border-color:#ffd23f;box-shadow:0 0 10px rgba(255,190,60,.35);font-weight:700}
+.stratFoot{position:sticky;bottom:-20px;background:linear-gradient(transparent,var(--panel) 30%);padding-top:14px}
+#stratCard .wind{border-left:4px solid #38bdf8;background:#0f1626;border-radius:10px}
+#captainNote .capStrat{background:#0f1626;border:1px solid #243049;border-radius:10px;padding:8px 12px;margin-top:6px}
+/* entre les points : menu compact (les explications restent avant le match) */
+#stratCard:not(.preMatch) .ssecBody .desc{display:none}
+#stratCard:not(.preMatch) .ssecBody .row{margin:6px 0}
+.msmall .bigbtn{flex-wrap:nowrap}
+.msmall .bigbtn .badge{margin-left:6px}
+@media (max-width:560px){.msmall .bigbtn{font-size:15px;padding:9px 10px}.msmall .bigbtn .mi{font-size:16px;margin-right:6px}}
