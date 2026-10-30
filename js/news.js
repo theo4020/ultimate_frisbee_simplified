@@ -8,36 +8,14 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
-  { id: 43, date: '2026-10-30', tag: 'Jeu', title: 'Toss en ligne et série dans le menu 🥏',
-    body: `• <b>Toss en ligne</b> : quand la première attaque est au hasard, tout le monde voit les deux disques. Le capitaine des Rouges
-      parie, le capitaine de l'équipe gagnante choisit d'attaquer ou de défendre.<br>
-      • Le toss revient aussi à chaque nouveau match (plus seulement le premier).<br>
-      • Mode infini : le menu ☰ montre où en est la série (match, adversaire, score, record), et le code du salon à plusieurs.<br>
-      • Coach Disco explique le <b>départ au signal</b> et l'<b>offside</b> la première fois.` },
-  { id: 42, date: '2026-10-30', tag: 'Jeu', title: 'Plus fluide sur téléphone, IA plus lucide 🔋',
-    body: `• <b>Mode économie</b> (Commandes) : si l'image saccade pendant un match, il s'allume tout seul — image un peu moins
-      fine, sans l'herbe qui ondule ni les drapeaux, météo plus légère. Tu peux le forcer ou le couper.<br>
-      • L'IA ne lance plus vers un coéquipier qu'elle n'a pas vu depuis longtemps (fini les hucks vers personne).<br>
-      • En ligne, à plusieurs dans la même équipe : tu vois la <b>flèche du cut appelé</b> par ton coéquipier.` },
-  { id: 41, date: '2026-10-30', tag: 'Jeu', title: 'Départ, offside, toss et nouveaux menus 🎲',
-    body: `• Le <b>départ au signal</b> et l'<b>offside</b> pour tous ceux qui ne pullent pas, même quand c'est ton coéquipier qui pulle.
-      Un offside se voit : le fautif part trop tôt, s'arrête et s'en veut, et un arbitre fait le signe en grand.<br>
-      • Premier attaquant « aléatoire » : un <b>toss</b> à deux disques. Devine s'ils tombent du même côté ; si tu as raison, tu choisis attaque ou défense.<br>
-      • <b>Menus revus</b> : accueil rangé par catégories, réglages d'avant match et d'entre les points en sections repliables, score en grand.<br>
-      • À ton retour, un petit encadré « Quoi de neuf » sur l'accueil.` },
-  { id: 40, date: '2026-10-29', tag: 'Jeu', title: 'À plusieurs : on garde la main 🤝',
-    body: `• À plusieurs dans la même équipe, quand un <b>coéquipier IA attrape le disque</b>, le dernier de vous à l'avoir eu
-      en prend le contrôle et lance (option « Disque attrapé par l'IA » dans le menu entre les points, activée par défaut).<br>
-      • Après ta passe, la <b>courbe revient à zéro</b> pour la suivante.` },
+  { id: 43, date: '2026-10-30', tag: 'Jeu', title: 'Départ, toss et nouveaux menus 🎲',
+    body: `• <b>Départ au signal</b> pour tous ceux qui ne pullent pas : trop tôt, c'est <b>offside</b>.<br>
+      • Première attaque au hasard : un <b>toss</b> à deux disques, aussi en ligne.<br>
+      • <b>Menus revus</b>, et un <b>mode économie</b> automatique pour les petits téléphones.` },
   { id: 39, date: '2026-10-29', tag: 'Jeu', title: 'Retours du premier playtest 🧪',
-    body: `• La <b>fête</b> après un point se fait sur tout le terrain.<br>
-      • La <b>mark aimantée</b> ne s'active qu'après un instant dans le cercle : passer à côté du porteur ne t'aspire plus.<br>
-      • <b>Espace</b> change aussi de pied de pivot quand tu as le disque.<br>
-      • Coéquipier désigné puis endroit demandé : une <b>flèche jaune</b> montre où il part.<br>
-      • Les <b>passes courtes</b> sont plus douces ; une passe très rapide se droppe plus souvent.<br>
-      • Après une réception, un court instant avant de pouvoir relancer.<br>
-      • La <b>citrouille</b> 🎃 est aussi dans le menu entre les points.<br>
-      • La visière de la casquette tient enfin à la casquette.` },
+    body: `• <b>Mark aimantée</b> moins collante, <b>Espace</b> change aussi de pied de pivot.<br>
+      • Passes courtes plus douces, un court instant après une réception avant de relancer.<br>
+      • À plusieurs : le dernier humain porteur reprend le disque quand un coéquipier IA l'attrape.` },
   { id: 38, date: '2026-10-29', tag: 'Jeu', title: 'Un disque plus vrai 🌬️',
     body: `• Le disque <b>part vite et ralentit</b> pendant sa course (même durée de vol qu'avant).<br>
       • Le <b>vent</b> change la hauteur du vol : <b>de face</b>, le disque monte et plane ; <b>de dos</b>, il reste bas et
