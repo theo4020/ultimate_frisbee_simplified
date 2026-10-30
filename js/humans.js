@@ -192,6 +192,7 @@ function callFor(h, x, y) {
   if (!c) return;
   startCut(c, x, y, dirOf(h.team) * (x - c.x) > 12);
   c.callT = 3; c.called = G.time; c.callTo = [x, y];          // (flèche jaune jusqu'à l'endroit demandé, render.js)
+  if (G.net === 'host') FX.out.push(['cutto', Math.round(x * 10) / 10, Math.round(y * 10) / 10, players.indexOf(c)]);   // les invités voient aussi quel coéquipier part
   G.cutT = Math.max(G.cutT, 1);
   fxEvent('call', x, y, h.team);
 }

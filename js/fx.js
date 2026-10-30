@@ -104,6 +104,7 @@ function vibrate(p) { try { if (navigator.vibrate && document.body.classList.con
 
 // ---------- événements ----------
 function fxPlay(name, x, y, team) {
+  if (name === 'cutto') { const p = players[team]; if (p && !hiddenFromMe(p.team)) { p.called = G.time; p.callTo = [x, y]; } return; }   // (invité) flèche du cut appelé
   if (name === 'call' && hiddenFromMe(team)) return;          // en ligne : un appel de cut reste secret pour l'adversaire
   if (!G.attract) try {
     const au = typeof crowdSample === 'function';                // audio.js chargé (enregistrements, sinon sons fabriqués)

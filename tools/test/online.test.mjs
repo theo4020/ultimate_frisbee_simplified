@@ -269,6 +269,71 @@ export default async function (t) {
       await guest.evaluate(() => { const o = document.getElementById('overlay'); if (o && !o.classList.contains('hidden') && G.phase === 'play') o.classList.add('hidden'); });
     }
 
+    t.group('Deux humains dans la même équipe, réseau lent');
+    {
+      const net = (p, o) => p.evaluate(o => Object.assign(FAKENET, o), o);
+      const gid = await guest.evaluate(() => G.myId);
+      await host.evaluate(id => setTeam(id, 0), gid);
+      await guest.waitForFunction(() => G.me === 0 && !G.spectator, null, { timeout: 5000 });
+      await net(host, { lag: 120, jitter: 80 }); await net(guest, { lag: 120, jitter: 80 });
+      await host.evaluate(() => { window.__ns = setInterval(() => { G.stall = 0; G.phase = 'play'; G.pz = null; }, 100); });
+      // l'invité a le disque (au milieu), l'hôte joue un autre attaquant, la défense est loin
+      const setup = () => host.evaluate(id => {
+        closeAllCards(); G.phase = 'play'; G.menuShown = false; document.getElementById('overlay').classList.add('hidden');
+        G.oplay = null; G.dplay = null; G.pickup = null; G.checkT = 0; G.off = 0; G.carryTo = null;
+        TEAMS[1].forEach((d, k) => { d.x = 95; d.y = 4 + k * 7; d.vx = d.vy = 0; });
+        const gh = humanById(id), hh = humanById(G.myId), p = TEAMS[0][2];
+        hh.sel = TEAMS[0][0]; TEAMS[0][0].x = 20; TEAMS[0][0].y = 30;
+        TEAMS[0].slice(1).forEach((q, k) => { q.x = 40 + (k ? 8 : 0); q.y = 6 + k * 8; q.vx = q.vy = 0; q.think = 99; });
+        p.x = 40; p.y = 18; gh.sel = p; holdDisc(p); p.think = 99; G.lastHumanHolder = { 0: id }; gh.callPick = null;
+      }, gid);
+      await setup();
+      const recv = await guest.evaluate(async () => {
+        const fr = () => new Promise(r => requestAnimationFrame(r)); let first = null, readyAt = null; const t0 = performance.now();
+        while (performance.now() - t0 < 3000 && readyAt == null) { await fr(); const mine = disc.mode === 'held' && meH().sel === disc.holder;
+          if (mine && first == null) first = { ct: canThrow(), t: performance.now() }; if (first && canThrow()) readyAt = performance.now() - first.t; }
+        return { first: first && first.ct, readyAt: readyAt && Math.round(readyAt) };
+      });
+      t.ok(recv.first === false && recv.readyAt >= 380 && recv.readyAt < 900, 'chez l’invité : le disque reçu, un petit délai avant de pouvoir relancer', recv);
+      // désigner un coéquipier : anneau chez l'invité, choix connu de l'hôte ; puis appel dans l'espace : c'est lui qui part
+      const pk = await guest.evaluate(async () => {
+        const q = TEAMS[0][3]; doCall(q.x, q.y); const ring = myPick() === q;
+        await new Promise(r => setTimeout(r, 700));
+        doCall(70, 12); await new Promise(r => setTimeout(r, 900));
+        return { ring, idx: players.indexOf(q), after: G.myPick, arrow: !!q.callTo && G.time - q.called < 3.5 && Math.hypot(q.callTo[0] - 70, q.callTo[1] - 12) < 1 };
+      });
+      const hp = await host.evaluate(i => { const q = players[i]; return { cut: !!q.callTo && G.time - q.called < 4 && Math.hypot(q.callTo[0] - 70, q.callTo[1] - 12) < 1 }; }, pk.idx);
+      t.ok(pk.ring && pk.after === null && pk.arrow && hp.cut, 'coéquipier désigné par l’invité : anneau chez lui, c’est bien lui qui coupe chez l’hôte, flèche des deux côtés', { pk: { ...pk, after: !!pk.after }, hp });
+      // appel dans l'espace sans désigner : la flèche part du coéquipier choisi par l'hôte, chez l'invité aussi
+      // (un endroit loin de tout le monde : un appel tout près d'un coéquipier le désignerait au lieu de le faire couper)
+      const sp = await host.evaluate(() => { let b = null, bd = -1; for (const [x, y] of [[60, 30], [65, 8], [30, 32], [70, 20], [25, 6]]) { const d = Math.min(...players.map(q => dist(q.x, q.y, x, y))); if (d > bd) { bd = d; b = [x, y]; } } return b; });
+      await guest.evaluate(sp => doCall(sp[0], sp[1]), sp);
+      await guest.waitForTimeout(900);
+      const hc = await host.evaluate(sp => players.findIndex(q => q.callTo && G.time - q.called < 1.5 && Math.hypot(q.callTo[0] - sp[0], q.callTo[1] - sp[1]) < 1), sp);
+      const gc = await guest.evaluate(([i, sp]) => { const q = players[i]; return !!q && !!q.callTo && Math.hypot(q.callTo[0] - sp[0], q.callTo[1] - sp[1]) < 1 && G.time - q.called < 3.5; }, [hc, sp]);
+      t.ok(hc >= 0 && gc, 'appel dans l’espace : chez l’invité, la flèche jaune part du coéquipier qui coupe vraiment', { hc, gc });
+      // courbe puis passe à un coéquipier IA : la courbe revient à zéro, il récupère le disque à la réception (takeover)
+      await setup(); await host.evaluate(() => { [1, 3].forEach(k => { const q = TEAMS[0][k]; q.x = 8; q.y = 4 + k * 6; q.callT = 0; q.callTo = null; }); window.__dc = dropChance; dropChance = () => 0; });   // personne d'autre sur la trajectoire, pas de drop
+      await guest.waitForFunction(() => canThrow(), null, { timeout: 4000 }).catch(() => { });
+      await guest.waitForTimeout(600);                         // (l'invité a fini de lisser la mise en place)
+      const qa = await host.evaluate(() => [TEAMS[0][4].x, TEAMS[0][4].y]);
+      const tk = await guest.evaluate(async qa => {
+        setCurve(0.8); const c0 = G.curve, q = TEAMS[0][4], i = players.indexOf(q);
+        doThrow(qa[0], qa[1], 0); await new Promise(r => setTimeout(r, 300));
+        const fr = () => new Promise(r => requestAnimationFrame(r)); const t0 = performance.now(); let curveAfter = null;
+        while (performance.now() - t0 < 4000) { await fr(); if (curveAfter == null && disc.mode === 'air') curveAfter = G.curve; if (disc.mode === 'held' && disc.holder === q && meH().sel === q && canThrow()) break; }
+        return { c0, curveAfter, i, held: disc.mode === 'held' && disc.holder === q, mine: meH().sel === q, ct: canThrow(), curve: G.curve };
+      }, qa);
+      const th = await host.evaluate(([id, i]) => ({ sel: players.indexOf(humanById(id).sel), holder: players.indexOf(disc.holder), mode: disc.mode, msg: G.msg, q: [players[i].x, players[i].y].map(Math.round) }), [gid, tk.i]);
+      await host.evaluate(() => { dropChance = window.__dc; });
+      t.ok(tk.c0 === 0.8 && tk.curveAfter === 0, 'chez l’invité : après sa passe, la courbe repart de zéro', tk);
+      t.ok(tk.held && tk.mine && tk.ct && th.sel === tk.i && th.holder === tk.i, 'un coéquipier IA attrape : l’invité (dernier porteur) le prend et peut relancer, d’accord avec l’hôte', { tk, th });
+      await host.evaluate(() => clearInterval(window.__ns));
+      await net(host, { lag: 0, jitter: 0 }); await net(guest, { lag: 0, jitter: 0 });
+      await host.evaluate(id => setTeam(id, 1), gid);
+      await guest.waitForFunction(() => G.me === 1, null, { timeout: 5000 });
+    }
+
     t.group('Départ de l’invité');
     await guest.click('#menuB'); await guest.click('#gmQuit');
     if (await guest.isVisible('#askBox')) await guest.click('#askYes');
