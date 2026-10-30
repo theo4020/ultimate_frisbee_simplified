@@ -8,6 +8,17 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
+  { id: 42, date: '2026-10-30', tag: 'Jeu', title: 'Plus fluide sur téléphone, IA plus lucide 🔋',
+    body: `• <b>Mode économie</b> (Commandes) : si l'image saccade pendant un match, il s'allume tout seul — image un peu moins
+      fine, sans l'herbe qui ondule ni les drapeaux, météo plus légère. Tu peux le forcer ou le couper.<br>
+      • L'IA ne lance plus vers un coéquipier qu'elle n'a pas vu depuis longtemps (fini les hucks vers personne).<br>
+      • En ligne, à plusieurs dans la même équipe : tu vois la <b>flèche du cut appelé</b> par ton coéquipier.` },
+  { id: 41, date: '2026-10-30', tag: 'Jeu', title: 'Départ, offside, toss et nouveaux menus 🎲',
+    body: `• Le <b>départ au signal</b> et l'<b>offside</b> pour tous ceux qui ne pullent pas, même quand c'est ton coéquipier qui pulle.
+      Un offside se voit : le fautif part trop tôt, s'arrête et s'en veut, et un arbitre fait le signe en grand.<br>
+      • Premier attaquant « aléatoire » : un <b>toss</b> à deux disques. Devine s'ils tombent du même côté ; si tu as raison, tu choisis attaque ou défense.<br>
+      • <b>Menus revus</b> : accueil rangé par catégories, réglages d'avant match et d'entre les points en sections repliables, score en grand.<br>
+      • À ton retour, un petit encadré « Quoi de neuf » sur l'accueil.` },
   { id: 40, date: '2026-10-29', tag: 'Jeu', title: 'À plusieurs : on garde la main 🤝',
     body: `• À plusieurs dans la même équipe, quand un <b>coéquipier IA attrape le disque</b>, le dernier de vous à l'avoir eu
       en prend le contrôle et lance (option « Disque attrapé par l'IA » dans le menu entre les points, activée par défaut).<br>
