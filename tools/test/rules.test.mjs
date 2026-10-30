@@ -492,6 +492,19 @@ export default async function (t, { quick }) {
   t.ok(wv.tail.late < wv.calm.late && Math.abs(wv.head.start - wv.calm.start) < 0.01 && Math.abs(wv.tail.end - wv.calm.end) < 0.01, 'les deux bouts du vol ne bougent pas (lâcher, réception) ; de dos il retombe plus tôt', wv);
   t.ok(wv.midDrift > 0.3 && wv.midDrift < 0.6, 'la dérive du vent arrive surtout en fin de vol (le disque ralentit)', wv);
 
+  t.group('Disque au sol : n’importe quel joueur dirigé peut le ramasser');
+  const gp = R(`(() => { const keep = [G.humans, G.myId, G.phase, G.off];
+    newWind(); startPoint(); G.phase = 'play'; G.off = 0; G.pull = null; G.checkT = 0;
+    const des = TEAMS[0][1], me = TEAMS[0][2];
+    G.humans = [{ id: 0, team: 0, sel: TEAMS[0][0] }, { id: 1, team: 0, sel: me }]; G.myId = 0; syncMe();
+    turnover(50, 18, 'test'); G.off = 0;                          // (le disque est aux Bleus, au sol)
+    if (G.off !== 0) G.off = 0;
+    G.pickup = des; des.x = 80; des.y = 5; me.x = 50.5; me.y = 18; me.vx = me.vy = 0;
+    for (let f = 0; f < 3; f++) __tick();
+    const r = { mode: disc.mode, holder: players.indexOf(disc.holder), me: players.indexOf(me), pickup: players.indexOf(G.pickup) };
+    [G.humans, G.myId, G.phase, G.off] = keep; syncMe();
+    return r; })()`);
+  t.ok((gp.mode === 'held' || gp.mode === 'carry') && gp.holder === gp.me && gp.pickup === -1, 'un joueur dirigé par un humain arrive sur le disque : il le ramasse, même si un autre était désigné', gp);
   t.group('IA : pas de passe vers un souvenir');
   const ghost = R(`(() => {
     const oT = throwDisc; let n = 0, far = [];

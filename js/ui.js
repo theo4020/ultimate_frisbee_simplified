@@ -10,7 +10,7 @@ function throwSoon() {
   const h = meH(); if (!h || h.team < 0 || G.spectator || G.phase !== 'play') return false;
   const mine = p => !!p && p.team === h.team && (soloStyle(h.team) || p === h.sel);
   if (disc.mode === 'air') return disc.pull ? mine(nearest(TEAMS[h.team], disc.ex, disc.ey)) : disc.team === h.team && mine(disc.intended);
-  if (disc.mode === 'ground') return mine(G.pickup);
+  if (disc.mode === 'ground') return mine(G.pickup) || (!!h.sel && h.sel.team === G.off && dist(h.sel.x, h.sel.y, disc.x, disc.y) < 4);
   return disc.mode === 'carry' && mine(disc.holder);
 }
 // chiffres du panneau de score : des points lumineux (matrice 5 × 7), allumés ou éteints

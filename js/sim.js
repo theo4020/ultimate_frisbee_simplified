@@ -290,8 +290,11 @@ function update(dt) {
       turnover(tx, ty, out ? 'Out ! Turnover' : 'Turnover');
     }
   } else if (disc.mode === 'ground') {
-    const p = G.pickup;
-    if (p && dist(p.x, p.y, disc.x, disc.y) < 1.2) {
+    // le ramasseur désigné, ou n'importe quel joueur de l'équipe dirigé par un humain qui va le chercher lui-même
+    let p = G.pickup && dist(G.pickup.x, G.pickup.y, disc.x, disc.y) < 1.2 ? G.pickup : null;
+    if (!p) p = TEAMS[G.off].find(q => controllerOf(q) && dist(q.x, q.y, disc.x, disc.y) < 1.2 && !(q.dive > 0) && !(q.down > 0)) || null;
+    if (p) {
+      if (p !== G.pickup) { G.pickup = p; assignRoles(G.off, p); }
       p.x = disc.x; p.y = disc.y; p.vx = p.vy = 0;
       fxEvent('pickup', p.x, p.y, p.team);
       if (G.carryTo) startCarry(p, G.carryTo.x, G.carryTo.y, ''); else holdDisc(p);
