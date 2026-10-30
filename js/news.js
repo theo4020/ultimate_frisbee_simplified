@@ -311,8 +311,24 @@ const moveLink = () => { const p = exportProfile(); return NEW_URL + (p ? '#impo
 const newsSeen = () => { try { return +localStorage.getItem('uf-news-seen') || 0; } catch (e) { return 0; } };
 const newsDate = d => new Date(d + 'T12:00:00').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
 function newsBadge() {
+  whatsNew();
   const n = NEWS.filter(a => a.id > newsSeen()).length, b = document.getElementById('newsBadge');
   b.textContent = n; b.style.display = n ? '' : 'none';
+}
+// « Quoi de neuf » en haut du menu principal, pour un joueur qui revient : les titres des dernières nouveautés pas encore lues
+// (un tout nouveau joueur n'a rien à rattraper : tout est marqué lu en silence)
+function whatsNew() {
+  const box = document.getElementById('whatsNew'); if (!box) return;
+  const played = typeof careerGet === 'function' && careerGet().matches > 0;
+  const max = Math.max(...NEWS.map(a => a.id));
+  if (!played && !newsSeen()) { try { localStorage.setItem('uf-news-seen', String(max)); } catch (e) { } }
+  const fresh = NEWS.filter(a => a.id > newsSeen()).sort((a, b) => b.id - a.id);
+  if (!fresh.length) { box.style.display = 'none'; return; }
+  box.style.display = '';
+  box.innerHTML = `<b>🆕 Depuis ta dernière visite</b><ul>${fresh.slice(0, 3).map(a => `<li>${a.title}</li>`).join('')}</ul>`
+    + `${fresh.length > 3 ? `<small>… et ${fresh.length - 3} autre${fresh.length > 4 ? 's' : ''}</small>` : ''}<span class="wnBtns"><button id="wnRead" class="ghost">Tout lire ›</button><button id="wnClose" class="ghost" title="Masquer">✕</button></span>`;
+  document.getElementById('wnRead').onclick = () => document.getElementById('newsB').click();
+  document.getElementById('wnClose').onclick = () => { try { localStorage.setItem('uf-news-seen', String(max)); } catch (e) { } newsBadge(); };
 }
 function renderNews() {
   const seen = newsSeen(), list = NEWS.slice().sort((a, b) => (b.pin ? 1 : 0) - (a.pin ? 1 : 0) || b.id - a.id);

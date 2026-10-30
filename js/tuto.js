@@ -233,9 +233,9 @@ const TUTO_STEPS = [
     title: 'Appeler un cut',
     coach: 'Tes coéquipiers sont collés comme des chewing-gums. Les IA ne voient pas tout : montre-leur un espace libre.', par: 16,
     text: {
-      mouse: 'Tes coéquipiers sont marqués. <b>Clic droit</b> sur un espace libre : l’un d’eux y court. Lance-lui.',
-      touch: 'Tes coéquipiers sont marqués. <b>Tape un espace libre</b> : l’un d’eux y court. Lance-lui.',
-      pad: 'Tes coéquipiers sont marqués. Mets le curseur sur un espace libre et appuie sur <b>X</b>, puis lance-lui.'
+      mouse: 'Tes coéquipiers sont marqués. <b>Clic droit</b> sur un espace libre : l’un d’eux y court. Lance-lui. <i>Astuce : un clic droit <b>sur un coéquipier</b> le désigne (anneau doré) : c’est lui qui partira au prochain appel.</i>',
+      touch: 'Tes coéquipiers sont marqués. <b>Tape un espace libre</b> : l’un d’eux y court. Lance-lui. <i>Astuce : tape d’abord <b>un coéquipier</b> pour le désigner (anneau doré) : c’est lui qui partira.</i>',
+      pad: 'Tes coéquipiers sont marqués. Mets le curseur sur un espace libre et appuie sur <b>X</b>, puis lance-lui. <i>Astuce : X sur un coéquipier le désigne pour le prochain appel.</i>'
     },
     setup() {
       tutoReset(); G.tuto.wall = true;
