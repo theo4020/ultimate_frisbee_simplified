@@ -627,12 +627,6 @@ body.touch .bigbtn{font-size:17px}
 @media (max-width:560px){.msmall .bigbtn{font-size:15px;padding:9px 10px}.msmall .bigbtn .mi{font-size:16px;margin-right:6px}}
 
 /* quoi de neuf (joueur qui revient) */
-#whatsNew{background:#0f1626;border:1px solid #243049;border-left:4px solid #38bdf8;border-radius:12px;padding:10px 12px;position:relative}
-#whatsNew b{font-family:'Barlow Condensed',system-ui,sans-serif;font-weight:800;font-size:15px;letter-spacing:.4px;text-transform:uppercase;color:#7dd3fc}
-#whatsNew ul{margin:6px 0 2px;padding-left:18px;font-size:14px;line-height:1.45}
-#whatsNew small{color:var(--muted)}
-#whatsNew .wnBtns{display:flex;gap:6px;margin-top:6px}
-#whatsNew .wnBtns .ghost{width:auto;margin:0;padding:5px 10px;font-size:13px}
 
 /* menu ☰ : où en est la série du mode infini */
 .gmRun{background:#0f1626;border:1px solid #243049;border-left:4px solid #facc15;border-radius:12px;padding:10px 12px;margin:0 0 10px;text-align:left}

@@ -23,11 +23,11 @@ export default async function (t) {
     t.group('Menu principal');
     t.ok(await vis(p, '#lobbyHome'), 'le menu principal s’affiche');
     t.ok(await vis(p, '#moveAlert'), 'bandeau « le jeu change d’adresse » (on n’est pas sur la nouvelle)');
-    t.ok(!(await vis(p, '#newsBadge')) && !(await vis(p, '#whatsNew')), 'tout nouveau joueur : pas de pile de nouveautés à rattraper');
+    t.ok(!(await vis(p, '#newsBadge')), 'tout nouveau joueur : pas de pile de nouveautés à rattraper');
     await p.evaluate(() => { storeSet('uf-career', Object.assign(careerGet(), { matches: 3 })); localStorage.setItem('uf-news-seen', String(NEWS[2].id)); });
     await p.reload(); await p.waitForFunction(() => typeof G !== 'undefined' && G.attract);
-    const wn = await p.evaluate(() => ({ badge: document.getElementById('newsBadge').textContent, items: document.querySelectorAll('#whatsNew li').length, vis: document.getElementById('whatsNew').offsetHeight > 0 }));
-    t.ok(wn.badge === '2' && wn.items === 2 && wn.vis, 'joueur qui revient : « Depuis ta dernière visite » avec les nouveautés manquées', wn);
+    const wn = await p.evaluate(() => ({ badge: document.getElementById('newsBadge').textContent, box: !!document.getElementById('whatsNew') }));
+    t.ok(wn.badge === '2' && !wn.box, 'joueur qui revient : juste une pastille sur Nouveautés (pas d’encadré sur l’accueil)', wn);
     for (const id of ['tutoB', 'soloMenuB', 'onlineMenuB', 'ctrlB', 'profileB', 'newsB']) t.ok(await vis(p, '#' + id), 'bouton ' + id);
     t.ok(!(await vis(p, '#pracB')) && !(await vis(p, '#seriesB')), 'les modes solo ne sont plus sur l’accueil');
     await p.fill('#pname', 'Testeur');
