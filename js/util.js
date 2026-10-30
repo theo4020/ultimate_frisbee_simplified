@@ -44,6 +44,7 @@ function resize() {
   CAM.S0 = S; CAM.z = 1; CAM.ox = CAM.oy = 0;
   const w = (W + 2 * M) * S, h = fieldH() * S;
   dpr = window.devicePixelRatio || 1;
+  if (typeof ecoOn === 'function' && ecoOn()) dpr = Math.min(dpr, 1.5);   // mode économie : moins de pixels à peindre
   canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
   canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
   stage.style.width = w + 'px';

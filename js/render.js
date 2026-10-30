@@ -327,7 +327,7 @@ function draw() {
   }
   groundT();
   drawField();
-  if (!iso) { const fid = styleOf('field'); drawGrassWind(fid); drawCrowd(fid); drawWindLife(fid); }   // herbe, public, drapeaux et feuilles (scenery.js)
+  if (!iso) { const fid = styleOf('field'), eco = ecoOn(); if (!eco) drawGrassWind(fid); else if (fid === 'plage') drawSea(); drawCrowd(fid); if (!eco) drawWindLife(fid); }   // herbe, public, drapeaux et feuilles (scenery.js)
   drawWeatherGround();                                      // le temps (Mon style) : teinte du sol seulement (weather.js)
 
   drawStreaks();

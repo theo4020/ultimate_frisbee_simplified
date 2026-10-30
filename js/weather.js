@@ -68,12 +68,12 @@ function drawWeatherGround(fid) {
 function drawWeatherSky(fid) {
   const w = weatherOf(fid);
   if (w !== 'pluie' && w !== 'flocons' && w !== 'brume') return;
-  const dt = Math.min(0.05, FX.dt || 0.016); WX.t += dt;
+  const dt = Math.min(0.05, FX.dt || 0.016), eco = typeof ecoOn === 'function' && ecoOn(); WX.t += dt;   // mode économie : moitié moins de gouttes et de flocons, pas de nappes de brume
   wxScreen((cw, ch) => {
     if (w === 'pluie') {
       if (!WX.drops) WX.drops = Array.from({ length: 150 }, () => [Math.random(), Math.random(), 0.6 + Math.random() * 0.6]);
       ctx.strokeStyle = 'rgba(210,226,255,.32)'; ctx.lineWidth = 1; ctx.beginPath();
-      for (const d of WX.drops) {
+      for (const d of eco ? WX.drops.slice(0, 70) : WX.drops) {
         d[1] += dt * 1.6 * d[2]; d[0] += dt * 0.25 * d[2];
         if (d[1] > 1) { if (Math.random() < 0.5 && WX.splash.length < 40) WX.splash.push([d[0] * cw, (0.1 + Math.random() * 0.85) * ch, 0]); d[1] -= 1; d[0] = Math.random(); }
         if (d[0] > 1) d[0] -= 1;
@@ -88,14 +88,14 @@ function drawWeatherSky(fid) {
     } else if (w === 'flocons') {
       if (!WX.flakes) WX.flakes = Array.from({ length: 110 }, () => [Math.random(), Math.random(), 0.5 + Math.random(), Math.random() * 6]);
       ctx.fillStyle = 'rgba(255,255,255,.8)';
-      for (const f of WX.flakes) {
+      for (const f of eco ? WX.flakes.slice(0, 55) : WX.flakes) {
         f[1] += dt * 0.07 * f[2]; f[0] += dt * 0.012 * Math.sin(WX.t * 1.3 + f[3]);
         if (f[1] > 1) { f[1] -= 1; f[0] = Math.random(); }
         ctx.beginPath(); ctx.arc(((f[0] % 1) + 1) % 1 * cw, f[1] * ch, 0.8 + f[2] * 1.1, 0, 7); ctx.fill();
       }
     } else {                                                     // brume : quelques nappes qui dérivent, plus denses sur les bords
       if (!WX.fog) WX.fog = Array.from({ length: 6 }, (_, k) => [Math.random(), 0.15 + k / 6 * 0.8, 0.25 + Math.random() * 0.2, 0.01 + Math.random() * 0.015]);
-      for (const f of WX.fog) {
+      for (const f of eco ? [] : WX.fog) {
         f[0] += dt * f[3]; if (f[0] > 1.3) f[0] -= 1.6;
         const x = f[0] * cw, y = f[1] * ch, r = f[2] * Math.max(cw, ch), g = ctx.createRadialGradient(x, y, 0, x, y, r);
         g.addColorStop(0, 'rgba(235,240,245,.10)'); g.addColorStop(1, 'rgba(235,240,245,0)'); ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2);

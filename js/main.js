@@ -24,12 +24,31 @@ function loop(now) {
   else bgSync();
   requestAnimationFrame(loop);
 }
+// mode économie (Commandes) : « automatique » l'allume si l'image saccade pendant un match (moins de 40 images par
+// seconde, 3 fois 2 secondes de suite). Il reste allumé sur cet appareil (on peut le remettre en automatique).
+const ECO = { auto: (() => { try { return localStorage.getItem('uf-eco') === '1'; } catch (e) { return false; } })(), n: 0, t: 0, bad: 0 };
+const ecoOn = () => CTRL.eco === 'on' || (CTRL.eco === 'auto' && ECO.auto);
+function ecoReset() { ECO.auto = false; ECO.n = ECO.t = ECO.bad = 0; try { localStorage.removeItem('uf-eco'); } catch (e) { } }
+function ecoWatch(raw) {
+  if (CTRL.eco !== 'auto' || ECO.auto) return;
+  const live = (G.phase === 'play' || G.phase === 'pull') && !G.paused && !G.pz && !G.replay && !G.attract && document.visibilityState === 'visible';
+  if (!live || raw > 250) { ECO.n = ECO.t = 0; return; }             // menu, pause, onglet qui revient : on ne compte pas
+  ECO.n++; ECO.t += raw;
+  if (ECO.t < 2000) return;
+  ECO.bad = ECO.n * 1000 / ECO.t < 40 ? ECO.bad + 1 : 0; ECO.n = ECO.t = 0;
+  if (ECO.bad >= 3) {
+    ECO.auto = true; try { localStorage.setItem('uf-eco', '1'); } catch (e) { }
+    resize(); fieldKey = '';
+    if (typeof toast === 'function') toast('🔋 Mode économie activé : image allégée pour rester fluide <small>(Commandes)</small>');
+  }
+}
 // mesure des performances (option admin dans Commandes) : images par seconde, calcul du jeu et dessin (ms)
 const PERF = { n: 0, t: 0, sim: 0, draw: 0, txt: '', at: 0 };
 function frame(now, visible) {
   // jamais négatif : l'heure d'une image (requestAnimationFrame) peut être un peu antérieure au dernier tic du Worker
   // (hôte qui revient sur l'onglet) ; un pas de temps négatif rendait des positions invalides (NaN) pour tout le monde
-  const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = Math.max(last, now);
+  const raw = now - last, dt = Math.max(0, Math.min(0.05, raw / 1000)); last = Math.max(last, now);
+  if (visible) ecoWatch(raw);
   const t0 = performance.now();                               // (mesures légères, toujours : rapports de bug)
   G.time += dt;
   computeTeams();

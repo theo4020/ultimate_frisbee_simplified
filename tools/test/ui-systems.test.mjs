@@ -1,6 +1,7 @@
 // Éditeur de systèmes dans le navigateur : créer une attaque (placer, dessiner une course), une défense, les choisir avant un point.
 import { playwright, startServer } from './lib.mjs';
 
+const devicePixelRatioIsOne = e => e.dpr === 1 && e.ratio === 1;
 export default async function (t) {
   const { chromium } = playwright();
   const srv = await startServer();
@@ -84,6 +85,20 @@ export default async function (t) {
       await p.evaluate(() => { G.tossed = true; }); await p.click('#go');
       await p.waitForFunction(() => G.phase === 'pull' || G.phase === 'play');
       t.ok(true, 'le point démarre');
+      t.group('Mode économie');
+      const eco = await p.evaluate(() => {
+        CTRL.eco = 'auto'; ecoReset(); G.paused = false; G.pz = false; resize();
+        const full = canvas.width, pr = G.phase;
+        G.phase = 'play'; for (let i = 0; i < 60; i++) ecoWatch(16.7);           // fluide : rien ne change
+        const smooth = ecoOn();
+        for (let i = 0; i < 200; i++) ecoWatch(45);                             // ~22 images/s pendant plus de 6 s
+        const r = { smooth, on: ecoOn(), saved: localStorage.getItem('uf-eco'), ratio: canvas.width / full, dpr, toast: document.getElementById('toast').textContent };
+        CTRL.eco = 'off'; r.offNow = ecoOn(); CTRL.eco = 'auto'; ecoReset(); resize(); r.reset = !ecoOn() && !localStorage.getItem('uf-eco'); G.phase = pr;
+        return r;
+      });
+      t.ok(!eco.smooth && eco.on && eco.saved === '1' && /économie/.test(eco.toast), 'image qui saccade : le mode économie s’allume tout seul (et le dit)', eco);
+      t.ok(eco.dpr <= 1.5 && (eco.ratio < 1 || devicePixelRatioIsOne(eco)), 'moins de pixels à peindre', eco);
+      t.ok(!eco.offNow && eco.reset, '« Jamais » le coupe, revenir en automatique repart de zéro', eco);
       await c.close();
     }
   } finally { await browser.close(); await srv.close(); }
