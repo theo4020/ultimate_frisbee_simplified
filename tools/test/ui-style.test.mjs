@@ -206,9 +206,9 @@ export default async function (t) {
       if (won) document.getElementById('tossDef').click();
       const goShown = document.getElementById('tossGo').style.display !== 'none', rec = G.firstRoll;
       document.getElementById('tossGo').click(); await wait(300);
-      return { txt: /toss/i.test(txt), shown, won, goShown, rec, receiving: G.receiving, phase: G.phase, faces: document.querySelectorAll('.tdisc.face, .tdisc.back').length };
+      return { txt: /toss/i.test(txt), shown, won, goShown, rec, receiving: G.receiving, phase: G.phase, faces: document.querySelectorAll('.tdisc svg').length, sign: document.querySelector('.tsign').textContent };
     });
-    t.ok(ts.txt && ts.shown && ts.faces === 2, 'au hasard : un toss avec deux disques avant le premier point', ts);
+    t.ok(ts.txt && ts.shown && ts.faces === 2 && ['=', '≠'].includes(ts.sign), 'au hasard : un toss avec deux disques (posés à l’endroit ou à l’envers, = ou ≠ entre eux) avant le premier point', ts);
     t.ok(ts.goShown && (ts.rec === 0 || ts.rec === 1) && (!ts.won || ts.rec === 1 - 0) && ['pull', 'play'].includes(ts.phase), 'gagné : tu choisis (ici défendre) ; perdu : l’adversaire choisit ; puis le point commence', ts);
     await p.evaluate(() => setOpt('first', '0'));
 

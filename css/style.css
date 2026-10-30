@@ -562,19 +562,30 @@ body.touch .bigbtn{font-size:17px}
 .stile.wx .sfield{position:relative;display:grid;place-items:center}
 .stile.wx .sfield{overflow:hidden} .stile.wx .sfield s{position:absolute;inset:0}
 .stile.wx .sfield i{position:relative;font-style:normal;font-size:22px}
-/* toss : deux disques qui tournent, puis retombent côté face (couleur) ou revers (sombre) */
-.tossDiscs{display:flex;justify-content:center;gap:28px;margin:14px 0 6px;perspective:400px;min-height:96px}
-.tdisc{width:84px;height:84px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 40% 35%,#fff,#e2e8f0 60%,#94a3b8);border:3px solid #cbd5e1;box-shadow:0 8px 18px rgba(0,0,0,.35);font-style:normal}
-.tdisc b{font-family:'Barlow Condensed',system-ui,sans-serif;font-weight:800;font-size:18px;color:#0f172a;text-transform:uppercase;letter-spacing:.5px}
-.tossDiscs.flip .tdisc{animation:tflip .32s linear infinite, tup 1.3s ease-out}
-.tossDiscs.flip .tdisc:nth-child(2){animation-duration:.27s,1.3s}
-.tdisc.back{background:radial-gradient(circle at 40% 35%,#475569,#1e293b 65%,#0f172a);border-color:#334155}
-.tdisc.back b{color:#e2e8f0}
-.tdisc.face{background:radial-gradient(circle at 40% 35%,#fff7cc,#ffd23f 60%,#d4a017);border-color:#fde68a}
-.tossDiscs.landed .tdisc{animation:tland .35s ease-out}
-@keyframes tflip{from{transform:rotateX(0)}to{transform:rotateX(360deg)}}
-@keyframes tup{0%{translate:0 0}40%{translate:0 -60px}100%{translate:0 0}}
-@keyframes tland{0%{transform:scale(1.15)}100%{transform:scale(1)}}
+/* toss : deux disques lancés en l'air qui retombent sur l'herbe, à l'endroit (bombés, avec le logo) ou à l'envers
+   (on voit le creux) ; « = » ou « ≠ » entre les deux */
+.tossDiscs{display:flex;justify-content:center;align-items:flex-end;gap:10px;margin:6px auto 4px;min-height:112px;max-width:380px;padding:0 10px 8px;
+  background:linear-gradient(180deg,#1b2740 0,#1b2740 18%,#2f7a3a 18%,#256a31);border-radius:14px;padding-top:6px}
+.tdisc{display:flex;flex-direction:column;align-items:center;width:140px}
+.tdisc svg{width:138px;height:auto;display:block}
+.tossDiscs.ready .tdisc svg{animation:tbob 1.6s ease-in-out infinite}
+.tossDiscs.ready .tdisc:nth-of-type(3) svg{animation-delay:-.8s}
+@keyframes tbob{0%,100%{transform:translateY(-26px)}50%{transform:translateY(-32px)}}
+.tdisc em{font-style:normal;font-size:13px;font-weight:700;color:#ecfdf5;min-height:18px;text-shadow:0 1px 2px rgba(0,0,0,.6)}
+.tsign{font-family:'Barlow Condensed',system-ui,sans-serif;font-weight:800;font-size:44px;line-height:1;align-self:center;width:34px;color:#fff;opacity:0;transform:scale(.4)}
+.tsign.ok,.tsign.ko{opacity:1;transform:none;transition:.25s cubic-bezier(.3,1.6,.6,1)}
+.tsign.ok{color:#facc15}.tsign.ko{color:#fca5a5}
+.tossDiscs.flip .tdisc svg{animation:tflip .26s linear infinite}
+.tossDiscs.flip .tdisc{animation:tup 1.3s cubic-bezier(.3,.9,.6,1)}
+.tossDiscs.flip .tdisc:nth-of-type(3) svg{animation-duration:.21s}
+.tossDiscs.flip .tdisc em{visibility:hidden}
+.tossDiscs.landed .tdisc svg{animation:tland .4s ease-out}
+@keyframes tflip{0%{transform:scaleY(1)}50%{transform:scaleY(-1)}100%{transform:scaleY(1)}}
+@keyframes tup{0%{translate:0 0}45%{translate:0 -70px}100%{translate:0 0}}
+@keyframes tland{0%{transform:translateY(-6px) scaleY(.7)}60%{transform:translateY(0) scaleY(1.08)}100%{transform:none}}
+.tpair{display:flex;justify-content:center;gap:4px;margin-bottom:4px}
+.tpair svg{width:44px;height:auto}
+@media (max-height:520px){.tossDiscs{min-height:84px}.tdisc{width:110px}.tdisc svg{width:104px}#tossCard .bigbtn small{display:none}#tossCard h1{margin-bottom:4px}}
 .tossRow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .tossRow .bigbtn{margin:0;text-align:center}
 #tossCard{text-align:center}

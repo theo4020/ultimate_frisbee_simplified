@@ -484,23 +484,38 @@ function drawOffsideCall() {
     const cx = cw * 0.5, cy = ch * 0.56 + (1 - pop) * u * 3, k = pop * (1 + 0.04 * Math.sin(a * 9));
     const col = teamColor(1 - F.team), dark = tdark(1 - F.team), skin = '#e8b88f';
     ctx.save(); ctx.globalAlpha = Math.max(0, fade); ctx.translate(cx, cy); ctx.scale(k, k); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(0, u * 1.9, u * 1.1, u * 0.25, 0, 0, 7); ctx.fill();   // ombre
-    ctx.strokeStyle = '#1e293b'; ctx.lineWidth = u * 0.32;                                              // jambes
-    ctx.beginPath(); ctx.moveTo(-u * 0.3, u * 0.9); ctx.lineTo(-u * 0.4, u * 1.8); ctx.moveTo(u * 0.3, u * 0.9); ctx.lineTo(u * 0.4, u * 1.8); ctx.stroke();
-    ctx.fillStyle = col; ctx.strokeStyle = dark; ctx.lineWidth = 3;                                      // maillot
-    roundRectPath(-u * 0.62, -u * 0.3, u * 1.24, u * 1.35, u * 0.4); ctx.fill(); ctx.stroke();
-    // bras croisés en X au-dessus de la tête (le signe « offside »), poings fermés
-    const sw = Math.sin(Math.min(1, a / 0.35) * Math.PI / 2);
-    ctx.strokeStyle = skin; ctx.lineWidth = u * 0.28;
-    const arm = (sx, ex, ey) => { ctx.beginPath(); ctx.moveTo(sx, -u * 0.15); ctx.quadraticCurveTo(sx * 1.4, -u * 0.9, ex, ey); ctx.stroke(); ctx.fillStyle = skin; ctx.beginPath(); ctx.arc(ex, ey, u * 0.2, 0, 7); ctx.fill(); };
-    arm(-u * 0.55, u * (-0.6 + 1.0 * sw), -u * (1.0 + 0.9 * sw)); arm(u * 0.55, u * (0.6 - 1.0 * sw), -u * (1.0 + 0.9 * sw));   // les deux poings se croisent
-    ctx.fillStyle = skin; ctx.beginPath(); ctx.arc(0, -u * 0.72, u * 0.42, 0, 7); ctx.fill();          // tête
-    ctx.fillStyle = '#3b2f2a'; ctx.beginPath(); ctx.arc(0, -u * 0.8, u * 0.42, Math.PI * 1.05, Math.PI * 1.95); ctx.closePath(); ctx.fill();
-    ctx.fillStyle = '#0f172a'; ctx.beginPath(); ctx.arc(-u * 0.14, -u * 0.68, u * 0.05, 0, 7); ctx.arc(u * 0.14, -u * 0.68, u * 0.05, 0, 7); ctx.fill();
-    ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, -u * 0.5, u * 0.12, 0, Math.PI); ctx.stroke();   // bouche ouverte : il l'annonce
+    // le signe officiel (style illustration à plat, contours foncés) : buste, bras levés, avant-bras croisés en X
+    // au-dessus de la tête, mains ouvertes
+    const OL = '#1f2937', ow = Math.max(2, u * 0.07), sw = Math.sin(Math.min(1, a / 0.35) * Math.PI / 2), hair = '#f4c542';
+    const outl = () => { ctx.strokeStyle = OL; ctx.lineWidth = ow; ctx.stroke(); };
+    ctx.beginPath(); ctx.moveTo(-u * 0.82, u * 1.25); ctx.lineTo(-u * 0.92, u * 0.5);                      // buste (maillot de l'équipe qui l'annonce)
+    ctx.quadraticCurveTo(-u * 0.9, u * 0.05, -u * 0.35, u * 0.02); ctx.lineTo(u * 0.35, u * 0.02); ctx.quadraticCurveTo(u * 0.9, u * 0.05, u * 0.92, u * 0.5);
+    ctx.lineTo(u * 0.82, u * 1.25); ctx.closePath(); ctx.fillStyle = col; ctx.fill(); outl();
+    ctx.beginPath(); ctx.moveTo(-u * 0.2, u * 0.02); ctx.quadraticCurveTo(0, u * 0.3, u * 0.2, u * 0.02); ctx.fillStyle = skin; ctx.fill(); outl();   // encolure
+    ctx.beginPath(); ctx.ellipse(-u * 0.08, -u * 0.5, u * 0.5, u * 0.45, 0, 0, 7); ctx.fillStyle = hair; ctx.fill(); outl();   // queue de cheval (derrière)
+    ctx.beginPath(); ctx.ellipse(0, -u * 0.42, u * 0.36, u * 0.44, 0, 0, 7); ctx.fillStyle = '#fbe3cf'; ctx.fill(); outl();   // visage
+    ctx.beginPath(); ctx.ellipse(0, -u * 0.62, u * 0.38, u * 0.28, 0, Math.PI, Math.PI * 2); ctx.quadraticCurveTo(u * 0.05, -u * 0.6, -u * 0.38, -u * 0.62); ctx.fillStyle = hair; ctx.fill(); outl();   // frange
+    ctx.fillStyle = OL; ctx.beginPath(); ctx.arc(-u * 0.13, -u * 0.38, u * 0.04, 0, 7); ctx.arc(u * 0.13, -u * 0.38, u * 0.04, 0, 7); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(0, -u * 0.18, u * 0.07, u * 0.06, 0, 0, 7); ctx.fill();                   // bouche ouverte : il l'annonce
+    // bras : épaule → coude (à côté de la tête) → poignets croisés au-dessus → mains ouvertes ; de bas (repos) à levés
+    const L = (r, f) => r + (f - r) * sw, aw = u * 0.3;
+    const arm = sd => {
+      const sh = [sd * u * 0.8, u * 0.3], el = [sd * L(u * 1.2, u * 1.08), L(u * 0.9, -u * 0.7)], hd = [-sd * L(-u * 1.1, u * 0.5), L(u * 1.4, -u * 1.72)];
+      const path = () => { ctx.beginPath(); ctx.moveTo(...sh); ctx.lineTo(...el); ctx.lineTo(...hd); };
+      path(); ctx.strokeStyle = OL; ctx.lineWidth = aw + ow * 2; ctx.stroke();
+      path(); ctx.strokeStyle = sd < 0 ? col : col; ctx.lineWidth = aw; ctx.stroke();                     // manches
+      ctx.beginPath(); const m = [(sh[0] + el[0] * 2) / 3, (sh[1] + el[1] * 2) / 3]; ctx.moveTo(...m); ctx.lineTo(...el); ctx.lineTo(...hd);
+      ctx.strokeStyle = skin; ctx.lineWidth = aw - ow * 0.2; ctx.stroke();                                // avant-bras nus
+      const ang = Math.atan2(hd[1] - el[1], hd[0] - el[0]);                                               // main ouverte, doigts serrés
+      ctx.save(); ctx.translate(...hd); ctx.rotate(ang);
+      ctx.beginPath(); ctx.ellipse(u * 0.12, 0, u * 0.22, u * 0.15, 0, 0, 7); ctx.fillStyle = skin; ctx.fill(); outl();
+      ctx.beginPath(); ctx.ellipse(u * 0.02, sd * u * 0.14, u * 0.1, u * 0.055, sd * 0.6, 0, 7); ctx.fill(); outl();   // pouce
+      ctx.restore();
+    };
+    arm(1); arm(-1);                                                                                      // le bras gauche passe devant au croisement
     // « OFFSIDE ! » dans une bulle
     ctx.font = `800 ${Math.round(u * 0.62)}px ${UI_FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    const tw = ctx.measureText('OFFSIDE !').width, bx = u * 1.25 + tw / 2, by = -u * 1.55;
+    const tw = ctx.measureText('OFFSIDE !').width, bx = u * 1.45 + tw / 2, by = -u * 1.75;
     ctx.fillStyle = '#fff'; roundRectPath(bx - tw / 2 - u * 0.3, by - u * 0.45, tw + u * 0.6, u * 0.9, u * 0.3); ctx.fill();
     ctx.beginPath(); ctx.moveTo(bx - tw / 2, by + u * 0.3); ctx.lineTo(bx - tw / 2 - u * 0.5, by + u * 0.75); ctx.lineTo(bx - tw / 2 + u * 0.35, by + u * 0.42); ctx.fill();
     ctx.fillStyle = '#b91c1c'; ctx.fillText('OFFSIDE !', bx, by + 1);
