@@ -120,6 +120,9 @@ function aiThrow(h, release) {
   const mkH = markOf(h), oppS = seenAll(h, opp), oppNoMk = mkH ? oppS.filter(o => (o.src || o) !== mkH) : oppS;
   for (const pr of TEAMS[t]) {
     if (pr === h) continue;
+    // pas vu depuis longtemps (dans son dos, ou parti ailleurs depuis la perte) : il ne lance pas vers un souvenir
+    // (on a vu l'IA envoyer des hucks à 40 m de tout le monde, vers là où le coéquipier était 10 s plus tôt)
+    if (visOn() && h.mem && G.gt - h.mem[pIdx(pr)].t > VIS.STALE && !controllerOf(pr)) continue;
     const p = seen(h, pr);
     let tx = p.x, ty = p.y;
     for (let it = 0; it < 2; it++) {                         // anticipe la course du receveur

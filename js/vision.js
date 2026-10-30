@@ -8,7 +8,7 @@
 // Coût : un coup d'œil = 9 tests d'angle, quelques fois par seconde et par joueur ; les décisions lisent des « fantômes »
 // (positions de mémoire), sans calcul en plus.
 
-const VIS = { NEAR: 3.5, OLD: 1.5 };                        // toujours vu à moins de NEAR m ; une course n'est prolongée que OLD s
+const VIS = { NEAR: 3.5, OLD: 1.5, STALE: 2.5 };             // toujours vu à moins de NEAR m ; une course n'est prolongée que OLD s ; au-delà de STALE s, plus de passe vers lui
 const visOn = () => !G.tuto && !G.practice;
 const pIdx = p => p.team * N + p.i;
 

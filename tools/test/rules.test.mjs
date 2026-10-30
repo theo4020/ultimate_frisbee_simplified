@@ -492,6 +492,15 @@ export default async function (t, { quick }) {
   t.ok(wv.tail.late < wv.calm.late && Math.abs(wv.head.start - wv.calm.start) < 0.01 && Math.abs(wv.tail.end - wv.calm.end) < 0.01, 'les deux bouts du vol ne bougent pas (lâcher, réception) ; de dos il retombe plus tôt', wv);
   t.ok(wv.midDrift > 0.3 && wv.midDrift < 0.6, 'la dérive du vent arrive surtout en fin de vol (le disque ralentit)', wv);
 
+  t.group('IA : pas de passe vers un souvenir');
+  const ghost = R(`(() => {
+    const oT = throwDisc; let n = 0, far = [];
+    throwDisc = function (h) { const r = oT.apply(this, arguments); if (disc.mode === 'air' && !disc.pull) { n++;
+      const nm = Math.min(...TEAMS[h.team].filter(q => q !== h).map(q => dist(q.x, q.y, disc.rx, disc.ry))); if (nm > 26) far.push(Math.round(nm)); } return r; };
+    for (let k = 0; k < 12; k++) __playPoint();
+    throwDisc = oT; return { n, far };
+  })()`);
+  t.ok(ghost.n > 40 && ghost.far.length === 0, 'aucune passe visée à plus de 26 m de tous les coéquipiers (coéquipier pas vu depuis longtemps)', ghost);
   t.group('Retours de playtest : célébration, vitesse des passes, réception');
   const pt = R(`(() => {
     FX.parts.length = 0; fxPlay('score', 80, 18, 0);
