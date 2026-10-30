@@ -21,7 +21,7 @@ function closeCard() {
 }
 function closeAllCards() { while (cardStack.length) closeCard(); }
 // le point démarre : les panneaux ouverts par-dessus le menu d'avant-point se ferment
-function resetCards() { cardStack.length = 0; for (const c of ['gameMenuCard', 'ctrlCard', 'reportCard', 'feedbackCard']) $(c).style.display = 'none'; G.paused = false; }
+function resetCards() { cardStack.length = 0; for (const c of ['gameMenuCard', 'ctrlCard', 'reportCard', 'feedbackCard', 'tossCard']) $(c).style.display = 'none'; G.paused = false; }
 
 // ---------- menu en jeu ----------
 function renderGameMenu() {

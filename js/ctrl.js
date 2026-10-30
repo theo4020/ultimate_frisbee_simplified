@@ -58,9 +58,9 @@ function renderCtrl() {
     <div class="row"><span>Vue</span>${b('view', 'top', 'De dessus')}${b('view', 'iso', 'Inclinée (tribune)')}</div>
     <div class="row"><span>Caméra</span>${b('cam', 'fixe', 'Fixe (tout le terrain)')}${b('cam', 'suivi', 'Suit le jeu')}</div>
     <div class="desc">${CTRL.cam === 'suivi' ? 'Vue de dessus : la caméra zoome un peu et suit le disque (joueurs plus gros, surtout sur téléphone).' : 'Tout le terrain est toujours visible.'}</div>
+    <div class="desc">${CTRL.view === 'iso' ? 'Le terrain vu depuis la tribune : on voit les joueurs debout, et le disque monter et descendre (son ombre montre où il passe au sol).' : 'Le terrain vu d’en haut, comme un tableau tactique.'}</div>
     <div class="row"><span>Mode économie</span>${b('eco', 'auto', 'Automatique')}${b('eco', 'on', 'Toujours')}${b('eco', 'off', 'Jamais')}</div>
     <div class="desc">${ecoOn() ? 'En ce moment : <b>activé</b>. ' : ''}Image un peu moins fine, sans l’herbe qui ondule ni les drapeaux, et une météo plus légère : le jeu reste fluide sur les petits téléphones. En automatique, il s’allume tout seul si l’image saccade pendant un match.</div>
-    <div class="desc">${CTRL.view === 'iso' ? 'Le terrain vu depuis la tribune : on voit les joueurs debout, et le disque monter et descendre (son ombre montre où il passe au sol).' : 'Le terrain vu d’en haut, comme un tableau tactique.'}</div>
     <h2>Téléphone : avec le disque</h2>
     <div class="row"><span>Lancer</span>${b('sling', true, 'Lance-pierre (tirer en arrière)')}${b('sling', false, 'Glisser vers la cible')}</div>
     <div class="row"><span>Courbe et hauteur</span>${b('throwUI', 'gestes', 'Gestes')}${b('throwUI', 'boutons', 'Curseurs sur le bord')}</div>

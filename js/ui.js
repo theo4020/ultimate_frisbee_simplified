@@ -186,6 +186,7 @@ if (typeof document !== 'undefined' && document.getElementById('newbieOpts')) {
 }
 function showMenu(kind) {
   G.menuShown = true; G.teamsOpen = null;
+  if (typeof TOSS !== 'undefined') { TOSS.open = false; $('tossCard').style.display = 'none'; }   // (un toss resté ouvert ne passe pas par-dessus le menu)
   if (G.net !== 'guest') newWind();
   hudKey = ''; G.lastMenu = kind;
   computeTeams();
