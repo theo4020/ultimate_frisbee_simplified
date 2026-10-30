@@ -633,3 +633,10 @@ body.touch .bigbtn{font-size:17px}
 #whatsNew small{color:var(--muted)}
 #whatsNew .wnBtns{display:flex;gap:6px;margin-top:6px}
 #whatsNew .wnBtns .ghost{width:auto;margin:0;padding:5px 10px;font-size:13px}
+
+/* menu ☰ : où en est la série du mode infini */
+.gmRun{background:#0f1626;border:1px solid #243049;border-left:4px solid #facc15;border-radius:12px;padding:10px 12px;margin:0 0 10px;text-align:left}
+.gmRunHead{font-family:'Barlow Condensed',system-ui,sans-serif;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:#facc15;font-size:15px;margin-bottom:4px}
+.gmRunRow{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.gmRunScore{font-family:'Barlow Condensed',system-ui,sans-serif;font-weight:800;font-size:22px;white-space:nowrap}
+.gmRun .desc{margin:4px 0 0}

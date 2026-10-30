@@ -28,6 +28,16 @@ function renderGameMenu() {
   $('gmCodeBox').style.display = G.net && G.roomCode ? '' : 'none';   // en ligne : le code pour inviter d'autres joueurs
   $('gmCode').textContent = G.roomCode || '';
   $('gmNet').textContent = typeof netQualityText === 'function' ? netQualityText() : '';
+  // mode infini (seul ou à plusieurs) : où en est la série
+  const S = G.series, run = !G.attract && S && S.endless && !S.done && S.opp;
+  $('gmRun').style.display = run ? '' : 'none';
+  if (run) {
+    const best = !S.coop && typeof endlessLocal === 'function' ? endlessLocal().best : 0;
+    $('gmRun').innerHTML = `<div class="gmRunHead">♾️ Mode infini${S.coop ? ' à plusieurs' : ''}</div>
+      <div class="gmRunRow"><span>Match <b>${S.cur + 1}</b> contre les <b>${esc(S.opp.name)}</b> <small>(${endlessTier(S.cur)})</small></span>
+      <span class="gmRunScore">${G.score[G.me]} – ${G.score[1 - G.me]}</span></div>
+      <div class="desc">${winsTxt(S.wins)} d’affilée${best ? ` · ton record : ${winsTxt(best)}` : ''} · premier à ${S.pts} points, une défaite et la série s’arrête.</div>`;
+  }
   $('gmPause').style.display = G.net && G.started ? '' : 'none';
   $('gmPause').textContent = G.pz ? (canUnpause() ? '▶ Relancer la partie' : '⏸ En pause…') : '⏸ Pause pour tout le monde';
   $('gmQuit').textContent = G.net ? '✕ Quitter la partie en ligne' : G.tuto ? '✕ Quitter le tutoriel' : G.practice ? '✕ Quitter l’entraînement' : '✕ Quitter le match';

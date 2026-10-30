@@ -211,6 +211,13 @@ export default async function (t) {
     t.ok(ts.txt && ts.shown && ts.faces === 2 && ['=', '≠'].includes(ts.sign), 'au hasard : un toss avec deux disques (posés à l’endroit ou à l’envers, = ou ≠ entre eux) avant le premier point', ts);
     t.ok(ts.goShown && (ts.rec === 0 || ts.rec === 1) && (!ts.won || ts.rec === 1 - 0) && ['pull', 'play'].includes(ts.phase), 'gagné : tu choisis (ici défendre) ; perdu : l’adversaire choisit ; puis le point commence', ts);
     await p.evaluate(() => setOpt('first', '0'));
+    t.group('Menu ☰ en mode infini');
+    const gr = await p.evaluate(() => {
+      storeSet('uf-endless', { best: 3, runs: [] }); endlessStart(); G.series.cur = 2; G.series.wins = 2; G.series.opp = endlessOpp(2); G.score = [1, 0];
+      openCard('gameMenuCard'); const run = document.getElementById('gmRun'), r = { vis: run.style.display !== 'none', txt: run.textContent.replace(/\s+/g, ' ') };
+      closeCard(); leaveToMenu(); openCard('gameMenuCard'); r.after = document.getElementById('gmRun').style.display; closeCard(); return r;
+    });
+    t.ok(gr.vis && /Match 3 contre les Hérissons/.test(gr.txt) && /1 – 0/.test(gr.txt) && /2 matchs gagnés/.test(gr.txt) && /record : 3 matchs/.test(gr.txt) && gr.after === 'none', 'mode infini : le menu ☰ montre le match, l’adversaire, le score, la série et le record', gr);
 
     t.ok(!errs.length, 'aucune erreur', errs);
   } finally { await browser.close(); await srv.close(); }

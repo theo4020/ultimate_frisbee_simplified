@@ -375,6 +375,8 @@ export default async function (t) {
     await h2.click('#startOnline');
     await g2.waitForFunction(() => document.getElementById('stratCard').style.display !== 'none' && /Match 1/.test(document.getElementById('ovTitle').textContent), null, { timeout: 5000 });
     t.ok((await g2.textContent('#ovTitle')).includes('Écureuils'), 'l’invité voit le 1er adversaire de la série', await g2.textContent('#ovTitle'));
+    const gm2 = await g2.evaluate(() => { openCard('gameMenuCard'); const r = { code: document.getElementById('gmCodeBox').style.display !== 'none' && document.getElementById('gmCode').textContent, run: document.getElementById('gmRun').textContent.replace(/\s+/g, ' ') }; closeCard(); return r; });
+    t.ok(gm2.code === code2 && /Mode infini à plusieurs/.test(gm2.run) && /Match 1 contre les Écureuils/.test(gm2.run) && /0 match gagné/.test(gm2.run), 'menu ☰ en mode infini à plusieurs : code du salon et où en est la série', gm2);
     await h2.evaluate(() => setOpt('off', 'ho'));
     await g2.waitForFunction(() => /Horizontal/.test(document.getElementById('captainNote').textContent), null, { timeout: 3000 }).catch(() => {});
     t.ok(!(await g2.isVisible('#stratRows')) && (await g2.textContent('#captainNote')).includes('Horizontal stack'), 'le coéquipier voit la stratégie choisie par son capitaine, en direct', await g2.textContent('#captainNote'));
@@ -430,6 +432,8 @@ export default async function (t) {
       t.ok(s4.coop && s4.lvl && s4.cur === 0 && s4.room && s4.cap, 'le nouvel hôte reprend la série (adversaire, niveau) et devient capitaine', s4);
       await b4.waitForTimeout(1000);
       t.ok(await b4.evaluate(() => G.time - lastRecv < 1 && G.me === 0), 'l’autre invité continue la série avec lui');
+      const gm4 = await Promise.all([a4, b4].map(p => p.evaluate(() => { openCard('gameMenuCard'); const r = { vis: document.getElementById('gmCodeBox').style.display !== 'none', code: document.getElementById('gmCode').textContent, run: document.getElementById('gmRun').style.display !== 'none' ? document.getElementById('gmRun').textContent.replace(/\s+/g, ' ') : '' }; closeCard(); return r; })));
+      t.ok(gm4.every(r => r.vis && /^[A-Z0-9]{4}$/.test(r.code) && /Match 1 contre les Écureuils/.test(r.run)) && gm4[0].code === gm4[1].code, 'après le changement d’hôte : menu ☰ avec le code du salon et la série en cours, chez chacun', gm4);
       await cx.close();
     }
 
