@@ -327,7 +327,7 @@ export default async function (t) {
       const gc = await guest.evaluate(([i, sp]) => { const q = players[i]; return !!q && !!q.callTo && Math.hypot(q.callTo[0] - sp[0], q.callTo[1] - sp[1]) < 1 && G.time - q.called < 3.5; }, [hc, sp]);
       t.ok(hc >= 0 && gc, 'appel dans l’espace : chez l’invité, la flèche jaune part du coéquipier qui coupe vraiment', { hc, gc });
       // courbe puis passe à un coéquipier IA : la courbe revient à zéro, il récupère le disque à la réception (takeover)
-      await setup(); await host.evaluate(() => { [1, 3].forEach(k => { const q = TEAMS[0][k]; q.x = 8; q.y = 4 + k * 6; q.callT = 0; q.callTo = null; }); window.__dc = dropChance; dropChance = () => 0; });   // personne d'autre sur la trajectoire, pas de drop
+      await setup(); await host.evaluate(() => { [1, 3].forEach(k => { const q = TEAMS[0][k]; q.x = 8; q.y = 4 + k * 6; q.callT = 0; q.callTo = null; }); window.__dc = dropChance; dropChance = () => 0; const q4 = TEAMS[0][4]; window.__rc = setInterval(() => { if (disc.mode === 'air' && !disc.pull) { q4.x = disc.ex; q4.y = disc.ey; q4.vx = q4.vy = 0; } }, 30); });   // (le receveur attend le disque là où il arrive : on teste la reprise, pas la réception)   // personne d'autre sur la trajectoire, pas de drop
       await guest.waitForFunction(() => canThrow(), null, { timeout: 4000 }).catch(() => { });
       await guest.waitForTimeout(600);                         // (l'invité a fini de lisser la mise en place)
       const qa = await host.evaluate(() => [TEAMS[0][4].x, TEAMS[0][4].y]);
@@ -339,7 +339,7 @@ export default async function (t) {
         return { c0, curveAfter, i, held: disc.mode === 'held' && disc.holder === q, mine: meH().sel === q, ct: canThrow(), curve: G.curve };
       }, qa);
       const th = await host.evaluate(([id, i]) => ({ sel: players.indexOf(humanById(id).sel), holder: players.indexOf(disc.holder), mode: disc.mode, msg: G.msg, q: [players[i].x, players[i].y].map(Math.round) }), [gid, tk.i]);
-      await host.evaluate(() => { dropChance = window.__dc; });
+      await host.evaluate(() => { dropChance = window.__dc; clearInterval(window.__rc); });
       t.ok(tk.c0 === 0.8 && tk.curveAfter === 0, 'chez l’invité : après sa passe, la courbe repart de zéro', tk);
       t.ok(tk.held && tk.mine && tk.ct && th.sel === tk.i && th.holder === tk.i, 'un coéquipier IA attrape : l’invité (dernier porteur) le prend et peut relancer, d’accord avec l’hôte', { tk, th });
       await host.evaluate(() => clearInterval(window.__ns));
@@ -351,10 +351,12 @@ export default async function (t) {
     t.group('Départ de l’invité');
     await guest.click('#menuB'); await guest.click('#gmQuit');
     if (await guest.isVisible('#askBox')) await guest.click('#askYes');
-    t.ok(await guest.isVisible('#lobbyOnline'), 'l’invité quitte et retrouve la section En ligne');
+    await guest.waitForTimeout(1500);                           // (aucun message d'erreur ne doit arriver après coup)
+    const qt = await guest.evaluate(() => ({ home: document.getElementById('lobbyHome').offsetParent !== null, err: document.getElementById('lobbyErr').textContent, net: G.net }));
+    t.ok(qt.home && !qt.err && qt.net === null, 'l’invité quitte : retour à l’accueil, sans message d’erreur', qt);
     await host.waitForFunction(() => G.humans.length === 1, null, { timeout: 15000 });
-    t.ok(await guest.isVisible('#rejoinB') && (await guest.textContent('#rejoinTxt')).includes(code), 'bouton pour revenir dans la partie quittée');
-    await guest.bringToFront(); await guest.evaluate(() => document.getElementById('rejoinB').click());   // (clic direct : la page en arrière-plan ne répond pas toujours aux attentes de stabilité de Playwright)
+    t.ok(await guest.isVisible('#rejoinHomeB') && (await guest.textContent('#rejoinHomeTxt')).includes(code), 'en haut de l’accueil : rejoindre la partie quittée');
+    await guest.bringToFront(); await guest.evaluate(() => document.getElementById('rejoinHomeB').click());   // (clic direct : la page en arrière-plan ne répond pas toujours aux attentes de stabilité de Playwright)
     await host.waitForFunction(() => G.humans.length === 2, null, { timeout: 20000 }).catch(() => {});
     const back = await host.evaluate(() => ({ n: G.humans.length, conns: Object.keys(G.conns || {}).length, phase: G.phase }));
     const gst = await guest.evaluate(() => ({ net: G.net, phase: G.phase, reconn: !!G.reconn, lobby: document.getElementById('lobbyOnline').offsetParent !== null, status: (document.getElementById('joinStatus') || {}).textContent, log: typeof NETLOG !== 'undefined' ? NETLOG.ev.slice(-8) : null }));
@@ -477,8 +479,13 @@ export default async function (t) {
       const heir = await a3.evaluate(() => [G.heir[0], G.myId]);
       t.ok(heir[0] === heir[1], 'l’héritier annoncé est le premier invité arrivé', heir);
       const score0 = await h3.evaluate(() => G.score.slice());
-      await h3.evaluate(() => netLeave());   // l'hôte s'en va (page fermée)
-      await h3.close();
+      // l'hôte quitte par le menu : un autre joueur reprendra (le message le dit), lui revient à l'accueil sans erreur
+      await h3.bringToFront(); await h3.evaluate(() => document.getElementById('menuB').click()); await h3.evaluate(() => document.getElementById('gmQuit').click());
+      const ask = await h3.textContent('#askText');
+      await h3.evaluate(() => document.getElementById('askYes').click());
+      await h3.waitForTimeout(1200);
+      const hq = await h3.evaluate(() => ({ home: document.getElementById('lobbyHome').offsetParent !== null, err: document.getElementById('lobbyErr').textContent, net: G.net, rejoin: document.getElementById('rejoinHomeB').style.display !== 'none' }));
+      t.ok(/reprendra/.test(ask) && hq.home && !hq.err && hq.net === null && hq.rejoin, 'l’hôte quitte par le menu : « un autre joueur la reprendra », retour à l’accueil sans erreur, avec « Rejoindre la partie quittée »', { ask, hq });
       await a3.waitForFunction(() => G.net === 'host', null, { timeout: 8000 });
       t.ok(true, 'l’invité A reprend la partie');
       await b3.waitForFunction(() => G.net === 'guest' && hostConn && hostConn.open && G.time - lastRecv < 1, null, { timeout: 15000 });
@@ -490,6 +497,10 @@ export default async function (t) {
       await b3.waitForTimeout(1200);
       t.ok((await b3.evaluate(() => players.map(p => p.x).join())) !== m0 || await a3.evaluate(() => G.phase !== 'play'), 'l’invité B reçoit à nouveau le jeu en direct');
       t.ok(await b3.evaluate(() => G.me === 1 && !G.spectator), 'l’invité B joue toujours les Rouges');
+      await h3.bringToFront(); await h3.evaluate(() => document.getElementById('rejoinHomeB').click());
+      await a3.waitForFunction(() => G.humans.length === 3, null, { timeout: 25000 }).catch(() => { });
+      const rj = await Promise.all([h3.evaluate(() => ({ net: G.net, code: G.roomCode })), a3.evaluate(() => G.humans.length)]);
+      t.ok(rj[0].net === 'guest' && rj[0].code === code3 && rj[1] === 3, 'l’ancien hôte revient dans la partie, chez le nouvel hôte (même code)', rj);
       await cx.close();
     }
   } finally {

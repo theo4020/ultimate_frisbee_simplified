@@ -172,6 +172,9 @@ const tStars = c => { const b = storeGet('uf-tuto-stars', {}) || {}, st = TUTO_C
   const last = storeGet('uf-last-room', null), lastOk = last && /^[A-Z0-9]{4}$/.test(last.code) && Date.now() - last.at < 3 * 3600e3;
   $('rejoinB').style.display = lastOk ? '' : 'none';                     // revenir dans la dernière partie rejointe (3 h)
   if (lastOk) $('rejoinTxt').textContent = 'Code ' + last.code + ' · si l’hôte joue encore';
+  const fresh = lastOk && Date.now() - last.at < 15 * 60e3;                // tout juste quittée : aussi en haut de l'accueil
+  $('rejoinHomeB').style.display = fresh ? '' : 'none';
+  if (fresh) $('rejoinHomeTxt').textContent = 'Code ' + last.code + ' · si la partie continue';
   $('lobbyRoom').style.display = 'none'; $('lobbyJoin').style.display = 'none';
   const eb = endlessLocal().best;
   $('endlessTxt').textContent = eb ? `Ton record : ${eb} match${eb > 1 ? 's' : ''} gagné${eb > 1 ? 's' : ''}. Bats-le !` : 'Enchaîne les matchs en 2 points, de plus en plus durs : jusqu’où iras-tu ?';
@@ -527,7 +530,12 @@ function askConfirm(text, yesLabel, onYes) {
 }
 function goMainMenu() {
   const inMatch = !G.attract && (G.phase === 'play' || G.phase === 'pull' || G.score[0] + G.score[1] > 0);
-  if (G.net) { askConfirm(G.net === 'host' ? 'Quitter la partie ? Elle se terminera pour tous les joueurs.' : 'Quitter la partie en ligne ?', 'Quitter', leaveToMenu); return; }
+  if (G.net) {
+    const others = G.humans.some(h => h.id !== G.myId && h.team >= 0) || G.humans.length > 1;
+    const txt = G.net === 'host' ? (G.started && others ? 'Quitter la partie ? Un autre joueur la reprendra, et tu pourras la rejoindre depuis l’accueil.' : 'Quitter la partie ? Elle se terminera pour tous les joueurs.')
+      : 'Quitter la partie en ligne ? Tu pourras la rejoindre depuis l’accueil.';
+    askConfirm(txt, 'Quitter', leaveToMenu); return;
+  }
   if (!G.tuto && !G.practice && inMatch) { askConfirm('Abandonner le match en cours ?', 'Abandonner', leaveToMenu); return; }
   leaveToMenu();
 }
@@ -535,7 +543,7 @@ function leaveToMenu() {
   G.replay = null; FX.parts.length = 0; G.msgT = 0;
   if (G.tuto) { tutoQuit(); return; }
   if (G.practice) { practiceQuit(); return; }
-  if (G.net) { netError(''); return; }
+  if (G.net) { netQuit(); return; }
   backToSolo(); showLobby();
 }
 $('menuBack').addEventListener('click', goMainMenu);

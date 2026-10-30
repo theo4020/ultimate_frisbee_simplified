@@ -55,7 +55,7 @@ function sendInput(force) {
   const aim = canThrow() && G.pointer.active;                  // il vise : ses coéquipiers voient l'aperçu de sa passe
   netSend({ t: 'in', x: +G.pointer.x.toFixed(2), y: +G.pointer.y.toFixed(2), down: G.pointer.down, brake: braking(G.pointer), loft: canThrow() ? +G.loft.toFixed(2) : LOFT.N, aim, aiming: aim && !!G.aiming, curve: aim ? +(+G.curve || 0).toFixed(2) : 0, piv: canThrow() && G.pivHolder === disc.holder ? G.pivSel : -1, ma: CTRL.markAssist ? 1 : 0, q });
 }
-function netError(msg) {
+function netError(msg, view = 'online') {
   if (msg) netLog('fin : ' + msg);
   if (G.net === 'guest') safeSend(hostConn, { t: 'bye' });
   else for (const c of conns.values()) safeSend(c, { t: 'bye' });
@@ -67,9 +67,17 @@ function netError(msg) {
   try { if (codePeer) codePeer.destroy(); } catch (e) { }
   peer = codePeer = hostConn = null;
   backToSolo();
-  showLobby(msg, 'online');                                    // on revient à la section En ligne
+  showLobby(msg, view);                                        // on revient à la section En ligne (départ voulu : à l'accueil)
 }
 const connectionLost = msg => netError(msg);
+// on quitte la partie soi-même : retour à l'accueil, sans message d'erreur, avec « Rejoindre la partie quittée » tant
+// qu'elle continue (l'hôte qui part : un autre joueur la reprend, avec le même code)
+function netQuit() {
+  const others = G.humans.some(h => h.id !== G.myId), code = G.roomCode;
+  if (code && G.started && (G.net === 'guest' || (others && typeof heirInfo === 'function' && heirInfo()))) storeSet('uf-last-room', { code, at: Date.now() });
+  else if (G.net === 'host') storeSet('uf-last-room', null);   // personne pour la reprendre : elle s'arrête
+  netError('', null);
+}
 function backToSolo() {
   if (typeof endlessCfgOut === 'function') endlessCfgOut();   // on sort du mode infini : réglages du match rapide
   G.attract = false; G.coopRoom = false; G.roomCode = null;
@@ -167,6 +175,7 @@ function hostGame() {
     });
     p.on('connection', hostAccept);
     p.on('error', err => {
+      if (peer !== p) return;
       const t = err && err.type;
       if (t === 'unavailable-id') { p.destroy(); hostGame(); return; }
       if (t === 'network' || t === 'server-error' || t === 'socket-error' || t === 'socket-closed') {
@@ -400,6 +409,7 @@ function joinGame(code) {
       });
     });
     p.on('error', err => {
+      if (peer !== p) return;                                  // on a déjà quitté (ou changé de liaison) : plus de message d'erreur
       const t = err && err.type;
       if (G.reconn) { if (t === 'peer-unavailable') { const R = G.reconn; G.reconn = null; heirTakeover(R.msg); } return; }   // l'hôte a vraiment quitté
       if (hostConn || G.heirTry) return;

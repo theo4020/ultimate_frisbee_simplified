@@ -61,10 +61,12 @@ function coopTeamName() {
 if (typeof document !== 'undefined' && document.getElementById('coopB')) {
   $('onlineMenuB').addEventListener('click', () => showLobby('', 'online'));
   $('onlineBack').addEventListener('click', () => showLobby());
-  $('rejoinB').addEventListener('click', () => {               // revenir dans la dernière partie rejointe
+  const rejoin = () => {                                        // revenir dans la dernière partie rejointe
     const last = storeGet('uf-last-room', null); if (!last) return;
-    $('lobbyOnline').style.display = 'none'; $('lobbyJoin').style.display = ''; $('joinCode').value = last.code;
+    ['lobbyOnline', 'lobbyHome'].forEach(id => { $(id).style.display = 'none'; }); $('lobbyJoin').style.display = ''; $('joinCode').value = last.code;
     joinGame(last.code);
-  });
+  };
+  $('rejoinB').addEventListener('click', rejoin);
+  $('rejoinHomeB').addEventListener('click', rejoin);
   $('coopB').addEventListener('click', () => { backToSolo(); showEndless(null, 'coop'); });
 }
