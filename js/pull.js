@@ -475,6 +475,7 @@ const isTouchUI = () => typeof document !== 'undefined' && document.body && docu
 
 // hors-jeu : un joueur de l'équipe adverse surgit en grand et fait le signe officiel (WFDF) : les deux bras croisés en X
 // au-dessus de la tête, poings fermés — « OFFSIDE ! » (pendant ~2,5 s ; G.offFx posé par l'effet « offside », fx.js)
+const OFF_IMG = typeof Image !== 'undefined' ? Object.assign(new Image(), { src: 'icons/offside.png' }) : {};
 function drawOffsideCall() {
   const F = G.offFx; if (!F) return;
   const a = G.time - F.t0; if (a > 2.6) { G.offFx = null; return; }
@@ -484,38 +485,13 @@ function drawOffsideCall() {
     const cx = cw * 0.5, cy = ch * 0.56 + (1 - pop) * u * 3, k = pop * (1 + 0.04 * Math.sin(a * 9));
     const col = teamColor(1 - F.team), dark = tdark(1 - F.team), skin = '#e8b88f';
     ctx.save(); ctx.globalAlpha = Math.max(0, fade); ctx.translate(cx, cy); ctx.scale(k, k); ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    // le signe officiel (style illustration à plat, contours foncés) : buste, bras levés, avant-bras croisés en X
-    // au-dessus de la tête, mains ouvertes
-    const OL = '#1f2937', ow = Math.max(2, u * 0.07), sw = Math.sin(Math.min(1, a / 0.35) * Math.PI / 2), hair = '#f4c542';
-    const outl = () => { ctx.strokeStyle = OL; ctx.lineWidth = ow; ctx.stroke(); };
-    ctx.beginPath(); ctx.moveTo(-u * 0.82, u * 1.25); ctx.lineTo(-u * 0.92, u * 0.5);                      // buste (maillot de l'équipe qui l'annonce)
-    ctx.quadraticCurveTo(-u * 0.9, u * 0.05, -u * 0.35, u * 0.02); ctx.lineTo(u * 0.35, u * 0.02); ctx.quadraticCurveTo(u * 0.9, u * 0.05, u * 0.92, u * 0.5);
-    ctx.lineTo(u * 0.82, u * 1.25); ctx.closePath(); ctx.fillStyle = col; ctx.fill(); outl();
-    ctx.beginPath(); ctx.moveTo(-u * 0.2, u * 0.02); ctx.quadraticCurveTo(0, u * 0.3, u * 0.2, u * 0.02); ctx.fillStyle = skin; ctx.fill(); outl();   // encolure
-    ctx.beginPath(); ctx.ellipse(-u * 0.08, -u * 0.5, u * 0.5, u * 0.45, 0, 0, 7); ctx.fillStyle = hair; ctx.fill(); outl();   // queue de cheval (derrière)
-    ctx.beginPath(); ctx.ellipse(0, -u * 0.42, u * 0.36, u * 0.44, 0, 0, 7); ctx.fillStyle = '#fbe3cf'; ctx.fill(); outl();   // visage
-    ctx.beginPath(); ctx.ellipse(0, -u * 0.62, u * 0.38, u * 0.28, 0, Math.PI, Math.PI * 2); ctx.quadraticCurveTo(u * 0.05, -u * 0.6, -u * 0.38, -u * 0.62); ctx.fillStyle = hair; ctx.fill(); outl();   // frange
-    ctx.fillStyle = OL; ctx.beginPath(); ctx.arc(-u * 0.13, -u * 0.38, u * 0.04, 0, 7); ctx.arc(u * 0.13, -u * 0.38, u * 0.04, 0, 7); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(0, -u * 0.18, u * 0.07, u * 0.06, 0, 0, 7); ctx.fill();                   // bouche ouverte : il l'annonce
-    // bras : épaule → coude (à côté de la tête) → poignets croisés au-dessus → mains ouvertes ; de bas (repos) à levés
-    const L = (r, f) => r + (f - r) * sw, aw = u * 0.3;
-    const arm = sd => {
-      const sh = [sd * u * 0.8, u * 0.3], el = [sd * L(u * 1.2, u * 1.08), L(u * 0.9, -u * 0.7)], hd = [-sd * L(-u * 1.1, u * 0.5), L(u * 1.4, -u * 1.72)];
-      const path = () => { ctx.beginPath(); ctx.moveTo(...sh); ctx.lineTo(...el); ctx.lineTo(...hd); };
-      path(); ctx.strokeStyle = OL; ctx.lineWidth = aw + ow * 2; ctx.stroke();
-      path(); ctx.strokeStyle = sd < 0 ? col : col; ctx.lineWidth = aw; ctx.stroke();                     // manches
-      ctx.beginPath(); const m = [(sh[0] + el[0] * 2) / 3, (sh[1] + el[1] * 2) / 3]; ctx.moveTo(...m); ctx.lineTo(...el); ctx.lineTo(...hd);
-      ctx.strokeStyle = skin; ctx.lineWidth = aw - ow * 0.2; ctx.stroke();                                // avant-bras nus
-      const ang = Math.atan2(hd[1] - el[1], hd[0] - el[0]);                                               // main ouverte, doigts serrés
-      ctx.save(); ctx.translate(...hd); ctx.rotate(ang);
-      ctx.beginPath(); ctx.ellipse(u * 0.12, 0, u * 0.22, u * 0.15, 0, 0, 7); ctx.fillStyle = skin; ctx.fill(); outl();
-      ctx.beginPath(); ctx.ellipse(u * 0.02, sd * u * 0.14, u * 0.1, u * 0.055, sd * 0.6, 0, 7); ctx.fill(); outl();   // pouce
-      ctx.restore();
-    };
-    arm(1); arm(-1);                                                                                      // le bras gauche passe devant au croisement
+    // le signe officiel (image fournie : avant-bras croisés au-dessus de la tête)
+    const ih = u * 3.6, iw = ih * (OFF_IMG.naturalWidth || 219) / (OFF_IMG.naturalHeight || 426);
+    ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(0, u * 1.42, iw * 0.55, u * 0.18, 0, 0, 7); ctx.fill();   // ombre
+    if (OFF_IMG.complete && OFF_IMG.naturalWidth) ctx.drawImage(OFF_IMG, -iw / 2, u * 1.4 - ih, iw, ih);
     // « OFFSIDE ! » dans une bulle
     ctx.font = `800 ${Math.round(u * 0.62)}px ${UI_FONT}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    const tw = ctx.measureText('OFFSIDE !').width, bx = u * 1.45 + tw / 2, by = -u * 1.75;
+    const tw = ctx.measureText('OFFSIDE !').width, bx = iw / 2 + u * 0.4 + tw / 2, by = -u * 1.75;
     ctx.fillStyle = '#fff'; roundRectPath(bx - tw / 2 - u * 0.3, by - u * 0.45, tw + u * 0.6, u * 0.9, u * 0.3); ctx.fill();
     ctx.beginPath(); ctx.moveTo(bx - tw / 2, by + u * 0.3); ctx.lineTo(bx - tw / 2 - u * 0.5, by + u * 0.75); ctx.lineTo(bx - tw / 2 + u * 0.35, by + u * 0.42); ctx.fill();
     ctx.fillStyle = '#b91c1c'; ctx.fillText('OFFSIDE !', bx, by + 1);
