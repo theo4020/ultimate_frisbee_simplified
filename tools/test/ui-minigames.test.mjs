@@ -23,9 +23,12 @@ export default async function (t) {
     await p.waitForFunction(() => G.phase === 'pull' && G.pull && lightsOn(G.pull.cd) >= 2, null, { timeout: 20000 });
     t.ok(await p.evaluate(() => startOn() && G.pull.by == null), 'l’IA pulle : le compte à rebours démarre');
     t.ok(await p.isVisible('#coachTip') && /PULL/.test(await p.textContent('#ctText')), 'première fois : Coach Disco explique le compte à rebours (sans pause)', await p.textContent('#ctText'));
-    t.ok(await p.evaluate(() => !G.paused && (storeGet('uf-tips', {}) || {}).start === 1), 'le conseil est noté : il ne reviendra pas');
+    t.ok(await p.evaluate(() => !G.paused && (storeGet('uf-tips', {}) || {}).depart === 1), 'le conseil est noté : il ne reviendra pas');
     await p.keyboard.press(' ');
     t.ok(await p.evaluate(() => G.offside && G.offside.team === G.me), 'Espace pendant le compte à rebours : faux départ, hors-jeu de ton équipe');
+    await p.evaluate(() => { tipT = 0; });                     // (le conseil du départ laisse la place)
+    await p.waitForFunction(() => /Offside/.test(document.getElementById('ctText').textContent), null, { timeout: 3000 }).catch(() => { });
+    t.ok(/Offside ! .*PULL/.test(await p.textContent('#ctText')), 'premier offside de ton équipe : Coach Disco explique ce qui s’est passé', await p.textContent('#ctText'));
     await p.evaluate(() => { window.__dc = dropChance; window.dropChance = () => -1; });   // pas de pull droppé (hasard) pendant ce test
     await p.waitForFunction(() => G.phase === 'play' && disc.mode === 'held', null, { timeout: 20000 });
     const ck = await p.evaluate(() => ({ ck: G.checkT, can: canThrow(), holder: disc.holder.team === G.me }));

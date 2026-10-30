@@ -17,8 +17,10 @@ const pickLine = a => a[Math.floor(Math.random() * a.length)];
 // ---------- conseils de Coach Disco, la première fois qu'on rencontre un petit jeu ----------
 // une bulle en haut de l'écran, sans mettre le jeu en pause ni bloquer de clic (elle part seule) ; une seule fois par conseil
 const TIPS = {
-  start: () => `Compte à rebours : 3, 2, 1… PULL ! ${isTouchUI() ? 'Tape l’écran' : 'Clic ou Espace'} pile au « PULL » et ton équipe part en trombe. Trop tôt ? Hors-jeu, et je siffle.`,
-  offside: () => 'Hors-jeu ! Quand ton équipe pulle, l’adversaire repart du brick ; quand elle reçoit, elle attend que la défense se place. On ne vole pas le départ !',
+  // (clés renommées quand le départ a changé : ceux qui avaient vu l'ancien conseil voient le nouveau une fois)
+  depart: () => `Départ au signal ! Les feux s’allument : 3, 2, 1… reste derrière ta ligne et ${isTouchUI() ? 'tape l’écran' : 'clic ou Espace'} pile au « PULL ! » pour partir en trombe. Trop tôt, c’est offside — même quand c’est ton coéquipier qui pulle.`,
+  pullcd: () => 'C’est toi qui pulles : ton disque part au « PULL ! » du compte à rebours. Tes coéquipiers guettent le signal pour partir avec lui.',
+  offside2: () => 'Offside ! Quelqu’un de ton équipe est parti avant le « PULL ! ». Il s’en veut déjà. Si ton équipe pulle, l’adversaire repart du brick ; si elle reçoit, elle attend que la défense se place.',
   // les bases, pour qui n'a pas fait le tutoriel
   throw: () => isTouchUI() ? (CTRL.sling ? 'Le disque est à toi ! Tire le doigt en arrière, à l’opposé d’un coéquipier démarqué (anneau vert), et lâche.' : 'Le disque est à toi ! Glisse le doigt vers un coéquipier démarqué (anneau vert) et lâche pour lancer.')
     : 'Le disque est à toi ! Vise un coéquipier démarqué (anneau vert), maintiens le clic et relâche pour lancer.',
@@ -39,9 +41,10 @@ function tipsFrame(dt) {
   if (G.attract || G.tuto || G.practice || G.spectator || G.replay || !$('overlay').classList.contains('hidden')) return;
   const me = meH(); if (!me || (me.team !== 0 && me.team !== 1)) return;
   const st = G.net === 'guest' ? G.netStart : startNet();
-  if (st && st[0] >= 1) coachTip('start');
+  const pulling = G.phase === 'pull' && G.pull && G.pull.by === me.id;   // le pulleur ne part pas au signal : son lancer part au « PULL ! »
+  if (st && st[0] >= 1) coachTip(pulling ? 'pullcd' : 'depart');
   const off = G.net === 'guest' ? G.netOffside : G.offside && G.offside.team;
-  if (off === me.team) coachTip('offside');
+  if (off === me.team) coachTip('offside2');
   if (G.time - tutoC.t > 2) tutoC = { t: G.time, v: !!storeGet('uf-tuto', false) };
   if (!tutoC.v && G.phase === 'play') {        // pas de tutoriel : les deux gestes de base, la première fois
     if (canThrow()) coachTip('throw');
