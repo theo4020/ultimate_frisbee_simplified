@@ -45,8 +45,22 @@ export default async function (t) {
     await guest.evaluate(() => setOpt('force', 'bas'));
     await host.waitForFunction(() => cfg(1).force === 'bas', null, { timeout: 3000 }).catch(() => {});
     t.ok(await host.evaluate(() => cfg(1).force === 'bas'), 'un choix du capitaine invité part tout de suite chez l’hôte (avant « Prêt »)');
+    await host.evaluate(() => setOpt('first', 'r'));
     await host.click('#go'); await guest.click('#go');
+    // première attaque au hasard : toss pour tout le monde ; le capitaine des Rouges (l'invité) parie
+    await guest.waitForFunction(() => document.getElementById('tossCard').style.display !== 'none', null, { timeout: 5000 }).catch(() => { });
+    const tb = await Promise.all([guest, host].map(p => p.evaluate(() => ({ card: document.getElementById('tossCard').style.display !== 'none', bet: document.getElementById('tossBet').style.display !== 'none', txt: document.getElementById('tossText').textContent }))));
+    t.ok(tb[0].card && tb[0].bet && tb[1].card && !tb[1].bet && /Rouges parient \(Invité\)/.test(tb[1].txt), 'toss en ligne : l’invité (capitaine des Rouges) parie, l’hôte le voit parier', tb);
+    await guest.click('#tossSame');
+    await host.waitForFunction(() => TOSS.S && (TOSS.S.st === 'res' || TOSS.S.st === 'done'), null, { timeout: 5000 });
+    const tr = await Promise.all([guest, host].map(p => p.evaluate(() => ({ st: TOSS.S && TOSS.S.st, a: TOSS.S && TOSS.S.a, b: TOSS.S && TOSS.S.b, sign: document.querySelector('.tsign').textContent, pick: document.getElementById('tossPick').style.display !== 'none', pid: TOSS.S && TOSS.S.pid, me: G.myId }))));
+    const picker = [guest, host].find((p, k) => tr[k].pick);
+    t.ok(tr[0].a === tr[1].a && tr[0].b === tr[1].b && tr[0].sign === tr[1].sign && ['=', '≠'].includes(tr[0].sign) && tr.filter(r => r.pick).length === 1 && tr.find(r => r.pick).pid === tr.find(r => r.pick).me,
+      'mêmes disques chez les deux ; seul le capitaine de l’équipe gagnante a les boutons pour choisir', tr);
+    await picker.click('#tossAtk');
+    const recv = picker === guest ? 1 : 0;
     await host.waitForFunction(() => G.phase === 'pull' || G.phase === 'play', null, { timeout: 8000 });
+    t.ok(await host.evaluate(r => G.receiving === r, recv) && await guest.evaluate(r => G.receiving === r && document.getElementById('tossCard').style.display === 'none', recv), 'le gagnant choisit d’attaquer : il reçoit le pull, le point démarre pour tout le monde');
     t.ok(true, 'les deux capitaines prêts : le point démarre');
     t.ok(await host.evaluate(() => { const s = osysOf(1); return !!s && s.name === 'Mon huck' && s.postes[0].zone === 'break'; }), 'l’hôte joue la formation perso de l’invité (avec ses consignes)');
     // le pull : si c'est l'invité (capitaine des Rouges) qui pulle, il clique deux fois (direction puis puissance)
@@ -452,7 +466,7 @@ export default async function (t) {
       await h3.waitForFunction(() => G.humans.length === 3, null, { timeout: 10000 });
       await b3.click('#teamB1');
       await h3.waitForFunction(() => G.humans.some(h => h.team === 1), null, { timeout: 5000 });
-      await h3.evaluate(() => { G.form.puller = 'ai'; });
+      await h3.evaluate(() => { G.form.puller = 'ai'; G.form.first = '0'; });   // (pas de toss ici)
       await h3.click('#startOnline');
       await h3.waitForFunction(() => document.getElementById('stratCard').style.display !== 'none', null, { timeout: 5000 });
       await b3.waitForFunction(() => document.getElementById('stratCard').style.display !== 'none', null, { timeout: 5000 });

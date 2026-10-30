@@ -186,7 +186,7 @@ if (typeof document !== 'undefined' && document.getElementById('newbieOpts')) {
 }
 function showMenu(kind) {
   G.menuShown = true; G.teamsOpen = null;
-  if (typeof TOSS !== 'undefined') { TOSS.open = false; $('tossCard').style.display = 'none'; }   // (un toss resté ouvert ne passe pas par-dessus le menu)
+  if (typeof TOSS !== 'undefined' && TOSS.open) tossClose();                      // (un toss resté ouvert ne passe pas par-dessus le menu)
   if (G.net !== 'guest') newWind();
   hudKey = ''; G.lastMenu = kind;
   computeTeams();
@@ -380,8 +380,9 @@ $('go').addEventListener('click', () => {
   saveSettings();
   if (!G.net) {                                             // solo
     if (G.series && G.phase === 'over') { if (G.series.endless) endlessNext(); else showSeries(); return; }
+    const fresh = G.phase === 'over' || G.phase === 'menu' || G.lastMenu === 'first';   // début d'un match
     if (G.phase === 'over' || G.phase === 'menu') newMatch();
-    if (G.lastMenu === 'first' && typeof tossWanted === 'function' && tossWanted()) { showToss(startPoint); return; }   // première attaque au hasard : le toss
+    if (fresh && typeof tossWanted === 'function' && tossWanted()) { showToss(startPoint); return; }   // première attaque au hasard : le toss
     startPoint(); return;
   }
   $('go').disabled = true; $('go').textContent = 'Prêt ✓ — en attente des autres…';
@@ -393,7 +394,9 @@ function tryStartOnline() {
   const caps = [0, 1].map(captain).filter(Boolean);
   if (!caps.every(h => G.readyIds && G.readyIds.has(h.id))) return;
   if (G.series && G.series.coop && G.phase === 'over') { coopNext(); return; }   // mode infini à plusieurs : match suivant ou fin
+  const fresh = G.phase === 'over' || G.phase === 'menu' || G.lastMenu === 'first';
   if (G.phase === 'over' || G.phase === 'menu') newMatch();
+  if (fresh && typeof tossWanted === 'function' && tossWanted()) { if (!TOSS.open) hostToss(); return; }   // première attaque au hasard : toss pour tout le monde
   startPoint();
 }
 

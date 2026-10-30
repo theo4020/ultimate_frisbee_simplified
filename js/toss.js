@@ -1,8 +1,13 @@
-// toss.js — Le toss au début d'un match quand la première attaque est « Au hasard » (solo) : deux disques sont lancés,
-// tu paries qu'ils retombent du même côté (deux faces, ou deux revers) ou pas ; gagné : tu choisis d'attaquer ou de
+// toss.js — Le toss au début d'un match quand la première attaque est « Au hasard » : deux disques sont lancés, on parie
+// qu'ils retombent du même côté (deux à l'endroit, ou deux à l'envers) ou pas ; gagné : on choisit d'attaquer ou de
 // défendre ; perdu : l'adversaire choisit.
-const TOSS = { open: false, bet: null, done: null };
-const tossWanted = () => !G.net && !G.tuto && !G.practice && G.form.first === 'r' && !G.tossed;
+// En solo, c'est toi qui paries. En ligne, c'est l'hôte qui fait tout (le hasard) et envoie l'état à chacun : le capitaine
+// des Rouges parie (celui des Bleus s'il n'y a personne en face), le capitaine de l'équipe gagnante choisit (l'IA si personne).
+// État S : st 'bet' | 'flip' | 'res' (on attend le choix) | 'done' ; bt/bid : équipe et humain qui parient ; a, b : les disques
+// (true = à l'endroit) ; bet ; pk/pid : équipe et humain qui choisissent (pid null : l'IA) ; recv : équipe qui attaque.
+const TOSS = { open: false, S: null, done: null, timer: 0 };
+const TOSS_FLIP = 1300;
+const tossWanted = () => !G.tuto && !G.practice && !G.coopRoom && G.form.first === 'r' && !G.tossed && (!G.net || G.net === 'host');
 // un disque posé sur l'herbe, vu un peu de côté : à l'endroit (bombé, avec ses anneaux et son logo) ou à l'envers
 // (on voit l'intérieur creux) ; mini : petite icône pour les boutons du pari
 function tossDiscSvg(up, mini) {
@@ -24,55 +29,116 @@ function tossDiscSvg(up, mini) {
   return `<svg viewBox="0 ${mini ? 14 : 8} 100 ${mini ? 36 : 46}" aria-hidden="true"><defs>${grad}</defs>${sh}${body}</svg>`;
 }
 tossDiscSvg.n = 0;
+// ---------- partie commune (solo et en ligne) ----------
+function tossOpen() { TOSS.open = true; ['stratCard', 'gameMenuCard', 'ctrlCard'].forEach(c => { $(c).style.display = 'none'; }); $('tossCard').style.display = ''; $('overlay').classList.remove('hidden'); }
+// solo : then() lance le point ; en ligne (hôte) : le point démarre tout seul après le résultat
 function showToss(then) {
-  TOSS.open = true; TOSS.bet = null; TOSS.done = then;
-  $('stratCard').style.display = 'none'; $('tossCard').style.display = ''; $('overlay').classList.remove('hidden');
-  const d = up => `<span class="tdisc">${tossDiscSvg(up)}<em></em></span>`;
-  $('tossDiscs').className = 'tossDiscs ready'; $('tossDiscs').innerHTML = d(true) + '<span class="tsign"></span>' + d(true);
-  const pair = (a, b) => `<span class="tpair">${tossDiscSvg(a, true)}${tossDiscSvg(b, true)}</span>`;
-  $('tossSame').innerHTML = pair(true, true) + 'Même côté<small>les deux à l’endroit, ou les deux à l’envers</small>';
-  $('tossDiff').innerHTML = pair(true, false) + 'Côtés différents<small>un à l’endroit, l’autre à l’envers</small>';
-  $('tossText').innerHTML = 'Deux disques vont être lancés en l’air. Ils retomberont-ils <b>du même côté</b>, ou <b>pas</b> ? Gagne le pari et tu choisis.';
-  $('tossBet').style.display = ''; $('tossPick').style.display = 'none'; $('tossGo').style.display = 'none';
+  TOSS.done = then || null;
+  tossSet({ st: 'bet', bt: G.me, bid: G.myId, a: null, b: null, bet: null, pk: null, pid: null, recv: null });
 }
-function tossThrow(bet) {
-  if (!TOSS.open || TOSS.bet) return;
-  TOSS.bet = bet; $('tossBet').style.display = 'none';
-  const a = Math.random() < 0.5, b = Math.random() < 0.5, same = a === b, won = (bet === 'same') === same;
-  const D = $('tossDiscs'); D.className = 'tossDiscs flip';
-  try { SOUNDS.tick(); } catch (e) { }
-  $('tossText').textContent = 'Les disques tournent…';
-  setTimeout(() => {
-    const ds = D.querySelectorAll('.tdisc');
-    [a, b].forEach((f, k) => { ds[k].innerHTML = tossDiscSvg(f) + `<em>${f ? 'à l’endroit' : 'à l’envers'}</em>`; });
-    const sg = D.querySelector('.tsign'); sg.textContent = same ? '=' : '≠'; sg.className = 'tsign ' + (won ? 'ok' : 'ko');
-    D.className = 'tossDiscs landed';
-    const res = same ? 'Même côté !' : 'Côtés différents !';
-    if (won) {
-      try { SOUNDS.qte(0.9); } catch (e) { }
-      $('tossText').innerHTML = `<b>${res}</b> Tu as gagné le toss : à toi de choisir.`;
-      $('tossPick').style.display = '';
-    } else {
-      const atk = Math.random() < 0.7, opp = 1 - G.me;                   // l'adversaire préfère souvent attaquer
-      tossEnd(atk ? opp : G.me, `<b>${res}</b> Perdu… les ${tn(opp)} choisissent ${atk ? 'd’attaquer' : 'de défendre (ils pullent)'}.`);
-    }
-  }, 1300);
+function hostToss() {
+  const c = captain(1) || captain(0);
+  TOSS.done = null;
+  tossSet({ st: 'bet', bt: c.team, bid: c.id, a: null, b: null, bet: null, pk: null, pid: null, recv: null });
 }
-function tossChoose(attack) { tossEnd(attack ? G.me : 1 - G.me, attack ? 'Tu commences en <b>attaque</b> : tu reçois le pull.' : 'Tu commences en <b>défense</b> : ton équipe pulle.'); }
-function tossEnd(receiver, html) {
-  G.firstRoll = receiver; G.tossed = true; G.receiving = receiver;
+function tossSet(S) {
+  TOSS.S = S;
+  if (G.net === 'host') {
+    netSend({ t: 'toss', s: S });
+    clearTimeout(TOSS.idle);                                     // un joueur parti ou qui ne répond pas : on ne bloque pas la partie
+    if (S.st === 'bet') TOSS.idle = setTimeout(() => tossBet(Math.random() < 0.5 ? 'same' : 'diff'), 25000);
+    if (S.st === 'res') TOSS.idle = setTimeout(() => tossPick(Math.random() < 0.7), 25000);
+  }
+  tossShow(S);
+}
+const tossWon = S => (S.bet === 'same') === (S.a === S.b);
+function tossBet(bet) {                                          // un pari (local, ou reçu d'un invité par l'hôte)
+  const S = TOSS.S; if (!S || S.st !== 'bet') return;
+  const a = Math.random() < 0.5, b = Math.random() < 0.5;
+  tossSet(Object.assign({}, S, { st: 'flip', bet, a, b }));
+  clearTimeout(TOSS.timer);
+  TOSS.timer = setTimeout(() => {
+    const T = TOSS.S; if (!T || T.st !== 'flip') return;
+    const pk = tossWon(T) ? T.bt : 1 - T.bt, c = G.net ? captain(pk) : (pk === G.me ? meH() : null);
+    const R = Object.assign({}, T, { st: 'res', pk, pid: c ? c.id : null });
+    if (!c) { R.st = 'done'; R.recv = Math.random() < 0.7 ? pk : 1 - pk; }   // l'IA choisit : souvent attaquer
+    tossSet(R); if (R.st === 'done') tossFinish(R);
+  }, TOSS_FLIP);
+}
+function tossPick(attack) {
+  const S = TOSS.S; if (!S || S.st !== 'res') return;
+  const R = Object.assign({}, S, { st: 'done', recv: attack ? S.pk : 1 - S.pk });
+  tossSet(R); tossFinish(R);
+}
+function tossFinish(R) {
+  G.firstRoll = R.recv; G.tossed = true; G.receiving = R.recv;
   if (typeof placeOnPullLines === 'function') placeOnPullLines();
-  $('tossPick').style.display = 'none'; $('tossText').innerHTML = html; $('tossGo').style.display = '';
+  if (G.net === 'host') { clearTimeout(TOSS.timer); TOSS.timer = setTimeout(() => { if (TOSS.open) { tossClose(); startPoint(); } }, 2600); }
 }
+function tossClose() { TOSS.open = false; TOSS.S = null; clearTimeout(TOSS.timer); clearTimeout(TOSS.idle); $('tossCard').style.display = 'none'; }
 function tossGo() {
   if (!TOSS.open) return;
-  TOSS.open = false; $('tossCard').style.display = 'none';
-  const f = TOSS.done; TOSS.done = null; if (f) f();
+  const f = TOSS.done; TOSS.done = null; tossClose(); if (f) f();
 }
+// ce que chacun voit, de son point de vue
+function tossShow(S) {
+  tossOpen();
+  const me = G.me, mine = S.bid === G.myId, D = $('tossDiscs'), nm = t => 'les ' + tn(t), Nm = t => 'Les ' + tn(t);
+  const disc = (up, lbl) => `<span class="tdisc">${tossDiscSvg(up)}<em>${lbl || ''}</em></span>`;
+  const show = (id, on) => { $(id).style.display = on ? '' : 'none'; };
+  show('tossBet', S.st === 'bet' && mine); show('tossPick', S.st === 'res' && S.pid === G.myId); show('tossGo', S.st === 'done' && !G.net);
+  if (S.st === 'bet' || !D.querySelector('.tdisc')) {
+    D.innerHTML = disc(true) + '<span class="tsign"></span>' + disc(true);
+    const pair = (a, b) => `<span class="tpair">${tossDiscSvg(a, true)}${tossDiscSvg(b, true)}</span>`;
+    $('tossSame').innerHTML = pair(true, true) + 'Même côté<small>les deux à l’endroit, ou les deux à l’envers</small>';
+    $('tossDiff').innerHTML = pair(true, false) + 'Côtés différents<small>un à l’endroit, l’autre à l’envers</small>';
+  }
+  if (S.st === 'bet') {
+    D.className = 'tossDiscs ready';
+    const who = G.net ? (humanById(S.bid) ? humanLabel(humanById(S.bid)) : '') : '';
+    $('tossText').innerHTML = mine ? 'Deux disques vont être lancés en l’air. Retomberont-ils <b>du même côté</b>, ou <b>pas</b> ? Gagne le pari et tu choisis.'
+      : `${Nm(S.bt)} parient${who ? ` (${esc(who)})` : ''} : les deux disques retomberont-ils du même côté ? Le gagnant choisit d’attaquer ou de défendre.`;
+    return;
+  }
+  if (S.st === 'flip') {
+    if (D.className !== 'tossDiscs flip') { D.className = 'tossDiscs flip'; try { SOUNDS.tick(); } catch (e) { } }
+    $('tossText').innerHTML = `${mine ? 'Tu as' : Nm(S.bt) + ' ont'} parié : <b>${S.bet === 'same' ? 'même côté' : 'côtés différents'}</b>. Les disques tournent…`;
+    return;
+  }
+  // résultat : les disques posés, = ou ≠ (en jaune si ton équipe a gagné le toss)
+  const won = tossWon(S), mineWon = (won ? S.bt : 1 - S.bt) === me;
+  if (!D.className.includes('landed')) {
+    const ds = D.querySelectorAll('.tdisc');
+    [S.a, S.b].forEach((f, k) => { ds[k].innerHTML = tossDiscSvg(f) + `<em>${f ? 'à l’endroit' : 'à l’envers'}</em>`; });
+    const sg = D.querySelector('.tsign'); sg.textContent = S.a === S.b ? '=' : '≠'; sg.className = 'tsign ' + (mineWon ? 'ok' : 'ko');
+    D.className = 'tossDiscs landed';
+    if (mineWon) try { SOUNDS.qte(0.9); } catch (e) { }
+  }
+  const res = `<b>${S.a === S.b ? 'Même côté !' : 'Côtés différents !'}</b> `;
+  const winTxt = mine ? (won ? 'Tu as gagné le toss' : 'Perdu…') : `${Nm(S.bt)} ${won ? 'gagnent' : 'perdent'} le toss`;
+  if (S.st === 'res') {
+    $('tossText').innerHTML = res + winTxt + (S.pid === G.myId ? ' : à toi de choisir.' : ` : ${nm(S.pk)} choisissent…`);
+    return;
+  }
+  const chose = S.pk === me && S.pid === G.myId ? '' : `${Nm(S.pk)} choisissent ${S.recv === S.pk ? 'd’attaquer' : 'de défendre (ils pullent)'}. `;
+  const you = me === 0 || me === 1 ? (S.recv === me ? 'Tu commences en <b>attaque</b> : tu reçois le pull.' : 'Tu commences en <b>défense</b> : ton équipe pulle.') : '';
+  $('tossText').innerHTML = (S.pid === G.myId ? '' : res + winTxt + '. ') + chose + you + (G.net ? ' <small>Le point commence…</small>' : '');
+}
+// ---------- en ligne ----------
+function tossNet(S) { if (G.net === 'guest' && S && typeof S === 'object') { TOSS.S = S; tossShow(S); } }   // (invité) état reçu de l'hôte
+function tossHostMsg(h, m) {                                     // (hôte) pari ou choix d'un invité
+  const S = TOSS.S; if (!S || !h) return;
+  if (m.t === 'tossBet' && S.st === 'bet' && h.id === S.bid) tossBet(m.bet === 'diff' ? 'diff' : 'same');
+  if (m.t === 'tossPick' && S.st === 'res' && h.id === S.pid) tossPick(!!m.atk);
+}
+const tossAct = (bet, atk) => {
+  if (G.net === 'guest') { netSend(bet ? { t: 'tossBet', bet } : { t: 'tossPick', atk }); return; }
+  if (bet) tossBet(bet); else tossPick(atk);
+};
 if (typeof document !== 'undefined' && document.getElementById('tossCard')) {
-  $('tossSame').addEventListener('click', () => tossThrow('same'));
-  $('tossDiff').addEventListener('click', () => tossThrow('diff'));
-  $('tossAtk').addEventListener('click', () => tossChoose(true));
-  $('tossDef').addEventListener('click', () => tossChoose(false));
+  $('tossSame').addEventListener('click', () => tossAct('same'));
+  $('tossDiff').addEventListener('click', () => tossAct('diff'));
+  $('tossAtk').addEventListener('click', () => tossAct(null, true));
+  $('tossDef').addEventListener('click', () => tossAct(null, false));
   $('tossGo').addEventListener('click', tossGo);
 }

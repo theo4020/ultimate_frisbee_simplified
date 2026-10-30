@@ -8,6 +8,12 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
+  { id: 43, date: '2026-10-30', tag: 'Jeu', title: 'Toss en ligne et série dans le menu 🥏',
+    body: `• <b>Toss en ligne</b> : quand la première attaque est au hasard, tout le monde voit les deux disques. Le capitaine des Rouges
+      parie, le capitaine de l'équipe gagnante choisit d'attaquer ou de défendre.<br>
+      • Le toss revient aussi à chaque nouveau match (plus seulement le premier).<br>
+      • Mode infini : le menu ☰ montre où en est la série (match, adversaire, score, record), et le code du salon à plusieurs.<br>
+      • Coach Disco explique le <b>départ au signal</b> et l'<b>offside</b> la première fois.` },
   { id: 42, date: '2026-10-30', tag: 'Jeu', title: 'Plus fluide sur téléphone, IA plus lucide 🔋',
     body: `• <b>Mode économie</b> (Commandes) : si l'image saccade pendant un match, il s'allume tout seul — image un peu moins
       fine, sans l'herbe qui ondule ni les drapeaux, météo plus légère. Tu peux le forcer ou le couper.<br>

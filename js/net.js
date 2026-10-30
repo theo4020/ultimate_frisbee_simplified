@@ -303,7 +303,8 @@ function hostOnData(id, m) {
     case 'pause': setPause(id, !!m.on); break;
     case 'start': startPress(h); break;
     case 'pull': if (G.phase === 'pull' && G.pull && G.pull.by === h.id && !G.pull.pend) requestPull(+m.x, +m.y, m.curve, m.q); break;
-    case 'cfg': if (captain(h.team) === h) takeCfg(h, m.cfg); break;   // le capitaine change sa stratégie : ses coéquipiers la voient
+    case 'cfg': if (captain(h.team) === h) takeCfg(h, m.cfg); break;
+    case 'tossBet': case 'tossPick': tossHostMsg(h, m); break;   // le capitaine change sa stratégie : ses coéquipiers la voient
     case 'ready':
       if (captain(h.team) === h) { takeCfg(h, m.cfg); (G.readyIds = G.readyIds || new Set()).add(id); }
       refreshCaptainUI(); tryStartOnline(); break;
@@ -478,6 +479,7 @@ function guestOnData(m) {
       shareCfg();
       break;
     case 'coopEnd': coopGuestEnd(m); break;
+    case 'toss': tossNet(m.s); break;
     case 'start':
       replayReset(); FX.celebrate = null; G.teamsOpen = null; resetCards();
       G.phase = 'pull'; G.menuShown = false; G.receiving = m.r;
