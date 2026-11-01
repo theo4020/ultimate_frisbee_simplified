@@ -11,10 +11,9 @@ function takeOver(p) {
   const id = G.lastHumanHolder && G.lastHumanHolder[p.team], h = id != null && humanById(id);
   if (!h || h.team !== p.team) return;
   h.sel = p; inputOf(h).last = -1e9;                           // (comme un changement de joueur ; il lance tout de suite d'ici)
-  return h;
 }
 function holdDisc(p) {
-  const tk = takeOver(p);
+  takeOver(p);
   disc.mode = 'held'; disc.holder = p; disc.x = p.x; disc.y = p.y; disc.z = 0; G.carryTo = null;
   players.forEach(q => { q.windup = null; q.jumpAt = 0; q.bluffed = false; }); G.tellSeen = false;
   // il garde son élan et freine (sim.js) ; il regarde d'abord dans la direction de sa course (lecture du jeu, throwing.js)
@@ -24,9 +23,7 @@ function holdDisc(p) {
   p.dive = p.down = 0; p.jump = p.jprep = p.jrec = 0;           // réception en layout ou en saut : il se relève avec le disque
   G.stall = 0; G.holdT = 0; G.marker = null; G.dbl = null; G.pickup = null;
   G.recvHolder = p; G.recvAt = G.time;                        // délai de réception (render.js : recvReady)
-  G.recvTake = !!tk && tk.id === G.myId;                      // tu reprends la main : un peu plus long, et on te le dit
-  if (G.recvTake) flash('À toi : tu reprends le disque', true);
-  players.forEach(q => { q.inT = 0; }); p.think = Math.max(0.45, 0.35 * aiLvl(p.team).react, aiLvl(p.team).lift || 0);   // le temps de lever la tête et lire le jeu
+  players.forEach(q => { q.inT = 0; }); p.think = Math.max(RECV_T, 0.35 * aiLvl(p.team).react, aiLvl(p.team).lift || 0);   // le temps de lever la tête et lire le jeu
   visCatch(p);
   assignRoles(p.team, p);
   if (!G.pullPending) continuationCut(p.team, p);
@@ -83,8 +80,7 @@ function interception(p) {
   if (inScoreZone(p.team, disc.x)) { msCallahan(p); G.scorer = p; achEvent('callahan', p.team); achEvent('goal', p.team); fxEvent('callahan', p.x, p.y, p.team); scorePoint(p.team, '🦅 CALLAHAN !'); return; }
   p.dive = 0; p.down = 0;
   const x = clamp(p.x, 0.5, W - 0.5), y = clamp(p.y, 0.5, H - 0.5), L = lineSpot(x, y);
-  if (L && !humanThrows(p)) startCarry(p, L.x, L.y, '');       // intercepté dans son en-but : l'IA ramène le disque à la ligne (un humain joue de là)
-  else if (L && x === p.x && y === p.y) holdDisc(p);
+  if (L) startCarry(p, L.x, L.y, '');                          // intercepté dans son en-but : il ramène le disque à la ligne
   else if (x !== p.x || y !== p.y) startCarry(p, x, y, '');    // depuis l'extérieur : il rentre
   else holdDisc(p);
   setupDefense(1 - p.team, p); updateSelected();
@@ -109,7 +105,7 @@ function turnover(x, y, msg, kind) {
   G.off = 1 - G.off;
   disc.mode = 'ground'; disc.holder = null; disc.z = 0;
   disc.x = clamp(x, 0.5, W - 0.5); disc.y = clamp(y, 0.5, H - 0.5);   // ramassé là où il est tombé
-  G.carryTo = lineSpot(disc.x, disc.y); G.carryEz = !!G.carryTo;   // repris dans un en-but : ramené à la ligne (un humain peut jouer de là)
+  G.carryTo = lineSpot(disc.x, disc.y);                        // repris dans un en-but : ramené à la ligne
   G.groundAt = G.gt;
   G.stall = 0; G.marker = null;
   G.pickup = pickupFor(G.off, disc.x, disc.y);

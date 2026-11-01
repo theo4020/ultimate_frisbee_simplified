@@ -227,23 +227,13 @@ function pullCaught(p) {
   // un pull se droppe (3 fois moins souvent qu'une passe) : l'équipe qui a pullé récupère le disque là où il tombe
   if (Math.random() < dropChance() * PULL_DROP) { G.pullPending = false; G.dplay = null; G.stats.drops = (G.stats.drops || 0) + 1; msTurnover(p, 'drop'); turnover(p.x, p.y, 'Pull droppé ! Turnover'); return; }
   fxEvent('catch', p.x, p.y, p.team);
-  // attrapé dans son en-but : l'IA ramène le disque à la ligne ; un humain joue d'où il l'a attrapé (les règles laissent
-  // le choix : jouer de là, ou avancer jusqu'à la ligne). Depuis l'extérieur : il rentre dans le terrain
-  const x = clamp(p.x, 0.5, W - 0.5), y = clamp(p.y, 0.5, H - 0.5), L = lineSpot(x, y);
-  if (L && !humanThrows(p)) { startCarry(p, L.x, L.y, ''); return; }
-  if (L && x === p.x && y === p.y) { holdDisc(p); flash('Dans ton en-but : tu joues d’ici', true); return; }
+  // pull attrapé dans son en-but : on joue d'où on l'a attrapé (pas de marche jusqu'à la ligne) ; attrapé depuis
+  // l'extérieur : il rentre dans le terrain
+  const x = clamp(p.x, 0.5, W - 0.5), y = clamp(p.y, 0.5, H - 0.5);
   if (x !== p.x || y !== p.y) { startCarry(p, x, y, ''); return; }
   holdDisc(p);
 }
 const brickX = r => goalLine(r) + dirOf(r) * PULL.BRICK;
-// ce porteur lancera-t-il pour un humain ? (seul humain de l'équipe, ou le joueur qu'un humain dirige, ou qu'il reprendra)
-function humanThrows(p) {
-  const hs = teamHumans(p.team);
-  if (!hs.length) return false;
-  if (hs.length === 1 || hs.some(h => h.sel === p)) return true;
-  const id = G.lastHumanHolder && G.lastHumanHolder[p.team];
-  return id != null && (cfg(p.team) || {}).take !== 'non' && !!humanById(id);
-}
 // le joueur ramène le disque à pied jusqu'à la ligne d'en-but ou au brick avant que le jeu reprenne
 function startCarry(p, x, y, msg) {
   Object.assign(disc, { mode: 'carry', holder: p, x: p.x, y: p.y, z: 0 });
@@ -261,11 +251,11 @@ function pullLanded(ex, ey) {
   // le disque est ramassé là où il s'arrête (ou là où il est sorti), puis ramené si besoin
   let [x, y] = out ? crossPoint() : [ex, ey];
   x = clamp(x, 0.5, W - 0.5); y = clamp(y, 0.5, H - 0.5);
-  let msg = ''; G.carryEz = false;
+  let msg = '';
   if (pullerOffside()) { G.carryTo = offsideSpot(); msg = ''; }   // hors-jeu de l'équipe qui pulle (7.5.2) : brick
   else if (out) {                                                // 7.12 : brick, ou là où il est sorti (ramené hors de l'en-but)
     const c = pullOutChoice(x, y); G.carryTo = c.spot; msg = c.brick ? 'Out ! Brick' : 'Out ! Repris où il est sorti';
-  } else { G.carryTo = lineSpot(x, y); G.carryEz = !!G.carryTo; }   // dans l'en-but : ramené à la ligne (un humain peut jouer d'où il le ramasse)
+  } else G.carryTo = lineSpot(x, y);
   pullToSpot(x, y, null, msg);
 }
 // pull sorti sans toucher le terrain : le brick, ou le point de sortie (dans la zone centrale) s'il fait gagner du terrain

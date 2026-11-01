@@ -112,6 +112,8 @@ function laneSlack(h, aimX, aimY, tx, ty, curve, opp, kind, side, misread) {
 
 // release = fin de l'armement d'une passe haute : on choisit la meilleure passe haute à cet instant
 function aiThrow(h, release) {
+  const wait = RECV_T - (G.time - (G.recvAt || -9));               // jamais tout de suite après une réception (même délai qu'un humain)
+  if (h === G.recvHolder && wait > 0 && !G.tuto && !G.practice) { h.think = wait; return; }
   const t = h.team, dir = dirOf(t), opp = TEAMS[1 - t];
   const press = Math.max(G.stall, G.holdT * 0.8);           // même sans marqueur, l'IA finit par lancer
   const ST = aiStyle(t), L = aiLvl(t), RK = riskOf(t), greed = clamp((L.greed || 0) + RK[1], 0, 1);   // greed : un débutant force les passes (et la consigne « osé »)

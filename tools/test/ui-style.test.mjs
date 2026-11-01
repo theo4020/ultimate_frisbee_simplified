@@ -83,7 +83,7 @@ export default async function (t) {
     const pt2 = await p.evaluate(async () => {
       const fr = n => new Promise(r => { let k = 0; const f = () => (++k >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); });
       G.phase = 'play'; G.off = G.me; G.checkT = 0; const h = TEAMS[G.me][0]; holdDisc(h); h.think = 99;
-      const early = canThrow(); await new Promise(r => setTimeout(r, 600)); const later = canThrow();   // un instant après la réception
+      const early = canThrow(); await new Promise(r => setTimeout(r, 850)); const later = canThrow();   // un instant après la réception
       const q = TEAMS[G.me][2]; disc.intended = null; let sp = { x: 50, y: 18 }, bd = 0;
       TEAMS[G.me].forEach((o, i) => { if (o !== h) { o.x = 30 + i * 9; o.y = 30; o.vx = o.vy = 0; } }); sp = { x: 60, y: 6 };   // coéquipiers bien séparés, endroit libre
       doCall(q.x, q.y); doCall(sp.x, sp.y);                                                   // désigné, puis l'endroit voulu
@@ -94,41 +94,30 @@ export default async function (t) {
     t.ok(!pt2.early && pt2.later, 'juste après la réception, on ne peut pas encore relancer (un instant de stabilisation)', pt2);
     t.ok(pt2.arrowFor, 'coéquipier désigné puis endroit : il y part, avec une flèche jusqu’à l’endroit voulu', pt2);
     t.ok(pt2.pivFlip, 'avec le disque, Espace change de pied de pivot', pt2);
-    // simple clic juste après une réception : pas de passe par accident ; clic maintenu : la passe part
+    // juste après une réception, pas de lancer (même délai pour tout le monde) ; un instant après, un clic lance
     const spot = await p.evaluate(() => {
       G.phase = 'play'; G.off = G.me; G.checkT = 0; G.oplay = null; const h = TEAMS[G.me][0]; h.x = 40; h.y = 18; h.vx = h.vy = 0; holdDisc(h); h.think = 99;
       TEAMS[1 - G.me].forEach((d, i) => { d.x = 90; d.y = 4 + i * 7; });
       const r = canvas.getBoundingClientRect(); return { x: r.left + X(55), y: r.top + Y(18) };
     });
-    await p.waitForTimeout(600);
+    await p.waitForTimeout(250);
     await p.mouse.move(spot.x, spot.y); await p.mouse.down(); await p.mouse.up();
-    await p.waitForTimeout(150);
-    const qc = await p.evaluate(() => ({ mode: disc.mode, ct: canThrow() }));
-    await p.mouse.down(); await p.waitForTimeout(300); await p.mouse.up();
+    await p.waitForTimeout(100);
+    const qc = await p.evaluate(() => { doThrow(60, 18, 0); return disc.mode; });              // (clic, ni lancer demandé directement)
+    await p.waitForTimeout(700);
+    await p.mouse.down(); await p.mouse.up();
     await p.waitForTimeout(100);
     const hc = await p.evaluate(() => disc.mode);
-    t.ok(qc.mode === 'held' && qc.ct && hc === 'air', 'juste après une réception, un simple clic ne lance pas ; un clic maintenu lance', { qc, hc });
-    const tk = await p.evaluate(async () => {
-      const wait = ms => new Promise(r => setTimeout(r, ms)), fr = () => new Promise(r => requestAnimationFrame(r));
-      const keep = G.humans; G.humans = [{ id: G.myId, team: G.me, sel: TEAMS[G.me][1], name: 'Moi' }, { id: 77, team: G.me, sel: TEAMS[G.me][4], name: 'Ami' }]; syncMe();
-      G.phase = 'play'; G.off = G.me; G.checkT = 0; G.form.take = 'oui'; await fr(); await fr();
-      G.lastHumanHolder = { [G.me]: G.myId }; const c = TEAMS[G.me][2]; holdDisc(c); c.think = 99;   // un coéquipier IA attrape : tu reprends la main
-      await fr(); const r = { mine: meH().sel === c, msg: G.msgT > 0 ? G.msg : '' };
-      await wait(650); r.at650 = canThrow(); await wait(500); r.at1150 = canThrow();
-      G.humans = keep; syncMe(); return r;
-    });
-    const ez = await p.evaluate(async () => {
-      const wait = ms => new Promise(r => setTimeout(r, ms));
+    t.ok(qc === 'held' && hc === 'air', 'juste après une réception, pas de lancer ; un instant après, le clic lance', { qc, hc });
+    const ez = await p.evaluate(() => {
       G.phase = 'play'; G.off = G.me; G.checkT = 0; G.receiving = G.me; G.oplay = null;
       const c = TEAMS[G.me][1]; c.x = goalLine(G.me) - dirOf(G.me) * 6; c.y = 12; c.vx = c.vy = 0; c.think = 99;
       disc.pull = true; disc.mode = 'air'; G.offside = null; pullCaught(c);                       // pull attrapé au fond de ton en-but
-      const r = { mode: disc.mode, x: +disc.x.toFixed(1), cx: +c.x.toFixed(1), msg: G.msg };
-      await wait(600); r.btn = document.getElementById('walkB').style.display !== 'none';
-      document.getElementById('walkB').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
-      r.after = disc.mode; r.to = G.carryTo && G.carryTo.x; r.line = goalLine(G.me);
-      return r;
+      const r = { pull: disc.mode, x: +disc.x.toFixed(1), cx: +c.x.toFixed(1) };
+      turnover(goalLine(1 - G.off) - dirOf(1 - G.off) * 6, 12, 'test');                           // disque au sol dans un en-but
+      r.ground = !!G.carryTo && G.carryTo.x === goalLine(G.off); return r;
     });
-    t.ok(ez.mode === 'held' && ez.x === ez.cx && /joues d’ici/.test(ez.msg) && ez.btn && ez.after === 'carry' && ez.to === ez.line, 'pull attrapé dans ton en-but : tu joues d’où tu l’as attrapé, ou « Avancer à la ligne »', ez);
+    t.ok(ez.pull === 'held' && ez.x === ez.cx && ez.ground, 'pull attrapé dans son en-but : on joue de là ; disque ramassé dans un en-but : ramené à la ligne', ez);
     const rp = await p.evaluate(async () => {
       const wait = ms => new Promise(r => setTimeout(r, ms));
       G.phase = 'play'; G.paused = false; await wait(700); const n0 = DBG.frames.length, t0 = DBG.frames.length ? DBG.frames[DBG.frames.length - 1].t : 0;
@@ -138,10 +127,9 @@ export default async function (t) {
       return { grew: n0 > 0 && t0 > 0, sameFrames: r.frames.length && r.frames[r.frames.length - 1].t === snapT, sentAfter: r.sentAfter, noMenu: r.frames.every(f => f.ph === 'play' || f.ph === 'pull') };
     });
     t.ok(rp.grew && rp.sameFrames && rp.noMenu, 'signalement : les 10 dernières secondes de jeu avant d’ouvrir le menu (pas le temps passé à écrire, ni les menus)', rp);
-    t.ok(tk.mine && /À toi/.test(tk.msg) && !tk.at650 && tk.at1150, 'à plusieurs, un coéquipier IA attrape et tu reprends la main : « À toi », et un peu plus de temps avant de pouvoir lancer', tk);
     const cv = await p.evaluate(async () => {
       const fr = n => new Promise(r => { let k = 0; const f = () => (++k >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); });
-      G.phase = 'play'; G.off = G.me; G.checkT = 0; const h = TEAMS[G.me][0]; holdDisc(h); h.think = 99; await new Promise(r => setTimeout(r, 600));
+      G.phase = 'play'; G.off = G.me; G.checkT = 0; const h = TEAMS[G.me][0]; holdDisc(h); h.think = 99; await new Promise(r => setTimeout(r, 850));
       setCurve(0.6); await fr(3); const before = G.curve;
       throwDisc(h, h.x + dirOf(G.me) * 10, h.y, G.curve, 1, 0.3); await fr(3);              // ta passe part : la courbe repart de zéro
       return { before, after: G.curve };

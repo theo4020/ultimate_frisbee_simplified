@@ -99,10 +99,7 @@ function pointerEnd(e) {
   G.pointer.down = false;
   if (G.aiming && canThrow()) {
     const h = disc.holder;
-    // simple clic juste après une réception (pensé pour un plongeon, une course…) : pas de passe ; on lance en maintenant
-    // le clic, ou par un clic un peu plus tard
-    const quick = G.time - (G.pointer.downT || 0) < 0.18 && G.time - (G.recvAt || -9) < 1.2;
-    if (pickDist(G.pointer, h) >= CANCEL_R && !quick) doThrow(G.pointer.x, G.pointer.y, G.curve);
+    if (pickDist(G.pointer, h) >= CANCEL_R) doThrow(G.pointer.x, G.pointer.y, G.curve);
   }
   G.aiming = false;
   sendInput(true);

@@ -94,7 +94,6 @@ function frame(now, visible) {
   document.body.classList.toggle('ovOpen', !$('overlay').classList.contains('hidden'));   // (conseil « paysage » caché sous les menus)
   $('teamsB').style.display = G.net && G.started ? '' : 'none';
   $('menuB').style.visibility = G.attract || ($('lobbyCard').style.display !== 'none' && !$('overlay').classList.contains('hidden') && !G.net) ? 'hidden' : 'visible';
-  G.prevSel = (typeof meH === 'function' && meH() || {}).sel || null;   // (render.js : recvReady repère une reprise du disque)
   if (!visible) return;
   const t1 = performance.now();
   camFrame(dt);

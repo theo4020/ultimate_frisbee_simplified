@@ -303,7 +303,7 @@ function hostOnData(id, m) {
     case 'name': h.name = cleanName(m.name); broadcastRoom(); break;
     case 'in': Object.assign(inputOf(h), { x: +m.x || 0, y: +m.y || 0, bx: m.brake ? +m.x || 0 : undefined, by: m.brake ? +m.y || 0 : undefined, down: !!m.down, loft: loftOf(+m.loft), aim: !!m.aim, aiming: !!m.aiming, curve: clamp(+m.curve || 0, -1, 1), piv: m.piv === 1 ? 1 : -1, ma: m.ma !== 0, last: G.time }); if (m.q > 0) { h.inQ = m.q; h.inAt = performance.now(); } break;
     case 'callplay': if (G.phase === 'play' && throwerHuman() === h) callPlay(h.team, m.n === 2 ? 2 : 1); break;
-    case 'throw': if (G.phase === 'play' && throwerHuman() === h) throwDisc(disc.holder, +m.x, +m.y, clamp(+m.curve || 0, -1, 1), 1, loftOf(typeof m.kind === 'string' ? m.kind : +m.kind)); break;
+    case 'throw': if (G.phase === 'play' && throwerHuman() === h && G.time - (G.recvAt || -9) >= RECV_T - 0.15) throwDisc(disc.holder, +m.x, +m.y, clamp(+m.curve || 0, -1, 1), 1, loftOf(typeof m.kind === 'string' ? m.kind : +m.kind)); break;
     case 'dive': diveFor(h, +m.x, +m.y); break;
     case 'jump': jumpFor(h); break;
     case 'switch': { const n = switchTarget(h); if (n) selectFor(h, n); break; }
@@ -314,7 +314,6 @@ function hostOnData(id, m) {
     case 'pull': if (G.phase === 'pull' && G.pull && G.pull.by === h.id && !G.pull.pend) requestPull(+m.x, +m.y, m.curve, m.q); break;
     case 'cfg': if (captain(h.team) === h) takeCfg(h, m.cfg); break;
     case 'tossBet': case 'tossPick': tossHostMsg(h, m); break;
-    case 'walk': if (G.phase === 'play' && throwerHuman() === h && G.stall < 3 && disc.holder && lineSpot(disc.holder.x, disc.holder.y)) { const L = lineSpot(disc.holder.x, disc.holder.y); startCarry(disc.holder, L.x, L.y, ''); } break;   // le capitaine change sa stratégie : ses coéquipiers la voient
     case 'ready':
       if (captain(h.team) === h) { takeCfg(h, m.cfg); (G.readyIds = G.readyIds || new Set()).add(id); }
       refreshCaptainUI(); tryStartOnline(); break;
