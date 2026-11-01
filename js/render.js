@@ -40,7 +40,7 @@ function drawAim(h, px, py, curve, kind, aiming, ally) {
 // après une réception, il faut un instant (RECV_T s) pour se stabiliser avant de relancer : les enchaînements restent
 // naturels, et un clic pensé pour un plongeon juste au moment du catch ne part pas en passe
 // (le même délai pour tout le monde, humains et IA : throwDisc refuse un lancer plus tôt, l'IA attend aussi ce temps)
-const RECV_T = 0.7;
+const RECV_T = 0.5;
 function recvReady() {
   if (disc.mode !== 'held' || !disc.holder) { G.recvHolder = null; return false; }
   if (G.recvHolder !== disc.holder) { G.recvHolder = disc.holder; G.recvAt = G.time; }
