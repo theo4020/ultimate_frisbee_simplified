@@ -313,7 +313,8 @@ function hostOnData(id, m) {
     case 'start': startPress(h); break;
     case 'pull': if (G.phase === 'pull' && G.pull && G.pull.by === h.id && !G.pull.pend) requestPull(+m.x, +m.y, m.curve, m.q); break;
     case 'cfg': if (captain(h.team) === h) takeCfg(h, m.cfg); break;
-    case 'tossBet': case 'tossPick': tossHostMsg(h, m); break;   // le capitaine change sa stratégie : ses coéquipiers la voient
+    case 'tossBet': case 'tossPick': tossHostMsg(h, m); break;
+    case 'walk': if (G.phase === 'play' && throwerHuman() === h && G.stall < 3 && disc.holder && lineSpot(disc.holder.x, disc.holder.y)) { const L = lineSpot(disc.holder.x, disc.holder.y); startCarry(disc.holder, L.x, L.y, ''); } break;   // le capitaine change sa stratégie : ses coéquipiers la voient
     case 'ready':
       if (captain(h.team) === h) { takeCfg(h, m.cfg); (G.readyIds = G.readyIds || new Set()).add(id); }
       refreshCaptainUI(); tryStartOnline(); break;

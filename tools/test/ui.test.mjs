@@ -158,6 +158,7 @@ export default async function (t) {
     const th1 = await p.evaluate(() => G.stats.throws);
     await p.mouse.move(out.x, out.y); await p.mouse.down(); await p.mouse.move(out.x + 3, out.y + 1); 
     const aimOut = await p.evaluate(() => ({ aiming: G.aiming, y: G.pointer.y, out: G.pointer.y > H }));
+    await p.waitForTimeout(250);                                // (clic maintenu : un simple clic juste après la réception ne lance pas)
     await p.mouse.up();
     await p.waitForTimeout(150);
     t.ok(out.inside || (aimOut.aiming && aimOut.out), 'clic sous le terrain : la visée part, hors des lignes', { out, aimOut });

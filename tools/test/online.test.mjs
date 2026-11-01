@@ -308,7 +308,7 @@ export default async function (t) {
           if (mine && first == null) first = { ct: canThrow(), t: performance.now() }; if (first && canThrow()) readyAt = performance.now() - first.t; }
         return { first: first && first.ct, readyAt: readyAt && Math.round(readyAt) };
       });
-      t.ok(recv.first === false && recv.readyAt >= 380 && recv.readyAt < 900, 'chez l’invité : le disque reçu, un petit délai avant de pouvoir relancer', recv);
+      t.ok(recv.first === false && recv.readyAt >= 380 && recv.readyAt < 1400, 'chez l’invité : le disque reçu, un petit délai avant de pouvoir relancer', recv);
       // désigner un coéquipier : anneau chez l'invité, choix connu de l'hôte ; puis appel dans l'espace : c'est lui qui part
       const pk = await guest.evaluate(async () => {
         const q = TEAMS[0][3]; doCall(q.x, q.y); const ring = myPick() === q;
@@ -413,10 +413,10 @@ export default async function (t) {
     await h2.click('#ringGo');
     await g2.waitForFunction(() => document.getElementById('endlessCard').style.display !== 'none', null, { timeout: 5000 });
     t.ok(!(await g2.isVisible('#endGo')) && (await g2.textContent('#endText')).includes('1 match gagné'), 'défaite : fin de série chez l’invité');
-    t.ok(await h2.isVisible('#endSave') && (await h2.inputValue('#endSaveName')) === 'Théo + Léa', 'chez l’hôte : enregistrer l’équipe, nom proposé', await h2.inputValue('#endSaveName'));
+    t.ok(await h2.isVisible('#endSave') && (await h2.inputValue('#endSaveName')) === 'Léa + Théo', 'chez l’hôte : enregistrer l’équipe, nom proposé (toujours dans le même ordre)', await h2.inputValue('#endSaveName'));
     await h2.click('#endSaveB');
     await h2.waitForFunction(() => /classement/.test(document.getElementById('endStatus').textContent), null, { timeout: 5000 }).catch(() => {});
-    t.ok(srv.coop('SELECT name, wins FROM scores').some(r => r.name === 'Théo + Léa' && r.wins === 1) && !srv.board('SELECT name FROM scores').some(r => r.name === 'Théo + Léa'),
+    t.ok(srv.coop('SELECT name, wins FROM scores').some(r => r.name === 'Léa + Théo' && r.wins === 1) && !srv.board('SELECT name FROM scores').some(r => r.name === 'Léa + Théo'),
       'score de l’équipe dans le classement à plusieurs (pas dans le solo)', await h2.textContent('#endStatus'));
     await h2.click('#endBack');
     await g2.waitForFunction(() => document.getElementById('lobbyRoom').style.display !== 'none', null, { timeout: 5000 });

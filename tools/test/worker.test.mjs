@@ -71,6 +71,14 @@ export default async function (t) {
     t.ok(c1.s === 200 && c1.j.top.length === 1 && c1.j.top[0].name === 'Théo + Léa + Max le gran', 'une équipe est enregistrée (nom jusqu’à 24 caractères)', c1.txt);
     t.ok((await call('/api/scores?mode=coop', { e: env2 })).j.top.length === 1 && !(await call('/api/scores', { e: env2 })).j.top.some(e => e.name.startsWith('Théo +')), 'classement à part : rien dans le classement solo');
     t.ok((await call('/api/scores?mode=coop', { method: 'POST', body: { name: '', wins: 1, diff: 1 }, ip: '20.0.0.2', e: env2 })).j.error === 'nom d’équipe manquant', 'sans nom d’équipe : refusé');
+    await call('/api/scores?mode=coop', { method: 'POST', body: { name: 'Ana + Bob', wins: 2, diff: 2 }, ip: '20.0.0.3', e: env2 });
+    const c2 = await call('/api/scores?mode=coop', { method: 'POST', body: { name: 'bob+ana', wins: 4, diff: 5 }, ip: '20.0.0.4', e: env2 });
+    const ab = c2.j.top.filter(e => /ana/i.test(e.name));
+    t.ok(ab.length === 1 && ab[0].wins === 4, 'mêmes joueurs dans un autre ordre : une seule ligne, la meilleure', c2.j.top);
+    const cdb = env2.BOARD.objs.get('coop').st.db;                // (ligne d'avant ce correctif : clé dans l'ordre des noms)
+    cdb.prepare('INSERT INTO scores (id, k, name, wins, diff, at) VALUES (?, ?, ?, ?, ?, ?)').run('old1', 'bob + ana', 'Bob + Ana', 1, 1, 1);
+    const g2 = await call('/api/scores?mode=coop', { e: env2 });
+    t.ok(g2.j.top.filter(e => /ana/i.test(e.name)).length === 1, 'anciens doublons fusionnés à la lecture du classement', g2.j.top);
   } finally { globalThis.fetch = realFetch; }
 
   t.group('Rapports de bug (/api/report)');

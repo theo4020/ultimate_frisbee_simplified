@@ -496,8 +496,16 @@ function doPlay(n) {
   callPlay(G.me, n);
 }
 // boutons ▶ sur le terrain : visibles quand tu as le disque et qu'un play peut être appelé
+// disque dans ton en-but (pull attrapé, interception) : tu joues d'ici, ou tu avances jusqu'à la ligne (au début seulement)
+const canWalkUp = () => canThrow() && G.stall < 3 && !!disc.holder && !!lineSpot(disc.holder.x, disc.holder.y);
+function walkUp() {
+  if (G.net === 'guest') { if (canWalkUp()) netSend({ t: 'walk' }); return; }
+  if (!canWalkUp()) return;
+  const h = disc.holder, L = lineSpot(h.x, h.y); startCarry(h, L.x, L.y, '');
+}
 function playBtnsFrame() {
   const show = canThrow() && !G.replay && $('overlay').classList.contains('hidden');
+  { const w = show && canWalkUp(); if (($('walkB').style.display !== 'none') !== w) $('walkB').style.display = w ? '' : 'none'; }
   const tp = !!G.tuto && show && (canCallPlay(G.me, 1) || canCallPlay(G.me, 2));
   if (tp !== document.body.classList.contains('tutoplays')) { document.body.classList.toggle('tutoplays', tp); resize(); }   // consignes en bas : le terrain se replace
   for (const n of [1, 2]) {
@@ -567,3 +575,4 @@ function renderPullerRow() {
 
 // pointerdown (et pas click) : un 2e doigt peut appeler un play pendant que le 1er vise, sans interrompre la visée
 for (const n of [1, 2]) $('play' + n + 'B').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); doPlay(n); });
+$('walkB').addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); walkUp(); });

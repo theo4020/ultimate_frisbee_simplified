@@ -283,6 +283,9 @@ function update(dt) {
       }
       const out = disc.ex < 0 || disc.ex > W || disc.ey < 0 || disc.ey > H;
       const [c, cd] = nearestD(TEAMS[disc.team], disc.ex, disc.ey, disc.thrower);
+      // à l'arrivée, un défenseur plus près du disque que le receveur (et à portée) le contre : pas de réception « à travers » lui
+      const def = TEAMS[1 - disc.team].filter(q => !(q.down > 0) && !disc.rolled.has(q)).map(q => [q, dist(q.x, q.y, disc.ex, disc.ey)]).sort((a, b) => a[1] - b[1])[0];
+      if (!out && c && cd < (c.dive > 0 ? 2.6 : 1.9) && def && def[1] < cd && def[1] < (def[0].dive > 0 ? 2.0 : 1.5)) { defStop(def[0], def[0].dive > 0 ? 'Layout block !' : 'Block !', def[1]); return; }
       if (!out && c && cd < (c.dive > 0 ? 2.6 : 1.9)) { if (c.dive > 0 || c.down > 0) flash('Layout !'); catchDisc(c); return; }
       if (out) G.stats.out++; else G.stats.ground++;
       msTurnover(disc.thrower, 'throw');

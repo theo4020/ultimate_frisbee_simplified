@@ -505,6 +505,21 @@ export default async function (t, { quick }) {
     [G.humans, G.myId, G.phase, G.off] = keep; syncMe();
     return r; })()`);
   t.ok((gp.mode === 'held' || gp.mode === 'carry') && gp.holder === gp.me && gp.pickup === -1, 'un joueur dirigé par un humain arrive sur le disque : il le ramasse, même si un autre était désigné', gp);
+  t.group('Arrivée de la passe : le plus près gagne');
+  const ar = R(`(() => {
+    const run = (dDef) => {
+      newWind(); startPoint(); G.phase = 'play'; G.pull = null; G.checkT = 0; G.off = 0; G.wind = { x: 0, y: 0, kmh: 0 };
+      const th = TEAMS[0][0], rc = TEAMS[0][1], d = TEAMS[1][0];
+      th.x = 40; th.y = 18; holdDisc(th); th.think = 99;
+      TEAMS[0].slice(2).concat(TEAMS[1].slice(1)).forEach((q, k) => { q.x = 10 + k; q.y = 2; });
+      throwDisc(th, 60, 18, 0, 0, LOFT.N);
+      let f = 0;
+      while (disc.mode === 'air' && f++ < 600) { rc.x = disc.ex + 1.3; rc.y = disc.ey; d.x = disc.ex; d.y = disc.ey - dDef; rc.vx = rc.vy = d.vx = d.vy = 0; __tick(); }
+      return { mode: disc.mode, holder: disc.holder ? disc.holder.team : -1, off: G.off, msg: G.msg };
+    };
+    return { near: run(1.0), far: run(1.7) };
+  })()`);
+  t.ok(ar.near.off === 1 && ar.far.mode === 'held' && ar.far.holder === 0, 'à l’arrivée, un défenseur plus près du disque que le receveur le contre ; plus loin, le receveur l’attrape', ar);
   t.group('IA : pas de passe vers un souvenir');
   const ghost = R(`(() => {
     const oT = throwDisc; let n = 0, far = [];

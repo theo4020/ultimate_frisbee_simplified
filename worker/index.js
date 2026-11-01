@@ -71,12 +71,14 @@ const cleanName = n => String(n || '').replace(/[<>&"'`\u0000-\u001f]/g, '').rep
 const cmpRun = (a, b) => b.wins - a.wins || b.diff - a.diff || a.at - b.at;
 // mode infini à plusieurs : classement à part (un autre objet Board, « coop »), nom d'équipe jusqu'à 24 caractères
 const cleanTeam = n => String(n || '').replace(/[<>&"'`\u0000-\u001f]/g, '').replace(/\s+/g, ' ').trim().slice(0, 24);
+// clé d'une équipe : les mêmes joueurs dans un autre ordre (« Théo + Léa » / « léa+théo ») sont la même équipe
+const teamKey = n => String(n || '').toLowerCase().replace(/…$/, '').split('+').map(s => s.trim()).filter(Boolean).sort().join('+');
 function validRun(b, coop) {
   const wins = b && b.wins, diff = b && b.diff;
   if (!Number.isInteger(wins) || !Number.isInteger(diff) || wins < 0 || wins > 500) return null;
   if (diff < wins - 2 || diff > 2 * wins - 1) return null;
   const name = coop ? cleanTeam(b.name) : cleanName(b.name);
-  return name ? { name, wins, diff } : null;                  // sans pseudo, pas de place au classement
+  return name ? { name, wins, diff, k: coop ? teamKey(name) : name.toLowerCase() } : null;   // sans pseudo, pas de place au classement
 }
 export class Board {
   constructor(state) {
@@ -91,6 +93,19 @@ export class Board {
     });
   }
   top(n) { return this.db.all('SELECT id, name, wins, diff, at FROM scores ORDER BY wins DESC, diff DESC, at ASC LIMIT ?', n); }
+  // classement à plusieurs : les lignes d'une même équipe (anciennes clés, autre ordre des noms) n'en font plus qu'une, la meilleure
+  mergeTeams() {
+    const best = new Map();
+    for (const r of this.db.all('SELECT id, k, name, wins, diff, at FROM scores')) {
+      const k = teamKey(r.name), b = best.get(k);
+      if (!b || cmpRun(r, b) < 0) best.set(k, r);
+    }
+    for (const r of this.db.all('SELECT id, k, name FROM scores')) {
+      const b = best.get(teamKey(r.name));
+      if (b.id !== r.id) this.db.run('DELETE FROM scores WHERE id = ?', r.id);
+    }
+    for (const [k, b] of best) if (b.k !== k) this.db.run('UPDATE scores SET k = ? WHERE id = ?', k, b.id);
+  }
   rankOf(e) { return this.db.one('SELECT COUNT(*) AS n FROM scores WHERE wins > ? OR (wins = ? AND (diff > ? OR (diff = ? AND at < ?)))', e.wins, e.wins, e.diff, e.diff, e.at).n + 1; }
   async fetch(request) {
     const path = new URL(request.url).pathname;
@@ -100,12 +115,13 @@ export class Board {
       this.db.run('UPDATE scores SET k = ?, name = ? WHERE k = ?', to.toLowerCase(), to, from);
       return json({ ok: true });
     }
-    if (request.method !== 'POST') return json({ top: this.top(BOARD_SHOW) });
+    if (request.method !== 'POST') { if (new URL(request.url).searchParams.get('team')) this.mergeTeams(); return json({ top: this.top(BOARD_SHOW) }); }
     const { run, ip } = await request.json(), now = Date.now();
     if (now - (this.last.get(ip) || 0) < BOARD_WAIT) return json({ error: 'trop de scores envoyés, réessaie dans un instant' }, 429);
     this.last.set(ip, now);
     if (this.last.size > 5000) this.last.clear();
-    const e = { id: crypto.randomUUID().slice(0, 8), ...run, at: now }, k = run.name.toLowerCase();
+    if (run.team) this.mergeTeams();
+    const k = run.k || run.name.toLowerCase(), e = { id: crypto.randomUUID().slice(0, 8), name: run.name, wins: run.wins, diff: run.diff, at: now };
     const old = this.db.one('SELECT id, name, wins, diff, at FROM scores WHERE k = ?', k);
     if (old && cmpRun(old, e) <= 0) {                           // ce pseudo a déjà fait mieux (ou autant) : on garde l'ancien
       return json({ kept: false, best: { wins: old.wins, diff: old.diff }, rank: this.rankOf(old), id: old.id, top: this.top(BOARD_SHOW) });
@@ -399,7 +415,7 @@ async function scores(request, env) {
   if (!env.BOARD) return json({ error: 'classement non configuré' }, 503);
   const coop = new URL(request.url).searchParams.get('mode') === 'coop';   // ?mode=coop : classement du mode infini à plusieurs
   const stub = env.BOARD.get(env.BOARD.idFromName(coop ? 'coop' : 'main'));
-  if (request.method === 'GET') return stub.fetch('https://board/');
+  if (request.method === 'GET') return stub.fetch(coop ? 'https://board/?team=1' : 'https://board/');
   if (request.method !== 'POST') return json({ error: 'GET ou POST' }, 405);
   if (!sameSite(request)) return json({ error: 'interdit' }, 403);
   let body = null;
@@ -412,6 +428,7 @@ async function scores(request, env) {
     if (c.registered) run.name = c.name;
   }
   const ip = request.headers.get('CF-Connecting-IP') || '?';
+  if (coop) run.team = true;
   return stub.fetch('https://board/', { method: 'POST', body: JSON.stringify({ run, ip }) });
 }
 

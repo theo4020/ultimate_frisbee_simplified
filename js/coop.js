@@ -54,7 +54,7 @@ function coopGuestEnd(m) {
 }
 // nom d'équipe proposé pour le classement : les pseudos des joueurs (24 caractères au plus)
 function coopTeamName() {
-  const n = teamHumans(0).map(humanLabel).join(' + ');
+  const n = teamHumans(0).map(humanLabel).sort((a, b) => a.localeCompare(b, 'fr', { sensitivity: 'base' })).join(' + ');   // (toujours le même ordre)
   return n.length <= 24 ? n : n.slice(0, 23) + '…';
 }
 

@@ -25,6 +25,7 @@ function resetCards() { cardStack.length = 0; for (const c of ['gameMenuCard', '
 
 // ---------- menu en jeu ----------
 function renderGameMenu() {
+  reportSnap();                                                // (un signalement depuis ce menu décrira le jeu à cet instant)
   $('gmCodeBox').style.display = G.net && G.roomCode ? '' : 'none';   // en ligne : le code pour inviter d'autres joueurs
   $('gmCode').textContent = G.roomCode || '';
   $('gmNet').textContent = typeof netQualityText === 'function' ? netQualityText() : '';
@@ -94,13 +95,17 @@ function pauseFrame() {
 const DBG = { frames: [], acc: 0, errors: [] };
 window.addEventListener('error', ev => { DBG.errors.push(String(ev.message || ev.error || '?').slice(0, 200) + (ev.filename ? ' @' + ev.filename.split('/').pop() + ':' + ev.lineno : '')); if (DBG.errors.length > 10) DBG.errors.shift(); });
 window.addEventListener('unhandledrejection', ev => { DBG.errors.push('promise: ' + String(ev.reason).slice(0, 200)); if (DBG.errors.length > 10) DBG.errors.shift(); });
-function dbgRecord(dt) {                                      // 5 images par seconde, 10 s gardées
-  if (G.paused || (G.menuShown && G.phase !== 'over')) return;   // jeu en pause (menu ouvert pour signaler) : on garde les 10 s d'avant
+function dbgRecord(dt) {                                      // 5 images par seconde, 10 s de jeu gardées
+  // seulement le jeu : pas les menus, la fête après un point, ni le temps passé dans le menu ☰ (en ligne, le jeu continue
+  // pendant qu'on écrit son signalement)
+  if (G.paused || G.pz || cardStack.length || G.menuShown || !(G.phase === 'play' || G.phase === 'pull')) return;
   DBG.acc += dt; if (DBG.acc < 0.2) return; DBG.acc = 0;
   DBG.frames.push({ t: +G.time.toFixed(1), ph: G.phase, off: G.off, d: [disc.mode, r1(disc.x), r1(disc.y), idx(disc.holder)],
     p: players.map(p => [r1(p.x), r1(p.y), p.dive > 0 ? 1 : p.down > 0 ? 2 : p.jump > 0 ? 3 : 0]) });
   if (DBG.frames.length > 50) DBG.frames.shift();
 }
+// le signalement décrit le jeu au moment où on ouvre « Signaler un problème » (pas quand on l'envoie, après avoir écrit)
+function reportSnap() { DBG.snap = buildReport(); DBG.snap.frames = DBG.frames.slice(); DBG.snapAt = performance.now(); }
 function buildReport() {
   const pl = p => ({ x: r2(p.x), y: r2(p.y), vx: r2(p.vx), vy: r2(p.vy), tx: r2(p.tx), ty: r2(p.ty), sp: r2(p.sp), role: p.role, state: p.state,
     dive: r2(p.dive), down: r2(p.down), jump: r2(p.jump), jprep: r2(p.jprep), match: idx(p.match), zslot: p.zslot });
@@ -118,9 +123,10 @@ function buildReport() {
     players: players.map(pl), frames: DBG.frames, errors: DBG.errors
   };
 }
+const reportNow = () => Object.assign({}, DBG.snap || buildReport(), { at: new Date().toISOString(), desc: $('repDesc').value.slice(0, 1000), sentAfter: DBG.snap ? +((performance.now() - DBG.snapAt) / 1000).toFixed(0) : 0 });
 // envoi direct au développeur (serveur du site : /api/report) ; si ça échoue, on propose de copier le rapport
 $('repSend').addEventListener('click', () => {
-  const a = accGet(), txt = JSON.stringify(Object.assign(buildReport(), a ? { auth: { name: a.name, token: a.token } } : {}));   // le jeton ne sert qu'à vérifier le compte (il n'est pas gardé)
+  const a = accGet(), txt = JSON.stringify(Object.assign(reportNow(), a ? { auth: { name: a.name, token: a.token } } : {}));   // le jeton ne sert qu'à vérifier le compte (il n'est pas gardé)
   $('repSend').disabled = true; $('repStatus').textContent = 'Envoi…';
   fetch('api/report', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: txt })
     .then(r => r.json().catch(() => ({})).then(j => (r.ok ? j : { error: j.error || 'erreur ' + r.status })))
@@ -133,7 +139,7 @@ $('repSend').addEventListener('click', () => {
     });
 });
 $('repCopy').addEventListener('click', () => {
-  const txt = JSON.stringify(buildReport());
+  const txt = JSON.stringify(reportNow());
   const fallback = () => {
     $('repOut').style.display = ''; $('repOut').value = txt; $('repOut').focus(); $('repOut').select();
     $('repStatus').textContent = 'Copie automatique impossible : sélectionne tout le texte ci-dessous, copie-le et envoie-le au développeur.';

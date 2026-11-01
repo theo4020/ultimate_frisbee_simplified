@@ -8,6 +8,10 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
+  { id: 44, date: '2026-11-01', tag: 'Jeu', title: 'Retours du deuxième playtest 🧪',
+    body: `• Plus de <b>passe par accident</b> juste après une réception.<br>
+      • Pull attrapé dans ton en-but : <b>joue d'ici</b>, ou avance à la ligne.<br>
+      • Classement à plusieurs : la même équipe, quel que soit l'ordre des noms.` },
   { id: 43, date: '2026-10-30', tag: 'Jeu', title: 'Départ, toss et nouveaux menus 🎲',
     body: `• <b>Départ au signal</b> pour tous ceux qui ne pullent pas : trop tôt, c'est <b>offside</b>.<br>
       • Première attaque au hasard : un <b>toss</b> à deux disques, aussi en ligne.<br>

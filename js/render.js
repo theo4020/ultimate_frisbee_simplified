@@ -39,11 +39,18 @@ function drawAim(h, px, py, curve, kind, aiming, ally) {
 }
 // après une réception, il faut un instant (RECV_T s) pour se stabiliser avant de relancer : les enchaînements restent
 // naturels, et un clic pensé pour un plongeon juste au moment du catch ne part pas en passe
-const RECV_T = 0.45;
+const RECV_T = 0.45, RECV_TAKE = 1.0;
+// à plusieurs : un coéquipier IA attrape et tu reprends la main (takeOver) — tu dirigeais un autre joueur, tes clics étaient
+// pour lui : un peu plus de temps avant de pouvoir lancer, et on te le dit
 function recvReady() {
   if (disc.mode !== 'held' || !disc.holder) { G.recvHolder = null; return false; }
-  if (G.recvHolder !== disc.holder) { G.recvHolder = disc.holder; G.recvAt = G.time; }
-  return G.time - G.recvAt >= RECV_T || !!G.tuto && !G.tuto.recvWait;
+  if (G.recvHolder !== disc.holder) {
+    G.recvHolder = disc.holder; G.recvAt = G.time;
+    const h = typeof meH === 'function' ? meH() : null;
+    G.recvTake = !!(h && h.sel === disc.holder && G.prevSel && G.prevSel !== disc.holder && G.prevSel.team === disc.holder.team && teamHumans(h.team).length > 1);
+    if (G.recvTake) flash('À toi : tu reprends le disque', true);
+  }
+  return G.time - G.recvAt >= (G.recvTake ? RECV_TAKE : RECV_T) || !!G.tuto && !G.tuto.recvWait;
 }
 function canThrow() { const h = throwerHuman(); return G.phase === 'play' && !!h && h.id === G.myId && !((G.net === 'guest' ? G.netCheck : G.checkT) > 0) && recvReady(); }
 function defending() { return G.phase === 'play' && G.off !== G.me; }
