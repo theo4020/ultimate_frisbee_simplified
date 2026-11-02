@@ -98,17 +98,14 @@ export default async function (t) {
     const spot = await p.evaluate(() => {
       G.phase = 'play'; G.off = G.me; G.checkT = 0; G.oplay = null; const h = TEAMS[G.me][0]; h.x = 40; h.y = 18; h.vx = h.vy = 0; holdDisc(h); h.think = 99;
       TEAMS[1 - G.me].forEach((d, i) => { d.x = 90; d.y = 4 + i * 7; });
-      const r = canvas.getBoundingClientRect(); return { x: r.left + X(55), y: r.top + Y(18) };
+      const early = !canThrow(); doThrow(60, 18, 0);                                              // tout de suite : refusé
+      const r = canvas.getBoundingClientRect(); return { x: r.left + X(55), y: r.top + Y(18), early, mode: disc.mode };
     });
-    await p.waitForTimeout(250);
+    await p.waitForFunction(() => G.time - G.recvAt > RECV_T + 0.05, null, { timeout: 8000 });   // (temps de jeu)
     await p.mouse.move(spot.x, spot.y); await p.mouse.down(); await p.mouse.up();
     await p.waitForTimeout(100);
-    const qc = await p.evaluate(() => { doThrow(60, 18, 0); return disc.mode; });              // (clic, ni lancer demandé directement)
-    await p.waitForTimeout(700);
-    await p.mouse.down(); await p.mouse.up();
-    await p.waitForTimeout(100);
     const hc = await p.evaluate(() => disc.mode);
-    t.ok(qc === 'held' && hc === 'air', 'juste après une réception, pas de lancer ; un instant après, le clic lance', { qc, hc });
+    t.ok(spot.early && spot.mode === 'held' && hc === 'air', 'juste après une réception, pas de lancer ; un instant après, le clic lance', { spot, hc });
     const ez = await p.evaluate(() => {
       G.phase = 'play'; G.off = G.me; G.checkT = 0; G.receiving = G.me; G.oplay = null;
       const c = TEAMS[G.me][1]; c.x = goalLine(G.me) - dirOf(G.me) * 6; c.y = 12; c.vx = c.vy = 0; c.think = 99;

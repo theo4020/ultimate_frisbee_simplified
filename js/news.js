@@ -8,18 +8,11 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
-  { id: 44, date: '2026-11-01', tag: 'Jeu', title: 'Retours du deuxième playtest 🧪',
-    body: `• Après une réception, un court instant avant de pouvoir relancer, pour tout le monde (plus de passe par accident).<br>
-      • Pull attrapé dans ton en-but : on <b>joue de là</b>, sans marcher jusqu'à la ligne.<br>
-      • Classement à plusieurs : la même équipe, quel que soit l'ordre des noms.` },
   { id: 43, date: '2026-10-30', tag: 'Jeu', title: 'Départ, toss et nouveaux menus 🎲',
     body: `• <b>Départ au signal</b> pour tous ceux qui ne pullent pas : trop tôt, c'est <b>offside</b>.<br>
       • Première attaque au hasard : un <b>toss</b> à deux disques, aussi en ligne.<br>
-      • <b>Menus revus</b>, et un <b>mode économie</b> automatique pour les petits téléphones.` },
-  { id: 39, date: '2026-10-29', tag: 'Jeu', title: 'Retours du premier playtest 🧪',
-    body: `• <b>Mark aimantée</b> moins collante, <b>Espace</b> change aussi de pied de pivot.<br>
-      • Passes courtes plus douces, un court instant après une réception avant de relancer.<br>
-      • À plusieurs : le dernier humain porteur reprend le disque quand un coéquipier IA l'attrape.` },
+      • <b>Menus revus</b>, et un <b>mode économie</b> automatique pour les petits téléphones.<br>
+      • À plusieurs : quand un coéquipier IA attrape, le dernier de vous à avoir eu le disque le reprend.` },
   { id: 38, date: '2026-10-29', tag: 'Jeu', title: 'Un disque plus vrai 🌬️',
     body: `• Le disque <b>part vite et ralentit</b> pendant sa course (même durée de vol qu'avant).<br>
       • Le <b>vent</b> change la hauteur du vol : <b>de face</b>, le disque monte et plane ; <b>de dos</b>, il reste bas et
@@ -315,14 +308,19 @@ function newsBadge() {
   const n = NEWS.filter(a => a.id > newsSeen()).length, b = document.getElementById('newsBadge');
   b.textContent = n; b.style.display = n ? '' : 'none';
 }
+// les 5 dernières seulement ; les plus anciennes sur demande (une longue liste décourage de lire)
+const NEWS_SHOW = 5;
+let newsAll = false;
 function renderNews() {
-  const seen = newsSeen(), list = NEWS.slice().sort((a, b) => (b.pin ? 1 : 0) - (a.pin ? 1 : 0) || b.id - a.id);
+  const seen = newsSeen(), all = NEWS.slice().sort((a, b) => (b.pin ? 1 : 0) - (a.pin ? 1 : 0) || b.id - a.id);
+  const list = newsAll ? all : all.slice(0, NEWS_SHOW);
   document.getElementById('newsList').innerHTML = list.map(a => `
     <article class="post${a.id > seen ? ' unread' : ''}">
       <header><span class="avatar">🥏</span><span class="who"><b>Le développeur</b><small>${newsDate(a.date)}</small></span>
         ${a.pin ? '<span class="chip pin">📌 Épinglé</span>' : ''}<span class="chip">${a.tag}</span>${a.id > seen ? '<span class="chip new">Nouveau</span>' : ''}</header>
       <h3>${a.title}</h3><p>${a.body}</p>
-    </article>`).join('');
+    </article>`).join('') + (!newsAll && all.length > NEWS_SHOW ? `<button id="newsMore" class="ghost">Voir les ${all.length - NEWS_SHOW} plus anciennes</button>` : '');
+  const more = document.getElementById('newsMore'); if (more) more.onclick = () => { newsAll = true; renderNews(); };
   try { localStorage.setItem('uf-news-seen', String(Math.max(...NEWS.map(a => a.id)))); } catch (e) { }
   newsBadge();
 }

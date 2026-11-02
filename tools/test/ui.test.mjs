@@ -41,7 +41,9 @@ export default async function (t) {
 
     t.group('Nouveautés et changement d’adresse');
     await p.click('#newsB');
-    t.ok(await vis(p, '#newsCard') && (await p.locator('#newsList .post').count()) >= 5, 'fil des nouveautés');
+    t.ok(await vis(p, '#newsCard') && (await p.locator('#newsList .post').count()) === 5 && await vis(p, '#newsMore'), 'fil des nouveautés : les 5 dernières, les plus anciennes sur demande');
+    await p.click('#newsMore');
+    t.ok((await p.locator('#newsList .post').count()) > 5 && !(await vis(p, '#newsMore')), '« Voir les plus anciennes » affiche tout');
     await p.click('#newsBack');
     t.ok(!(await vis(p, '#newsBadge')), 'badge effacé une fois lu');
     await p.click('#moveAlert');
@@ -182,9 +184,12 @@ export default async function (t) {
     t.ok(Math.abs(dn1 - 0.5) < 1e-6 && dn2 === 0, '↓ puis S : plus basse, jusqu’à la rasante (0)', { dn1, dn2 });
     const cb = await p.locator('#c').boundingBox();
     await p.mouse.move(cb.x + cb.width * 0.3, cb.y + cb.height * 0.3);
-    await p.mouse.wheel(0, -100); await p.waitForTimeout(100);
+    await p.mouse.wheel(0, 100); await p.waitForTimeout(100);
     const wl = await p.evaluate(() => G.loft);
-    t.ok(Math.abs(wl - 0.2) < 1e-6, 'molette vers le haut : passe plus haute', wl);
+    await p.mouse.wheel(0, -100); await p.waitForTimeout(100);
+    const wl2 = await p.evaluate(() => G.loft);
+    t.ok(Math.abs(wl - 0.2) < 1e-6 && wl2 === 0, 'molette vers soi : passe plus haute ; vers le haut : plus rasante', { wl, wl2 });
+    await p.mouse.wheel(0, 100); await p.waitForTimeout(100);                         // (on revient à 0,2 pour la suite)
     const c0 = await p.evaluate(() => G.curve);
     await p.keyboard.press('ArrowLeft');
     t.ok(Math.abs((await p.evaluate(() => G.curve)) - (c0 - 0.25)) < 1e-6, '← : courbe');
@@ -415,8 +420,8 @@ export default async function (t) {
     for (let k = 1; k <= 5; k++) { await touch('touchMove', jp.x + k * 16, jp.y); await q.waitForTimeout(16); }   // glisser vers la droite
     const jb = await q.locator('#joy').boundingBox();
     t.ok(jb && Math.abs(jb.x + jb.width / 2 - jp.x) < 3 && Math.abs(jb.y + jb.height / 2 - jp.y) < 3, 'le joystick apparaît là où le doigt s’est posé', jb);
-    const s0 = await q.evaluate(() => { const s = meH().sel; return { x: s.x, y: s.y }; });
-    await q.waitForTimeout(800);
+    const s0 = await q.evaluate(() => { const s = meH().sel; return { x: s.x, y: s.y, t: G.time }; });
+    await q.waitForFunction(t0 => G.time - t0 >= 0.8, s0.t, { timeout: 8000 });   // (0,8 s de jeu, même sur une machine chargée)
     const s1 = await q.evaluate(() => { const s = meH().sel; return { x: s.x, y: s.y }; });
     t.ok(s1.x - s0.x > 1.5 && Math.abs(s1.y - s0.y) < 1, 'ton joueur court dans la direction départ → doigt', [s0, s1]);
     await touch('touchEnd', jp.x + 80, jp.y);

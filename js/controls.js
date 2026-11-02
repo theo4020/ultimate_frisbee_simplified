@@ -107,13 +107,13 @@ function pointerEnd(e) {
 window.addEventListener('pointerup', pointerEnd);            // relâché n'importe où (même hors du terrain)
 canvas.addEventListener('pointercancel', e => { if (touchUI(e)) return; G.pointer.down = false; G.aiming = false; sendInput(true); });
 canvas.addEventListener('contextmenu', e => e.preventDefault());
-// molette : hauteur de la passe quand on a le disque (vers le haut = plus haute), courbe pendant le pull
+// molette : hauteur de la passe quand on a le disque (vers soi / vers le bas = plus haute, vers le haut = plus rasante), courbe pendant le pull
 let wheelAcc = 0;
 canvas.addEventListener('wheel', e => {
   e.preventDefault();
   if (!canThrow()) { adjustCurve(e.deltaY > 0 ? 0.1 : -0.1); return; }
   wheelAcc += e.deltaY * (e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 400 : 1);
-  while (Math.abs(wheelAcc) >= 50) { const s = Math.sign(wheelAcc); wheelAcc -= s * 50; adjustLoft(-s * LOFT.STEP); }
+  while (Math.abs(wheelAcc) >= 50) { const s = Math.sign(wheelAcc); wheelAcc -= s * 50; adjustLoft(s * LOFT.STEP); }
 }, { passive: false });
 window.addEventListener('keydown', e => {
   if (e.target && (e.target.tagName === 'TEXTAREA' || (e.target.tagName === 'INPUT' && e.target.type !== 'range'))) { if (e.key === 'Enter' && e.target.id === 'joinCode') $('joinGo').click(); return; }

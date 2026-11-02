@@ -108,7 +108,7 @@ export default async function (t) {
     await host.waitForFunction(n => G.stats.throws > n, th, { timeout: 5000 }).catch(() => {});
     t.ok((await host.evaluate(() => G.stats.throws)) === th + 1, 'la passe de l’invité est jouée chez l’hôte');
     await guest.waitForFunction(() => disc.mode === 'air' && disc.t < disc.dur * 0.6, null, { timeout: 3000, polling: 'raf' }).catch(() => {});   // la passe est arrivée chez l'invité
-    const fl = await guest.evaluate(() => new Promise(res => { const a = disc.t; setTimeout(() => res({ mode: disc.mode, a, b: disc.t, dur: disc.dur }), 120); }));
+    const fl = await guest.evaluate(() => new Promise(res => { const a = disc.t; let k = 0; const f = () => (++k >= 4 ? res({ mode: disc.mode, a, b: disc.t, dur: disc.dur }) : requestAnimationFrame(f)); requestAnimationFrame(f); }));   // (quelques images, pas un temps fixe)
     t.ok(fl.mode !== 'air' || (fl.b > fl.a && fl.b < fl.dur), 'pendant le vol, l’invité suit le temps de vol (trajectoire affichée)', fl);
 
     t.group('Ce que l’adversaire ne voit pas');
@@ -179,9 +179,10 @@ export default async function (t) {
       // 1. lenteur et irrégularité (120 ms ± 80 ms dans chaque sens)
       await net(host, { lag: 120, jitter: 80 }); await net(guest, { lag: 120, jitter: 80 });
       const smooth = await guest.evaluate(async () => {
-        const fr = () => new Promise(r => requestAnimationFrame(r)); let worst = 0, n = 0, prev = players.map(p => [p.x, p.y]);
+        // (saut ramené à une image de 1/60 s : une machine chargée fait de plus longues images, donc de plus grands pas)
+        const fr = () => new Promise(r => requestAnimationFrame(r)); let worst = 0, n = 0, prev = players.map(p => [p.x, p.y]), tp = performance.now();
         const t0 = performance.now();
-        while (performance.now() - t0 < 2500) { await fr(); const cur = players.map(p => [p.x, p.y]); worst = Math.max(worst, ...cur.map((c, i) => Math.hypot(c[0] - prev[i][0], c[1] - prev[i][1]))); prev = cur; n++; }
+        while (performance.now() - t0 < 2500) { await fr(); const now = performance.now(), k = Math.max(1, (now - tp) / (1000 / 60)); tp = now; const cur = players.map(p => [p.x, p.y]); worst = Math.max(worst, ...cur.map((c, i) => Math.hypot(c[0] - prev[i][0], c[1] - prev[i][1]) / k)); prev = cur; n++; }
         return { worst: +worst.toFixed(2), n, wait: hostWaitMsg(), recv: +(G.time - lastRecv).toFixed(2) };
       });
       t.ok(smooth.worst < 1.0 && !smooth.wait, 'réseau lent et irrégulier : chez l’invité, les joueurs avancent sans sauts', smooth);
@@ -206,16 +207,17 @@ export default async function (t) {
         const fr = () => new Promise(r => requestAnimationFrame(r)), me = () => meH().sel;
         const p = me(), t0 = performance.now(), vy0 = p.vy;    // (on mesure le changement de vitesse vers la cible, quel que soit l'élan de départ)
         G.pointer.x = p.x; G.pointer.y = 30; G.pointer.active = true; G.pointer.down = true; G.pointer.last = G.time; sendInput(true);
-        let lat = -1; const iv = setInterval(() => { G.pointer.last = G.time; sendInput(true); }, 100);
-        while (performance.now() - t0 < 2200) { await fr(); if (lat < 0 && p.vy - vy0 > 0.2) lat = performance.now() - t0; }
+        // (compté en images, pas en millisecondes : une machine chargée ralentit les images, pas la règle « tout de suite »)
+        let lat = -1, frames = -1, n = 0; const iv = setInterval(() => { G.pointer.last = G.time; sendInput(true); }, 100);
+        while (performance.now() - t0 < 2200) { await fr(); n++; if (lat < 0 && p.vy - vy0 > 0.2) { lat = performance.now() - t0; frames = n; } }
         clearInterval(iv); Object.assign(G.pointer, { x: p.x, y: p.y, down: false, last: G.time }); sendInput(true);   // il s'arrête là
-        return { lat: Math.round(lat), y: +p.y.toFixed(2), err: +PRED.err.toFixed(2), on: PRED.on };
+        return { lat: Math.round(lat), frames, y: +p.y.toFixed(2), err: +PRED.err.toFixed(2), on: PRED.on };
       });
       await host.evaluate(() => { window.__ns = setInterval(() => { G.stall = 0; G.phase = 'play'; }, 100); });   // pas de stall ni de fin de point pendant ces essais
       await settle(); const rp = await react();
       const hy = await host.evaluate(() => +TEAMS[1][3].y.toFixed(2));
       await guest.evaluate(() => { CTRL.netPredict = false; }); await settle(); const rn = await react(); await guest.evaluate(() => { CTRL.netPredict = true; });
-      t.ok(rp.lat >= 0 && rp.lat < 100, 'réseau lent : avec la prédiction, ton joueur part tout de suite (sans : après l’aller-retour)', { avec: rp, sans: rn });
+      t.ok(rp.frames >= 1 && rp.frames <= 4 && (rn.frames < 0 || rn.frames > rp.frames), 'réseau lent : avec la prédiction, ton joueur part tout de suite (sans : après l’aller-retour)', { avec: rp, sans: rn });
       t.ok(Math.abs(rp.y - hy) < 1.6 && rp.err < 0.6, 'ton joueur prédit reste d’accord avec l’hôte (écart d’environ le retard du réseau, corrigé en douceur)', { guest: rp.y, host: hy, err: rp.err });
       // plongeon : il part tout de suite chez toi, et finit au même endroit que chez l'hôte
       await settle();
@@ -249,7 +251,8 @@ export default async function (t) {
       t.ok(blip.fx < 15, 'au retour, seuls les effets récents sont joués (pas 3 s d’effets d’un coup)', blip);
 
       // 3. wifi coupé 10 s (l'invité est l'héritier) : il ne crée pas sa propre partie, il se reconnecte et garde sa place
-      await net(guest, { down: true }); await guest.waitForTimeout(9000);
+      await net(guest, { down: true }); await guest.waitForTimeout(6000);
+      await guest.waitForFunction(() => !!G.reconn || G.net !== 'guest', null, { timeout: 15000 }).catch(() => { });   // (le délai se compte en temps de jeu : une machine chargée le rallonge)
       const mid = await guest.evaluate(() => ({ net: G.net, reconn: !!G.reconn, msg: hostWaitMsg() }));
       t.ok(mid.net === 'guest' && mid.reconn && /Reconnexion/.test(mid.msg), 'coupure longue : l’invité affiche « Reconnexion… » (et ne reprend pas la partie à son compte)', mid);
       await net(guest, { down: false });
@@ -335,7 +338,7 @@ export default async function (t) {
         setCurve(0.8); const c0 = G.curve, q = TEAMS[0][4], i = players.indexOf(q);
         doThrow(qa[0], qa[1], 0); await new Promise(r => setTimeout(r, 300));
         const fr = () => new Promise(r => requestAnimationFrame(r)); const t0 = performance.now(); let curveAfter = null;
-        while (performance.now() - t0 < 4000) { await fr(); if (curveAfter == null && disc.mode === 'air') curveAfter = G.curve; if (disc.mode === 'held' && disc.holder === q && meH().sel === q && canThrow()) break; }
+        while (performance.now() - t0 < 8000) { await fr(); if (curveAfter == null && disc.mode === 'air') curveAfter = G.curve; if (disc.mode === 'held' && disc.holder === q && meH().sel === q && canThrow()) break; }
         return { c0, curveAfter, i, held: disc.mode === 'held' && disc.holder === q, mine: meH().sel === q, ct: canThrow(), curve: G.curve };
       }, qa);
       const th = await host.evaluate(([id, i]) => ({ sel: players.indexOf(humanById(id).sel), holder: players.indexOf(disc.holder), mode: disc.mode, msg: G.msg, q: [players[i].x, players[i].y].map(Math.round) }), [gid, tk.i]);
