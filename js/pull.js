@@ -343,7 +343,7 @@ function startPress(h) {
   if (G.phase === 'pull') {
     if (lightsOn(G.pull.cd) < 2) return true;                   // 1er feu : trop tôt pour compter (l'appui ne fait rien)
     h.startDone = true;
-    offside(h.team, h.sel || nearest(TEAMS[h.team].filter(p => p !== disc.holder), goalLine(h.team), H / 2), true);
+    offside(h.team, h.sel && h.sel !== disc.holder ? h.sel : nearest(TEAMS[h.team].filter(p => p !== disc.holder), goalLine(h.team), H / 2), true);   // (jamais le pulleur lui-même)
     return true;
   }
   h.startDone = true;                                          // au vert : départ parfait pour son équipe

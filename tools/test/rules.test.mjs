@@ -572,9 +572,10 @@ export default async function (t, { quick }) {
     requestPull(70, 18, 0, 0.88); r.waits = G.phase === 'pull' && !!G.pull.pend;      // le pull ne part pas tout de suite
     for (let f = 0; f < 150 && !(G.pull && lightsOn(G.pull.cd) >= 2); f++) pullTick(1 / 60, 1 / 60);
     r.pullerPress = startPress(G.humans[0]); r.offAfterPuller = !!G.offside;            // le pulleur, lui, ne prend pas le départ
+    G.humans[1].sel = disc.holder; const htx = disc.holder.tx;                         // (même si son joueur sélectionné est le pulleur)
     r.matePress = startPress(G.humans[1]); r.off = G.offside && G.offside.team;          // son coéquipier part trop tôt : offside
     const guilty = TEAMS[0].filter(q => q !== disc.holder).sort((a, b) => Math.abs(b.tx - b.x) - Math.abs(a.tx - a.x))[0];
-    r.runs = Math.abs(guilty.tx - guilty.x) > 4; r.fx = !!G.offFx;
+    r.runs = Math.abs(guilty.tx - guilty.x) > 4 && disc.holder.tx === htx; r.fx = !!G.offFx;
     for (let f = 0; f < 200 && G.phase === 'pull'; f++) pullTick(1 / 60, 1 / 60);
     r.launched = disc.mode === 'air' && disc.pull;
     G.humans = keepH; G.myId = 0; syncMe(); G.offside = null; G.offFx = null; G.receiving = 0;
