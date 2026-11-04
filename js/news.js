@@ -8,9 +8,8 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
-  { id: 46, date: '2026-11-04', tag: 'Jeu', title: 'Viser, courber, et le vent de côté 🌬️',
-    body: `• La souris donne la <b>direction de départ</b> du disque ; la courbe l'écarte ensuite (la trajectoire affichée montre où il arrive).<br>
-      • <b>Vent de côté</b> : le disque, penché par la courbe, est porté si le vent arrive par en dessous, plaqué s'il tape le dessus.` },
+  { id: 46, date: '2026-11-04', tag: 'Jeu', title: 'Le vent de côté 🌬️',
+    body: `Le disque, penché par la courbe, est <b>porté</b> si le vent arrive par en dessous (il plane et part plus loin), <b>plaqué</b> s'il tape le dessus.` },
   { id: 45, date: '2026-11-04', tag: 'Jeu', title: 'Mode spectateur 👀',
     body: `• Match rapide : l'onglet de l'adversaire te laisse régler <b>sa stratégie</b> si tu veux (sinon l'IA choisit, comme avant).<br>
       • Ou choisis <b>« Je regarde »</b> avant le match : l'IA joue des deux côtés, en accéléré si tu veux (jusqu'à ×8).<br>

@@ -13,7 +13,7 @@ function allyAim() {
 }
 function drawAim(h, px, py, curve, kind, aiming, ally) {
   kind = loftOf(kind); const K = throwK(kind);
-  let [tx, ty] = launchAim(h, px, py, curve), dx = tx - h.x, dy = ty - h.y, d = Math.hypot(dx, dy) || 0.01;   // la souris : direction de départ (wind.js)
+  let tx = px, ty = py, dx = tx - h.x, dy = ty - h.y, d = Math.hypot(dx, dy) || 0.01;
   if (d > K.max) { tx = h.x + dx / d * K.max; ty = h.y + dy / d * K.max; d = K.max; }
   if (d < K.min && d >= CANCEL_R) { tx = h.x + dx / d * K.min; ty = h.y + dy / d * K.min; d = K.min; }
   const [sx, sy] = releasePoint(h, tx, ty), [cx, cy] = ctrlFor(sx, sy, tx, ty, curve);

@@ -88,14 +88,6 @@ function aimFor(h, tx, ty, kind, curve) {
   for (let i = 0; i < 3; i++) { const bw = bankWind(h.x, h.y, ax, ay, curve, kind), [dx, dy] = drift(throwDur(h.x, h.y, ax, ay, kind, curve), kind, bw); ax = tx - dx; ay = ty - dy; }
   return [ax, ay];
 }
-// visée d'un joueur : la souris donne la direction de départ du disque (et la distance) ; la courbe l'écarte ensuite de
-// cette direction. Point d'arrivée (sans vent) : la direction de la souris tournée de l'angle de départ de la courbe
-// (ctrlFor : le disque part à atan(0,8 × courbe) de la corde), à la même distance
-function launchAim(h, mx, my, curve) {
-  const c = clamp(curve || 0, -1, 1); if (!c || !h) return [mx, my];
-  const vx = mx - h.x, vy = my - h.y, th = Math.atan(0.8 * c), co = Math.cos(th), si = Math.sin(th);
-  return [h.x + vx * co + vy * si, h.y - vx * si + vy * co];
-}
 // côté « break » (bloqué par la mark) : -1 = haut du terrain (y petit), +1 = bas
 function forceOf(defT) {
   const f = defFormOf(defT);

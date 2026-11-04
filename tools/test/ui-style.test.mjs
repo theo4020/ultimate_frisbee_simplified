@@ -106,14 +106,6 @@ export default async function (t) {
     await p.waitForTimeout(100);
     const hc = await p.evaluate(() => disc.mode);
     t.ok(spot.early && spot.mode === 'held' && hc === 'air', 'juste après une réception, pas de lancer ; un instant après, le clic lance', { spot, hc });
-    const la = await p.evaluate(async () => {
-      G.phase = 'play'; G.off = G.me; G.checkT = 0; G.oplay = null; G.wind = { x: 0, y: 0, kmh: 0 };
-      const h = TEAMS[G.me][0]; h.x = 40; h.y = 18; h.vx = h.vy = 0; holdDisc(h); h.think = 99; G.recvAt = -9;
-      const mx = h.x + dirOf(G.me) * 20, my = 18; setCurve(0.8); doThrow(mx, my, G.curve);
-      const want = launchAim(h, mx, my, 0.8);
-      return { mode: disc.mode, rx: +disc.rx.toFixed(1), ry: +disc.ry.toFixed(1), want: want.map(v => +v.toFixed(1)), off: +Math.abs(disc.ry - 18).toFixed(1) };
-    });
-    t.ok(la.mode === 'air' && Math.abs(la.rx - la.want[0]) < 0.2 && Math.abs(la.ry - la.want[1]) < 0.2 && la.off > 5, 'ta passe courbée part vers la souris et arrive où la courbe l’emmène (comme l’aperçu)', la);
     const ez = await p.evaluate(() => {
       G.phase = 'play'; G.off = G.me; G.checkT = 0; G.receiving = G.me; G.oplay = null;
       const c = TEAMS[G.me][1]; c.x = goalLine(G.me) - dirOf(G.me) * 6; c.y = 12; c.vx = c.vy = 0; c.think = 99;
