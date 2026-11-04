@@ -472,6 +472,7 @@ function doThrow(x, y, curve) {
   if (!canThrow()) return;                                    // (dont le délai après une réception, render.js : recvReady)
   if (kindLocked() && canThrow()) { G.pendThrow = { x, y, curve, holder: disc.holder }; return; }
   G.pendThrow = null;
+  if (disc.holder) [x, y] = launchAim(disc.holder, x, y, curve);   // la souris donne la direction de départ ; la courbe l'écarte ensuite
   const kind = G.loft;
   G.loft = LOFT.N;                                          // après chaque lancer, on revient à la passe normale
   if (G.net === 'guest') {

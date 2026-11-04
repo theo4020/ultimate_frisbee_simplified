@@ -530,6 +530,20 @@ export default async function (t, { quick }) {
     __tick = oT; return { n, pct: +(100 * tight / Math.max(1, n)).toFixed(1) };
   })()`);
   t.ok(sp.n > 500 && sp.pct < 6, 'deux attaquants qui ne coupent pas restent rarement à moins de 2 m l’un de l’autre (relais qui ne se croisent pas, écart gardé)', sp);
+  t.group('Visée et vent de côté : le disque part vers la souris, l’inclinaison décide de l’effet du vent');
+  const bk = R(`(() => {
+    const h = { x: 30, y: 18 }, M = [55, 12], c = 0.7, E = launchAim(h, M[0], M[1], c), C = ctrlFor(h.x, h.y, E[0], E[1], c);
+    const ang = (ax, ay, bx, by) => Math.abs(Math.atan2(ax * by - ay * bx, ax * bx + ay * by));
+    const start = ang(C[0] - h.x, C[1] - h.y, M[0] - h.x, M[1] - h.y), same = Math.abs(dist(h.x, h.y, E[0], E[1]) - dist(h.x, h.y, M[0], M[1]));
+    const keepW = G.wind; G.wind = { x: 0, y: 6, kmh: 21.6 };
+    const fx = cv => { const b = bankWind(30, 18, 55, 18, cv, LOFT.N), d = throwDur(30, 18, 55, 18, LOFT.N, cv); return { lift: b.lift, drift: Math.hypot(...drift(d, LOFT.N, b)) }; };
+    const flat = fx(0), under = fx(-0.8), over = fx(0.8);          // vent vers y+ : la courbe -0,8 tourne vers y+ (le vent arrive par en dessous)
+    G.wind = keepW;
+    return { start: +start.toFixed(3), same: +same.toFixed(3), off: +dist(E[0], E[1], M[0], M[1]).toFixed(1), flat, under, over };
+  })()`);
+  t.ok(bk.start < 0.01 && bk.same < 0.01 && bk.off > 3, 'avec de la courbe, le disque part vers la souris (même distance), puis la courbe l’écarte', bk);
+  t.ok(bk.flat.lift === 0 && bk.under.lift > 0 && bk.over.lift < 0 && bk.under.drift > bk.flat.drift && bk.over.drift < bk.flat.drift,
+    'vent de côté : par en dessous du disque penché, il le porte (plus haut, plus emporté) ; sur le dessus, il le plaque (moins emporté)', bk);
   t.group('IA : pas de passe vers un souvenir');
   const ghost = R(`(() => {
     const oT = throwDisc; let n = 0, far = [];

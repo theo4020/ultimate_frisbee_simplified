@@ -114,8 +114,8 @@ const TUTO_STEPS = [
     coach: 'Un défenseur sur la ligne droite ? On fait le tour, comme le disque. C’est ça, la courbe.', par: 16,
     ctx: 'throw',
     text: {
-      mouse: () => `Un défenseur bloque la ligne droite. Ajoute de la <b>courbe</b> (${tutoCmd('curveL')} / ${tutoCmd('curveR')} ou molette) pour passer à côté.`,
-      touch: 'Un défenseur bloque la ligne droite. Pendant que tu vises, glisse un <b>2<sup>e</sup> doigt sur le côté</b> pour courber la passe.',
+      mouse: () => `Un défenseur bloque la ligne droite. Ajoute de la <b>courbe</b> (${tutoCmd('curveL')} / ${tutoCmd('curveR')}) et vise <b>à côté de lui</b> : le disque part vers ta souris, puis la courbe le ramène vers ton coéquipier (suis la trajectoire).`,
+      touch: 'Un défenseur bloque la ligne droite. Pendant que tu vises à côté de lui, glisse un <b>2<sup>e</sup> doigt sur le côté</b> : le disque part vers ton doigt, puis la courbe le ramène (suis la trajectoire).',
       joy: 'Un défenseur bloque la ligne droite. Règle la <b>courbe</b> avec le curseur du bord droit, puis lance à côté de lui.',
       pad: 'Un défenseur bloque la ligne droite. Ajoute de la <b>courbe</b> avec LB / RB, puis lance à côté de lui.'
     },

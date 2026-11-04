@@ -13,12 +13,12 @@ function allyAim() {
 }
 function drawAim(h, px, py, curve, kind, aiming, ally) {
   kind = loftOf(kind); const K = throwK(kind);
-  let tx = px, ty = py, dx = tx - h.x, dy = ty - h.y, d = Math.hypot(dx, dy) || 0.01;
+  let [tx, ty] = launchAim(h, px, py, curve), dx = tx - h.x, dy = ty - h.y, d = Math.hypot(dx, dy) || 0.01;   // la souris : direction de départ (wind.js)
   if (d > K.max) { tx = h.x + dx / d * K.max; ty = h.y + dy / d * K.max; d = K.max; }
   if (d < K.min && d >= CANCEL_R) { tx = h.x + dx / d * K.min; ty = h.y + dy / d * K.min; d = K.min; }
   const [sx, sy] = releasePoint(h, tx, ty), [cx, cy] = ctrlFor(sx, sy, tx, ty, curve);
-  const dur = throwDur(h.x, h.y, tx, ty, kind);
-  const [wx, wy] = drift(dur, kind), ex = tx + wx, ey = ty + wy;
+  const bw = bankWind(h.x, h.y, tx, ty, curve, kind), dur = throwDur(h.x, h.y, tx, ty, kind, curve);
+  const [wx, wy] = drift(dur, kind, bw), ex = tx + wx, ey = ty + wy;
   ctx.save();
   const cancel = aiming && dist(px, py, h.x, h.y) < CANCEL_R;
   ctx.globalAlpha = (cancel ? 0.3 : !ally && kindLocked() ? 0.35 : 1) * (ally ? 0.6 : 1);   // changement de passe en cours : aperçu estompé
@@ -100,7 +100,7 @@ function drawCone(G_, u0, r, alpha, zf) {
 }
 // trajectoire colorée selon la hauteur (visée du lanceur, pull) ; une passe en vol ne montre que son cône (drawCone)
 function drawFlightPath(sx, sy, cx, cy, ex, ey, peak, u0, alpha, width, dash, kind, curve) {
-  const step = 0.025, len = dist(sx, sy, ex, ey), iso = isoView(), keep = isoText, wa = kind === 'pull' ? 0 : windAlong(sx, sy, ex, ey);
+  const step = 0.025, len = dist(sx, sy, ex, ey), iso = isoView(), keep = isoText, wa = kind === 'pull' ? 0 : windAlong(sx, sy, ex, ey) + bankWind(sx, sy, ex, ey, curve, kind).lift;
   const Gp = v => bez(sx, sy, cx, cy, ex, ey, v);
   if (iso) {                                                 // vue inclinée : l'ombre de la trajectoire au sol…
     ctx.save(); ctx.strokeStyle = `rgba(10,30,18,${0.55 * alpha})`; ctx.lineWidth = width + 1; ctx.lineCap = 'round'; ctx.beginPath();

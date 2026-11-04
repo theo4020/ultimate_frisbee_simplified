@@ -51,13 +51,30 @@ function drawStreaks() {
   }
   ctx.restore();
 }
-// Temps de vol : un disque lancé contre le vent flotte plus longtemps, avec le vent il file
-function throwDur(sx, sy, ax, ay, kind) {
+// Vent de côté et inclinaison du disque : une passe courbée est lâchée penchée, le bord intérieur de la courbe plus bas.
+// Un vent qui souffle vers l'intérieur de la courbe arrive par en dessous : il porte le disque (il descend plus lentement,
+// plane un peu plus longtemps et se laisse emporter davantage). Un vent qui souffle vers l'extérieur tape le dessus :
+// il le plaque (il descend plus vite, dérive moins). Disque à plat (sans courbe) : le vent le pousse seulement de côté.
+//   cross : vent vers l'intérieur de la courbe (m/s) · lift : portance (comme un vent de face, voir heightAt)
+//   k : dérive (×) · kd : temps de vol (×)
+const BANK = { LIFT: 0.8, DRIFT: 0.07, DUR: 0.008 };
+const NO_BANK = { cross: 0, lift: 0, k: 1, kd: 1 };
+function bankWind(sx, sy, ax, ay, curve, kind) {
+  const c = Math.min(1, Math.abs(curve || 0)) * (1 - 0.6 * loftW(loftOf(kind === undefined ? LOFT.N : kind)));   // passe haute : lâchée plus à plat
+  if (!c || (typeof G !== 'undefined' && G.tuto) || !G.wind) return NO_BANK;
+  const dx = ax - sx, dy = ay - sy, d = Math.hypot(dx, dy) || 1, s = Math.sign(curve);
+  // intérieur de la courbe : à l'opposé du renflement de la trajectoire (ctrlFor), là où le disque tourne
+  const cross = G.wind.x * (dy / d * s) + G.wind.y * (-dx / d * s);
+  return { cross, lift: BANK.LIFT * cross * c, k: clamp(1 + BANK.DRIFT * cross * c, 0.55, 1.6), kd: clamp(1 + BANK.DUR * cross * c, 0.9, 1.12) };
+}
+// Temps de vol : un disque lancé contre le vent flotte plus longtemps, avec le vent il file (porté de côté : un peu plus long)
+function throwDur(sx, sy, ax, ay, kind, curve) {
   const d = dist(sx, sy, ax, ay) || 0.01, [wx, wy] = windNow();
   const along = (wx * (ax - sx) + wy * (ay - sy)) / d;       // > 0 : vent dans le dos du lanceur
-  return flightTime(d) * clamp(1 - 0.01 * along, 0.85, 1.15) * throwK(kind).dur;
+  return flightTime(d) * clamp(1 - 0.01 * along, 0.85, 1.15) * throwK(kind).dur * (curve ? bankWind(sx, sy, ax, ay, curve, kind).kd : 1);
 }
-function drift(dur, kind) { const [wx, wy] = windNow(), k = dur * DRIFT * throwK(kind).drift; return [wx * k, wy * k]; }
+// dérive du vent pendant le vol (bw : effet de l'inclinaison, voir bankWind) ; elle grandit au fil du vol (sim.js : bez)
+function drift(dur, kind, bw) { const [wx, wy] = windNow(), k = dur * DRIFT * throwK(kind).drift * (bw ? bw.k : 1); return [wx * k, wy * k]; }
 function windLabel() {
   const { x, y, kmh } = G.wind;
   if (kmh < 4) return 'presque nul';
@@ -66,10 +83,18 @@ function windLabel() {
   return k + (y < 0 ? ', de côté (vers le haut)' : ', de côté (vers le bas)');
 }
 // Où viser pour que le disque arrive en (tx, ty) malgré le vent
-function aimFor(h, tx, ty, kind) {
+function aimFor(h, tx, ty, kind, curve) {
   let ax = tx, ay = ty;
-  for (let i = 0; i < 3; i++) { const [dx, dy] = drift(throwDur(h.x, h.y, ax, ay, kind), kind); ax = tx - dx; ay = ty - dy; }
+  for (let i = 0; i < 3; i++) { const bw = bankWind(h.x, h.y, ax, ay, curve, kind), [dx, dy] = drift(throwDur(h.x, h.y, ax, ay, kind, curve), kind, bw); ax = tx - dx; ay = ty - dy; }
   return [ax, ay];
+}
+// visée d'un joueur : la souris donne la direction de départ du disque (et la distance) ; la courbe l'écarte ensuite de
+// cette direction. Point d'arrivée (sans vent) : la direction de la souris tournée de l'angle de départ de la courbe
+// (ctrlFor : le disque part à atan(0,8 × courbe) de la corde), à la même distance
+function launchAim(h, mx, my, curve) {
+  const c = clamp(curve || 0, -1, 1); if (!c || !h) return [mx, my];
+  const vx = mx - h.x, vy = my - h.y, th = Math.atan(0.8 * c), co = Math.cos(th), si = Math.sin(th);
+  return [h.x + vx * co + vy * si, h.y - vx * si + vy * co];
 }
 // côté « break » (bloqué par la mark) : -1 = haut du terrain (y petit), +1 = bas
 function forceOf(defT) {
