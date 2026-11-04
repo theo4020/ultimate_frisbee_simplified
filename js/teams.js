@@ -12,7 +12,7 @@ function teamInfoRaw(t) {
   if (G.series && t !== G.me) return { name: serOpp().name, color: serOpp().color };
   const c = captain(t);
   if (c) { const cf = cfg(t); return { name: cf.tname || DEFAULT_TEAMS[t].name, color: PALETTE[cf.tcol] ? cf.tcol : DEFAULT_TEAMS[t].color }; }
-  if (!G.net && G.attract && t === 0) return { name: G.form.tname || DEFAULT_TEAMS[0].name, color: PALETTE[G.form.tcol] ? G.form.tcol : DEFAULT_TEAMS[0].color };
+  if (!G.net && (G.attract || G.watchOn) && t === 0) return { name: G.form.tname || DEFAULT_TEAMS[0].name, color: PALETTE[G.form.tcol] ? G.form.tcol : DEFAULT_TEAMS[0].color };
   if (!G.net) return { name: G.form.oname || DEFAULT_TEAMS[t].name, color: PALETTE[G.form.ocol] ? G.form.ocol : DEFAULT_TEAMS[t].color };
   return DEFAULT_TEAMS[t];
 }
