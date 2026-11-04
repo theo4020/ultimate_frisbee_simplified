@@ -130,8 +130,10 @@ function refreshOptions() {
   if (G.tabMode !== watchAllowed()) applyWatch();
   oppAutoShow();
   if (G.tabMode) watchSync();
-  $('rowWatch').style.display = watchAllowed() && (G.lastMenu === 'first' || G.lastMenu === 'over') ? '' : 'none';
+  $('rowWatch').style.display = watchAllowed() && (G.lastMenu === 'first' || G.lastMenu === 'over' || G.watchOn) ? '' : 'none';   // (en spectateur : aussi entre les points, pour la vitesse)
   $('descWatch').textContent = G.form.watch === 'oui' ? 'L’IA joue des deux côtés ; choisis en haut l’équipe dont tu règles la stratégie (formation, défense, plays, niveau).' : '';
+  if (!G.form.wspeed) G.form.wspeed = '1';
+  $('rowWSpeed').style.display = G.form.watch === 'oui' ? '' : 'none';
   $('watchTabs').style.display = G.tabMode ? '' : 'none';
   $('oppAuto').style.display = G.tabMode && G.watchTab === 1 ? '' : 'none';
   $('oppAuto').textContent = G.oppCustom ? '↺ L’IA choisit' : 'Choisie par l’IA';

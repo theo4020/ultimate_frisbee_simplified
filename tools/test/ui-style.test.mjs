@@ -251,6 +251,9 @@ export default async function (t) {
       for (let k = 0; k < 400 && G.phase !== 'play'; k++) await wait(50);
       await wait(1500);
       r.play = G.phase === 'play'; r.noHuman = !canThrow() && !TEAMS[0].concat(TEAMS[1]).some(q => controllerOf(q)); r.forms = [formOf(0), formOf(1)];
+      const fr = () => new Promise(q => requestAnimationFrame(q)), per = async () => { let a = G.gt, n = 0; for (let k = 0; k < 30; k++) { await fr(); n++; } return (G.gt - a) / n; };   // temps de jeu par image
+      const k1 = await per(); G.form.wspeed = '4'; const k4 = await per(); G.form.wspeed = '1';
+      r.speedUp = { k1: +k1.toFixed(4), k4: +k4.toFixed(4) };
       leaveToMenu(); await wait(100);
       r.after = { watch: G.form.watch, off: G.form.off, spec: G.spectator };
       return r;
@@ -258,6 +261,7 @@ export default async function (t) {
     t.ok(wt.spec && wt.tabs && wt.rows, 'avant le match, « Je regarde » : onglets Bleus / Rouges, les réglages restent visibles', wt);
     t.ok(wt.blue && wt.red && wt.saved, 'chaque onglet règle son équipe (et tes réglages enregistrés restent ceux des Bleus)', wt);
     t.ok(wt.play && wt.noHuman && wt.forms[0] !== 'ho' && wt.forms[1] === 'ho', 'le match se joue IA contre IA, avec les stratégies choisies', wt);
+    t.ok(wt.speedUp.k1 > 0 && wt.speedUp.k4 > 3 * wt.speedUp.k1, 'spectateur accéléré ×4 : le jeu avance environ 4 fois plus vite par image', wt.speedUp);
     t.ok(wt.after.watch === 'non' && wt.after.off !== 'ho' && !wt.after.spec, 'retour au menu : tu rejoues normalement, avec tes réglages', wt);
     t.group('Toss quand la première attaque est au hasard');
     const ts = await p.evaluate(async () => {

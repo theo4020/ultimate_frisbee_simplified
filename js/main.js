@@ -61,13 +61,19 @@ function frame(now, visible) {
     if (hk !== G.lastHk) { G.lastHk = hk; sendInput(true); }
   }
   else {
-    if ((G.paused && !G.net) || G.pz) { /* pause (solo : menu ou confirmation ouverts ; en ligne : pause pour tous) */ }
-    else if (G.phase === 'play') { G.gt += gdt; update(gdt); }
-    else if (G.phase === 'pull') pullTick(dt, gdt);
-    else if (G.phase === 'between' || G.phase === 'over') {
-      if (G.menuShown && G.phase === 'between' && !G.attract) regroupTick(gdt); else if (ringOn()) ringTick(gdt); else celebrateTick(gdt);   // fin de match : la ronde (moments.js)
-      if (G.attract) attractTick(dt);
-      else if (!G.menuShown) { G.betweenT -= dt; if (G.betweenT <= 0) showMenu(G.phase); }
+    // mode spectateur accéléré (×2, ×4, ×8) : le jeu fait plusieurs pas par image (même précision qu'à vitesse normale)
+    const reps = G.watchOn && !G.net && !G.menuShown ? Math.max(1, Math.min(8, +G.form.wspeed || 1)) : 1;
+    for (let r = 0; r < reps; r++) {
+      if (r) G.time += dt;
+      if ((G.paused && !G.net) || G.pz) { /* pause (solo : menu ou confirmation ouverts ; en ligne : pause pour tous) */ }
+      else if (G.phase === 'play') { G.gt += gdt; update(gdt); }
+      else if (G.phase === 'pull') pullTick(dt, gdt);
+      else if (G.phase === 'between' || G.phase === 'over') {
+        if (G.menuShown && G.phase === 'between' && !G.attract) regroupTick(gdt); else if (ringOn()) ringTick(gdt); else celebrateTick(gdt);   // fin de match : la ronde (moments.js)
+        if (G.attract) attractTick(dt);
+        else if (!G.menuShown) { G.betweenT -= dt; if (G.betweenT <= 0) showMenu(G.phase); }
+      }
+      if (r) fxUpdate(dt);
     }
     if (G.net === 'host') { netT += dt; if (netT >= 0.05) { netT = 0; sendSnapshot(); } }
   }

@@ -10,7 +10,7 @@ const NEW_URL = 'https://' + NEW_HOST + '/';
 const NEWS = [
   { id: 45, date: '2026-11-04', tag: 'Jeu', title: 'Mode spectateur 👀',
     body: `• Match rapide : l'onglet de l'adversaire te laisse régler <b>sa stratégie</b> si tu veux (sinon l'IA choisit, comme avant).<br>
-      • Ou choisis <b>« Je regarde »</b> avant le match : l'IA joue des deux côtés.<br>
+      • Ou choisis <b>« Je regarde »</b> avant le match : l'IA joue des deux côtés, en accéléré si tu veux (jusqu'à ×8).<br>
       • Les attaquants IA ne restent plus collés les uns aux autres.` },
   { id: 43, date: '2026-10-30', tag: 'Jeu', title: 'Départ, toss et nouveaux menus 🎲',
     body: `• <b>Départ au signal</b> pour tous ceux qui ne pullent pas : trop tôt, c'est <b>offside</b>.<br>
