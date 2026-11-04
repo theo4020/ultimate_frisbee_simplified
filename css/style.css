@@ -89,9 +89,6 @@ button:hover{filter:brightness(1.15)}
 .card div.back{background:var(--panel)}
 #lobbyCard{position:relative}
 #stratCard{position:relative}
-.halloBtn{position:absolute;top:10px;right:12px;padding:2px 6px;font-size:20px;line-height:1;background:transparent;border:1px solid transparent;border-radius:10px;opacity:.55;filter:grayscale(.6)}
-#halloB small,#halloB2 small,.halloBtn small{font-size:10px;font-weight:800;color:#fdba74;margin-left:3px;vertical-align:middle}
-#halloB.on,.halloBtn.on{opacity:1;filter:none;border-color:#f97316;box-shadow:0 0 12px rgba(249,115,22,.7);background:rgba(249,115,22,.15)}
 .stratFoot{display:flex;flex-direction:column;gap:6px;margin-top:8px}
 .card p{margin:6px 0 14px;color:var(--muted);line-height:1.45}
 .row{display:flex;align-items:center;gap:8px;margin:10px 0 4px;flex-wrap:wrap}
@@ -639,3 +636,6 @@ body.touch .bigbtn{font-size:17px}
 .watchTabs span{color:var(--muted);font-size:13px;white-space:nowrap}
 .wtab{flex:1;margin:0;padding:8px 10px;border-radius:10px;border:2px solid var(--tc,#38bdf8);background:#0f1626;color:var(--text);font-weight:800;font-family:'Barlow Condensed',system-ui,sans-serif;font-size:16px;text-transform:uppercase;letter-spacing:.4px}
 .wtab.on{background:var(--tc,#38bdf8);color:#fff}
+.oppAuto{display:block;margin:0 0 6px auto;width:auto;padding:5px 12px;font-size:13px;border-radius:14px;background:#0f1626;border:1px solid #334155;color:var(--text)}
+.oppAuto.on{border-color:#facc15;color:#facc15;cursor:default}
+

@@ -9,7 +9,8 @@ const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
   { id: 45, date: '2026-11-04', tag: 'Jeu', title: 'Mode spectateur 👀',
-    body: `• Match rapide : choisis <b>« Je regarde »</b> avant le match. L'IA joue des deux côtés et tu règles la stratégie de chaque équipe.<br>
+    body: `• Match rapide : l'onglet de l'adversaire te laisse régler <b>sa stratégie</b> si tu veux (sinon l'IA choisit, comme avant).<br>
+      • Ou choisis <b>« Je regarde »</b> avant le match : l'IA joue des deux côtés.<br>
       • Les attaquants IA ne restent plus collés les uns aux autres.` },
   { id: 43, date: '2026-10-30', tag: 'Jeu', title: 'Départ, toss et nouveaux menus 🎲',
     body: `• <b>Départ au signal</b> pour tous ceux qui ne pullent pas : trop tôt, c'est <b>offside</b>.<br>
@@ -95,12 +96,6 @@ const NEWS = [
       • nouveau défi <b>« Lire le cône »</b> : cours sous une passe en devinant où elle tombe dans le cercle d'arrivée ;<br>
       • les étapes suivent les dernières nouveautés (hauteur de passe, commandes à jour) ;<br>
       • à la fin, un bilan de tes étoiles… et un match contre <b>l'équipe du coach</b>.` },
-  { id: 28, date: '2026-10-26', tag: 'Événement', title: 'Mode Halloween 🎃',
-    body: `Touche la <b>petite citrouille</b> en haut du menu principal pour passer en mode Halloween : en match, le terrain
-      est plongé dans le noir et tu ne vois que dans un <b>cône</b>, dans la direction de ta souris (ou de ton joystick
-      au téléphone), plus un petit halo autour de ton joueur. Tourne la souris pour regarder partout et comprendre ce qui
-      se passe… comme les joueurs IA, qui ne voient eux aussi que ce qu'ils regardent. Touche à nouveau la citrouille pour
-      revenir à la normale. Pendant le vol, tu vois par les yeux de ton receveur, qui regarde là où il court.` },
   { id: 27, date: '2026-10-26', tag: 'IA', title: 'Des IA qui ne voient pas tout 👀',
     body: `Toi, tu vois tout le terrain d'en haut. Les joueurs IA, eux, ne connaissent plus que <b>ce qu'ils ont vu</b> :<br>
       • ils regardent dans une direction (le porteur balaie le terrain, les autres suivent le disque) et ne voient que ce qui

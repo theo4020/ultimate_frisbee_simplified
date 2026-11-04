@@ -81,7 +81,6 @@
   <div class="askBtns"><button id="askNo">Annuler</button><button id="askYes" class="danger">Quitter</button></div></div></div>
 <div id="overlay">
   <div class="card" id="lobbyCard">
-    <button id="halloB" class="halloBtn" title="Mode Halloween">🎃</button>
     <h1>Ultimate Frisbee 🥏</h1>
     <div class="row namerow"><span>Ton pseudo</span><input id="pname" class="tname" maxlength="12" placeholder="Joueur" autocomplete="off" spellcheck="false"><button id="accB" class="ghost">👤 Créer un compte</button></div>
     <div id="lobbyHome">
@@ -310,7 +309,6 @@
     <button class="bigbtn primary" id="tossGo" style="display:none">Jouer le point ▶</button>
   </div>
   <div class="card" id="stratCard" style="display:none">
-    <button id="halloB2" class="halloBtn" title="Mode Halloween">🎃</button>
     <h1 id="ovTitle">Ultimate Frisbee</h1>
     <div id="ovBoard" class="sumBoard" style="display:none"></div>
     <p id="ovText">Premier à 5 points. Tu joues les Bleus et tu attaques vers la droite.</p>
@@ -324,6 +322,7 @@
       <button id="newbieOpts" class="ghost">⚙️ Voir les réglages de l’équipe</button>
     </div>
     <div id="watchTabs" class="watchTabs" style="display:none"><span>Stratégie des</span><button class="wtab" data-t="0"></button><button class="wtab" data-t="1"></button></div>
+    <button id="oppAuto" class="oppAuto" style="display:none"></button>
     <div id="stratRows">
     <details class="ssec" id="secAtk"><summary><span class="sti">⚔️</span><b>Attaque</b><small id="secAtkSum"></small></summary>
       <div class="ssecBody">
@@ -371,7 +370,7 @@
       <div class="row"><span>Pull</span><span class="pullOpts" id="pullerOpts"></span></div>
       <div class="desc" id="descPuller"></div>
     </div>
-    <div class="row"><span id="allyLbl">Coéquipiers IA</span>
+    <div class="row" id="rowAlly"><span id="allyLbl">Coéquipiers IA</span>
       <button class="opt" data-g="allyLevel" data-v="facile">Facile</button>
       <button class="opt" data-g="allyLevel" data-v="normal">Normal</button>
       <button class="opt" data-g="allyLevel" data-v="difficile">Difficile</button>

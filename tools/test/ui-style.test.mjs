@@ -132,9 +132,6 @@ export default async function (t) {
       return { before, after: G.curve };
     });
     t.ok(cv.before > 0.5 && cv.after === 0, 'après ta passe, la courbe revient à zéro pour la suivante', cv);
-    const hw = await p.evaluate(() => { const was = HALLO.on, b = document.getElementById('halloB2'); const inCard = !!b && b.closest('#stratCard') !== null;
-      b.click(); const on = HALLO.on !== was && b.classList.contains('on') === HALLO.on; b.click(); return { inCard, on, back: HALLO.on === was }; });
-    t.ok(hw.inCard && hw.on && hw.back, 'la citrouille du mode Halloween est aussi dans le menu entre les points', hw);
 
     t.group('Écran de fin : panneau du score, moment du match, équipes, joueurs en ligne');
     const sm = await p.evaluate(() => {
@@ -223,6 +220,22 @@ export default async function (t) {
     t.ok(vo.saved.fx === 40 && vo.saved.music === 0 && vo.saved.crowd === 25 && vo.label === 'Coupé', 'trois curseurs de volume dans Commandes, gardés dans le navigateur', vo);
     t.ok(!vo.ctx || (vo.sfx === 0.4 && vo.music === 0 && vo.cfx === 0.25), 'les volumes s’appliquent (effets, musique, réactions du public)', vo);
 
+    t.group('Match rapide : stratégie de l’adversaire');
+    const op = await p.evaluate(async () => {
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      goMainMenu(); await wait(200);
+      document.getElementById('soloMenuB').click(); document.getElementById('soloB').click(); await wait(200);
+      const r = { tabs: document.getElementById('watchTabs').offsetParent !== null, auto: cfg(1) === G.ai };
+      document.querySelector('.wtab[data-t="1"]').click(); await wait(50);
+      r.shows = G.form.off === G.ai.off && document.getElementById('oppAuto').textContent.includes('IA');
+      const other = ['vert', 'ho', 'side'].find(x => x !== G.ai.off); const sel = document.getElementById('selOff'); sel.value = other; sel.dispatchEvent(new Event('change'));
+      r.custom = cfg(1).off === other && cfg(1) !== G.ai && cfg(0).off !== undefined && !G.spectator;
+      document.getElementById('oppAuto').click(); await wait(50);
+      r.back = cfg(1) === G.ai; document.querySelector('.wtab[data-t="0"]').click();
+      return r;
+    });
+    t.ok(op.tabs && op.auto && op.shows, 'en jouant aussi : onglet de l’adversaire, sa stratégie choisie par l’IA par défaut', op);
+    t.ok(op.custom && op.back, 'tu peux la changer (il joue tes choix), et « L’IA choisit » revient comme avant', op);
     t.group('Mode spectateur : l’IA contre l’IA, tu règles les deux équipes');
     const wt = await p.evaluate(async () => {
       const wait = ms => new Promise(r => setTimeout(r, ms));

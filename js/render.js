@@ -614,7 +614,6 @@ function draw() {
 
   drawParticles();
   drawWeatherSky();                                         // pluie, flocons, brume : très légers, par-dessus
-  drawHalloween();                                          // mode Halloween : le noir, sauf dans son cône de vision
   drawPullUI();
   drawStartUI();                                            // feux du départ au pull, bandeau du check
   screenT();                                                // la suite (messages) se dessine à l'écran, pas au sol

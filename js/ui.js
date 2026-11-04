@@ -99,14 +99,18 @@ function updateHud() {
   resize();
 }
 
-// ---------- mode spectateur (match rapide) : l'IA joue des deux côtés, tu règles la stratégie de chaque équipe ----------
-// Les réglages affichés (G.form) sont ceux de l'équipe de l'onglet choisi ; ceux de l'autre équipe attendent dans G.stratR.
+// ---------- match rapide : stratégie des deux équipes (onglets), et mode spectateur (l'IA joue des deux côtés) ----------
+// Par défaut, l'IA choisit la stratégie de l'adversaire à chaque point, comme avant ; dès que tu règles quelque chose dans
+// son onglet, il joue tes choix (« ↺ L'IA choisit » pour revenir). Les réglages affichés (G.form) sont ceux de l'onglet
+// choisi ; ceux de l'autre équipe attendent dans G.stratR.
 const STRAT_KEYS = ['off', 'def', 'force', 'play', 'play1', 'play2', 'dplay', 'restart', 'flow', 'huck', 'high', 'risk', 'help', 'osys', 'dsys', 'p1sys', 'p2sys', 'allyLevel'];
 const watchAllowed = () => !G.net && !G.series && !G.tuto && !G.practice;
+const aiStrat = () => { const o = {}; for (const k of STRAT_KEYS) o[k] = k === 'allyLevel' ? G.form.level : k in G.ai ? G.ai[k] : DEFAULT_CFG[k] || null; return o; };
 function applyWatch() {
   const on = G.form.watch === 'oui' && watchAllowed();
-  if (on && !G.stratR) { G.stratR = {}; for (const k of STRAT_KEYS) G.stratR[k] = k === 'allyLevel' ? G.form.level : k in G.ai ? G.ai[k] : G.form[k]; }
-  if (!on && G.watchOn) watchTab(0);
+  G.tabMode = watchAllowed();
+  if (G.tabMode && !G.stratR) G.stratR = aiStrat();
+  if (!G.tabMode && G.watchTab) watchTab(0);
   G.watchOn = on; watchSync();
   if (!G.net && G.humans.length === 1) { G.humans[0].team = on ? -1 : 0; G.humans[0].sel = null; syncMe(); }
 }
@@ -115,15 +119,25 @@ function watchTab(t) {
   const was = {}; for (const k of STRAT_KEYS) { was[k] = G.form[k]; G.form[k] = G.stratR[k]; }
   G.stratR = was; G.watchTab = t; watchSync();
 }
+// l'adversaire n'a pas été réglé : son onglet montre ce que l'IA a choisi pour ce point
+function oppAutoShow() { if (G.tabMode && !G.oppCustom && G.watchTab === 1) Object.assign(G.form, aiStrat()); }
 function watchSync() { G.cfgOther = G.stratR ? Object.assign({}, G.form, G.stratR) : G.form; }   // réglages complets de l'autre équipe
-function watchOff() { if (G.watchOn || G.watchTab) { G.form.watch = 'non'; applyWatch(); } }
-document.querySelectorAll('.wtab').forEach(b => b.addEventListener('click', () => { watchTab(+b.dataset.t); refreshOptions(); }));
+function watchOff() { if (G.watchOn || G.watchTab || G.tabMode) { G.form.watch = 'non'; watchTab(0); G.oppCustom = false; G.stratR = null; G.tabMode = false; applyWatch(); } }
+$('oppAuto').addEventListener('click', () => { if (G.oppCustom) { G.oppCustom = false; refreshOptions(); } });
+document.querySelectorAll('.wtab').forEach(b => b.addEventListener('click', () => { if (!G.stratR) applyWatch(); watchTab(+b.dataset.t); refreshOptions(); }));
 function refreshOptions() {
   if (!G.form.watch) G.form.watch = 'non';
-  if (G.watchOn) watchSync();
+  if (G.tabMode !== watchAllowed()) applyWatch();
+  oppAutoShow();
+  if (G.tabMode) watchSync();
   $('rowWatch').style.display = watchAllowed() && (G.lastMenu === 'first' || G.lastMenu === 'over') ? '' : 'none';
   $('descWatch').textContent = G.form.watch === 'oui' ? 'L’IA joue des deux côtés ; choisis en haut l’équipe dont tu règles la stratégie (formation, défense, plays, niveau).' : '';
-  $('watchTabs').style.display = G.watchOn ? '' : 'none';
+  $('watchTabs').style.display = G.tabMode ? '' : 'none';
+  $('oppAuto').style.display = G.tabMode && G.watchTab === 1 ? '' : 'none';
+  $('oppAuto').textContent = G.oppCustom ? '↺ L’IA choisit' : 'Choisie par l’IA';
+  $('oppAuto').classList.toggle('on', !G.oppCustom);
+  $('rowAlly').style.display = $('descAlly').style.display = G.watchTab === 1 && !G.watchOn ? 'none' : '';   // (niveau de l'adversaire : « IA adverse », dans Match)
+  $('rowPuller').style.display = G.watchTab === 1 ? 'none' : '';
   document.querySelectorAll('.wtab').forEach(b => { b.textContent = tn(+b.dataset.t); b.classList.toggle('on', +b.dataset.t === (G.watchTab || 0)); b.style.setProperty('--tc', tcol(+b.dataset.t)); });
   $('allyLbl').textContent = G.watchOn ? 'Niveau de l’équipe' : 'Coéquipiers IA';
   renderPullerRow();
@@ -376,6 +390,7 @@ function shareCfg() {
   if (G.net === 'guest' && c && c.id === G.myId && !G.spectator) netSend({ t: 'cfg', cfg: myCfg() });
 }
 function setOpt(g, v) {
+  if (G.tabMode && G.watchTab === 1 && STRAT_KEYS.includes(g)) G.oppCustom = true;   // tu règles l'adversaire : il joue tes choix
   if (g === 'off') G.form.osys = null;                         // une formation de base remplace le système perso
   if (g === 'def') G.form.dsys = null;
   G.form[g] = v;
