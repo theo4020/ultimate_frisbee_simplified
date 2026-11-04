@@ -540,6 +540,18 @@ export default async function (t, { quick }) {
   })()`);
   t.ok(bk.flat.lift === 0 && bk.under.lift > 0 && bk.over.lift < 0 && bk.under.drift > bk.flat.drift && bk.over.drift < bk.flat.drift,
     'vent de côté : par en dessous du disque penché, il le porte (plus haut, plus emporté) ; sur le dessus, il le plaque (moins emporté)', bk);
+  t.group('Vent le long du trajet : face au vent le disque ralentit, vent dans le dos il accélère');
+  const fl = R(`(() => {
+    const run = w => {
+      G.wind = w; G.gt = 0; const h = TEAMS[0][0]; h.x = 70; h.y = 18; h.vx = h.vy = 0; holdDisc(h);
+      throwDisc(h, 45, 18, -0.8, 0, LOFT.N); disc.fly = null;          // de droite à gauche, la courbe passe par le bas
+      const L = (a, b) => { let d = 0, p = discAt(a); for (let k = 1; k <= 20; k++) { const q = discAt(a + (b - a) * k / 20); d += dist(p[0], p[1], q[0], q[1]); p = q; } return d; };
+      const r = { first: L(0, 0.5), second: L(0.5, 1), end: discAt(1), ex: [disc.ex, disc.ey] }; disc.mode = 'dead'; return r;
+    };
+    const keep = G.wind, a = run({ x: 0, y: 0, kmh: 0 }), b = run({ x: 0, y: -6.9, kmh: 25 }); G.wind = keep;
+    return { calme: [+a.first.toFixed(1), +a.second.toFixed(1)], vent: [+b.first.toFixed(1), +b.second.toFixed(1)], fin: Math.hypot(b.end[0] - b.ex[0], b.end[1] - b.ex[1]) };
+  })()`);
+  t.ok(fl.vent[0] < fl.calme[0] && fl.vent[1] > fl.calme[1] * 1.2 && fl.fin < 0.05, 'courbe par le bas avec un vent qui monte : il va moins loin quand il descend face au vent, plus loin quand il remonte vent dans le dos (et arrive au même endroit)', fl);
   t.group('IA : pas de passe vers un souvenir');
   const ghost = R(`(() => {
     const oT = throwDisc; let n = 0, far = [];

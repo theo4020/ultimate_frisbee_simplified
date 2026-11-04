@@ -37,7 +37,7 @@ function makeGuesses(thrower) {
 // point de la trajectoire restante (v ≥ maintenant) tel que le joueur p le croit : la vraie trajectoire, qui glisse vers
 // son arrivée supposée (son erreur fond avec le cône)
 function seenAt(p, v) {
-  const [x, y] = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, v), g = p && p.guess;
+  const [x, y] = discAt(v), g = p && p.guess;
   if (!g || disc.pull || disc.mode !== 'air') return [x, y];
   const u = disc.t / disc.dur, s = coneLeft(), w = u >= 1 ? 1 : clamp((v - u) / (1 - u), 0, 1);
   return [x + g[0] * s * w, y + g[1] * s * w];

@@ -225,7 +225,7 @@ function update(dt) {
   } else if (disc.mode === 'air') {
     disc.t += dt;
     const u = Math.min(1, disc.t / disc.dur);
-    [disc.x, disc.y] = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u);
+    [disc.x, disc.y] = discAt(u);
     disc.z = discZ(u);
     if (!disc.pull) aiJumps(u);
     // qui peut toucher le disque à cet instant ?
@@ -329,7 +329,7 @@ function update(dt) {
 function crossPoint() {
   let last = [disc.sx, disc.sy];
   for (let u = 0; u <= 1.0001; u += 0.01) {
-    const q = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u);
+    const q = discAt(u);
     if (!inField(q[0], q[1])) break;
     last = q;
   }

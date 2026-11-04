@@ -376,7 +376,7 @@ const TUTO_STEPS = [
       const u0 = disc.t / disc.dur;                             // point de la trajectoire le plus proche de toi, à portée d'un plongeon
       let bu = -1, bd = 2.8;
       for (let u = u0; u <= 1; u += 0.01) {
-        const [x, y] = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, u), d = dist(x, y, me.x, me.y);
+        const [x, y] = discAt(u), d = dist(x, y, me.x, me.y);
         if (d < bd && discZ(u) < REACH_DIVE) { bd = d; bu = u; }
       }
       if (bu >= 0 && (bu - u0) * disc.dur <= DIVE_T + 0.03) { T.cued = true; flash('PLONGE ! 🥏', true); }   // le disque y arrive à la fin du plongeon

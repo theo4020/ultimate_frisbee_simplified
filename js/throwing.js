@@ -65,7 +65,7 @@ function throwDisc(h, tx, ty, curve, errScale, kind) {
   const [sx, sy] = releasePoint(h, ax, ay), [cx, cy] = ctrlFor(sx, sy, ax, ay, curve);
   disc.mark = (G.tuto && !G.tuto.mark) || G.practice ? null : markOf(h);           // elle peut se fendre vers le disque au lâcher (sim.js)
   Object.assign(disc, { mode: 'air', holder: null, sx, sy, ex, ey, cx, cy,
-    t: 0, dur, thrower: h, team: h.team, rolled: new Set(), bd: new Map(), wa: windAlong(sx, sy, ex, ey) + bw.lift, kind: loftLabel(loft), loft, curveV: curve, pull: false,
+    t: 0, dur, thrower: h, team: h.team, rolled: new Set(), bd: new Map(), wa: windAlong(sx, sy, ex, ey) + bw.lift, wdx: wx, wdy: wy, kind: loftLabel(loft), loft, curveV: curve, pull: false,
     rx: tx + wx0, ry: ty + wy0 });                                          // là où la passe devait arriver (sans erreur)
   // cône d'incertitude (voir CONE) : rayon au lâcher, décalage du cercle affiché, et l'idée que chacun se fait de l'arrivée
   const r0 = coneR(d, curve, loft, wx0, wy0), oa = rand(0, Math.PI * 2), om = r0 * CONE.SHOW * Math.sqrt(Math.random());

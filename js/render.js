@@ -418,7 +418,7 @@ function draw() {
     if (disc.pull || !disc.cone) drawFlightPath(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, discPeak(), u0, 0.7, 2.5, [5, 4], discKind(), disc.curveV);
     else {                                                   // en vol : seulement le cône (sans trajectoire), coloré selon la hauteur
       const ox = co[0] * s, oy = co[1] * s;
-      drawCone(v => { const [x, y] = bez(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, v), w = u0 >= 1 ? 1 : Math.max(0, (v - u0) / (1 - u0)); return [x + ox * w, y + oy * w]; },
+      drawCone(v => { const [x, y] = discAt(v), w = u0 >= 1 ? 1 : Math.max(0, (v - u0) / (1 - u0)); return [x + ox * w, y + oy * w]; },
         u0, disc.cone * s, 0.9, v => discZ(v));
     }
   }
