@@ -24,7 +24,7 @@ function drawAim(h, px, py, curve, kind, aiming, ally) {
   ctx.globalAlpha = (cancel ? 0.3 : !ally && kindLocked() ? 0.35 : 1) * (ally ? 0.6 : 1);   // changement de passe en cours : aperçu estompé
   // disque en main : la trajectoire et le cercle d'atterrissage (le cône n'apparaît qu'une fois le disque lancé)
   const er = coneR(d, curve, kind, wx, wy);
-  drawFlightPath(sx, sy, cx, cy, ex, ey, peakOf(dur, kind), 0, aiming ? 0.95 : 0.7, aiming ? 3 : 2, kind >= LOFT.HIGH ? [2, 5] : [6, 5], kind, curve);
+  drawFlightPath(sx, sy, cx, cy, ex, ey, peakOf(dur, kind), 0, aiming ? 0.95 : 0.7, aiming ? 3 : 2, kind >= LOFT.HIGH ? [2, 5] : [6, 5], kind, curve, { sx, sy, cx, cy, ex, ey, dur, wdx: wx, wdy: wy });
   ctx.strokeStyle = aiming ? 'rgba(250,204,21,.95)' : 'rgba(255,255,255,.75)'; ctx.lineWidth = 2;
   circle(X(ex), Y(ey), Math.max(er * S, 4)); ctx.fillStyle = 'rgba(255,255,255,.12)'; ctx.fill(); ctx.stroke();
   if (Math.hypot(wx, wy) > 0.6) {                         // croix = point visé, le vent emmène le disque jusqu'au cercle
@@ -99,9 +99,12 @@ function drawCone(G_, u0, r, alpha, zf) {
   ctx.restore();
 }
 // trajectoire colorée selon la hauteur (visée du lanceur, pull) ; une passe en vol ne montre que son cône (drawCone)
-function drawFlightPath(sx, sy, cx, cy, ex, ey, peak, u0, alpha, width, dash, kind, curve) {
-  const step = 0.025, len = dist(sx, sy, ex, ey), iso = isoView(), keep = isoText, wa = kind === 'pull' ? 0 : windAlong(sx, sy, ex, ey) + bankWind(sx, sy, ex, ey, curve, kind).lift;
-  const Gp = v => bez(sx, sy, cx, cy, ex, ey, v);
+// FP : la passe (le disque en vol, ou celle qu'on vise) — on dessine son vrai vol (vent le long du trajet, util.js)
+function drawFlightPath(sx, sy, cx, cy, ex, ey, peak, u0, alpha, width, dash, kind, curve, FP) {
+  const step = 0.025, len = dist(sx, sy, ex, ey), iso = isoView(), keep = isoText, wa = FP === disc ? disc.wa || 0 : kind === 'pull' ? 0 : windAlong(sx, sy, ex, ey) + bankWind(sx, sy, ex, ey, curve, kind).lift;
+  const T = FP ? flyTableFor(FP, FP === disc ? discZs : s => heightAt(discU(s), peak, kind, len, curve, wa)) : null;
+  const Gp = v => (T ? flyPos(T, flySOf(T, v)) : bez(sx, sy, cx, cy, ex, ey, v));
+  const Hz = v => (T ? heightAt(discU(flySOf(T, Math.min(1, v))), peak, kind, len, curve, wa) : heightAt(Math.min(1, v), peak, kind, len, curve, wa));
   if (iso) {                                                 // vue inclinée : l'ombre de la trajectoire au sol…
     ctx.save(); ctx.strokeStyle = `rgba(10,30,18,${0.55 * alpha})`; ctx.lineWidth = width + 1; ctx.lineCap = 'round'; ctx.beginPath();
     for (let u = u0; u <= 1.0001; u += step) { const [x, y] = Gp(Math.min(1, u)); if (u === u0) ctx.moveTo(X(x), Y(y)); else ctx.lineTo(X(x), Y(y)); }
@@ -112,11 +115,11 @@ function drawFlightPath(sx, sy, cx, cy, ex, ey, peak, u0, alpha, width, dash, ki
   }
   ctx.save(); if (iso) screenT();                             // … et la trajectoire elle-même, à sa vraie hauteur
   ctx.lineWidth = width; ctx.lineCap = 'round'; if (dash) ctx.setLineDash(dash);
-  const P = u => { const [x, y] = Gp(Math.min(1, u)); return iso ? [X(x), IY(y, heightAt(Math.min(1, u), peak, kind, len, curve, wa))] : [X(x), Y(y)]; };
+  const P = u => { const [x, y] = Gp(Math.min(1, u)); return iso ? [X(x), IY(y, Hz(u))] : [X(x), Y(y)]; };
   let [px, py] = P(u0);
   for (let u = u0 + step; u <= 1.0001; u += step) {
     const [x, y] = P(u), um = u - step / 2;
-    ctx.strokeStyle = heightColor(heightAt(um, peak, kind, len, curve, wa), alpha);
+    ctx.strokeStyle = heightColor(Hz(um), alpha);
     ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(x, y); ctx.stroke();
     px = x; py = y;
   }
@@ -415,7 +418,7 @@ function draw() {
     // passe : un cône qui se resserre pendant le vol ; le cercle d'arrivée (décalé, il contient l'arrivée réelle) devient
     // peu à peu un point — on devine où le disque tombera. Pull : trajectoire exacte.
     const s = coneLeft(), co = disc.coneOff || [0, 0];
-    if (disc.pull || !disc.cone) drawFlightPath(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, discPeak(), u0, 0.7, 2.5, [5, 4], discKind(), disc.curveV);
+    if (disc.pull || !disc.cone) drawFlightPath(disc.sx, disc.sy, disc.cx, disc.cy, disc.ex, disc.ey, discPeak(), u0, 0.7, 2.5, [5, 4], discKind(), disc.curveV, disc);
     else {                                                   // en vol : seulement le cône (sans trajectoire), coloré selon la hauteur
       const ox = co[0] * s, oy = co[1] * s;
       drawCone(v => { const [x, y] = discAt(v), w = u0 >= 1 ? 1 : Math.max(0, (v - u0) / (1 - u0)); return [x + ox * w, y + oy * w]; },

@@ -551,7 +551,15 @@ export default async function (t, { quick }) {
     const keep = G.wind, a = run({ x: 0, y: 0, kmh: 0 }), b = run({ x: 0, y: -6.9, kmh: 25 }); G.wind = keep;
     return { calme: [+a.first.toFixed(1), +a.second.toFixed(1)], vent: [+b.first.toFixed(1), +b.second.toFixed(1)], fin: Math.hypot(b.end[0] - b.ex[0], b.end[1] - b.ex[1]) };
   })()`);
-  t.ok(fl.vent[0] < fl.calme[0] && fl.vent[1] > fl.calme[1] * 1.2 && fl.fin < 0.05, 'courbe par le bas avec un vent qui monte : il va moins loin quand il descend face au vent, plus loin quand il remonte vent dans le dos (et arrive au même endroit)', fl);
+  t.ok(fl.vent[1] / fl.vent[0] > 1.3 * fl.calme[1] / fl.calme[0] && fl.fin < 0.05, 'courbe par le bas avec un vent qui monte : il va moins vite quand il descend face au vent, plus vite quand il remonte vent dans le dos (et arrive au même endroit)', fl);
+  const kink = R(`(() => { let worst = 0;
+    for (const [wx, wy] of [[0, -6], [6, 0], [4, 4], [-5, 3]]) for (const c of [-1, -0.5, 0, 0.5, 1]) for (const [tx, ty] of [[45, 18], [40, 5], [50, 30]]) {
+      G.wind = { x: wx, y: wy, kmh: 22 }; G.gt = 0; const h = TEAMS[0][0]; h.x = 70; h.y = 18; h.vx = h.vy = 0; holdDisc(h);
+      throwDisc(h, tx, ty, c, 0, LOFT.N); disc.fly = null; const N = 300, P = []; for (let k = 0; k <= N; k++) P.push(discAt(k / N));
+      for (let k = 1; k < N; k++) { const a = Math.atan2(P[k][1] - P[k-1][1], P[k][0] - P[k-1][0]), b = Math.atan2(P[k+1][1] - P[k][1], P[k+1][0] - P[k][0]); let d = Math.abs(b - a); if (d > Math.PI) d = 2 * Math.PI - d; worst = Math.max(worst, d / (Math.hypot(P[k+1][0] - P[k][0], P[k+1][1] - P[k][1]) || 1e-9) * discLen()); }
+      disc.mode = 'dead'; }
+    G.wind = { x: 0, y: 0, kmh: 0 }; return +worst.toFixed(1); })()`);
+  t.ok(kink < 8, 'avec du vent, la courbe reste continue (pas de virage brusque)', kink);
   t.group('IA : pas de passe vers un souvenir');
   const ghost = R(`(() => {
     const oT = throwDisc; let n = 0, far = [];
