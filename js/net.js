@@ -79,6 +79,7 @@ function netQuit() {
   netError('', null);
 }
 function backToSolo() {
+  if (typeof watchOff === 'function') watchOff();               // on quitte le mode spectateur
   if (typeof endlessCfgOut === 'function') endlessCfgOut();   // on sort du mode infini : réglages du match rapide
   G.attract = false; G.coopRoom = false; G.roomCode = null;
   if (G.practice) { G.practice = null; $('pracBox').style.display = 'none'; }

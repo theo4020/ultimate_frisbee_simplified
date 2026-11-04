@@ -323,6 +323,7 @@
       <button id="newbieTuto" class="ghost">🎓 Apprendre les commandes d’abord (tutoriel, 3 min)</button>
       <button id="newbieOpts" class="ghost">⚙️ Voir les réglages de l’équipe</button>
     </div>
+    <div id="watchTabs" class="watchTabs" style="display:none"><span>Stratégie des</span><button class="wtab" data-t="0"></button><button class="wtab" data-t="1"></button></div>
     <div id="stratRows">
     <details class="ssec" id="secAtk"><summary><span class="sti">⚔️</span><b>Attaque</b><small id="secAtkSum"></small></summary>
       <div class="ssecBody">
@@ -370,7 +371,7 @@
       <div class="row"><span>Pull</span><span class="pullOpts" id="pullerOpts"></span></div>
       <div class="desc" id="descPuller"></div>
     </div>
-    <div class="row"><span>Coéquipiers IA</span>
+    <div class="row"><span id="allyLbl">Coéquipiers IA</span>
       <button class="opt" data-g="allyLevel" data-v="facile">Facile</button>
       <button class="opt" data-g="allyLevel" data-v="normal">Normal</button>
       <button class="opt" data-g="allyLevel" data-v="difficile">Difficile</button>
@@ -400,6 +401,13 @@
     </div>
     <details class="ssec" id="secMatch"><summary><span class="sti">🏟️</span><b>Match</b><small id="secMatchSum"></small></summary>
       <div class="ssecBody">
+    <div id="rowWatch">
+      <div class="row"><span>Toi</span>
+        <button class="opt" data-g="watch" data-v="non">Je joue</button>
+        <button class="opt" data-g="watch" data-v="oui">Je regarde</button>
+      </div>
+      <div class="desc" id="descWatch"></div>
+    </div>
     <div class="row" id="rowSpeed"><span>Vitesse</span>
       <button class="opt" data-g="speed" data-v="lent">Lente</button>
       <button class="opt" data-g="speed" data-v="normal">Normale</button>

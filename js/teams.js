@@ -64,7 +64,7 @@ function loadSettings() {
   for (const k of ['osys', 'dsys', 'p1sys', 'p2sys']) if (typeof o[k] === 'string') G.form[k] = o[k];
 }
 function saveSettings() {
-  const o = {};
-  for (const k of Object.keys(SAVE_KEYS).concat(['windDir', 'windKmh', 'tname', 'oname', 'tcol', 'ocol', 'osys', 'dsys', 'p1sys', 'p2sys'])) o[k] = G.form[k];
+  const o = {}, f = G.watchTab === 1 && G.stratR ? Object.assign({}, G.form, G.stratR) : G.form;   // (mode spectateur, onglet des Rouges : on garde les tiens)
+  for (const k of Object.keys(SAVE_KEYS).concat(['windDir', 'windKmh', 'tname', 'oname', 'tcol', 'ocol', 'osys', 'dsys', 'p1sys', 'p2sys'])) o[k] = f[k];
   storeSet('uf-settings', o);
 }

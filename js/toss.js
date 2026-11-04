@@ -7,7 +7,7 @@
 // (true = à l'endroit) ; bet ; pk/pid : équipe et humain qui choisissent (pid null : l'IA) ; recv : équipe qui attaque.
 const TOSS = { open: false, S: null, done: null, timer: 0 };
 const TOSS_FLIP = 1300;
-const tossWanted = () => !G.tuto && !G.practice && !G.coopRoom && G.form.first === 'r' && !G.tossed && (!G.net || G.net === 'host');
+const tossWanted = () => !G.tuto && !G.practice && !G.coopRoom && !G.watchOn && G.form.first === 'r' && !G.tossed && (!G.net || G.net === 'host');
 // un disque posé sur l'herbe, vu un peu de côté : à l'endroit (bombé, avec ses anneaux et son logo) ou à l'envers
 // (on voit l'intérieur creux) ; mini : petite icône pour les boutons du pari
 function tossDiscSvg(up, mini) {

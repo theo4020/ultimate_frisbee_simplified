@@ -75,6 +75,21 @@ function avoidDir(p, ux, uy, l) {
   return [nx / n, ny / n];
 }
 
+// deux attaquants qui ne coupent pas ne restent pas collés (les deux handlers qui reviennent ensemble derrière le disque,
+// un joueur du stack contre un autre) : celui qui marche décale sa cible pour garder ~3 m entre eux
+const SPREAD = 3;
+function spreadOut(p, atk) {
+  if (p.state === 'cut' || p.state === 'jab' || p.state === 'reset' || p.state === 'clear' || disc.mode !== 'held') return;
+  let near = null, nd = SPREAD;
+  for (const q of atk) { if (q === p || q === disc.holder) continue; const d = dist(p.x, p.y, q.x, q.y); if (d < nd) { nd = d; near = q; } }
+  if (!near) return;
+  let ux = p.x - near.x, uy = p.y - near.y; const l = Math.hypot(ux, uy);
+  if (l < 0.05) { ux = 0; uy = p.y < H / 2 ? 1 : -1; } else { ux /= l; uy /= l; }
+  const k = SPREAD - nd;
+  p.tx = clamp(p.tx + ux * k * 2.5, 1, W - 1); p.ty = clamp(p.ty + uy * k * 2.5, 1.5, H - 1.5);
+  // côte à côte vers le même coin : celui qui a le plus de chemin laisse passer l'autre
+  if (nd < 2.2 && dist(p.x, p.y, p.tx, p.ty) > dist(near.x, near.y, near.tx, near.ty)) p.sp *= 0.55;
+}
 // chance de contrer un disque à portée : ~90 % en plein dans les bras, ~50 % du bout des doigts
 // (disque qui passe dans le corps du défenseur, debout, à hauteur : contre assuré — sinon on le verrait « traverser » le joueur)
 const BODY_R = 0.55;
@@ -116,6 +131,7 @@ function update(dt) {
     if (G.practice && practicePin(p)) continue;             // entraînement
     p.avoid = true;
     attackerAI(p, off, ax, ay, dir, open, oform, dt);
+    spreadOut(p, atk);
   }
   defenseBrain(def, dt);
   const slots = zoneSlots(def, dax, day, dir, closed);

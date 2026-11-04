@@ -520,6 +520,16 @@ export default async function (t, { quick }) {
     return { near: run(1.0), far: run(1.7) };
   })()`);
   t.ok(ar.near.off === 1 && ar.far.mode === 'held' && ar.far.holder === 0, 'à l’arrivée, un défenseur plus près du disque que le receveur le contre ; plus loin, le receveur l’attrape', ar);
+  t.group('IA : attaquants qui ne restent pas collés');
+  const sp = R(`(() => {
+    let n = 0, tight = 0;
+    const oT = __tick; __tick = function () { oT(); if (G.phase === 'play' && disc.mode === 'held') { n++;
+      const m = TEAMS[G.off].filter(q => q !== disc.holder && q.state !== 'cut' && q.state !== 'jab');
+      if (m.some((a, i) => m.some((b, j) => j > i && dist(a.x, a.y, b.x, b.y) < 2))) tight++; } };
+    for (let k = 0; k < 8; k++) __playPoint();
+    __tick = oT; return { n, pct: +(100 * tight / Math.max(1, n)).toFixed(1) };
+  })()`);
+  t.ok(sp.n > 500 && sp.pct < 6, 'deux attaquants qui ne coupent pas restent rarement à moins de 2 m l’un de l’autre (relais qui ne se croisent pas, écart gardé)', sp);
   t.group('IA : pas de passe vers un souvenir');
   const ghost = R(`(() => {
     const oT = throwDisc; let n = 0, far = [];

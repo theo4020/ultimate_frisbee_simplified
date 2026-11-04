@@ -8,6 +8,9 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
+  { id: 45, date: '2026-11-04', tag: 'Jeu', title: 'Mode spectateur 👀',
+    body: `• Match rapide : choisis <b>« Je regarde »</b> avant le match. L'IA joue des deux côtés et tu règles la stratégie de chaque équipe.<br>
+      • Les attaquants IA ne restent plus collés les uns aux autres.` },
   { id: 43, date: '2026-10-30', tag: 'Jeu', title: 'Départ, toss et nouveaux menus 🎲',
     body: `• <b>Départ au signal</b> pour tous ceux qui ne pullent pas : trop tôt, c'est <b>offside</b>.<br>
       • Première attaque au hasard : un <b>toss</b> à deux disques, aussi en ligne.<br>

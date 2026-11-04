@@ -223,6 +223,29 @@ export default async function (t) {
     t.ok(vo.saved.fx === 40 && vo.saved.music === 0 && vo.saved.crowd === 25 && vo.label === 'Coupé', 'trois curseurs de volume dans Commandes, gardés dans le navigateur', vo);
     t.ok(!vo.ctx || (vo.sfx === 0.4 && vo.music === 0 && vo.cfx === 0.25), 'les volumes s’appliquent (effets, musique, réactions du public)', vo);
 
+    t.group('Mode spectateur : l’IA contre l’IA, tu règles les deux équipes');
+    const wt = await p.evaluate(async () => {
+      const wait = ms => new Promise(r => setTimeout(r, ms));
+      goMainMenu(); await wait(200);
+      document.getElementById('soloMenuB').click(); document.getElementById('soloB').click(); await wait(200);
+      const mine = G.form.off === 'side' ? 'vert' : 'side'; setOpt('off', mine);
+      setOpt('watch', 'oui'); await wait(50);
+      const r = { spec: G.spectator, tabs: document.getElementById('watchTabs').offsetParent !== null, rows: document.getElementById('stratRows').offsetParent !== null };
+      document.querySelector('.wtab[data-t="1"]').click(); await wait(50);
+      const sel = document.getElementById('selOff'); sel.value = 'ho'; sel.dispatchEvent(new Event('change'));
+      r.blue = cfg(0).off === mine; r.red = cfg(1).off === 'ho'; r.saved = (storeGet('uf-settings', {}) || {}).off === mine;
+      G.tossed = true; G.form.first = '0'; document.getElementById('go').click();
+      for (let k = 0; k < 400 && G.phase !== 'play'; k++) await wait(50);
+      await wait(1500);
+      r.play = G.phase === 'play'; r.noHuman = !canThrow() && !TEAMS[0].concat(TEAMS[1]).some(q => controllerOf(q)); r.forms = [formOf(0), formOf(1)];
+      leaveToMenu(); await wait(100);
+      r.after = { watch: G.form.watch, off: G.form.off, spec: G.spectator };
+      return r;
+    });
+    t.ok(wt.spec && wt.tabs && wt.rows, 'avant le match, « Je regarde » : onglets Bleus / Rouges, les réglages restent visibles', wt);
+    t.ok(wt.blue && wt.red && wt.saved, 'chaque onglet règle son équipe (et tes réglages enregistrés restent ceux des Bleus)', wt);
+    t.ok(wt.play && wt.noHuman && wt.forms[0] !== 'ho' && wt.forms[1] === 'ho', 'le match se joue IA contre IA, avec les stratégies choisies', wt);
+    t.ok(wt.after.watch === 'non' && wt.after.off !== 'ho' && !wt.after.spec, 'retour au menu : tu rejoues normalement, avec tes réglages', wt);
     t.group('Toss quand la première attaque est au hasard');
     const ts = await p.evaluate(async () => {
       const wait = ms => new Promise(r => setTimeout(r, ms));

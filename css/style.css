@@ -634,3 +634,8 @@ body.touch .bigbtn{font-size:17px}
 .gmRunRow{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .gmRunScore{font-family:'Barlow Condensed',system-ui,sans-serif;font-weight:800;font-size:22px;white-space:nowrap}
 .gmRun .desc{margin:4px 0 0}
+/* mode spectateur : onglets « Stratégie des Bleus / des Rouges » en haut du menu */
+.watchTabs{display:flex;align-items:center;gap:8px;margin:6px 0 4px}
+.watchTabs span{color:var(--muted);font-size:13px;white-space:nowrap}
+.wtab{flex:1;margin:0;padding:8px 10px;border-radius:10px;border:2px solid var(--tc,#38bdf8);background:#0f1626;color:var(--text);font-weight:800;font-family:'Barlow Condensed',system-ui,sans-serif;font-size:16px;text-transform:uppercase;letter-spacing:.4px}
+.wtab.on{background:var(--tc,#38bdf8);color:#fff}

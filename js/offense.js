@@ -280,7 +280,15 @@ function attackerAI(p, t, ax, ay, dir, open, form, dt) {
   }
   if (p.role === 'dump') {
     // relais : du côté où il y a le plus de terrain (le second handler prend l'autre côté) ; formation perso : sa place
-    const big = ay < H / 2 ? 1 : -1, S = p.poste && osysOf(t), s = S ? sysSpot(S, p, ax, ay, dir, open) : dumpSlot(ax, ay, dir, p.hIdx === 1 ? big : -big);
+    const big = ay < H / 2 ? 1 : -1, S = p.poste && osysOf(t);
+    let s = S ? sysSpot(S, p, ax, ay, dir, open) : dumpSlot(ax, ay, dir, p.hIdx === 1 ? big : -big);
+    if (!S) {                                                 // les deux relais ne se croisent pas : chacun prend le côté le plus proche de lui
+      const q = TEAMS[t].find(o => o !== p && o.role === 'dump' && o !== disc.holder);
+      if (q) {
+        const o = dumpSlot(ax, ay, dir, p.hIdx === 1 ? -big : big);
+        if (dist(p.x, p.y, o.x, o.y) + dist(q.x, q.y, s.x, s.y) < dist(p.x, p.y, s.x, s.y) + dist(q.x, q.y, o.x, o.y) - 2) s = o;
+      }
+    }
     if (p.state === 'set') {
       p.tx = s.x; p.ty = s.y; p.sp = SPD.jog + 1;
       // compte élevé, ou relais couvert dès 2,5 : il vient chercher le disque

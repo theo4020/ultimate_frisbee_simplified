@@ -69,17 +69,18 @@ function updateHud() {
     : att
     ? `<b>Attaque</b> · ${NAMES[formOf(ME)]}${playTxt} — en face : ${NAMES[defFormOf(OP)]}, ${NAMES[forceOf(OP)]}${oppTxt}`
     : `<b>Défense</b> · ${NAMES[defFormOf(ME)]}, ${NAMES[forceOf(ME)]}${playTxt} — en face : ${NAMES[formOf(OP)]}${oppTxt}`;
-  const curveOn = att || pulling;
+  const curveOn = (att || pulling) && !G.spectator;
   $('curveL').style.display = $('curveR').style.display = curveOn ? '' : 'none';
   $('curveTouch').style.visibility = curveOn ? 'visible' : 'hidden';
   $('curveBox').style.visibility = curveOn ? 'visible' : 'hidden';
   const multi = !soloStyle(ME) && human(ME);
-  $('diveB').style.display = G.phase === 'pull' ? 'none' : '';
+  $('diveB').style.display = G.phase === 'pull' || G.spectator ? 'none' : '';
   $('jumpB').style.display = G.phase === 'pull' || G.spectator ? 'none' : '';
-  $('switchD').style.display = G.phase === 'pull' || (att && !multi) ? 'none' : '';
+  $('switchD').style.display = G.phase === 'pull' || (att && !multi) || G.spectator ? 'none' : '';
   document.body.classList.toggle('defend', !att && G.phase === 'play');
   const K = a => keysOf(a).map(keyName).join('/');            // touches réglées dans le panneau Commandes
-  $('hint').innerHTML = G.spectator ? '<i>Mode spectateur</i> : tu regardes la partie. Bouton <b>👥 Équipes</b> (en haut) pour rejoindre une équipe s’il reste une place. Les émojis permettent d’encourager les joueurs.'
+  $('hint').innerHTML = G.watchOn ? '<i>Mode spectateur</i> : l’IA joue des deux côtés. Entre les points, change la stratégie de chaque équipe ; « Je joue » dans le menu d’avant match pour reprendre la main.'
+    : G.spectator ? '<i>Mode spectateur</i> : tu regardes la partie. Bouton <b>👥 Équipes</b> (en haut) pour rejoindre une équipe s’il reste une place. Les émojis permettent d’encourager les joueurs.'
     : G.phase === 'pull'
     ? (pulling ? '<i>Pull</i> : clique sur la zone visée (' + K('curveL') + ' / ' + K('curveR') + ' ou molette pour la courbe), puis arrête la jauge dans le vert (clic ou Espace). Échap pour revenir à la visée. Un pull long et haut laisse le temps à ta défense de monter.' : '<i>Pull</i> : les équipes se mettent en place.' + (startOn() || (G.pull && G.pull.by != null && G.pull.by !== G.myId) ? ' Compte à rebours 3, 2, 1… PULL : <i>clic ou Espace au « PULL »</i> = départ parfait pour ton équipe ; trop tôt = offside (l’équipe qui pulle donne le brick, celle qui reçoit subit un check).' : ''))
     : att
@@ -98,7 +99,33 @@ function updateHud() {
   resize();
 }
 
+// ---------- mode spectateur (match rapide) : l'IA joue des deux côtés, tu règles la stratégie de chaque équipe ----------
+// Les réglages affichés (G.form) sont ceux de l'équipe de l'onglet choisi ; ceux de l'autre équipe attendent dans G.stratR.
+const STRAT_KEYS = ['off', 'def', 'force', 'play', 'play1', 'play2', 'dplay', 'restart', 'flow', 'huck', 'high', 'risk', 'help', 'osys', 'dsys', 'p1sys', 'p2sys', 'allyLevel'];
+const watchAllowed = () => !G.net && !G.series && !G.tuto && !G.practice;
+function applyWatch() {
+  const on = G.form.watch === 'oui' && watchAllowed();
+  if (on && !G.stratR) { G.stratR = {}; for (const k of STRAT_KEYS) G.stratR[k] = k === 'allyLevel' ? G.form.level : k in G.ai ? G.ai[k] : G.form[k]; }
+  if (!on && G.watchOn) watchTab(0);
+  G.watchOn = on; watchSync();
+  if (!G.net && G.humans.length === 1) { G.humans[0].team = on ? -1 : 0; G.humans[0].sel = null; syncMe(); }
+}
+function watchTab(t) {
+  if (!G.stratR || (G.watchTab || 0) === t) return;
+  const was = {}; for (const k of STRAT_KEYS) { was[k] = G.form[k]; G.form[k] = G.stratR[k]; }
+  G.stratR = was; G.watchTab = t; watchSync();
+}
+function watchSync() { G.cfgOther = G.stratR ? Object.assign({}, G.form, G.stratR) : G.form; }   // réglages complets de l'autre équipe
+function watchOff() { if (G.watchOn || G.watchTab) { G.form.watch = 'non'; applyWatch(); } }
+document.querySelectorAll('.wtab').forEach(b => b.addEventListener('click', () => { watchTab(+b.dataset.t); refreshOptions(); }));
 function refreshOptions() {
+  if (!G.form.watch) G.form.watch = 'non';
+  if (G.watchOn) watchSync();
+  $('rowWatch').style.display = watchAllowed() && (G.lastMenu === 'first' || G.lastMenu === 'over') ? '' : 'none';
+  $('descWatch').textContent = G.form.watch === 'oui' ? 'L’IA joue des deux côtés ; choisis en haut l’équipe dont tu règles la stratégie (formation, défense, plays, niveau).' : '';
+  $('watchTabs').style.display = G.watchOn ? '' : 'none';
+  document.querySelectorAll('.wtab').forEach(b => { b.textContent = tn(+b.dataset.t); b.classList.toggle('on', +b.dataset.t === (G.watchTab || 0)); b.style.setProperty('--tc', tcol(+b.dataset.t)); });
+  $('allyLbl').textContent = G.watchOn ? 'Niveau de l’équipe' : 'Coéquipiers IA';
   renderPullerRow();
   renderSelects();
   document.querySelectorAll('.opt').forEach(b => b.classList.toggle('on', G.form[b.dataset.g] === b.dataset.v));
@@ -119,7 +146,7 @@ function refreshOptions() {
     + `<br><i>Avec le disque, appelle-les quand tu veux : ${keysOf('play1').map(keyName)[0] || '?'} / ${keysOf('play2').map(keyName)[0] || '?'}, boutons ▶ sur le terrain, ou ← / → à la manette.</i>`;
   $('descDPlay').textContent = DPLAYS[G.form.dplay];
   $('ordersSum').textContent = ordersText(G.form) ? '· ' + ordersText(G.form) : '';
-  $('rowPlay').style.display = G.spectator ? 'none' : '';
+  $('rowPlay').style.display = G.spectator && !G.watchOn ? 'none' : '';
   $('rowDPlay').style.display = G.receiving !== G.me ? '' : 'none';
   $('ovWind').textContent = 'Vent pour ce point : ' + windLabel() + '.' + (G.net === 'guest' ? ' (réglé par l’hôte)' : '');
   const hostSide = G.net !== 'guest';                        // le vent et la vitesse sont réglés par l'hôte
@@ -130,7 +157,7 @@ function refreshOptions() {
   $('rowFirst').style.display = hostSide && (G.lastMenu === 'first' || G.lastMenu === 'over') ? '' : 'none';
   $('firstB0').textContent = tn(0) + (G.me === 0 && !G.spectator ? ' (toi)' : '');
   $('firstB1').textContent = tn(1) + (G.me === 1 && !G.spectator ? ' (toi)' : '');
-  $('rowLevel').style.display = $('descLevel').style.display = hostSide && !G.series ? '' : 'none';
+  $('rowLevel').style.display = $('descLevel').style.display = hostSide && !G.series && !G.watchOn ? '' : 'none';
   $('rowOpp').style.display = !G.net && !G.series ? '' : 'none';
   if (document.activeElement !== $('tname')) $('tname').value = G.form.tname;
   if (document.activeElement !== $('oname')) $('oname').value = G.form.oname;
@@ -211,26 +238,26 @@ function showMenu(kind) {
   } else if (kind === 'first') {
     $('ovTitle').textContent = S_ ? (S_.endless ? `♾️ Match ${S_.cur + 1} : contre les ${serOpp().name}` : `Tournoi · tour ${S_.cur + 1} : contre les ${serOpp().name}`) : G.net ? 'Partie en ligne' : 'Ultimate Frisbee';
     $('ovText').textContent = (S_ ? serOpp().blurb + ' ' : '') + `Premier à ${winPts()} points. Tu joues ${side}.` + (G.spectator ? '' : '');
-    if (G.spectator) $('ovText').textContent = 'Tu regardes la partie en spectateur.';
+    if (G.spectator) $('ovText').textContent = G.watchOn ? `Premier à ${winPts()} points. L’IA joue des deux côtés : tu regardes.` : 'Tu regardes la partie en spectateur.';
     $('go').textContent = 'Jouer le point ▶';
     renderSummary(null);
     if (G.net !== 'guest') { G.receiving = firstReceiver(); placeOnPullLines(); }
     updateFirstText();
   } else {
     $('ovTitle').textContent = G.receiving === ME && !G.spectator ? 'À vous d’attaquer' : G.spectator ? 'Point suivant' : 'À vous de défendre';
-    $('ovText').textContent = G.spectator ? 'Les capitaines choisissent leur stratégie…' : G.receiving === ME ? 'Tu reçois le disque : choisis ta stratégie.' : 'L’adversaire attaque : prépare ta défense.';
+    $('ovText').textContent = G.watchOn ? `Les ${tn(G.receiving)} attaquent : règle la stratégie de chaque équipe (onglets ci-dessous).` : G.spectator ? 'Les capitaines choisissent leur stratégie…' : G.receiving === ME ? 'Tu reçois le disque : choisis ta stratégie.' : 'L’adversaire attaque : prépare ta défense.';
     $('go').textContent = 'Jouer le point ▶';
     renderSummary(null);
   }
   // premiers matchs en solo : seulement l'essentiel (les réglages d'équipe sont repliés, IA facile pour le tout premier)
   const newbie = isNewbie();
-  $('stratCard').classList.toggle('newbie', newbie && kind !== 'over');
-  $('newbieBox').style.display = newbie && kind !== 'over' ? '' : 'none';
+  $('stratCard').classList.toggle('newbie', newbie && kind !== 'over' && !G.watchOn);
+  $('newbieBox').style.display = newbie && kind !== 'over' && !G.watchOn ? '' : 'none';
   $('newbieTuto').style.display = storeGet('uf-tuto', false) ? 'none' : '';
   $('replayB').style.display = kind !== 'first' && (REPLAY.last || REPLAY.pend) && !G.net ? '' : 'none';
   $('stratCard').scrollTop = 0;
   // sections du menu : celle qui compte pour ce point est ouverte (attaque si tu reçois, défense sinon) ; Match avant un match
-  const atk = G.receiving === G.me, pre = kind === 'first' || kind === 'over';
+  const atk = G.receiving === (G.watchOn ? (G.watchTab || 0) : G.me), pre = kind === 'first' || kind === 'over';
   $('secAtk').open = atk || pre; $('secDef').open = !atk || pre; $('secTeam').open = false; $('secMatch').open = pre;
   $('stratCard').classList.toggle('preMatch', pre);
   // entre deux points : le score en grand, façon panneau lumineux
@@ -249,7 +276,9 @@ function showMenu(kind) {
 }
 // en ligne : seul le capitaine de chaque équipe choisit la stratégie et se déclare prêt
 function updateFirstText() {
-  if (G.lastMenu !== 'first' || G.spectator) return;
+  if (G.lastMenu !== 'first' || (G.spectator && !G.watchOn)) return;
+  if (G.watchOn) { const b = $('ovText').textContent.replace(/ (Les \S+ commencent en attaque|Au hasard : qui commence en attaque sera tiré au sort)\.$/, '');
+    $('ovText').textContent = b + (G.form.first === 'r' ? ' Au hasard : qui commence en attaque sera tiré au sort.' : ` Les ${tn(G.receiving)} commencent en attaque.`); return; }
   const base = $('ovText').textContent.replace(/ (Tu commences en attaque|L’adversaire commence en attaque|Un toss décidera qui commence en attaque)\.$/, '');
   $('ovText').textContent = base + (typeof tossWanted === 'function' && tossWanted() ? ' Un toss décidera qui commence en attaque.' : G.receiving === G.me ? ' Tu commences en attaque.' : ' L’adversaire commence en attaque.');
 }
@@ -258,8 +287,8 @@ function refreshCaptainUI() {
   renderPullerRow();
   const c = captain(G.me), isCap = !G.net || (c && c.id === G.myId);
   $('stratRows').classList.toggle('locked', !isCap);
-  $('stratRows').style.display = G.spectator || (G.net && !isCap) ? 'none' : '';   // les coéquipiers voient le résumé ci-dessous
-  $('captainNote').innerHTML = G.spectator ? 'Mode spectateur : les capitaines choisissent leur stratégie. Bouton 👥 Équipes pour jouer.'
+  $('stratRows').style.display = (G.spectator && !G.watchOn) || (G.net && !isCap) ? 'none' : '';   // les coéquipiers voient le résumé ci-dessous
+  $('captainNote').innerHTML = G.watchOn ? '' : G.spectator ? 'Mode spectateur : les capitaines choisissent leur stratégie. Bouton 👥 Équipes pour jouer.'
     : G.net && !isCap && c ? `Stratégie choisie par ton capitaine (${esc(humanLabel(c))}) :<div class="capStrat">${stratSummary(cfg(G.me))}</div>` : '';
   $('go').style.display = isCap ? '' : 'none';
   if (!G.net) { $('oppReady').textContent = ''; return; }
@@ -355,6 +384,7 @@ function setOpt(g, v) {
     if (G.net === 'host') netSend({ t: 'rec', rec: G.receiving });
   }
   if (g === 'windMode') { newWind(); hudKey = ''; }
+  if (g === 'watch') { applyWatch(); refreshCaptainUI(); if (G.watchOn) { $('stratCard').classList.remove('newbie'); $('newbieBox').style.display = 'none'; } hudKey = ''; placeForPoint(); if (G.lastMenu === 'first') $('ovText').textContent = G.watchOn ? `Premier à ${winPts()} points. L’IA joue des deux côtés : tu regardes.` : `Premier à ${winPts()} points. Tu joues les ${tn(G.me)} et tu attaques vers la ${dirOf(G.me) > 0 ? 'droite' : 'gauche'}.`; updateFirstText(); }
   refreshOptions(); saveSettings(); shareCfg();
   if (G.net === 'host' && ['windMode'].includes(g)) netSend({ t: 'wind', wind: G.wind });
 }

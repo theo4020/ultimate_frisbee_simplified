@@ -12,7 +12,7 @@
 function aiLvl(t) {
   if (G.tuto && G.tuto.level && !human(t)) return AI_LEVELS[G.tuto.level];      // tutoriel : adversaire réglé par l'étape
   if (G.series && !human(t)) return oppLevel();                                   // tournoi / infini : niveau de l'adversaire du jour
-  const lv = human(t) ? cfg(t).allyLevel : G.form.level;
+  const lv = human(t) || G.watchOn ? cfg(t).allyLevel : G.form.level;   // (mode spectateur : le niveau choisi pour chaque équipe)
   return AI_LEVELS[lv] || AI_LEVELS.normal;
 }
 // style de jeu de l'IA de l'équipe t (personnalité des équipes du tournoi)
@@ -42,6 +42,7 @@ function syncMe() { const m = meH(); G.spectator = !!m && m.team < 0; G.me = m &
 
 // stratégie d'une équipe : celle de son capitaine, sinon celle de l'IA
 function cfg(t) {
+  if (G.watchOn) return t === (G.watchTab || 0) ? G.form : G.cfgOther;   // mode spectateur (ui.js) : tu règles les deux équipes
   const c = captain(t);
   if (!c) return G.ai;
   if (c.id === G.myId) return G.form;
