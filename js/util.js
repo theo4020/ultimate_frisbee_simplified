@@ -166,10 +166,10 @@ const discKind = () => (disc.pull ? 'pull' : disc.loft);
 // accélère — et plus le disque est haut, plus il prend le vent (sa poussée de côté s'accumule surtout là où il est haut).
 // Le temps de vol total ne change pas. Table calculée une fois par vol (chez l'hôte comme chez l'invité).
 const FLY = { N: 48, KV: 0.045, VMIN: 0.45, VMAX: 1.7 };
-const windHf = z => clamp(0.55 + 0.25 * z, 0.5, 2.2);           // vent plus fort en hauteur
-// la poussée de côté grandit un peu au fil du vol (0.5 + s) sans se concentrer à la fin : la courbe reste continue,
-// sans virage brusque juste avant l'arrivée
-const windRate = s => 0.5 + s;
+const windHf = z => clamp(0.55 + 0.25 * z, 0.5, 2.2);           // vent plus fort en hauteur (vitesse le long du trajet)
+// poussée de côté : elle aussi plus forte en hauteur, nettement — le disque, bas au lâcher et à l'arrivée, est surtout
+// déporté au milieu du vol, et garde sa courbe jusqu'au bout
+const driftHf = z => clamp(0.1 + 0.36 * z, 0.25, 2.2);
 // P : { sx, sy, cx, cy, ex, ey, dur, wdx, wdy } (le disque lui-même, ou une passe envisagée par l'IA) ; zs(s) : hauteur
 // à la part s du trajet. La table est gardée dans P.fly tant que la passe ne change pas.
 function flyTableFor(P, zs) {
@@ -177,10 +177,10 @@ function flyTableFor(P, zs) {
   if (T && T.sx === P.sx && T.sy === P.sy && T.ex === P.ex && T.ey === P.ey && T.dur === P.dur && T.cx === P.cx && T.cy === P.cy) return T;
   const n = FLY.N, wdx = P.wdx || 0, wdy = P.wdy || 0, ax = P.ex - wdx, ay = P.ey - wdy;   // ax, ay : arrivée sans la dérive du vent
   const w = (typeof G !== 'undefined' && G.wind && !G.tuto) ? G.wind : { x: 0, y: 0 };
-  const pts = [], hf = [], g = [0], t = [0]; let gs = 0, ts = 0;
-  for (let i = 0; i <= n; i++) { const s = i / n, a = 1 - s; pts.push([a * a * P.sx + 2 * a * s * P.cx + s * s * ax, a * a * P.sy + 2 * a * s * P.cy + s * s * ay]); hf.push(windHf(zs(s))); }
+  const pts = [], hf = [], hd = [], g = [0], t = [0]; let gs = 0, ts = 0;
+  for (let i = 0; i <= n; i++) { const s = i / n, a = 1 - s; pts.push([a * a * P.sx + 2 * a * s * P.cx + s * s * ax, a * a * P.sy + 2 * a * s * P.cy + s * s * ay]); const z = zs(s); hf.push(windHf(z)); hd.push(driftHf(z)); }
   // dérive : sa vitesse de côté (rate) suit la hauteur ; rate linéaire par morceaux → g lisse (pas de cassure)
-  const rate = hf.map((h, i) => h * windRate(i / n)); for (let i = 1; i <= n; i++) { gs += (rate[i - 1] + rate[i]) / 2 / n; g.push(gs); }
+  const rate = hd.slice(); for (let i = 1; i <= n; i++) { gs += (rate[i - 1] + rate[i]) / 2 / n; g.push(gs); }
   const gn = gs || 1;
   const pos = i => [pts[i][0] + wdx * g[i] / gn, pts[i][1] + wdy * g[i] / gn];
   for (let i = 1; i <= n; i++) {
