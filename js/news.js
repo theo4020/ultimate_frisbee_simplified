@@ -9,7 +9,9 @@ const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
   { id: 46, date: '2026-11-04', tag: 'Jeu', title: 'Le vent de côté 🌬️',
-    body: `Le disque, penché par la courbe, est <b>porté</b> si le vent arrive par en dessous (il plane et part plus loin), <b>plaqué</b> s'il tape le dessus.` },
+    body: `• Le disque <b>ralentit face au vent</b> et accélère vent dans le dos ; plus il est haut, plus le vent le pousse.<br>
+      • La courbe suit le disque jusqu'au bout : le vent la déporte sans la casser.<br>
+      • Penché par la courbe, il est <b>porté</b> si le vent arrive par en dessous, <b>plaqué</b> s'il tape le dessus.` },
   { id: 45, date: '2026-11-04', tag: 'Jeu', title: 'Mode spectateur 👀',
     body: `• Match rapide : l'onglet de l'adversaire te laisse régler <b>sa stratégie</b> si tu veux (sinon l'IA choisit, comme avant).<br>
       • Ou choisis <b>« Je regarde »</b> avant le match : l'IA joue des deux côtés, en accéléré si tu veux (jusqu'à ×8).<br>
