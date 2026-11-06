@@ -102,9 +102,9 @@ function drawCone(G_, u0, r, alpha, zf) {
 // FP : la passe (le disque en vol, ou celle qu'on vise) — on dessine son vrai vol (vent le long du trajet, util.js)
 function drawFlightPath(sx, sy, cx, cy, ex, ey, peak, u0, alpha, width, dash, kind, curve, FP) {
   const step = 0.025, len = dist(sx, sy, ex, ey), iso = isoView(), keep = isoText, wa = FP === disc ? disc.wa || 0 : kind === 'pull' ? 0 : windAlong(sx, sy, ex, ey) + bankWind(sx, sy, ex, ey, curve, kind).lift;
-  const T = FP ? flyTableFor(FP, FP === disc ? discZs : s => heightAt(discU(s), peak, kind, len, curve, wa)) : null;
-  const Gp = v => (T ? flyPos(T, flySOf(T, v)) : bez(sx, sy, cx, cy, ex, ey, v));
-  const Hz = v => (T ? heightAt(discU(flySOf(T, Math.min(1, v))), peak, kind, len, curve, wa) : heightAt(Math.min(1, v), peak, kind, len, curve, wa));
+  const Hz = v => heightAt(Math.min(1, v), peak, kind, len, curve, wa);
+  const T = FP ? flyTableFor(FP, FP === disc ? discZ : Hz) : null;
+  const Gp = v => (T ? flyAt(T, v) : bez(sx, sy, cx, cy, ex, ey, v));
   if (iso) {                                                 // vue inclinée : l'ombre de la trajectoire au sol…
     ctx.save(); ctx.strokeStyle = `rgba(10,30,18,${0.55 * alpha})`; ctx.lineWidth = width + 1; ctx.lineCap = 'round'; ctx.beginPath();
     for (let u = u0; u <= 1.0001; u += step) { const [x, y] = Gp(Math.min(1, u)); if (u === u0) ctx.moveTo(X(x), Y(y)); else ctx.lineTo(X(x), Y(y)); }

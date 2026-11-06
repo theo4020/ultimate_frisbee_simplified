@@ -161,56 +161,101 @@ function heightAt0(u, peak, kind, len, curve) {
 }
 const discLen = () => dist(disc.sx, disc.sy, disc.ex, disc.ey);
 const discKind = () => (disc.pull ? 'pull' : disc.loft);
-// Vol réel du disque en l'air (voir la fiche « Fondations physiques ») : la forme de la trajectoire reste celle choisie au
-// lâcher (bez), mais le vent change la vitesse le long du trajet — face au vent il ralentit, vent dans le dos il
-// accélère — et plus le disque est haut, plus il prend le vent (sa poussée de côté s'accumule surtout là où il est haut).
-// Le temps de vol total ne change pas. Table calculée une fois par vol (chez l'hôte comme chez l'invité).
-const FLY = { N: 48, KV: 0.045, VMIN: 0.45, VMAX: 1.7 };
-const windHf = z => clamp(0.55 + 0.25 * z, 0.5, 2.2);           // vent plus fort en hauteur (vitesse le long du trajet)
-// poussée de côté : elle aussi plus forte en hauteur, nettement — le disque, bas au lâcher et à l'arrivée, est surtout
-// déporté au milieu du vol, et garde sa courbe jusqu'au bout
-const driftHf = z => clamp(0.1 + 0.36 * z, 0.25, 2.2);
-// P : { sx, sy, cx, cy, ex, ey, dur, wdx, wdy } (le disque lui-même, ou une passe envisagée par l'IA) ; zs(s) : hauteur
-// à la part s du trajet. La table est gardée dans P.fly tant que la passe ne change pas.
-function flyTableFor(P, zs) {
-  const T = P.fly;
-  if (T && T.sx === P.sx && T.sy === P.sy && T.ex === P.ex && T.ey === P.ey && T.dur === P.dur && T.cx === P.cx && T.cy === P.cy) return T;
-  const n = FLY.N, wdx = P.wdx || 0, wdy = P.wdy || 0, ax = P.ex - wdx, ay = P.ey - wdy;   // ax, ay : arrivée sans la dérive du vent
-  const w = (typeof G !== 'undefined' && G.wind && !G.tuto) ? G.wind : { x: 0, y: 0 };
-  const pts = [], hf = [], hd = [], g = [0], t = [0]; let gs = 0, ts = 0;
-  for (let i = 0; i <= n; i++) { const s = i / n, a = 1 - s; pts.push([a * a * P.sx + 2 * a * s * P.cx + s * s * ax, a * a * P.sy + 2 * a * s * P.cy + s * s * ay]); const z = zs(s); hf.push(windHf(z)); hd.push(driftHf(z)); }
-  // dérive : sa vitesse de côté (rate) suit la hauteur ; rate linéaire par morceaux → g lisse (pas de cassure)
-  const rate = hd.slice(); for (let i = 1; i <= n; i++) { gs += (rate[i - 1] + rate[i]) / 2 / n; g.push(gs); }
-  const gn = gs || 1;
-  const pos = i => [pts[i][0] + wdx * g[i] / gn, pts[i][1] + wdy * g[i] / gn];
-  for (let i = 1; i <= n; i++) {
-    const a = pos(i - 1), b = pos(i), dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1e-6, sm = (i - 0.5) / n;
-    const along = (w.x * dx + w.y * dy) / l;                          // > 0 : vent dans le dos à cet endroit du vol
-    const v = (1 + DISC_EASE - 2 * DISC_EASE * discU(sm)) * clamp(1 + FLY.KV * along * (hf[i - 1] + hf[i]) / 2, FLY.VMIN, FLY.VMAX);
-    ts += (1 / n) / v; t.push(ts);
+// Vol réel du disque en l'air : on le fait voler avec des forces (le temps u va de 0 au lâcher à 1 à l'arrivée) —
+//  • sa vitesse de départ ;
+//  • un freinage constant (il part ×1.5 plus vite qu'en moyenne et arrive ×0.5, comme discS) ;
+//  • la force de la courbe, toujours de côté par rapport à sa direction du moment : elle le fait tourner, de plus en plus
+//    serré à mesure qu'il ralentit (le « hook » de fin de vol) ;
+//  • le vent : une force constante dans sa direction, plus forte quand le disque est haut. Face au vent il ralentit,
+//    vent dans le dos il accélère, et comme la courbe suit la direction du disque, le vent ne casse pas la courbe.
+// La force de la courbe est réglée pour que, sans vent, la passe ait le même creux que la courbe choisie (bez) ; la
+// vitesse de départ, pour qu'il arrive là où le jeu l'attend (ex, ey). Table calculée une fois par vol (hôte et invités).
+const FLY = { N: 60, ALONG: 0.5, STOP: 0.25, HOOK: 0.3 };
+const driftHf = z => clamp(0.1 + 0.36 * z, 0.25, 2.2);         // le vent pousse plus fort en hauteur
+// une intégration du vol (point milieu) ; rend l'arrivée et l'écart moyen à la corde (côté +), et remplit out si demandé
+function flySim(Q, v0x, v0y, L, out) {
+  const n = FLY.N, h = 1 / n, D = Q.D, hf = Q.hf, vm = Q.vm || 1, FX = Q.Fx, FY = Q.Fy, AL = FLY.ALONG, ST = FLY.STOP * vm, HK = FLY.HOOK * vm;
+  let ax = 0, ay = 0;
+  // accélération : freinage, courbe (de côté), vent (dans l'axe du vol il compte moitié ; freinage et vent de face
+  // s'effacent quand le disque est presque arrêté : il ne repart jamais en arrière)
+  const acc = (vx, vy, f) => {
+    const sp = Math.sqrt(vx * vx + vy * vy) || 1e-6, ux = vx / sp, uy = vy / sp, fx = FX * f, fy = FY * f, fa = fx * ux + fy * uy;
+    const slow = sp < ST ? sp / ST : 1, dd = -D * slow + (fa < 0 ? fa * AL * slow : fa * AL);
+    const lc = sp < HK ? L * sp / HK : L;                          // (presque arrêté face au vent : le hook ne se resserre plus)
+    ax = dd * ux + fx - fa * ux - lc * vy; ay = dd * uy + fy - fa * uy + lc * vx;
+  };
+  let x = Q.sx, y = Q.sy, vx = v0x, vy = v0y, dev = 0;
+  if (out) { out.p = [[x, y]]; out.v = [[vx, vy]]; }
+  for (let i = 0; i < n; i++) {
+    acc(vx, vy, hf[2 * i]);
+    const mx = vx + ax * h / 2, my = vy + ay * h / 2;
+    acc(mx, my, hf[2 * i + 1]);
+    x += mx * h; y += my * h; vx += ax * h; vy += ay * h;
+    dev += ((x - Q.sx) * Q.nx + (y - Q.sy) * Q.ny) / n;
+    if (out) { out.p.push([x, y]); out.v.push([vx, vy]); }
   }
-  for (let i = 0; i <= n; i++) { t[i] /= ts || 1; g[i] /= gn; rate[i] /= gn; }
-  return (P.fly = { sx: P.sx, sy: P.sy, ex: P.ex, ey: P.ey, dur: P.dur, cx: P.cx, cy: P.cy, ax, ay, t, g, rate, wdx, wdy });
+  return [x, y, dev];
 }
-// part du trajet parcourue à l'instant u (0 → 1) du vol
-function flySOf(T, u) {
-  const t = T.t, n = t.length - 1;
-  if (u <= 0) return 0; if (u >= 1) return 1;
-  let lo = 0, hi = n; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (t[m] <= u) lo = m; else hi = m; }
-  return (lo + (u - t[lo]) / ((t[hi] - t[lo]) || 1e-9)) / n;
+// petit Newton (différences finies) : trouve les inconnues k pour que F(k) = 0
+function flySolve(k, F, it) {
+  for (let r = 0; r < (it || 8); r++) {
+    const f0 = F(k), m = k.length, J = [];
+    if (Math.hypot(...f0) < 0.01) break;
+    for (let j = 0; j < m; j++) { const e = 1e-3 * (1 + Math.abs(k[j])), kk = k.slice(); kk[j] += e; const f1 = F(kk); J.push(f1.map((v, i) => (v - f0[i]) / e)); }
+    const dk = linSolve(J, f0.map(v => -v)); if (!dk) break;   // J[j][i] = dFi/dkj
+    for (let j = 0; j < m; j++) k[j] += clamp(dk[j], -60, 60);
+  }
+  return k;
 }
-function flyPos(T, s) {
-  const n = T.g.length - 1, f = clamp(s, 0, 1) * n, i = Math.min(n - 1, Math.floor(f)), k = (f - i) / n;
-  const r0 = T.rate[i], r1 = T.rate[i + 1], gg = T.g[i] + r0 * k + (r1 - r0) * n * k * k / 2;   // intégrale exacte du rate
-  const a = 1 - s, x = a * a * T.sx + 2 * a * s * T.cx + s * s * T.ax, y = a * a * T.sy + 2 * a * s * T.cy + s * s * T.ay;
-  return [x + T.wdx * gg, y + T.wdy * gg];
+function linSolve(Jt, b) {                                       // Jt[j][i] = dFi/dkj ; résout Σj Jt[j][i]·x[j] = b[i]
+  const m = b.length, A = b.map((bi, i) => [...Jt.map(c => c[i]), bi]);
+  for (let c = 0; c < m; c++) {
+    let p = c; for (let r = c + 1; r < m; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r;
+    if (Math.abs(A[p][c]) < 1e-9) return null; [A[c], A[p]] = [A[p], A[c]];
+    for (let r = 0; r < m; r++) if (r !== c) { const f = A[r][c] / A[c][c]; for (let q = c; q <= m; q++) A[r][q] -= f * A[c][q]; }
+  }
+  return A.map((r, i) => r[m] / r[i]);
+}
+// P : { sx, sy, cx, cy, ex, ey, wdx, wdy } (le disque, ou la passe qu'on vise) ; zs(u) : hauteur à l'instant u.
+// Table gardée dans P.fly tant que la passe ne change pas.
+function flyTableFor(P, zs) {
+  const T0 = P.fly, wdx = P.wdx || 0, wdy = P.wdy || 0;
+  if (T0 && T0.sx === P.sx && T0.sy === P.sy && T0.ex === P.ex && T0.ey === P.ey && T0.cx === P.cx && T0.cy === P.cy && T0.wdx === wdx && T0.wdy === wdy) return T0;
+  const n = FLY.N, ax = P.ex - wdx, ay = P.ey - wdy;             // ax, ay : arrivée sans vent
+  const cl = Math.hypot(ax - P.sx, ay - P.sy) || 1e-6, nx = -(ay - P.sy) / cl, ny = (ax - P.sx) / cl;
+  // creux voulu (sans vent) : celui de la courbe bez, échantillonné au même rythme (s = discS(u))
+  let want = 0;
+  for (let i = 1; i <= n; i++) { const s = discS(i / n), a = 1 - s; want += (2 * a * s * ((P.cx - P.sx) * nx + (P.cy - P.sy) * ny)) / n; }
+  const hfr = []; let hm = 0;
+  for (let i = 0; i <= 2 * n; i++) { const f = driftHf(zs(i / (2 * n))); hfr.push(f); hm += f / (2 * n + 1); }
+  const Q = { sx: P.sx, sy: P.sy, nx, ny, D: 0, hf: hfr, Fx: 0, Fy: 0 };
+  // 1) sans vent : vitesse de départ et force de la courbe
+  const v0 = 1.5 * cl, g = [(ax - P.sx) / cl * v0, (ay - P.sy) / cl * v0, 0];
+  const calm = flySolve(g, k => { Q.D = Q.vm = Math.hypot(k[0], k[1]); Q.D *= 2 / 3; const r = flySim(Q, k[0], k[1], k[2]); return [r[0] - ax, r[1] - ay, r[2] - want]; });
+  const L = calm[2]; Q.vm = Math.hypot(calm[0], calm[1]); Q.D = Q.vm * 2 / 3;
+  // 2) avec le vent (force qui, seule, déporterait le disque de wd) : on retrouve la vitesse de départ pour arriver en (ex, ey)
+  let k = [calm[0], calm[1]];
+  if (wdx || wdy) {
+    Q.Fx = 2 * wdx / (hm || 1); Q.Fy = 2 * wdy / (hm || 1);
+    k = flySolve(k, kk => { const r = flySim(Q, kk[0], kk[1], L); return [r[0] - P.ex, r[1] - P.ey]; });
+  }
+  const out = {}; flySim(Q, k[0], k[1], L, out);
+  // petit recalage : l'arrivée tombe pile sur (ex, ey) (l'écart restant, réparti au fil du vol)
+  const ex0 = out.p[n][0] - P.ex, ey0 = out.p[n][1] - P.ey;
+  for (let i = 0; i <= n; i++) { const w = i / n; out.p[i][0] -= ex0 * w; out.p[i][1] -= ey0 * w; out.v[i][0] -= ex0; out.v[i][1] -= ey0; }
+  return (P.fly = { sx: P.sx, sy: P.sy, ex: P.ex, ey: P.ey, cx: P.cx, cy: P.cy, wdx, wdy, p: out.p, v: out.v });
+}
+// position à l'instant u (interpolation de Hermite : la courbe reste lisse entre les pas)
+function flyAt(T, u) {
+  const n = T.p.length - 1, f = clamp(u, 0, 1) * n, i = Math.min(n - 1, Math.floor(f)), t = f - i, h = 1 / n;
+  const p0 = T.p[i], p1 = T.p[i + 1], v0 = T.v[i], v1 = T.v[i + 1], t2 = t * t, t3 = t2 * t;
+  const h00 = 2 * t3 - 3 * t2 + 1, h10 = t3 - 2 * t2 + t, h01 = -2 * t3 + 3 * t2, h11 = t3 - t2;
+  return [h00 * p0[0] + h10 * h * v0[0] + h01 * p1[0] + h11 * h * v1[0], h00 * p0[1] + h10 * h * v0[1] + h01 * p1[1] + h11 * h * v1[1]];
 }
 // le disque en vol
-const discZs = s => heightAt(discU(s), discPeak(), discKind(), discLen(), disc.curveV, disc.wa || 0);
-const flyTable = () => flyTableFor(disc, discZs);
-const flyS = u => flySOf(flyTable(), u);
-const discAt = u => { const T = flyTable(); return flyPos(T, flySOf(T, u)); };   // position à l'instant u du vol
-const discZ = u => heightAt(discU(flyS(u)), discPeak(), discKind(), discLen(), disc.curveV, disc.wa || 0);
+const discZ = u => heightAt(u, discPeak(), discKind(), discLen(), disc.curveV, disc.wa || 0);
+const flyTable = () => flyTableFor(disc, discZ);
+const discAt = u => flyAt(flyTable(), u);                        // position à l'instant u du vol
 // Course : temps pour parcourir d mètres en partant à la vitesse v0 dans cette direction (négative : il s'éloigne),
 // avec l'accélération et le freinage de RUN, jusqu'à la vitesse de pointe vmax
 function runTime(d, v0, vmax) {

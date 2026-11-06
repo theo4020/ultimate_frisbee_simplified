@@ -546,20 +546,23 @@ export default async function (t, { quick }) {
       G.wind = w; G.gt = 0; const h = TEAMS[0][0]; h.x = 70; h.y = 18; h.vx = h.vy = 0; holdDisc(h);
       throwDisc(h, 45, 18, -0.8, 0, LOFT.N); disc.fly = null;          // de droite à gauche, la courbe passe par le bas
       const L = (a, b) => { let d = 0, p = discAt(a); for (let k = 1; k <= 20; k++) { const q = discAt(a + (b - a) * k / 20); d += dist(p[0], p[1], q[0], q[1]); p = q; } return d; };
-      const r = { first: L(0, 0.5), second: L(0.5, 1), half: flyS(0.5), end: discAt(1), ex: [disc.ex, disc.ey] }; disc.mode = 'dead'; return r;
+      const r = { first: L(0, 0.5), second: L(0.5, 1), end: discAt(1), ex: [disc.ex, disc.ey] }; disc.mode = 'dead'; return r;
     };
     const keep = G.wind, a = run({ x: 0, y: 0, kmh: 0 }), b = run({ x: 0, y: -6.9, kmh: 25 }); G.wind = keep;
-    return { calme: +a.half.toFixed(3), vent: +b.half.toFixed(3), fin: Math.hypot(b.end[0] - b.ex[0], b.end[1] - b.ex[1]) };
+    return { calme: +(a.first / (a.first + a.second)).toFixed(3), vent: +(b.first / (b.first + b.second)).toFixed(3), fin: Math.hypot(b.end[0] - b.ex[0], b.end[1] - b.ex[1]) };
   })()`);
   t.ok(fl.vent < fl.calme - 0.02 && fl.fin < 0.05, 'courbe par le bas avec un vent qui monte : à mi-vol, il a fait moins de chemin (face au vent il ralentit, vent dans le dos il rattrape) et arrive au même endroit', fl);
-  const kink = R(`(() => { let worst = 0;
-    for (const [wx, wy] of [[0, -6], [6, 0], [4, 4], [-5, 3]]) for (const c of [-1, -0.5, 0, 0.5, 1]) for (const [tx, ty] of [[45, 18], [40, 5], [50, 30]]) {
+  // le pire virage sur 1 m de trajet (degrés), avec du vent et sans vent
+  const kink = R(`(() => { const worst = [0, 0];
+    for (const [wx, wy] of [[0, 0], [0, -6], [6, 0], [4, 4], [-5, 3]]) for (const c of [-1, -0.5, 0, 0.5, 1]) for (const [tx, ty] of [[45, 18], [40, 5], [50, 30]]) {
       G.wind = { x: wx, y: wy, kmh: 22 }; G.gt = 0; const h = TEAMS[0][0]; h.x = 70; h.y = 18; h.vx = h.vy = 0; holdDisc(h);
-      throwDisc(h, tx, ty, c, 0, LOFT.N); disc.fly = null; const N = 300, P = []; for (let k = 0; k <= N; k++) P.push(discAt(k / N));
-      for (let k = 1; k < N; k++) { const a = Math.atan2(P[k][1] - P[k-1][1], P[k][0] - P[k-1][0]), b = Math.atan2(P[k+1][1] - P[k][1], P[k+1][0] - P[k][0]); let d = Math.abs(b - a); if (d > Math.PI) d = 2 * Math.PI - d; worst = Math.max(worst, d / (Math.hypot(P[k+1][0] - P[k][0], P[k+1][1] - P[k][1]) || 1e-9) * discLen()); }
+      throwDisc(h, tx, ty, c, 0, LOFT.N); disc.fly = null; const N = 600, P = []; for (let k = 0; k <= N; k++) P.push(discAt(k / N));
+      const dir = k => Math.atan2(P[k + 1][1] - P[k][1], P[k + 1][0] - P[k][0]);
+      for (let k = 0; k < N - 1; k++) { let l = 0, j = k; while (j < N - 1 && l < 1) { l += Math.hypot(P[j + 1][0] - P[j][0], P[j + 1][1] - P[j][1]); j++; }
+        if (l < 1) break; let d = Math.abs(dir(j - 1) - dir(k)); if (d > Math.PI) d = 2 * Math.PI - d; const w = wx || wy ? 1 : 0; worst[w] = Math.max(worst[w], d * 180 / Math.PI); }
       disc.mode = 'dead'; }
-    G.wind = { x: 0, y: 0, kmh: 0 }; return +worst.toFixed(1); })()`);
-  t.ok(kink < 8, 'avec du vent, la courbe reste continue (pas de virage brusque)', kink);
+    G.wind = { x: 0, y: 0, kmh: 0 }; return worst.map(v => +v.toFixed(1)); })()`);
+  t.ok(kink[1] < Math.max(25, kink[0] * 1.6), 'avec du vent, la courbe reste continue (pas de virage brusque sur 1 m)', { calme: kink[0], vent: kink[1] });
   t.group('IA : pas de passe vers un souvenir');
   const ghost = R(`(() => {
     const oT = throwDisc; let n = 0, far = [];
