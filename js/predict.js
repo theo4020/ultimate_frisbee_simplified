@@ -60,14 +60,16 @@ function touchTime(d, x, y, z, react) {
   return t;
 }
 // marge d'une trajectoire : pour chaque point du vol, le défenseur le plus rapide comparé au disque (s ; > 0 : passe sûre).
-// path = { sx, sy, cx, cy, ex, ey, dur, z(u) } ; mark = { p, x, y } : la mark, à sa place au lâcher, se fend vers le disque ;
+// path = { sx, sy, cx, cy, ex, ey, wdx, wdy, dur, z(u) } (wd : dérive du vent, ex = arrivée) ; mark = { p, x, y } : la mark, à sa place au lâcher, se fend vers le disque ;
 // misread (s) : erreur de lecture de celui qui juge (il croit les défenseurs plus lents qu'ils ne sont)
 function pathSlack(path, opp, mark, misread) {
   let min = 9;
   // par défenseur, une fois : réaction, vitesse, portée en sautant et en plongeon (pour écarter vite ceux qui sont trop loin)
   const D = opp.map(o => { const L = aiLvl(o.team), v = SPD.sprint * L.speed; return { o, react: seeT(o) + (misread || 0), v, jmax: REACH_STAND + (L.jump || JUMP_H), far: Math.max(ARM_R, diveReach(v)) }; });
+  // le vrai vol (forces, vent : util.js) ; sans dérive (passe sans vent, ou coupe jugée « à la louche ») : la courbe simple
+  const T = path.wdx || path.wdy ? flyTableFor(path, path.z) : null;
   for (let u = 0.04; u <= 1.001; u += 0.06) {
-    const z = path.z(u), [x, y] = bez(path.sx, path.sy, path.cx, path.cy, path.ex, path.ey, u), tA = u * path.dur;
+    const z = path.z(u), [x, y] = T ? flyAt(T, u) : bez(path.sx, path.sy, path.cx, path.cy, path.ex, path.ey, u), tA = u * path.dur;
     for (const q of D) {
       const o = q.o; let s;
       if (z > q.jmax) continue;

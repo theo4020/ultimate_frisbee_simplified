@@ -108,7 +108,7 @@ function laneSlack(h, aimX, aimY, tx, ty, curve, opp, kind, side, misread) {
   const mk = disc.holder === h ? markOf(h) : null, piv = side !== undefined && Math.abs((h.pivY || 0) - side) > 0.35;
   const mark = mk ? { p: mk, ...(([x, y]) => ({ x, y }))(piv ? markSpotFor(mk.team, h.x, h.y, side) : [mk.x, mk.y]) } : null;
   const wa = windAlong(sx, sy, tx, ty) + bankWind(sx, sy, aimX, aimY, curve, kind).lift;
-  return pathSlack({ sx, sy, cx, cy, ex: tx, ey: ty, dur, z: u => heightAt(u, peak, kind, len, curve, wa) }, opp, mark, misread || 0);
+  return pathSlack({ sx, sy, cx, cy, ex: tx, ey: ty, wdx: tx - aimX, wdy: ty - aimY, dur, z: u => heightAt(u, peak, kind, len, curve, wa) }, opp, mark, misread || 0);
 }
 
 // release = fin de l'armement d'une passe haute : on choisit la meilleure passe haute à cet instant
