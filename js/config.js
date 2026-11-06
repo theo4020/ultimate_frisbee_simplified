@@ -53,7 +53,7 @@ const DIVE_T = 0.28, DOWN_T = 1.2;                         // plongeon : ~1,8 m 
 const JUMP_PREP = 0.05, JUMP_T = 0.5, JUMP_H = 0.6, JUMP_REC = 0.15, JUMP_CD = 0.35;
 const HIGH_WINDUP = [0.3, 1.2];                            // l'IA arme sa passe haute plus ou moins longtemps avant de lancer
 const SPEEDS = { lent: 0.75, normal: 0.92, rapide: 1.09 };   // vitesse du jeu (× le temps réel)
-const DRIFT = 0.5;                                          // dérive du disque : vent (m/s) × temps de vol × DRIFT
+const DRIFT = 0.57;                                         // dérive du disque : vent (m/s) × temps de vol × DRIFT
 const STALL_R = 4;                                          // distance max de la mark pour le stall count (4 m)
 const STALL_RATE = 1;                                       // stall count : 1 compte par seconde
 const REACH_STAND = 2.2, REACH_DIVE = 1.9;                  // hauteur max du disque atteignable debout (bras levé) / en plongeon
@@ -113,14 +113,15 @@ const DESCS = {
 };
 
 // Hauteur de passe (loft), de 0 à 1 : tout change en continu avec elle
-//  • 0 : passe rasante — tendue, plus rapide, plus précise, moins sensible au vent, mais facile à couper près du lanceur ;
+//  • 0 : passe rasante — tendue, à peine plus rapide, plus précise, moins sensible au vent (elle vole bas), mais facile
+//    à couper près du lanceur ;
 //  • 0,3 : passe normale ;
 //  • 1 : passe haute (hammer, blade…) — par-dessus la défense, mais lente, imprécise avec la distance et le vent,
 //    plus dure à attraper ; au-dessus de TELL, le disque levé se voit et la mark peut tenter de deviner le lâcher.
 // dur = temps de vol (×), drift = sensibilité au vent, min/max = distance possible, drop (+ dropWind par km/h) = drops en plus.
 // L'imprécision et la forme du vol sont calculées par throwErr (throwing.js) et heightAt (util.js).
 const LOFT = { MIN: 0, N: 0.3, MAX: 1, STEP: 0.1, HIGH: 0.7, TELL: 0.55 };
-const THROW_LOW = { dur: 0.88, drift: 0.85, min: 2, max: 50, drop: 0, dropWind: 0 };
+const THROW_LOW = { dur: 0.96, drift: 0.85, min: 2, max: 50, drop: 0, dropWind: 0 };
 const THROW_N = { dur: 1, drift: 1, min: 2, max: 50, drop: 0, dropWind: 0 };
 const THROW_HIGH = { dur: 1.4, drift: 1.3, min: 6, max: 30, drop: 0.006, dropWind: 0.00025 };
 // une hauteur (nombre) ou un ancien type ('normal', 'high')

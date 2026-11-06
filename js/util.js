@@ -170,7 +170,7 @@ const discKind = () => (disc.pull ? 'pull' : disc.loft);
 //    vent dans le dos il accélère, et comme la courbe suit la direction du disque, le vent ne casse pas la courbe.
 // La force de la courbe est réglée pour que, sans vent, la passe ait le même creux que la courbe choisie (bez) ; la
 // vitesse de départ, pour qu'il arrive là où le jeu l'attend (ex, ey). Table calculée une fois par vol (hôte et invités).
-const FLY = { N: 60, ALONG: 0.5, STOP: 0.25, HOOK: 0.3 };
+const FLY = { N: 60, ALONG: 0.5, STOP: 0.4, HOOK: 0.3 };
 const driftHf = z => clamp(0.1 + 0.36 * z, 0.25, 2.2);         // le vent pousse plus fort en hauteur
 // une intégration du vol (point milieu) ; rend l'arrivée et l'écart moyen à la corde (côté +), et remplit out si demandé
 function flySim(Q, v0x, v0y, L, out) {
