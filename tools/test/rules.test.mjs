@@ -486,12 +486,12 @@ export default async function (t, { quick }) {
     const calm = (() => { G.wind = { x: 0, y: 0, kmh: 0 }; const r = z(30, 60); G.wind = { x: 8, y: 0, kmh: 29 }; return r; })();
     const r = { head: z(60, 30), tail: z(30, 60), calm };
     // poussée progressive : au milieu du vol, le disque n'a pris qu'environ un quart de sa dérive (elle croît comme le carré du temps)
-    const [mx] = bez(0, 0, 15, 0, 30, 0, 0.5), [nx] = bez(0, 0, 15, 0, 30 + 4, 0, 0.5); r.midDrift = +((nx - mx) / 4).toFixed(2);
+    const T = flyTableFor({ sx: 0, sy: 0, cx: 15, cy: 0, ex: 30, ey: 4, wdx: 0, wdy: 4 }, () => 2); r.midDrift = +(flyAt(T, 0.5)[1] / 4).toFixed(2); r.endDrift = +(flyAt(T, 1)[1] / 4).toFixed(2);
     G.wind = keep; return r;
   })()`);
   t.ok(wv.head.mid > wv.calm.mid * 1.15 && wv.tail.mid < wv.calm.mid * 0.85, 'vent de face : le disque monte et plane ; vent de dos : il reste plus bas', wv);
   t.ok(wv.tail.late < wv.calm.late && Math.abs(wv.head.start - wv.calm.start) < 0.01 && Math.abs(wv.tail.end - wv.calm.end) < 0.01, 'les deux bouts du vol ne bougent pas (lâcher, réception) ; de dos il retombe plus tôt', wv);
-  t.ok(wv.midDrift > 0.3 && wv.midDrift < 0.6, 'la dérive du vent arrive surtout en fin de vol (le disque ralentit)', wv);
+  t.ok(wv.midDrift > 0 && wv.midDrift < 0.5 && Math.abs(wv.endDrift - 1) < 0.01, 'la dérive du vent arrive surtout en fin de vol (force constante : elle grandit avec le temps)', wv);
 
   t.group('Disque au sol : n’importe quel joueur dirigé peut le ramasser');
   const gp = R(`(() => { const keep = [G.humans, G.myId, G.phase, G.off];
@@ -535,12 +535,12 @@ export default async function (t, { quick }) {
   t.group('Vent de côté : l’inclinaison du disque décide de son effet');
   const bk = R(`(() => {
     const keepW = G.wind; G.wind = { x: 0, y: 6, kmh: 21.6 };
-    const fx = cv => { const b = bankWind(30, 18, 55, 18, cv, LOFT.N), d = throwDur(30, 18, 55, 18, LOFT.N, cv); return { lift: b.lift, drift: Math.hypot(...drift(d, LOFT.N, b)) }; };
+    const fx = cv => { const b = bankWind(30, 18, 55, 18, cv, LOFT.N), d = throwDur(30, 18, 55, 18, LOFT.N, cv); return { cross: b.cross, drift: Math.hypot(...drift(d, LOFT.N, b)) }; };
     const flat = fx(0), under = fx(-0.8), over = fx(0.8);          // vent vers y+ : la courbe -0,8 tourne vers y+ (le vent arrive par en dessous)
     G.wind = keepW;
     return { flat, under, over };
   })()`);
-  t.ok(bk.flat.lift === 0 && bk.under.lift > 0 && bk.over.lift < 0 && bk.under.drift > bk.flat.drift && bk.over.drift < bk.flat.drift,
+  t.ok(bk.flat.cross === 0 && bk.under.cross > 0 && bk.over.cross < 0 && bk.under.drift > bk.flat.drift && bk.over.drift < bk.flat.drift,
     'vent de côté : par en dessous du disque penché, il le porte (plus haut, plus emporté) ; sur le dessus, il le plaque (moins emporté)', bk);
   t.group('Vent le long du trajet : face au vent le disque ralentit, vent dans le dos il accélère');
   const fl = R(`(() => {

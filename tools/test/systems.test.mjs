@@ -62,7 +62,8 @@ export default async function (t, { quick }) {
                 && !TEAMS[0].some(q => ['jab', 'cut', 'park'].includes(q.state))) {           // personne ne coupe : chacun vise sa place
               for (const p of TEAMS[0]) if (p.state === 'stack' && p.role === 'cutter' && p.sysIdx >= 0 && p !== disc.holder) { checks++; if (dist(p.tx, p.ty, ...sysWorld(osysOf(0).pos, disc.x, disc.y, dirOf(0), -closedOf(1))[p.sysIdx]) < 0.5
                 || Math.abs(dist(p.tx, p.ty, disc.x, disc.y) - HOLDER_ROOM) < 0.05
-                || dist(...sysWorld(osysOf(0).pos, disc.x, disc.y, dirOf(0), -closedOf(1))[p.sysIdx], disc.x, disc.y) < HOLDER_ROOM + 0.1) onSpot++;   // place trop près du porteur : il s'en écarte
+                || dist(...sysWorld(osysOf(0).pos, disc.x, disc.y, dirOf(0), -closedOf(1))[p.sysIdx], disc.x, disc.y) < HOLDER_ROOM + 0.1   // place trop près du porteur : il s'en écarte
+                || TEAMS[0].some(q => q !== p && q !== disc.holder && dist(p.x, p.y, q.x, q.y) < SPREAD)) onSpot++;   // un coéquipier collé : il s'en écarte (spreadOut, sim.js)
                 else if (globalThis.__miss) __miss.push({ i: p.sysIdx, tgt: [+p.tx.toFixed(1), +p.ty.toFixed(1)], spot: sysWorld(osysOf(0).pos, disc.x, disc.y, dirOf(0), -closedOf(1))[p.sysIdx].map(v => +v.toFixed(1)), pos: [+p.x.toFixed(1), +p.y.toFixed(1)], h: [+disc.x.toFixed(1), +disc.y.toFixed(1)], others: TEAMS[0].filter(q => q !== p).map(q => q.state).join() }); }   // (ou il contourne le porteur pour y aller)
             } }
           if (f >= 36000) { stuck++; break; } pts++; if (G.phase === 'over') break; } }

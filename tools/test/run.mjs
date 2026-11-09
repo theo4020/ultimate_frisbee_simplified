@@ -24,7 +24,7 @@ async function runOne(f) {
   console.log('▶ ' + f.replace('.test.mjs', ''));
   const t = tester(f);
   try { await (await import(path.join(dir, f))).default(t, { quick }); }
-  catch (e) { t.fail.push('erreur : ' + (e.stack || e).toString().split('\n').slice(0, 4).join(' | ')); console.log('    ✗ ' + t.fail[t.fail.length - 1]); }
+  catch (e) { t.fail.push('erreur : ' + (e.stack || e).toString().split('\n').slice(0, 14).join(' | ')); console.log('    ✗ ' + t.fail[t.fail.length - 1]); }
   console.log(`  ${t.fail.length ? '❌' : '✅'} ${t.pass} ok${t.fail.length ? ', ' + t.fail.length + ' échec(s)' : ''}`);
   return [t.pass, t.fail.length];
 }

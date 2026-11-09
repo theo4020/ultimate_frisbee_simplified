@@ -97,16 +97,11 @@ function ctrlFor(sx, sy, ex, ey, curve) {
   const dx = ex - sx, dy = ey - sy, d = Math.hypot(dx, dy) || 0.01;
   return [(sx + ex) / 2 - dy / d * curve * d * 0.4, (sy + ey) / 2 + dx / d * curve * d * 0.4];
 }
-// trajectoire du disque (u = part du temps de vol écoulée) : il part vite et ralentit en fin de course
-// (vitesse ×(1 + DISC_EASE) au lâcher, ×(1 - DISC_EASE) à l'arrivée ; même durée totale)
+// rythme du disque (u = part du temps de vol écoulée, s = part du trajet) : il part vite et ralentit en fin de course
+// (vitesse ×(1 + DISC_EASE) au lâcher, ×(1 - DISC_EASE) à l'arrivée ; même durée totale). Le vol lui-même : flyTableFor
 const DISC_EASE = 0.5;
 const discS = u => u + DISC_EASE * u * (1 - u);
 const discU = s => (DISC_EASE ? ((1 + DISC_EASE) - Math.sqrt((1 + DISC_EASE) ** 2 - 4 * DISC_EASE * s)) / (2 * DISC_EASE) : s);   // l'inverse : instant où il a fait cette part du trajet
-function bez(sx, sy, cx, cy, ex, ey, u) {
-  u = discS(u);
-  const a = 1 - u;
-  return [a * a * sx + 2 * a * u * cx + u * u * ex, a * a * sy + 2 * a * u * cy + u * u * ey];
-}
 const flightTime = d => 0.75 + d / 21;                    // vitesse qui grandit avec la distance : 5 m : ~1 s (passe douce) · 10 m : ~1,2 s · 30 m : ~2,2 s
 // hauteur max d'une passe haute ou d'un pull (une passe haute monte bien plus haut)
 // (passe normale ou rasante, et pull : la formule normale ; plus haute : celle de la passe haute, à durée égale)
@@ -168,7 +163,7 @@ const discKind = () => (disc.pull ? 'pull' : disc.loft);
 //    serré à mesure qu'il ralentit (le « hook » de fin de vol) ;
 //  • le vent : une force constante dans sa direction, plus forte quand le disque est haut. Face au vent il ralentit,
 //    vent dans le dos il accélère, et comme la courbe suit la direction du disque, le vent ne casse pas la courbe.
-// La force de la courbe est réglée pour que, sans vent, la passe ait le même creux que la courbe choisie (bez) ; la
+// La force de la courbe est réglée pour que, sans vent, la passe ait le même creux que la courbe choisie (parabole S → C → arrivée, C : ctrlFor) ; la
 // vitesse de départ, pour qu'il arrive là où le jeu l'attend (ex, ey). Table calculée une fois par vol (hôte et invités).
 const FLY = { N: 60, ALONG: 0.5, STOP: 0.4, HOOK: 0.3 };
 const driftHf = z => clamp(0.1 + 0.36 * z, 0.25, 2.2);         // le vent pousse plus fort en hauteur
@@ -223,7 +218,8 @@ function flyTableFor(P, zs) {
   if (T0 && T0.sx === P.sx && T0.sy === P.sy && T0.ex === P.ex && T0.ey === P.ey && T0.cx === P.cx && T0.cy === P.cy && T0.wdx === wdx && T0.wdy === wdy && T0.cv === P.curveV && T0.lo === P.loft) return T0;
   const n = FLY.N, ax = P.ex - wdx, ay = P.ey - wdy;             // ax, ay : arrivée sans vent
   const cl = Math.hypot(ax - P.sx, ay - P.sy) || 1e-6, nx = -(ay - P.sy) / cl, ny = (ax - P.sx) / cl;
-  // creux voulu (sans vent) : celui de la courbe bez, échantillonné au même rythme (s = discS(u))
+  if (!wdx && !wdy) return (P.fly = flyCalm(P, cl, nx, ny));
+  // creux voulu (sans vent) : celui de la parabole S → C → A, échantillonné au même rythme (s = discS(u))
   let want = 0;
   for (let i = 1; i <= n; i++) { const s = discS(i / n), a = 1 - s; want += (2 * a * s * ((P.cx - P.sx) * nx + (P.cy - P.sy) * ny)) / n; }
   const hfr = []; let hm = 0;
@@ -243,12 +239,40 @@ function flyTableFor(P, zs) {
   // petit recalage : l'arrivée tombe pile sur (ex, ey) (l'écart restant, réparti au fil du vol)
   const ex0 = out.p[n][0] - P.ex, ey0 = out.p[n][1] - P.ey;
   for (let i = 0; i <= n; i++) { const w = i / n; out.p[i][0] -= ex0 * w; out.p[i][1] -= ey0 * w; out.v[i][0] -= ex0; out.v[i][1] -= ey0; }
+  return flyDone(P, out.p, out.v, L, wdx, wdy);
+}
+// fin de table : portance du disque penché, au fil du vol
+function flyDone(P, p, v, L, wdx, wdy) {
   // disque penché par la courbe (bord intérieur plus bas) : à chaque instant, un vent qui souffle vers l'intérieur du virage
   // arrive par en dessous et le porte, un vent vers l'extérieur tape le dessus et le plaque — ça change au fil du vol,
   // à mesure que le disque tourne (lb : portance, comme un vent de face, voir heightAt)
   const bk = P.pull || !L || !G.wind || G.tuto ? 0 : Math.min(1, Math.abs(P.curveV || 0)) * (1 - 0.6 * loftW(loftOf(P.loft === undefined ? LOFT.N : P.loft)));
-  const lb = out.v.map(([vx, vy]) => { if (!bk) return 0; const sp = Math.hypot(vx, vy) || 1, sg = Math.sign(L); return BANK.LIFT * bk * (G.wind.x * -vy * sg + G.wind.y * vx * sg) / sp; });
-  return (P.fly = { sx: P.sx, sy: P.sy, ex: P.ex, ey: P.ey, cx: P.cx, cy: P.cy, wdx, wdy, cv: P.curveV, lo: P.loft, p: out.p, v: out.v, lb });
+  const lb = v.map(([vx, vy]) => { if (!bk) return 0; const sp = Math.hypot(vx, vy) || 1, sg = Math.sign(L); return BANK.LIFT * bk * (G.wind.x * -vy * sg + G.wind.y * vx * sg) / sp; });
+  return (P.fly = { sx: P.sx, sy: P.sy, ex: P.ex, ey: P.ey, cx: P.cx, cy: P.cy, wdx, wdy, cv: P.curveV, lo: P.loft, p, v, lb });
+}
+// vol sans dérive (passe sans vent, ou coupe jugée par l'IA) : sa forme ne dépend que de la place du point de contrôle
+// par rapport à la corde ; on la calcule une fois sur une corde de 1 m (FLY_CALM), puis on l'agrandit et la tourne
+const FLY_CALM = new Map();
+function flyCalm(P, cl, nx, ny) {
+  if (cl < 0.05 || !isFinite(cl)) {                              // (passe sur place : le disque ne bouge pas)
+    const p = [], v = []; for (let i = 0; i <= FLY.N; i++) { p.push([P.sx + (P.ex - P.sx) * i / FLY.N, P.sy + (P.ey - P.sy) * i / FLY.N]); v.push([P.ex - P.sx, P.ey - P.sy]); }
+    return flyDone(P, p, v, 0, 0, 0);
+  }
+  const dx = ny, dy = -nx, qx = P.cx - P.sx, qy = P.cy - P.sy;     // (dx, dy) : le long de la corde ; (nx, ny) : de côté
+  const ca = Math.round((qx * dx + qy * dy) / cl * 400) / 400, cb = Math.round((qx * nx + qy * ny) / cl * 400) / 400, key = ca + ',' + cb;
+  let U = FLY_CALM.get(key);
+  if (!U) {
+    if (FLY_CALM.size > 4000) FLY_CALM.clear();
+    const n = FLY.N, Q = { sx: 0, sy: 0, nx: 0, ny: 1, D: 0, hf: new Array(2 * n + 1).fill(0), Fx: 0, Fy: 0 };
+    let want = 0; for (let i = 1; i <= n; i++) { const s = discS(i / n); want += 2 * (1 - s) * s * cb / n; }
+    const k = flySolve([1.5, 0, 0], k => { Q.D = Q.vm = Math.hypot(k[0], k[1]); Q.D *= 2 / 3; const r = flySim(Q, k[0], k[1], k[2]); return [r[0] - 1, r[1], r[2] - want]; });
+    Q.vm = Math.hypot(k[0], k[1]); Q.D = Q.vm * 2 / 3; const out = {}; flySim(Q, k[0], k[1], k[2], out);
+    const e0 = out.p[n][0] - 1, e1 = out.p[n][1];
+    for (let i = 0; i <= n; i++) { const w = i / n; out.p[i][0] -= e0 * w; out.p[i][1] -= e1 * w; out.v[i][0] -= e0; out.v[i][1] -= e1; }
+    U = { p: out.p, v: out.v, L: k[2] }; FLY_CALM.set(key, U);
+  }
+  const p = U.p.map(([a, b]) => [P.sx + cl * (a * dx + b * nx), P.sy + cl * (a * dy + b * ny)]), v = U.v.map(([a, b]) => [cl * (a * dx + b * nx), cl * (a * dy + b * ny)]);
+  return flyDone(P, p, v, U.L, 0, 0);
 }
 // position à l'instant u (interpolation de Hermite : la courbe reste lisse entre les pas)
 function flyAt(T, u) {

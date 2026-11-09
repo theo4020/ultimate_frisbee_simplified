@@ -55,17 +55,17 @@ function drawStreaks() {
 // Un vent qui souffle vers l'intérieur de la courbe arrive par en dessous : il porte le disque (il descend plus lentement,
 // plane un peu plus longtemps et se laisse emporter davantage). Un vent qui souffle vers l'extérieur tape le dessus :
 // il le plaque (il descend plus vite, dérive moins). Disque à plat (sans courbe) : le vent le pousse seulement de côté.
-//   cross : vent vers l'intérieur de la courbe (m/s) · lift : portance (comme un vent de face, voir heightAt)
-//   k : dérive (×) · kd : temps de vol (×)
+//   cross : vent vers l'intérieur de la courbe (m/s) · k : dérive (×) · kd : temps de vol (×)
+//   (la portance, elle, change au fil du vol à mesure que le disque tourne : BANK.LIFT, voir flyDone dans util.js)
 const BANK = { LIFT: 0.8, DRIFT: 0.07, DUR: 0.008 };
-const NO_BANK = { cross: 0, lift: 0, k: 1, kd: 1 };
+const NO_BANK = { cross: 0, k: 1, kd: 1 };
 function bankWind(sx, sy, ax, ay, curve, kind) {
   const c = Math.min(1, Math.abs(curve || 0)) * (1 - 0.6 * loftW(loftOf(kind === undefined ? LOFT.N : kind)));   // passe haute : lâchée plus à plat
   if (!c || (typeof G !== 'undefined' && G.tuto) || !G.wind) return NO_BANK;
   const dx = ax - sx, dy = ay - sy, d = Math.hypot(dx, dy) || 1, s = Math.sign(curve);
   // intérieur de la courbe : à l'opposé du renflement de la trajectoire (ctrlFor), là où le disque tourne
   const cross = G.wind.x * (dy / d * s) + G.wind.y * (-dx / d * s);
-  return { cross, lift: BANK.LIFT * cross * c, k: clamp(1 + BANK.DRIFT * cross * c, 0.55, 1.6), kd: clamp(1 + BANK.DUR * cross * c, 0.9, 1.12) };
+  return { cross, k: clamp(1 + BANK.DRIFT * cross * c, 0.55, 1.6), kd: clamp(1 + BANK.DUR * cross * c, 0.9, 1.12) };
 }
 // Temps de vol : un disque lancé contre le vent flotte plus longtemps, avec le vent il file (porté de côté : un peu plus long)
 function throwDur(sx, sy, ax, ay, kind, curve) {
@@ -79,7 +79,8 @@ function gustVar(curve, kind) {
   const l = loftOf(kind), hw = loftW(l), cw = 1 + 1.4 * Math.min(1, Math.abs(curve || 0)) * (1 - hw), hf = 1 + 0.3 * hw - 0.3 * loftLow(l);
   return [0.16 * cw * hf, 0.11 * cw * hf];
 }
-// dérive du vent pendant le vol (bw : effet de l'inclinaison, voir bankWind) ; elle grandit au fil du vol (sim.js : bez)
+// dérive du vent pendant le vol (bw : effet de l'inclinaison, voir bankWind) : là où le vent emmène l'arrivée ; la forme du vol
+// (force du vent, plus forte en hauteur) : flyTableFor (util.js)
 function drift(dur, kind, bw) { const [wx, wy] = windNow(), k = dur * DRIFT * throwK(kind).drift * (bw ? bw.k : 1); return [wx * k, wy * k]; }
 function windLabel() {
   const { x, y, kmh } = G.wind;
