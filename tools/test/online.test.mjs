@@ -137,7 +137,8 @@ export default async function (t) {
     const gv = await guest.evaluate(() => disc.mode === 'air' ? [0.25, 0.5, 0.75].map(u => [...discAt(u), discZ(u)]) : null);
     const vd = gv ? Math.max(...gv.map((q, i) => Math.hypot(q[0] - hv.at[i][0], q[1] - hv.at[i][1]))) : 99, vz = gv ? Math.max(...gv.map((q, i) => Math.abs(q[2] - hv.at[i][2]))) : 99;
     t.ok(vd < 0.4 && vz < 0.15, 'avec du vent, l’invité voit la même trajectoire que l’hôte (position et hauteur)', { vd: +vd.toFixed(2), vz: +vz.toFixed(2) });
-    await host.evaluate(() => { G.wind = { x: 0, y: 0, kmh: 0 }; netSend({ t: 'wind', wind: G.wind }); });
+    await host.evaluate(() => { G.wind = { x: 0, y: 0, kmh: 0 }; netSend({ t: 'wind', wind: G.wind }); const p = TEAMS[0][0]; p.think = 0; holdDisc(p); });   // la passe test ne continue pas dans la suite
+    await guest.waitForFunction(() => disc.mode === 'held' && G.wind.kmh === 0, null, { timeout: 3000 }).catch(() => {});
 
     t.group('Pause pour tout le monde');
     await guest.click('#menuB'); await guest.click('#gmPause');
