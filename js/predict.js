@@ -20,7 +20,8 @@ const seeT = p => SEE_T * aiLvl(p.team).react;
 
 // ---------- où va le disque ? (cône d'incertitude) ----------
 // rayon du cercle d'arrivée au lâcher (m) : imprécision du lancer et rafales, avec un minimum qui grandit avec la distance
-const coneR = (d, curve, kind, wx, wy) => Math.max(CONE.MIN + CONE.PER * d, throwErr(d, curve, kind) + Math.hypot(wx || 0, wy || 0) * 0.08);
+// (le vent : jusqu'où les rafales peuvent déporter l'arrivée — gustVar : plus large pour une passe haute ou courbée)
+const coneR = (d, curve, kind, wx, wy) => Math.max(CONE.MIN + CONE.PER * d, throwErr(d, curve, kind) + Math.hypot(wx || 0, wy || 0) * Math.hypot(...gustVar(curve, kind)) * CONE.GUST);
 // part du cône qui reste (1 au lâcher → 0 à l'arrivée)
 const coneLeft = () => (disc.mode === 'air' ? Math.max(0, 1 - disc.t / disc.dur) ** CONE.K : 0);
 // erreur de lecture d'un joueur IA (× rayon du cône) : un joueur qui lit bien le jeu devine mieux l'arrivée
@@ -69,7 +70,7 @@ function pathSlack(path, opp, mark, misread) {
   // le vrai vol (forces, vent : util.js) ; sans dérive (passe sans vent, ou coupe jugée « à la louche ») : la courbe simple
   const T = path.wdx || path.wdy ? flyTableFor(path, path.z) : null;
   for (let u = 0.04; u <= 1.001; u += 0.06) {
-    const z = path.z(u), [x, y] = T ? flyAt(T, u) : bez(path.sx, path.sy, path.cx, path.cy, path.ex, path.ey, u), tA = u * path.dur;
+    const z = path.z(u, flyLb(T, u)), [x, y] = T ? flyAt(T, u) : bez(path.sx, path.sy, path.cx, path.cy, path.ex, path.ey, u), tA = u * path.dur;
     for (const q of D) {
       const o = q.o; let s;
       if (z > q.jmax) continue;

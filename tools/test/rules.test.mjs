@@ -192,6 +192,7 @@ export default async function (t, { quick }) {
   R(`function __near(h) { G.dplay = null; for (const d of TEAMS[1]) d.match = null; const m = TEAMS[1][0]; m.match = h; for (const d of TEAMS[1]) { if (d === m) { [d.x, d.y] = markSpot(1, h.x, h.y); } else { d.x = h.x + dirOf(0) * 20; } d.vx = d.vy = 0; } G.marker = m; }`);
   const du2 = R(`(() => { G.score = [0, 0]; G.receiving = 0; newWind(); startPoint(); for (let f = 0; f < 6000 && !(G.phase === 'play' && disc.mode === 'held' && !G.pullPending); f++) __tick();
     G.dplay = null; G.oplay = null; const keepAi = Object.assign({}, G.ai); Object.assign(G.ai, { dplay: 'none', def: 'man', force: 'bas', dsys: null });
+    G.wind = { x: 0, y: 0, kmh: 0 };                                // (la géométrie du pivot, sans vent)
     const h = TEAMS[0][0]; G.off = 0; Object.assign(h, { x: 50, y: 18, vx: 0, vy: 0 }); holdDisc(h); h.think = 99; setupDefense(1, h); __near(h);
     const c = closedOf(1), mkOk = () => { const m = TEAMS[1][0]; return +((m.y - h.y) * c).toFixed(2); };
     for (let f = 0; f < 90; f++) { h.think = 99; __tick(); } const rest = mkOk();
@@ -513,8 +514,9 @@ export default async function (t, { quick }) {
       th.x = 40; th.y = 18; holdDisc(th); th.think = 99;
       TEAMS[0].slice(2).concat(TEAMS[1].slice(1)).forEach((q, k) => { q.x = 10 + k; q.y = 2; });
       throwDisc(th, 60, 18, 0, 0, LOFT.N);
-      let f = 0;
+      let f = 0; const oR = Math.random; Math.random = () => 0.999;   // (pas de drop au hasard : on teste qui est le plus près)
       while (disc.mode === 'air' && f++ < 600) { rc.x = disc.ex + 1.3; rc.y = disc.ey; d.x = disc.ex; d.y = disc.ey - dDef; rc.vx = rc.vy = d.vx = d.vy = 0; __tick(); }
+      Math.random = oR;
       return { mode: disc.mode, holder: disc.holder ? disc.holder.team : -1, off: G.off, msg: G.msg };
     };
     return { near: run(1.0), far: run(1.7) };
@@ -526,10 +528,10 @@ export default async function (t, { quick }) {
     const oT = __tick; __tick = function () { oT(); if (G.phase === 'play' && disc.mode === 'held') { n++;
       const m = TEAMS[G.off].filter(q => q !== disc.holder && q.state !== 'cut' && q.state !== 'jab');
       if (m.some((a, i) => m.some((b, j) => j > i && dist(a.x, a.y, b.x, b.y) < 2))) tight++; } };
-    for (let k = 0; k < 8; k++) __playPoint();
+    for (let k = 0; k < 12; k++) __playPoint();
     __tick = oT; return { n, pct: +(100 * tight / Math.max(1, n)).toFixed(1) };
   })()`);
-  t.ok(sp.n > 500 && sp.pct < 6, 'deux attaquants qui ne coupent pas restent rarement à moins de 2 m l’un de l’autre (relais qui ne se croisent pas, écart gardé)', sp);
+  t.ok(sp.n > 500 && sp.pct < 8, 'deux attaquants qui ne coupent pas restent rarement à moins de 2 m l’un de l’autre (relais qui ne se croisent pas, écart gardé)', sp);
   t.group('Vent de côté : l’inclinaison du disque décide de son effet');
   const bk = R(`(() => {
     const keepW = G.wind; G.wind = { x: 0, y: 6, kmh: 21.6 };

@@ -138,7 +138,7 @@ const loftName = l => (l < 0.15 ? 'rasante' : l < 0.45 ? 'normale' : l < LOFT.HI
 // Cône d'incertitude d'une passe en vol : le cercle d'arrivée (rayon coneR, voir predict.js) se resserre jusqu'à un point
 // à l'arrivée (× (1 - u)^K) ; son centre affiché est décalé (au plus SHOW × rayon) : l'arrivée réelle est dedans, pas au centre.
 // Les joueurs IA lisent l'arrivée avec une erreur qui dépend de leur lecture du jeu (READ_MIN à READ_MAX × rayon).
-const CONE = { MIN: 0.5, PER: 0.06, K: 1, SHOW: 0.8, READ_MIN: 0.25, READ_MAX: 1.3 };
+const CONE = { MIN: 0.5, PER: 0.06, K: 1, SHOW: 0.8, READ_MIN: 0.25, READ_MAX: 1.3, GUST: 0.5 };   // GUST : part de l'écart des rafales
 const KIND_DELAY = 0.4;   // disque levé (au-dessus de LOFT.TELL) : on ne peut pas lancer tout de suite (s)
 
 // Couleurs d'équipe : remplissage, contour, teinte de l'en-but

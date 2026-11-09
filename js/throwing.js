@@ -57,15 +57,14 @@ function throwDisc(h, tx, ty, curve, errScale, kind) {
   const bw = bankWind(h.x, h.y, ax, ay, curve, kind);                      // vent de côté et inclinaison (wind.js)
   const dur = throwDur(h.x, h.y, ax, ay, kind, curve) * throwSpd(h);
   const [wx0, wy0] = drift(dur, kind, bw);
-  const cw = 1 + 1.4 * Math.min(1, Math.abs(curve || 0)) * (1 - hw);       // une passe courbée subit plus les rafales
-  const gv = [0.16 * cw + (0.07 - 0.16 * cw) * hw, 0.11 * cw + (0.05 - 0.11 * cw) * hw];   // petite rafale imprévisible pendant le vol
+  const gv = gustVar(curve, loft);                                         // petite rafale imprévisible pendant le vol
   const gk = rand(1 - gv[0], 1 + gv[0]), ga = rand(-gv[1], gv[1]);
   const wx = (wx0 * Math.cos(ga) - wy0 * Math.sin(ga)) * gk, wy = (wx0 * Math.sin(ga) + wy0 * Math.cos(ga)) * gk;
   const ex = ax + wx, ey = ay + wy;                                        // le vent déplace l'arrivée
   const [sx, sy] = releasePoint(h, ax, ay), [cx, cy] = ctrlFor(sx, sy, ax, ay, curve);
   disc.mark = (G.tuto && !G.tuto.mark) || G.practice ? null : markOf(h);           // elle peut se fendre vers le disque au lâcher (sim.js)
   Object.assign(disc, { mode: 'air', holder: null, sx, sy, ex, ey, cx, cy,
-    t: 0, dur, thrower: h, team: h.team, rolled: new Set(), bd: new Map(), wa: windAlong(sx, sy, ex, ey) + bw.lift, wdx: wx, wdy: wy, kind: loftLabel(loft), loft, curveV: curve, pull: false,
+    t: 0, dur, thrower: h, team: h.team, rolled: new Set(), bd: new Map(), wa: windAlong(sx, sy, ex, ey), wdx: wx, wdy: wy, kind: loftLabel(loft), loft, curveV: curve, pull: false,
     rx: tx + wx0, ry: ty + wy0 });                                          // là où la passe devait arriver (sans erreur)
   // cône d'incertitude (voir CONE) : rayon au lâcher, décalage du cercle affiché, et l'idée que chacun se fait de l'arrivée
   const r0 = coneR(d, curve, loft, wx0, wy0), oa = rand(0, Math.PI * 2), om = r0 * CONE.SHOW * Math.sqrt(Math.random());
@@ -107,8 +106,8 @@ function laneSlack(h, aimX, aimY, tx, ty, curve, opp, kind, side, misread) {
   // la mark : là où elle est, ou là où elle sera si le porteur doit encore pivoter (elle suit son pivot)
   const mk = disc.holder === h ? markOf(h) : null, piv = side !== undefined && Math.abs((h.pivY || 0) - side) > 0.35;
   const mark = mk ? { p: mk, ...(([x, y]) => ({ x, y }))(piv ? markSpotFor(mk.team, h.x, h.y, side) : [mk.x, mk.y]) } : null;
-  const wa = windAlong(sx, sy, tx, ty) + bankWind(sx, sy, aimX, aimY, curve, kind).lift;
-  return pathSlack({ sx, sy, cx, cy, ex: tx, ey: ty, wdx: tx - aimX, wdy: ty - aimY, dur, z: u => heightAt(u, peak, kind, len, curve, wa) }, opp, mark, misread || 0);
+  const wa = windAlong(sx, sy, tx, ty);                         // (+ portance du disque penché, au fil du vol : util.js)
+  return pathSlack({ sx, sy, cx, cy, ex: tx, ey: ty, wdx: tx - aimX, wdy: ty - aimY, curveV: curve, loft: loftOf(kind), dur, z: (u, lb) => heightAt(u, peak, kind, len, curve, wa + (lb || 0)) }, opp, mark, misread || 0);
 }
 
 // release = fin de l'armement d'une passe haute : on choisit la meilleure passe haute à cet instant

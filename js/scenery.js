@@ -378,7 +378,8 @@ function discLife() {
 
 // ---------- vent visible : drapeaux aux coins du terrain, feuilles par grand vent ----------
 const LEAVES = [];
-function drawWindLife(fid) {
+// eco : seulement les drapeaux, sans ombre ni feuilles (ils restent le repère du vent)
+function drawWindLife(fid, eco) {
   if (fid === 'espace' || fid === 'salle') return;
   const t = G.time, dt = FX.dt || 0.016, wv = G.wind || { x: 0, y: 0, kmh: 0 }, kmh = wv.kmh || 0;
   const ang = kmh > 0.5 ? Math.atan2(wv.y, wv.x) : Math.PI / 2, wk = Math.min(1, kmh / 30), s = S;
@@ -386,7 +387,7 @@ function drawWindLife(fid) {
   for (const [fx, fy] of [[-0.9, -0.9], [W + 0.9, -0.9], [-0.9, H + 0.9], [W + 0.9, H + 0.9]]) {
     const px = X(fx), py = Y(fy), len = (1.7 + wk * 1.3) * s, wid = 1.1 * s;
     const a = ang + Math.sin(t * (2 + wk * 6) + fx) * (0.12 + wk * 0.12) * (kmh < 2 ? 0.2 : 1), ca = Math.cos(a), sa = Math.sin(a), nx = -sa, ny = ca;
-    softShadow(ctx, px + s * 0.25, py + s * 0.3, s * 0.35, 0.35);
+    if (!eco) softShadow(ctx, px + s * 0.25, py + s * 0.3, s * 0.35, 0.35);
     ctx.fillStyle = (fx < 0) === (fy < 0) ? '#facc15' : '#ef4444';
     ctx.beginPath(); ctx.moveTo(px, py);
     for (let k = 0; k <= 6; k++) {                               // bord ondulé du tissu
@@ -397,6 +398,7 @@ function drawWindLife(fid) {
     ctx.closePath(); ctx.fill();
     ctx.fillStyle = '#f8fafc'; ctx.strokeStyle = '#334155'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(px, py, Math.max(2, s * 0.24), 0, 7); ctx.fill(); ctx.stroke();   // le poteau, vu d'en haut
   }
+  if (eco) return;
   // feuilles : seulement par vent fort, elles traversent le terrain en tourbillonnant
   if (kmh > 15 && !G.attract && LEAVES.length < 22 && Math.random() < dt * (kmh - 12) * 0.12) {
     const ux = Math.cos(ang), uy = Math.sin(ang), along = Math.random();

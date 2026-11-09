@@ -220,7 +220,7 @@ function linSolve(Jt, b) {                                       // Jt[j][i] = d
 // Table gardée dans P.fly tant que la passe ne change pas.
 function flyTableFor(P, zs) {
   const T0 = P.fly, wdx = P.wdx || 0, wdy = P.wdy || 0;
-  if (T0 && T0.sx === P.sx && T0.sy === P.sy && T0.ex === P.ex && T0.ey === P.ey && T0.cx === P.cx && T0.cy === P.cy && T0.wdx === wdx && T0.wdy === wdy) return T0;
+  if (T0 && T0.sx === P.sx && T0.sy === P.sy && T0.ex === P.ex && T0.ey === P.ey && T0.cx === P.cx && T0.cy === P.cy && T0.wdx === wdx && T0.wdy === wdy && T0.cv === P.curveV && T0.lo === P.loft) return T0;
   const n = FLY.N, ax = P.ex - wdx, ay = P.ey - wdy;             // ax, ay : arrivée sans vent
   const cl = Math.hypot(ax - P.sx, ay - P.sy) || 1e-6, nx = -(ay - P.sy) / cl, ny = (ax - P.sx) / cl;
   // creux voulu (sans vent) : celui de la courbe bez, échantillonné au même rythme (s = discS(u))
@@ -243,7 +243,12 @@ function flyTableFor(P, zs) {
   // petit recalage : l'arrivée tombe pile sur (ex, ey) (l'écart restant, réparti au fil du vol)
   const ex0 = out.p[n][0] - P.ex, ey0 = out.p[n][1] - P.ey;
   for (let i = 0; i <= n; i++) { const w = i / n; out.p[i][0] -= ex0 * w; out.p[i][1] -= ey0 * w; out.v[i][0] -= ex0; out.v[i][1] -= ey0; }
-  return (P.fly = { sx: P.sx, sy: P.sy, ex: P.ex, ey: P.ey, cx: P.cx, cy: P.cy, wdx, wdy, p: out.p, v: out.v });
+  // disque penché par la courbe (bord intérieur plus bas) : à chaque instant, un vent qui souffle vers l'intérieur du virage
+  // arrive par en dessous et le porte, un vent vers l'extérieur tape le dessus et le plaque — ça change au fil du vol,
+  // à mesure que le disque tourne (lb : portance, comme un vent de face, voir heightAt)
+  const bk = P.pull || !L || !G.wind || G.tuto ? 0 : Math.min(1, Math.abs(P.curveV || 0)) * (1 - 0.6 * loftW(loftOf(P.loft === undefined ? LOFT.N : P.loft)));
+  const lb = out.v.map(([vx, vy]) => { if (!bk) return 0; const sp = Math.hypot(vx, vy) || 1, sg = Math.sign(L); return BANK.LIFT * bk * (G.wind.x * -vy * sg + G.wind.y * vx * sg) / sp; });
+  return (P.fly = { sx: P.sx, sy: P.sy, ex: P.ex, ey: P.ey, cx: P.cx, cy: P.cy, wdx, wdy, cv: P.curveV, lo: P.loft, p: out.p, v: out.v, lb });
 }
 // position à l'instant u (interpolation de Hermite : la courbe reste lisse entre les pas)
 function flyAt(T, u) {
@@ -252,9 +257,12 @@ function flyAt(T, u) {
   const h00 = 2 * t3 - 3 * t2 + 1, h10 = t3 - 2 * t2 + t, h01 = -2 * t3 + 3 * t2, h11 = t3 - t2;
   return [h00 * p0[0] + h10 * h * v0[0] + h01 * p1[0] + h11 * h * v1[0], h00 * p0[1] + h10 * h * v0[1] + h01 * p1[1] + h11 * h * v1[1]];
 }
-// le disque en vol
-const discZ = u => heightAt(u, discPeak(), discKind(), discLen(), disc.curveV, disc.wa || 0);
-const flyTable = () => flyTableFor(disc, discZ);
+// portance du disque penché à l'instant u (0 sans table)
+function flyLb(T, u) { if (!T || !T.lb) return 0; const n = T.lb.length - 1, f = clamp(u, 0, 1) * n, i = Math.min(n - 1, Math.floor(f)); return T.lb[i] + (T.lb[i + 1] - T.lb[i]) * (f - i); }
+// le disque en vol (discZ0 : sans la portance du disque penché, pour calculer le vol)
+const discZ0 = u => heightAt(u, discPeak(), discKind(), discLen(), disc.curveV, disc.wa || 0);
+const flyTable = () => flyTableFor(disc, discZ0);
+const discZ = u => heightAt(u, discPeak(), discKind(), discLen(), disc.curveV, (disc.wa || 0) + flyLb(flyTable(), u));
 const discAt = u => flyAt(flyTable(), u);                        // position à l'instant u du vol
 // Course : temps pour parcourir d mètres en partant à la vitesse v0 dans cette direction (négative : il s'éloigne),
 // avec l'accélération et le freinage de RUN, jusqu'à la vitesse de pointe vmax

@@ -124,6 +124,21 @@ export default async function (t) {
     t.ok(rings === 0, 'un appel de cut adverse ne s’affiche pas');
     t.ok(await guest.evaluate(() => { const n = FX.parts.length; fxPlay('call', 50, 18, 1); return FX.parts.length > n; }), 'un appel de cut de son équipe s’affiche');
 
+    t.group('Vent : la même passe chez l’hôte et chez l’invité');
+    // vent de côté fort et passe courbée : l'invité recalcule le vol (forces, dérive, portance du disque penché) à partir
+    // de ce que l'hôte envoie ; il doit voir le même vol, au même endroit et à la même hauteur
+    const hv = await host.evaluate(() => {
+      G.oplay = null; G.wind = { x: 1.5, y: -7, kmh: 25.8 }; netSend({ t: 'wind', wind: G.wind });
+      const p = TEAMS[0].reduce((a, b) => (Math.abs(b.x - W / 2) < Math.abs(a.x - W / 2) ? b : a)); G.off = 0; p.x = W / 2; p.y = H / 2; p.vx = p.vy = 0; holdDisc(p); p.think = 99;
+      throwDisc(p, W / 2 + 22 * dirOf(0), 9, 0.8, 0, LOFT.N);
+      return { sx: disc.sx, at: [0.25, 0.5, 0.75].map(u => [...discAt(u), discZ(u)]) };
+    });
+    await guest.waitForFunction(sx => disc.mode === 'air' && Math.abs(disc.sx - sx) < 0.1 && Math.abs(G.wind.y + 7) < 0.01, hv.sx, { timeout: 5000 }).catch(() => {});
+    const gv = await guest.evaluate(() => disc.mode === 'air' ? [0.25, 0.5, 0.75].map(u => [...discAt(u), discZ(u)]) : null);
+    const vd = gv ? Math.max(...gv.map((q, i) => Math.hypot(q[0] - hv.at[i][0], q[1] - hv.at[i][1]))) : 99, vz = gv ? Math.max(...gv.map((q, i) => Math.abs(q[2] - hv.at[i][2]))) : 99;
+    t.ok(vd < 0.4 && vz < 0.15, 'avec du vent, l’invité voit la même trajectoire que l’hôte (position et hauteur)', { vd: +vd.toFixed(2), vz: +vz.toFixed(2) });
+    await host.evaluate(() => { G.wind = { x: 0, y: 0, kmh: 0 }; netSend({ t: 'wind', wind: G.wind }); });
+
     t.group('Pause pour tout le monde');
     await guest.click('#menuB'); await guest.click('#gmPause');
     await host.waitForFunction(() => !!G.pz, null, { timeout: 5000 });

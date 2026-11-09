@@ -73,6 +73,12 @@ function throwDur(sx, sy, ax, ay, kind, curve) {
   const along = (wx * (ax - sx) + wy * (ay - sy)) / d;       // > 0 : vent dans le dos du lanceur
   return flightTime(d) * clamp(1 - 0.01 * along, 0.85, 1.15) * throwK(kind).dur * (curve ? bankWind(sx, sy, ax, ay, curve, kind).kd : 1);
 }
+// rafales imprévisibles pendant le vol : écart possible de la dérive [en force (×), en direction (rad)]. Une passe courbée
+// les subit plus (disque penché) ; plus la passe vole haut, plus le vent la tient, une rasante y échappe en partie
+function gustVar(curve, kind) {
+  const l = loftOf(kind), hw = loftW(l), cw = 1 + 1.4 * Math.min(1, Math.abs(curve || 0)) * (1 - hw), hf = 1 + 0.3 * hw - 0.3 * loftLow(l);
+  return [0.16 * cw * hf, 0.11 * cw * hf];
+}
 // dérive du vent pendant le vol (bw : effet de l'inclinaison, voir bankWind) ; elle grandit au fil du vol (sim.js : bez)
 function drift(dur, kind, bw) { const [wx, wy] = windNow(), k = dur * DRIFT * throwK(kind).drift * (bw ? bw.k : 1); return [wx * k, wy * k]; }
 function windLabel() {
