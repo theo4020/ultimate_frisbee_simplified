@@ -329,21 +329,27 @@ export default async function (t) {
       });
       t.ok(recv.first === false && recv.readyAt >= 380 && recv.readyAt < 1400, 'chez l’invité : le disque reçu, un petit délai avant de pouvoir relancer', recv);
       // désigner un coéquipier : anneau chez l'invité, choix connu de l'hôte ; puis appel dans l'espace : c'est lui qui part
+      // (attentes sur ce qu'on attend de voir, pas sur une durée fixe : le réseau lent et une machine chargée varient)
       const pk = await guest.evaluate(async () => {
         const q = TEAMS[0][3]; doCall(q.x, q.y); const ring = myPick() === q;
         await new Promise(r => setTimeout(r, 700));
-        doCall(70, 12); await new Promise(r => setTimeout(r, 900));
-        return { ring, idx: players.indexOf(q), after: G.myPick, arrow: !!q.callTo && G.time - q.called < 3.5 && Math.hypot(q.callTo[0] - 70, q.callTo[1] - 12) < 1 };
+        doCall(70, 12);
+        const arrowOk = () => !!q.callTo && G.time - q.called < 3.5 && Math.hypot(q.callTo[0] - 70, q.callTo[1] - 12) < 1;
+        for (const t0 = performance.now(); performance.now() - t0 < 4000 && !arrowOk();) await new Promise(r => requestAnimationFrame(r));
+        return { ring, idx: players.indexOf(q), after: G.myPick, arrow: arrowOk() };
       });
+      await host.waitForFunction(i => { const q = players[i]; return !!q.callTo && G.time - q.called < 4 && Math.hypot(q.callTo[0] - 70, q.callTo[1] - 12) < 1; }, pk.idx, { timeout: 4000 }).catch(() => {});
       const hp = await host.evaluate(i => { const q = players[i]; return { cut: !!q.callTo && G.time - q.called < 4 && Math.hypot(q.callTo[0] - 70, q.callTo[1] - 12) < 1 }; }, pk.idx);
       t.ok(pk.ring && pk.after === null && pk.arrow && hp.cut, 'coéquipier désigné par l’invité : anneau chez lui, c’est bien lui qui coupe chez l’hôte, flèche des deux côtés', { pk: { ...pk, after: !!pk.after }, hp });
       // appel dans l'espace sans désigner : la flèche part du coéquipier choisi par l'hôte, chez l'invité aussi
       // (un endroit loin de tout le monde : un appel tout près d'un coéquipier le désignerait au lieu de le faire couper)
       const sp = await host.evaluate(() => { let b = null, bd = -1; for (const [x, y] of [[60, 30], [65, 8], [30, 32], [70, 20], [25, 6]]) { const d = Math.min(...players.map(q => dist(q.x, q.y, x, y))); if (d > bd) { bd = d; b = [x, y]; } } return b; });
       await guest.evaluate(sp => doCall(sp[0], sp[1]), sp);
-      await guest.waitForTimeout(900);
+      await host.waitForFunction(sp => players.some(q => q.callTo && G.time - q.called < 1.5 && Math.hypot(q.callTo[0] - sp[0], q.callTo[1] - sp[1]) < 1), sp, { timeout: 4000 }).catch(() => {});
       const hc = await host.evaluate(sp => players.findIndex(q => q.callTo && G.time - q.called < 1.5 && Math.hypot(q.callTo[0] - sp[0], q.callTo[1] - sp[1]) < 1), sp);
-      const gc = await guest.evaluate(([i, sp]) => { const q = players[i]; return !!q && !!q.callTo && Math.hypot(q.callTo[0] - sp[0], q.callTo[1] - sp[1]) < 1 && G.time - q.called < 3.5; }, [hc, sp]);
+      const gcOk = ([i, sp]) => { const q = players[i]; return !!q && !!q.callTo && Math.hypot(q.callTo[0] - sp[0], q.callTo[1] - sp[1]) < 1 && G.time - q.called < 3.5; };
+      await guest.waitForFunction(gcOk, [hc, sp], { timeout: 4000 }).catch(() => {});
+      const gc = await guest.evaluate(gcOk, [hc, sp]);
       t.ok(hc >= 0 && gc, 'appel dans l’espace : chez l’invité, la flèche jaune part du coéquipier qui coupe vraiment', { hc, gc });
       // courbe puis passe à un coéquipier IA : la courbe revient à zéro, il récupère le disque à la réception (takeover)
       await setup(); await host.evaluate(() => { [1, 3].forEach(k => { const q = TEAMS[0][k]; q.x = 8; q.y = 4 + k * 6; q.callT = 0; q.callTo = null; }); window.__dc = dropChance; dropChance = () => 0; const q4 = TEAMS[0][4]; window.__rc = setInterval(() => { if (disc.mode === 'air' && !disc.pull) { q4.x = disc.ex; q4.y = disc.ey; q4.vx = q4.vy = 0; } }, 30); });   // (le receveur attend le disque là où il arrive : on teste la reprise, pas la réception)   // personne d'autre sur la trajectoire, pas de drop
