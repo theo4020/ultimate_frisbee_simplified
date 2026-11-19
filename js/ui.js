@@ -64,7 +64,7 @@ function updateHud() {
   const myPlay = (op && G.oplay.team === ME) ? op : (dp && G.dplay.team === ME) ? dp : '';
   const oppPlay = (op && G.oplay.team === OP) ? op : (dp && G.dplay.team === OP) ? dp : '';
   const playTxt = myPlay ? ` · play ${PLAY_NAMES[myPlay]}` : '', oppTxt = oppPlay ? ` · play ${PLAY_NAMES[oppPlay]}` : '';
-  $('status').innerHTML = G.attract ? '<b>Match de démonstration</b>' : G.practice ? '<b>Entraînement</b> · lance dans la cible' : G.spectator ? `<b>Spectateur</b> · tu regardes la partie` : G.phase === 'pull'
+  $('status').innerHTML = G.attract ? '<b>Match de démonstration</b>' : G.practice ? '<b>Entraînement</b> · lance dans la cible' : G.daily ? `<b>Défi du jour #${G.daily.n}</b> · ${DAILY_NAMES[G.daily.kind]}` : G.spectator ? `<b>Spectateur</b> · tu regardes la partie` : G.phase === 'pull'
     ? (pulling ? '<b>Pull</b> · vise, choisis la courbe, puis arrête la jauge dans le vert' : '<b>Pull</b> · ' + (G.receiving === ME ? 'tu reçois le pull' : 'ton équipe pulle'))
     : att
     ? `<b>Attaque</b> · ${NAMES[formOf(ME)]}${playTxt} — en face : ${NAMES[defFormOf(OP)]}, ${NAMES[forceOf(OP)]}${oppTxt}`
@@ -197,7 +197,8 @@ function showLobby(err, view) {
   if (typeof endlessCfgOut === 'function') endlessCfgOut();
   if (typeof repPoll === 'function') repPoll(true);              // admin : nouveaux signalements ?
   G.menuShown = true; G.teamsOpen = null; G.series = null;
-  $('lobbyCard').style.display = ''; for (const id of ['stratCard', 'seriesCard', 'profileCard', 'endlessCard', 'styleCard']) $(id).style.display = 'none';
+  $('lobbyCard').style.display = ''; for (const id of ['stratCard', 'seriesCard', 'profileCard', 'endlessCard', 'styleCard', 'dailyCard']) $(id).style.display = 'none';
+  $('dailyTxt').textContent = dailyHomeTxt();
   const tutoDone = storeGet('uf-tuto', false), tuto2 = storeGet('uf-tuto2', false), s = seriesState();
   $('tutoTxt').textContent = !tutoDone ? 'Nouveau ? Coach Disco t’attend : les commandes en petits défis'
     : tuto2 ? 'Revoir les commandes, débutant ou avancé' : 'Débutant fait : passe à l’avancé (mark, passe haute, plays…)';
@@ -591,6 +592,7 @@ function leaveToMenu() {
   G.replay = null; FX.parts.length = 0; G.msgT = 0;
   if (G.tuto) { tutoQuit(); return; }
   if (G.practice) { practiceQuit(); return; }
+  if (G.daily) { dailyQuit(); return; }
   if (G.net) { netQuit(); return; }
   backToSolo(); showLobby();
 }

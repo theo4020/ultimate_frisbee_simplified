@@ -8,6 +8,8 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
+  { id: 47, date: '2026-11-19', tag: 'Solo', title: 'Le défi du jour 📅',
+    body: `Un défi par jour, le même pour tout le monde : un jour en <b>attaque</b> (marque vite), un jour en <b>défense</b> à 3 contre 3 (recule-les le moins possible). Un essai, un score, et un bouton pour le partager.` },
   { id: 46, date: '2026-11-04', tag: 'Jeu', title: 'Le vent de côté 🌬️',
     body: `• Le disque <b>ralentit face au vent</b> et accélère vent dans le dos ; plus il est haut, plus le vent le pousse.<br>
       • La courbe suit le disque jusqu'au bout : le vent la déporte sans la casser.<br>

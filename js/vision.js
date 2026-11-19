@@ -15,7 +15,7 @@ const pIdx = p => p.team * N + p.i;
 // tout le monde connaît la situation de départ (début de point, reprise après une pause…)
 function visReset() {
   for (const p of players) {
-    p.mem = players.map(q => ({ x: q.x, y: q.y, vx: q.vx, vy: q.vy, t: G.gt }));
+    p.mem = []; for (const q of players) p.mem[pIdx(q)] = { x: q.x, y: q.y, vx: q.vx, vy: q.vy, t: G.gt };   // (rangé par pIdx : marche aussi en 3 contre 3)
     p.lookT = rand(0, 0.2); p.scanI = 0;
   }
 }
@@ -67,7 +67,8 @@ function visTick(dt) {
 // de q (équipe, rôle…) ; src = le vrai joueur
 function seen(p, q) {
   if (!visOn() || !p.mem || p === q) return q;
-  const m = p.mem[pIdx(q)], age = G.gt - m.t;
+  const m = p.mem[pIdx(q)]; if (!m) return q;                  // (pas encore vu : un joueur qui vient d'entrer)
+  const age = G.gt - m.t;
   if (age < 0.02) return q;
   // un coéquipier qui coupe annonce sa course (on la prolonge mieux) ; un adversaire, seulement selon sa lecture du jeu
   const ext = q.team === p.team ? Math.max(0.7, aiLvl(p.team).ext || 0) : aiLvl(p.team).ext || 0;

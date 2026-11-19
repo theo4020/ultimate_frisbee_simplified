@@ -83,6 +83,7 @@ function backToSolo() {
   if (typeof endlessCfgOut === 'function') endlessCfgOut();   // on sort du mode infini : réglages du match rapide
   G.attract = false; G.coopRoom = false; G.roomCode = null;
   if (G.practice) { G.practice = null; $('pracBox').style.display = 'none'; }
+  if (G.daily && typeof dailyRestore === 'function') dailyRestore();
   G.net = null; G.reconn = null; G.heirTry = false; G.myId = 0; G.hostId = 0; G.heir = null; G.humans = [{ id: 0, team: 0, sel: null, name: myName() }]; G.started = false; G.netCfg = null; G.netTeams = null; G.spectator = false;
   G.netSummary = null; G.emotes = []; G.pz = null;
   syncMe(); G.phase = 'menu'; G.score = [0, 0]; G.receiving = 0; hudKey = '';

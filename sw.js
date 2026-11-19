@@ -42,6 +42,7 @@ const FILES = [
   'js/series.js',
   'js/endless.js', 'js/coop.js',
   'js/practice.js',
+  'js/daily.js',
   'js/achievements.js',
   'js/style.js',
   'js/audio.js',

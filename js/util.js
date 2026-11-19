@@ -26,7 +26,7 @@ function resize() {
     availW = window.innerWidth; availH = window.innerHeight - TOUCH_HUD;
     // consignes du tutoriel / de l'entraînement : le terrain passe dessous au lieu d'être caché par elles
     // (consignes en haut : le terrain commence dessous ; en bas, pendant les boutons de play : il s'arrête au-dessus)
-    const box = ['tutoBox', 'pracBox'].map(id => document.getElementById(id)).find(e => e && e.offsetHeight > 0);
+    const box = ['tutoBox', 'pracBox', 'dailyBox'].map(id => document.getElementById(id)).find(e => e && e.offsetHeight > 0);
     const low = box && box.offsetTop > window.innerHeight / 2;
     const top = box && !low ? box.offsetTop + box.offsetHeight + 4 : 0;
     stage.style.marginTop = top ? top + 'px' : '';

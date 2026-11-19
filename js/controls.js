@@ -230,7 +230,7 @@ document.addEventListener('webkitfullscreenchange', fsChanged);
 // ---------- téléphone : outils communs aux gestes (gestures.js) ----------
 const fdPull = () => G.phase === 'pull' && localPuller() && G.pullUI && G.pullUI.stage === 'aim' && !!disc.holder;
 const fdRadius = () => clamp(window.innerHeight * 0.32, 80, 150);
-const fdOnUI = t => !!(t && t.closest && t.closest('button, input, textarea, #controls, #tbtns, #tutoBox, #coachCard, #pracBox, #overlay, #hud, #curveV, #loftV, #highB, #pauseBanner'));
+const fdOnUI = t => !!(t && t.closest && t.closest('button, input, textarea, #controls, #tbtns, #tutoBox, #coachCard, #pracBox, #dailyBox, #overlay, #hud, #curveV, #loftV, #highB, #pauseBanner'));
 
 // ---------- téléphone, réglage « Courbe et passe haute : boutons » : curseur de courbe et bouton sur le bord droit ----------
 // haut = courbe ↶ (comme A), bas = courbe ↷ (comme E)

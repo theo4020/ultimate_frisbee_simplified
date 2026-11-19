@@ -336,7 +336,7 @@ function draw() {
   drawWeatherGround();                                      // le temps (Mon style) : teinte du sol seulement (weather.js)
 
   drawStreaks();
-  drawPractice();
+  drawPractice(); drawDaily();
   drawTuto();
   const playing = G.phase === 'play';
   const myAttack = playing && G.off === G.me && !G.practice, ME = G.me, mySel = (meH() || {}).sel || null;

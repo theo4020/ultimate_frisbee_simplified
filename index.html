@@ -46,6 +46,11 @@
     <div id="pracText"></div>
     <div class="tutoBtns pracBtns"><button id="pracWind">Vent</button><button id="pracDef">Défenseur</button><button id="pracQuit">Quitter ✕</button></div>
   </div>
+  <div id="dailyBox" style="display:none">
+    <div class="tutoHead"><b id="dailyTitle">Défi du jour</b><span id="dailyStats"></span></div>
+    <div id="dailyText"></div>
+    <div class="tutoBtns pracBtns"><button id="dailyQuit">Quitter ✕</button></div>
+  </div>
   <div id="stage">
     <canvas id="c"></canvas>
     <div id="joy"><div id="knob"></div></div>
@@ -87,6 +92,7 @@
       <button id="moveAlert" style="display:none">🚚 <b>Le jeu change d'adresse ! Cette adresse va bientôt s'arrêter.</b><br>Touche ici pour passer sur la nouvelle en gardant ton profil ›</button>
       <p>Ultimate en 5 contre 5, en quelques minutes.</p>
       <button class="bigbtn primary" id="rejoinHomeB" style="display:none">↩️ Rejoindre la partie quittée<small id="rejoinHomeTxt"></small></button>
+      <button class="bigbtn primary" id="dailyB">📅 Défi du jour<small id="dailyTxt"></small></button>
       <h3 class="mhead">Jouer</h3>
       <div class="mgrid mplay">
         <button class="bigbtn" id="tutoB"><span class="mi">🎓</span>Tutoriel<small id="tutoTxt">Coach Disco t’apprend à jouer en petits défis (débutant ou avancé)</small></button>
@@ -201,6 +207,15 @@
     <p class="net" id="repStatus"></p>
     <textarea id="repOut" rows="4" readonly style="display:none"></textarea>
     <button id="repBack" class="back">← Retour</button>
+  </div>
+  <div class="card" id="dailyCard" style="display:none">
+    <h1 id="dailyHead">📅 Défi du jour</h1>
+    <p id="dailyRules"></p>
+    <p id="dailyRes" style="display:none"></p>
+    <button id="dailyGo" class="bigbtn primary">Commencer ▶</button>
+    <button id="dailyShare" class="bigbtn" style="display:none">Partager 📤</button>
+    <p class="net" id="dailyPast"></p>
+    <button id="dailyBack" class="back">← Retour</button>
   </div>
   <div class="card" id="endlessCard" style="display:none">
     <h1 id="endTitle">♾️ Mode infini</h1>
@@ -523,6 +538,7 @@
 <script src="js/endless.js"></script>
 <script src="js/coop.js"></script>
 <script src="js/practice.js"></script>
+<script src="js/daily.js"></script>
 <script src="js/achievements.js"></script>
 <script src="js/style.js"></script>
 <script src="js/audio.js"></script>

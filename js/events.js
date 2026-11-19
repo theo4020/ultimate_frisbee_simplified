@@ -71,6 +71,7 @@ function catchDisc(p) {
 // interception : le défenseur garde le disque (dans l'en-but adverse, c'est toujours un Callahan : point immédiat)
 function interception(p) {
   if (G.practice) { practiceMiss('Intercepté !'); return; }
+  if (G.daily && dailyTurn(p.x, p.y, 'Interception !')) return;   // défi du jour (daily.js)
   G.stats.ints++;
   msTurnover(disc.thrower, 'int', p);
   fxEvent('int', p.x, p.y, p.team);
@@ -98,6 +99,7 @@ function defStop(p, msg, dMin) {
 
 function turnover(x, y, msg, kind) {
   if (G.practice) { practiceMiss(kind === 'block' ? 'Contré par le défenseur !' : msg); return; }
+  if (G.daily && dailyTurn(x, y, msg)) return;                  // défi du jour (daily.js)
   G.aiPlayTried = false;                                       // nouvelle possession : l'IA pourra appeler un play
   fxEvent(kind || 'turn', x, y, 1 - G.off);
   if (G.oplay) endOPlay();
@@ -118,6 +120,7 @@ function turnover(x, y, msg, kind) {
 function scorePoint(t, label) {
   fxEvent('score', disc.x, disc.y, t);
   disc.mode = 'dead';
+  if (G.daily) { dailyScored(t); return; }                      // défi du jour : pas de vrai score (daily.js)
   if (G.tuto) { tutoEvent('score', t); return; }               // tutoriel : pas de vrai score
   G.score[t]++;
   msPoint(t);
