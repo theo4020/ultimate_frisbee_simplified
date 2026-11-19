@@ -397,7 +397,7 @@ function draw() {
   }
   // Courses en cours de tes coéquipiers
   if (myAttack) for (const p of TEAMS[ME]) {
-    if (called.has(p)) continue;
+    if (called.has(p) || dailyCutOf(p)) continue;                  // (défi du jour : ses coupes ont leurs propres flèches, daily.js)
     if (p.state === 'jab' || p.state === 'cut') arrow(p.x, p.y, p.cx, p.cy, 'rgba(255,255,255,.55)');
     else if (p.role === 'dump' && p.state === 'reset') arrow(p.x, p.y, p.cx, p.cy, 'rgba(250,204,21,.6)');
   }

@@ -626,7 +626,7 @@ function tutoFinish() {
   $('tutoSkip').textContent = adv ? 'Défier l’équipe du coach ▶' : 'Continuer avec l’avancé ▶';
   $('tutoMatch').style.display = adv ? 'none' : '';
   $('tutoMatch').textContent = 'Défier l’équipe du coach ▶';
-  $('tutoQuit').textContent = 'Menu';
+  $('tutoQuit').textContent = G.afterTuto === 'daily' ? '📅 Au défi du jour ▶' : 'Menu';   // venu du défi du jour : on y retourne
   resize();
 }
 function tutoPlay() { tutoCleanup(); G.series = null; G.form.level = 'facile'; newMatch(); showMenu('first'); flash('🧢 L’équipe du coach t’attend (IA facile) !', true); }
@@ -638,7 +638,7 @@ function tutoCleanup() {
   G.phase = 'menu'; G.receiving = 0; disc.pull = false;
   newWind(); placeForPoint();
 }
-function tutoQuit() { tutoCleanup(); showLobby(); }
+function tutoQuit() { tutoCleanup(); if (G.afterTuto === 'daily' && typeof showDaily === 'function') { G.afterTuto = null; backToSolo(); showDaily(); } else { G.afterTuto = null; showLobby(); } }
 if (typeof document !== 'undefined' && document.getElementById('tutoB')) {
   $('tutoB').addEventListener('click', () => showLobby('', 'tuto'));
   $('tutoBaseB').addEventListener('click', () => tutoStart('base'));

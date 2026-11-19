@@ -228,9 +228,31 @@ function dailyHud() {
   $('dailyTitle').textContent = `Défi #${D.n} · ${DAILY_NAMES[type]}` + (D.official ? '' : ' (entraînement)');
   $('dailyText').innerHTML = DAILY_HOW[type];
 }
+// trouve la passe : la coupe écrite d'un receveur (tant que la passe n'est pas partie)
+const dailyCutOf = p => { const D = G.daily; return D && D.cuts && !D.thrown && D.wait <= 0 ? D.cuts.find(c => c.p === p) || null : null; };
+// ses flèches : où et quand chaque receveur va couper (bleu : à venir, avec le compte à rebours ; jaune : il coupe)
+function drawDailyCuts() {
+  const D = G.daily; if (!D || !D.cuts || D.thrown || D.wait > 0) return;
+  ctx.save(); ctx.font = `700 ${Math.max(10, S * 1.05)}px system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const c of D.cuts) {
+    const p = c.p, left = c.t0 - D.t, going = left <= 0, sx = going ? p.x : c.x0, sy = going ? p.y : c.y0;
+    if (going && dist(p.x, p.y, c.x, c.y) < 1) continue;           // arrivé : plus de flèche
+    const col = going ? 'rgba(250,204,21,.95)' : 'rgba(125,211,252,.9)', a = Math.atan2(c.y - sy, c.x - sx), hs = 11;
+    ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = going ? 3.5 : 2.5; ctx.setLineDash(going ? [] : [7, 5]);
+    ctx.beginPath(); ctx.moveTo(X(sx), Y(sy)); ctx.lineTo(X(c.x) - hs * 0.7 * Math.cos(a), Y(c.y) - hs * 0.7 * Math.sin(a)); ctx.stroke(); ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(X(c.x), Y(c.y)); ctx.lineTo(X(c.x) - hs * Math.cos(a - 0.45), Y(c.y) - hs * Math.sin(a - 0.45)); ctx.lineTo(X(c.x) - hs * Math.cos(a + 0.45), Y(c.y) - hs * Math.sin(a + 0.45)); ctx.fill();
+    // longueur de la coupe au milieu de la flèche ; avant son départ, le compte à rebours au-dessus du joueur
+    const mx = X((sx + c.x) / 2), my = Y((sy + c.y) / 2), L = Math.round(dist(c.x0, c.y0, c.x, c.y)) + ' m';
+    const pill = (txt, x, y, bg) => { const w = ctx.measureText(txt).width + 10, h = S * 1.05 + 6; ctx.fillStyle = bg; ctx.beginPath(); ctx.roundRect(x - w / 2, y - h / 2, w, h, h / 2); ctx.fill(); ctx.fillStyle = '#0f172a'; ctx.fillText(txt, x, y + 0.5); };
+    pill(L, mx, my, col);
+    if (!going) pill(left.toFixed(1) + ' s', X(p.x), Y(p.y) - S * 2.2, 'rgba(226,232,240,.95)');
+  }
+  ctx.restore();
+}
 // la ligne jusqu'où l'adversaire a avancé (défense) ; la ligne de départ du lancer (trouve la passe)
 function drawDaily() {
   const D = G.daily; if (!D || D.wait > 0) return;
+  drawDailyCuts();
   const type = dailyType(); if (type === 'att') return;
   const x = type === 'def' ? D.x0 + dirOf(1) * D.line : D.x0;
   ctx.save(); ctx.strokeStyle = 'rgba(250,204,21,.85)'; ctx.lineWidth = 3; ctx.setLineDash([10, 6]);
@@ -264,9 +286,10 @@ function showDaily(n, run) {
       + res.res.map((r, k) => `${dailyMark(r.type, r.v, sits[k])} ${DAILY_ICON[r.type]} ${DAILY_NAMES[r.type]} : ${dailyFmt(r.type, r.v)}` + (r.turns ? ` (${r.turns} perte${r.turns > 1 ? 's' : ''})` : '') + (r.goals ? ` (${r.goals} point${r.goals > 1 ? 's' : ''} encaissé${r.goals > 1 ? 's' : ''})` : '')).join('<br>');
     $('dailyRes').style.display = '';
   } else $('dailyRes').style.display = 'none';
-  const official = n === today && !done;
-  $('dailyGo').textContent = official ? 'Commencer ▶' : n !== today ? (res ? 'Rejouer ce défi ▶' : 'Jouer ce défi ▶') : 'Rejouer pour s’entraîner ▶';
-  $('dailyGo').classList.toggle('primary', official);
+  const official = n === today && !done, newbie = !storeGet('uf-tuto', false);
+  $('dailyNew').style.display = newbie ? '' : 'none';            // nouveau joueur (souvent arrivé par un lien partagé) : le tutoriel d'abord
+  $('dailyGo').textContent = official ? (newbie ? 'Jouer quand même ▶' : 'Commencer ▶') : n !== today ? (res ? 'Rejouer ce défi ▶' : 'Jouer ce défi ▶') : 'Rejouer pour s’entraîner ▶';
+  $('dailyGo').classList.toggle('primary', official && !newbie);
   $('dailyGo').onclick = () => dailyStart(n, official);
   $('dailyShare').style.display = done ? '' : 'none';
   $('dailyShare').textContent = 'Partager 📤';
@@ -308,4 +331,5 @@ if (typeof document !== 'undefined' && document.getElementById('dailyB')) {
   $('dailyB').addEventListener('click', () => { backToSolo(); showDaily(); });
   $('dailyQuit').addEventListener('click', dailyQuit);
   $('dailyBack').addEventListener('click', () => { $('dailyCard').style.display = 'none'; showLobby(); });
+  $('dailyTutoB').addEventListener('click', () => { $('dailyCard').style.display = 'none'; G.afterTuto = 'daily'; tutoStart('base'); });
 }
