@@ -860,22 +860,24 @@ export default async function (t, { quick }) {
   t.ok(pullCk.ezOk === pullCk.ez, 'pull dans l’en-but : les coéquipiers se placent devant la ligne, là où le jeu reprendra', pullCk);
 
   t.group('Défi du jour');
-  // l'IA joue un défi d'attaque et un défi de défense à ta place : 3 situations notées, l'équipe revient à 5 contre 5
+  // l'IA joue le défi à ta place (trouve la passe, attaque, défense) : 3 scores, l'équipe revient à 5 contre 5
   const dly = R(`(() => { const out = {};
-    for (const n of [1, 2]) {
-      let res = null; const oF = dailyFinish; dailyFinish = function () { res = G.daily.res.slice(); oF(); };
-      dailyStart(n, true); const three = players.length; G.humans = []; syncMe();
-      let f = 0; while (G.daily && f < 60 * 600) { if (G.phase === 'play') { G.gt += 1 / 60; update(1 / 60); } G.time += 1 / 60; fxUpdate(1 / 60); dailyFrame(1 / 60); f++; }
-      dailyFinish = oF; if (G.daily) dailyRestore();
-      out[n] = { kind: dailyKind(n), n3: three, res: res && res.map(r => r.v), back: players.length, t0: TEAMS[0].length, saved: !!dailyDone(n), mins: +(f / 3600).toFixed(1) };
-    }
+    let res = null, sizes = []; const oF = dailyFinish; dailyFinish = function () { res = G.daily.res.slice(); oF(); };
+    const oS = dailySit; dailySit = function () { oS(); sizes.push(players.length); };
+    dailyStart(1, true); G.humans = []; syncMe();
+    let f = 0, froze = 0; while (G.daily && f < 60 * 600) {
+      if (G.freeze) { froze++; if (froze > 30) G.freeze = false; }          // (l'IA n'a pas le droit de lancer pendant que c'est figé : on la laisse faire)
+      if (G.phase === 'play' && !G.freeze) { G.gt += 1 / 60; update(1 / 60); } G.time += 1 / 60; fxUpdate(1 / 60); dailyFrame(1 / 60); f++; }
+    dailyFinish = oF; dailySit = oS; if (G.daily) dailyRestore();
+    out.run = { res: res && res.map(r => r.type + ':' + r.v), sizes, back: players.length, t0: TEAMS[0].length, saved: !!dailyDone(1), mins: +(f / 3600).toFixed(1) };
     out.same = JSON.stringify(dailyGen(5)) === JSON.stringify(dailyGen(5)) && JSON.stringify(dailyGen(5)) !== JSON.stringify(dailyGen(6));
-    out.num = [dailyNum(new Date(2026, 10, 18, 9)), dailyNum(new Date(2026, 10, 19, 23, 50)), dailyNum(new Date(2026, 11, 1, 0, 5))];
+    out.num = [dailyNum(new Date(2026, 10, 19, 9)), dailyNum(new Date(2026, 10, 20, 23, 50)), dailyNum(new Date(2026, 11, 1, 0, 5))];
     out.share = dailyShareText(1, dailyDone(1));
     return out; })()`);
-  t.ok(dly[1].kind === 'att' && dly[1].n3 === 10 && dly[1].res && dly[1].res.length === 3 && dly[1].res.every(v => v > 0), 'défi d’attaque (5 contre 5) : l’IA marque les 3 situations, chacune a son temps', dly[1]);
-  t.ok(dly[2].kind === 'def' && dly[2].n3 === 6 && dly[2].res && dly[2].res.length === 3 && dly[2].res.every(v => v >= 0), 'défi de défense (3 contre 3) : 3 situations notées en mètres', dly[2]);
-  t.ok(dly[1].back === 10 && dly[2].back === 10 && dly[2].t0 === 5 && dly[1].saved && dly[2].saved, 'après le défi : retour à 5 contre 5, le score du jour est gardé', dly);
-  t.ok(dly.same && dly.num.join() === '1,2,14', 'même défi pour tous le même jour (tirage par le numéro du jour), un nouveau chaque jour', dly);
-  t.ok(/^🥏 Ultimate du jour #1 · Attaque\n[🟩🟨🟥]{3} [0-9.]+ s ⏱\nhttp/u.test(dly.share), 'texte à partager : numéro, cases, score, lien', dly.share);
+  const rr = dly.run.res || [];
+  t.ok(rr.length === 3 && /^pass:/.test(rr[0]) && /^att:\d/.test(rr[1]) && /^def:/.test(rr[2]) && +rr[1].split(':')[1] > 0, 'défi du jour : trouve la passe, attaque, défense, chacun son score', dly.run);
+  t.ok(dly.run.sizes[0] === 10 && dly.run.sizes[1] === 10 && dly.run.sizes.slice(2).every(n => n === 6), 'trouve la passe et attaque en 5 contre 5, défense en 3 contre 3', dly.run.sizes);
+  t.ok(dly.run.back === 10 && dly.run.t0 === 5 && dly.run.saved, 'après le défi : retour à 5 contre 5, le score du jour est gardé', dly.run);
+  t.ok(dly.same && dly.num.join() === '1,2,13', 'même défi pour tous le même jour (tirage par le numéro du jour), un nouveau chaque jour', dly);
+  t.ok(/^🥏 Ultimate du jour #1 [🟩🟨🟥]{3}\n🎯 \d+ m · ⏱ [0-9.]+ s · 📏 \d+ m\nhttp/u.test(dly.share), 'texte à partager : numéro, cases, les 3 scores, lien', dly.share);
 }

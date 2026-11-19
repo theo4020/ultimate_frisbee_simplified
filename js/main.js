@@ -66,7 +66,7 @@ function frame(now, visible) {
     for (let r = 0; r < reps; r++) {
       if (r) G.time += dt;
       if ((G.paused && !G.net) || G.pz) { /* pause (solo : menu ou confirmation ouverts ; en ligne : pause pour tous) */ }
-      else if (G.phase === 'play') { G.gt += gdt; update(gdt); }
+      else if (G.phase === 'play' && !G.freeze) { G.gt += gdt; update(gdt); }   // (freeze : défi « trouve la passe », tout est figé jusqu'à la passe)
       else if (G.phase === 'pull') pullTick(dt, gdt);
       else if (G.phase === 'between' || G.phase === 'over') {
         if (G.menuShown && G.phase === 'between' && !G.attract) regroupTick(gdt); else if (ringOn()) ringTick(gdt); else celebrateTick(gdt);   // fin de match : la ronde (moments.js)

@@ -22,7 +22,7 @@ function playSys(t, n) { const s = sysOf(t, 'p' + n + 'sys'); return s && (s.kin
 // peut-on appeler un play maintenant ? (l'équipe a le disque en main et aucun play n'est en cours)
 function canCallPlay(t, n) {
   const ty = playOf(t, n);
-  return G.phase === 'play' && disc.mode === 'held' && disc.holder && disc.holder.team === t && !G.oplay && !G.practice
+  return G.phase === 'play' && disc.mode === 'held' && disc.holder && disc.holder.team === t && !G.oplay && !G.practice && !G.daily
     && (!G.tuto || !!(TUTO_STEPS[G.tuto.step] || {}).plays)
     && ty !== 'none' && (ty !== 'sys' || !!playSys(t, n));
 }
