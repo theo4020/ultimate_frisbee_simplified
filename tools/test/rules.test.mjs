@@ -550,7 +550,8 @@ export default async function (t, { quick }) {
       const L = (a, b) => { let d = 0, p = discAt(a); for (let k = 1; k <= 20; k++) { const q = discAt(a + (b - a) * k / 20); d += dist(p[0], p[1], q[0], q[1]); p = q; } return d; };
       const r = { first: L(0, 0.5), second: L(0.5, 1), end: discAt(1), ex: [disc.ex, disc.ey] }; disc.mode = 'dead'; return r;
     };
-    const keep = G.wind, a = run({ x: 0, y: 0, kmh: 0 }), b = run({ x: 0, y: -6.9, kmh: 25 }); G.wind = keep;
+    const keep = G.wind, rnd = Math.random; Math.random = () => 0.5;   // (pas de rafale au hasard : on compare deux vols identiques, avec et sans vent)
+    const a = run({ x: 0, y: 0, kmh: 0 }), b = run({ x: 0, y: -6.9, kmh: 25 }); G.wind = keep; Math.random = rnd;
     return { calme: +(a.first / (a.first + a.second)).toFixed(3), vent: +(b.first / (b.first + b.second)).toFixed(3), fin: Math.hypot(b.end[0] - b.ex[0], b.end[1] - b.ex[1]) };
   })()`);
   t.ok(fl.vent < fl.calme - 0.02 && fl.fin < 0.05, 'courbe par le bas avec un vent qui monte : à mi-vol, il a fait moins de chemin (face au vent il ralentit, vent dans le dos il rattrape) et arrive au même endroit', fl);
