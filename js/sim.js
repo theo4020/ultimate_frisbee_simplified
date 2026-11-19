@@ -129,6 +129,7 @@ function update(dt) {
     }
     if (G.tuto && tutoPin(p)) continue;                     // tutoriel : joueur placé par l'étape
     if (G.practice && practicePin(p)) continue;             // entraînement
+    if (G.daily && dailyPin(p)) continue;                   // défi du jour : coupes écrites d'avance (daily.js)
     p.avoid = true;
     attackerAI(p, off, ax, ay, dir, open, oform, dt);
     spreadOut(p, atk);

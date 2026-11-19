@@ -865,9 +865,8 @@ export default async function (t, { quick }) {
     let res = null, sizes = []; const oF = dailyFinish; dailyFinish = function () { res = G.daily.res.slice(); oF(); };
     const oS = dailySit; dailySit = function () { oS(); sizes.push(players.length); };
     dailyStart(1, true); G.humans = []; syncMe();
-    let f = 0, froze = 0; while (G.daily && f < 60 * 600) {
-      if (G.freeze) { froze++; if (froze > 30) G.freeze = false; }          // (l'IA n'a pas le droit de lancer pendant que c'est figé : on la laisse faire)
-      if (G.phase === 'play' && !G.freeze) { G.gt += 1 / 60; update(1 / 60); } G.time += 1 / 60; fxUpdate(1 / 60); dailyFrame(1 / 60); f++; }
+    let f = 0; while (G.daily && f < 60 * 600) {
+      if (G.phase === 'play') { G.gt += 1 / 60; update(1 / 60); } G.time += 1 / 60; fxUpdate(1 / 60); dailyFrame(1 / 60); f++; }
     dailyFinish = oF; dailySit = oS; if (G.daily) dailyRestore();
     out.run = { res: res && res.map(r => r.type + ':' + r.v), sizes, back: players.length, t0: TEAMS[0].length, saved: !!dailyDone(1), mins: +(f / 3600).toFixed(1) };
     out.same = JSON.stringify(dailyGen(5)) === JSON.stringify(dailyGen(5)) && JSON.stringify(dailyGen(5)) !== JSON.stringify(dailyGen(6));
