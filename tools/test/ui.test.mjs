@@ -405,7 +405,8 @@ export default async function (t) {
 
     t.group('Téléphone : joystick flottant (doigt posé n’importe où)');
     await q.evaluate(() => { CTRL.move = 'joystick'; applyCtrlClass(); G.off = 1 - G.me; G.pickup = null; const o = TEAMS[1 - G.me][0]; o.x = W / 2; o.y = H / 2; holdDisc(o); updateSelected();
-      const s = meH().sel; s.x = W / 2 - 10; s.y = H / 2; });
+      const h = meH(); if (!h.sel) h.sel = TEAMS[G.me][1];             // (sélection pas encore faite sur une machine lente : on la fixe)
+      const s = h.sel; s.x = W / 2 - 10; s.y = H / 2; });
     await q.waitForFunction(() => document.body.classList.contains('joyon'), null, { timeout: 5000 });
     t.ok(!(await vis(q, '#joy')), 'aucun joystick affiché tant que le doigt n’est pas posé');
     const jp = await q.evaluate(() => { const r = canvas.getBoundingClientRect(); return { x: r.left + r.width * 0.6, y: r.top + r.height * 0.3 }; });
