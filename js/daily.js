@@ -11,7 +11,7 @@
 // Les situations sont tirées à partir du numéro du jour (même tirage pour tous) ; pendant le défi, le hasard du jeu (IA,
 // rafales) part du même tirage pour tout le monde, puis suit ce que chacun fait.
 
-const DAILY = { EPOCH: Date.UTC(2026, 10, 19), PEN: 10, GOAL: 80, MAXG: 3, KEY: 'uf-daily2' };   // jour n° 1 : le 19 novembre 2026
+const DAILY = { EPOCH: Date.UTC(2026, 10, 19), PEN: 10, GOAL: 80, MAXG: 3, KEY: 'uf-daily2', ARCH: 'uf-daily2-arch' };   // ARCH : défis passés rejoués (archives, hors compétition)   // jour n° 1 : le 19 novembre 2026
 const DAILY_NAMES = { pass: 'Trouve la passe', att: 'Attaque', def: 'Défense' };
 const DAILY_ICON = { pass: '🎯', att: '⏱', def: '📏' };
 
@@ -38,6 +38,8 @@ function dailyGen(n) {
 // ---------- résultats gardés dans le navigateur ----------
 const dailyAll = () => { const o = storeGet(DAILY.KEY, {}); return o && typeof o === 'object' ? o : {}; };
 const dailyDone = n => dailyAll()[n] || null;
+const dailyArch = () => { const o = storeGet(DAILY.ARCH, {}); return o && typeof o === 'object' ? o : {}; };
+const dailyDate = n => new Date(DAILY.EPOCH + (n - 1) * 864e5).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', timeZone: 'UTC' });
 function dailyStreak() {
   const all = dailyAll(); let n = dailyNum(), k = 0;
   if (!all[n]) n--;                                            // pas encore joué aujourd'hui : la série d'hier compte encore
@@ -200,6 +202,7 @@ function dailyRestore() {
 function dailyFinish() {
   const D = G.daily, run = { n: D.n, res: D.res, official: D.official };
   if (D.official && !dailyDone(D.n)) { const all = dailyAll(); all[D.n] = { res: D.res, at: Date.now() }; storeSet(DAILY.KEY, all); }
+  else if (!D.official && D.n < dailyNum()) { const ar = dailyArch(); ar[D.n] = { res: D.res, at: Date.now() }; storeSet(DAILY.ARCH, ar); }   // archives : ton dernier essai
   dailyRestore();
   G.phase = 'menu'; placeForPoint();
   showDaily(D.n, run); resize();
@@ -244,24 +247,25 @@ function dailyShareText(n, run) {
 // le panneau du défi : avant (règles, Commencer), après (scores, Partager, rejouer pour s'entraîner)
 function showDaily(n, run) {
   n = n || dailyNum();
-  const today = dailyNum(), done = dailyDone(n), res = run || (done && Object.assign({ n, official: true }, done)), sits = dailyGen(n).sits;
+  const today = dailyNum(), done = dailyDone(n), arch = dailyArch()[n], sits = dailyGen(n).sits;
+  const res = run || (done && Object.assign({ n, official: true }, done)) || (arch && Object.assign({ n, official: false }, arch));
   G.menuShown = true;
   for (const id of ['lobbyCard', 'stratCard', 'seriesCard', 'endlessCard']) $(id).style.display = 'none';
   $('dailyCard').style.display = ''; $('overlay').classList.remove('hidden');
-  $('dailyHead').textContent = `📅 Défi du jour #${n}` + (n !== today ? ' (jour passé)' : '');
+  $('dailyHead').textContent = n !== today ? `📚 Défi #${n} · ${dailyDate(n)}` : `📅 Défi du jour #${n}`;
   const streak = dailyStreak();
-  $('dailyRules').innerHTML = `Trois épreuves, les mêmes pour tout le monde aujourd'hui :<br>`
+  $('dailyRules').innerHTML = `Trois épreuves, les mêmes pour tout le monde ${n === today ? 'aujourd’hui' : 'ce jour-là'} :<br>`
     + `🎯 <b>Trouve la passe</b> : tes receveurs coupent chacun à leur tour ; une seule passe, au bon moment, la plus longue possible (0 m si elle est perdue).<br>`
     + `⏱ <b>Attaque</b>, 5 contre 5 : marque le plus vite possible ; une perte de disque, +${DAILY.PEN} s.<br>`
     + `📏 <b>Défense</b>, 3 contre 3 : la ligne jaune avance à chaque passe ; un point encaissé, +${DAILY.GOAL} m et on rejoue.`
     + (streak ? `<br>Série : <b>${streak} jour${streak > 1 ? 's' : ''}</b> 🔥` : '');
   if (res) {
-    $('dailyRes').innerHTML = `<b>${res.official ? 'Tes scores' : 'Scores (entraînement, non comptés)'}</b><br>`
+    $('dailyRes').innerHTML = `<b>${res.official ? (n === today ? 'Tes scores' : 'Tes scores du jour même') : n === today ? 'Scores (entraînement, non comptés)' : 'Ton dernier essai (archives)'}</b><br>`
       + res.res.map((r, k) => `${dailyMark(r.type, r.v, sits[k])} ${DAILY_ICON[r.type]} ${DAILY_NAMES[r.type]} : ${dailyFmt(r.type, r.v)}` + (r.turns ? ` (${r.turns} perte${r.turns > 1 ? 's' : ''})` : '') + (r.goals ? ` (${r.goals} point${r.goals > 1 ? 's' : ''} encaissé${r.goals > 1 ? 's' : ''})` : '')).join('<br>');
     $('dailyRes').style.display = '';
   } else $('dailyRes').style.display = 'none';
   const official = n === today && !done;
-  $('dailyGo').textContent = official ? 'Commencer ▶' : 'Rejouer pour s’entraîner ▶';
+  $('dailyGo').textContent = official ? 'Commencer ▶' : n !== today ? (res ? 'Rejouer ce défi ▶' : 'Jouer ce défi ▶') : 'Rejouer pour s’entraîner ▶';
   $('dailyGo').classList.toggle('primary', official);
   $('dailyGo').onclick = () => dailyStart(n, official);
   $('dailyShare').style.display = done ? '' : 'none';
@@ -273,10 +277,27 @@ function showDaily(n, run) {
     else if (navigator.clipboard) navigator.clipboard.writeText(txt).then(() => { $('dailyShare').textContent = 'Copié ✓'; setTimeout(() => { $('dailyShare').textContent = 'Partager 📤'; }, 1500); }).catch(() => prompt('Copie ce texte :', txt));
     else prompt('Copie ce texte :', txt);
   };
-  // les jours passés (pour s'entraîner, hors compétition)
-  const past = []; for (let k = today - 1; k >= Math.max(1, today - 6); k--) past.push(k);
-  $('dailyPast').innerHTML = past.length ? 'Jours passés : ' + past.map(k => `<button class="ghost" data-n="${k}">#${k}${dailyDone(k) ? ' ✓' : ''}</button>`).join(' ') : '';
-  $('dailyPast').querySelectorAll('button').forEach(b => b.addEventListener('click', () => showDaily(+b.dataset.n)));
+  // archives : tous les défis passés, à rejouer quand on veut (hors compétition)
+  dailyArchList(n, today);
+}
+let dailyArchOpen = false;
+function dailyArchList(cur, today) {
+  const nPast = today - 1, ar = dailyArch(), el = $('dailyPast');
+  if (nPast < 1) { el.innerHTML = '📚 Archives : les défis passés arriveront ici dès demain.'; return; }
+  const marks = r => r.res.map((x, k, a) => dailyMark(x.type, x.v, dailyGen(r.n).sits[k])).join('');
+  let h = `<button class="ghost" id="dailyArchB">📚 Archives (${nPast} défi${nPast > 1 ? 's' : ''} passé${nPast > 1 ? 's' : ''}) ${dailyArchOpen ? '▴' : '▾'}</button>`;
+  if (cur !== today) h += ` <button class="ghost" data-n="${today}">📅 Défi du jour</button>`;
+  if (dailyArchOpen) {
+    h += '<span class="dailyArch">';
+    for (let k = nPast; k >= 1; k--) {
+      const d = dailyDone(k), a = ar[k], r = d || a;
+      h += `<button class="ghost${k === cur ? ' on' : ''}" data-n="${k}">#${k} · ${dailyDate(k)}${r ? ' ' + marks(Object.assign({ n: k }, r)) : ''}${d ? ' ✓' : ''}</button>`;
+    }
+    h += '</span><br>✓ : joué le jour même · les archives se rejouent autant que tu veux, sans compter.';
+  }
+  el.innerHTML = h;
+  $('dailyArchB').addEventListener('click', () => { dailyArchOpen = !dailyArchOpen; dailyArchList(cur, today); });
+  el.querySelectorAll('button[data-n]').forEach(b => b.addEventListener('click', () => showDaily(+b.dataset.n)));
 }
 // bouton de l'accueil : numéro du jour, et tes scores s'il est déjà fait
 function dailyHomeTxt() {
