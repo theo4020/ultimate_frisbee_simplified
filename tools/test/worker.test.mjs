@@ -113,4 +113,14 @@ export default async function (t) {
   const st = fakeState(new Map([['top-2pts', [{ id: 'aa', name: 'Ancien', wins: 7, diff: 9, at: 1 }, { id: 'bb', name: 'Autre', wins: 2, diff: 1, at: 2 }]]]));
   const B2 = await makeDO(Board, st), top = (await (await B2.fetch(new Request('https://board/'))).json()).top;
   t.ok(top.length === 2 && top[0].name === 'Ancien' && top[0].wins === 7, 'les scores de l’ancien stockage sont dans la table', top);
+
+  t.group('Lien partagé d’un défi : aperçu adapté (titre, texte)');
+  const { readFileSync } = await import('fs');
+  const page = readFileSync(new URL('../../index.html', import.meta.url), 'utf8');
+  const envP = { ...env, ASSETS: { fetch: async () => new Response(page, { headers: { 'Content-Type': 'text/html; charset=utf-8' } }) } };
+  const get = async p => (await worker.fetch(new Request('https://jeu.example' + p), envP)).text();
+  const og = (h, k) => (h.match(new RegExp('<meta property="og:' + k + '" content="([^"]*)"')) || [])[1];
+  const d12 = await get('/?defi=12'), plain = await get('/'), bad = await get('/?defi=abc');
+  t.ok(og(d12, 'title') === 'Ultimate du jour #12 · 30 novembre' && /compare ton score/.test(og(d12, 'description')) && og(d12, 'url').endsWith('/?defi=12') && /<title>Ultimate du jour #12/.test(d12), 'lien ?defi=12 : titre, texte et adresse de l’aperçu propres à ce défi', { t: og(d12, 'title'), u: og(d12, 'url') });
+  t.ok(plain === page && bad === page && /icons\/share\.jpg/.test(og(d12, 'image')), 'sans défi (ou numéro invalide) : la page telle quelle ; l’image est la même', og(d12, 'image'));
 }

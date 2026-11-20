@@ -8,5 +8,6 @@
   // + comptes joueurs, galerie de systèmes et rapports de bug (même principe)
   "durable_objects": { "bindings": [{ "name": "BOARD", "class_name": "Board" }, { "name": "ACCOUNTS", "class_name": "Accounts" }, { "name": "GALLERY", "class_name": "Gallery" }, { "name": "REPORTS", "class_name": "Reports" }] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Board"] }, { "tag": "v2", "new_sqlite_classes": ["Accounts"] }, { "tag": "v3", "new_sqlite_classes": ["Gallery"] }, { "tag": "v4", "new_sqlite_classes": ["Reports"] }],
-  "assets": { "directory": ".", "binding": "ASSETS", "run_worker_first": ["/api/*"] }
+  // "/" : un lien de défi partagé (?defi=N) reçoit un aperçu adapté (worker/index.js : sharePage)
+  "assets": { "directory": ".", "binding": "ASSETS", "run_worker_first": ["/api/*", "/"] }
 }

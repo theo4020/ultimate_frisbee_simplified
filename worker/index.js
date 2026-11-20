@@ -533,9 +533,27 @@ async function reportsAdmin(request, env) {
   return b.id ? stub.fetch('https://rep/get', { method: 'POST', body: JSON.stringify({ id: b.id }) }) : stub.fetch('https://rep/list?kind=' + (b.kind === 'avis' ? 'avis' : 'bug'));
 }
 
+// Lien partagé d'un défi du jour (?defi=N) : les applications (WhatsApp, Discord, X…) lisent la page sans lancer le
+// jeu ; on adapte le titre et le texte de l'aperçu à ce défi (même image). Jour n° 1 : le 19 novembre 2026 (js/daily.js).
+const DAILY_EPOCH = Date.UTC(2026, 10, 19);
+async function sharePage(request, env, url) {
+  const res = await env.ASSETS.fetch(request), n = Math.floor(+url.searchParams.get('defi'));
+  if (!res.ok || !(n >= 1 && n <= 100000) || !(res.headers.get('Content-Type') || '').includes('text/html')) return res;
+  const date = new Date(DAILY_EPOCH + (n - 1) * 864e5).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', timeZone: 'UTC' });
+  const title = `Ultimate du jour #${n} · ${date}`, desc = 'Trouve la passe, attaque, défense : relève le même défi et compare ton score !';
+  const page = '/?defi=' + n;
+  let html = await res.text();
+  html = html.replace(/(<meta property="og:title" content=")[^"]*/, '$1' + title)
+    .replace(/(<meta property="og:description" content=")[^"]*/, '$1' + desc)
+    .replace(/(<meta property="og:url" content="[^"?]*?)\/?"/, '$1' + page + '"')
+    .replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`);
+  const h = new Headers(res.headers); h.delete('Content-Length'); h.delete('ETag');
+  return new Response(html, { status: res.status, headers: h });
+}
 export default {
   fetch(request, env) {
-    const path = new URL(request.url).pathname;
+    const url = new URL(request.url), path = url.pathname;
+    if ((path === '/' || path === '/index.html') && url.searchParams.has('defi')) return sharePage(request, env, url);
     if (path === '/api/report') return report(request, env);
     if (path === '/api/reports') return reportsAdmin(request, env);
     if (path === '/api/turn') return request.method === 'GET' ? turn(request, env) : json({ error: 'GET seulement' }, 405);
