@@ -861,23 +861,27 @@ export default async function (t, { quick }) {
   t.ok(pullCk.ezOk === pullCk.ez, 'pull dans l’en-but : les coéquipiers se placent devant la ligne, là où le jeu reprendra', pullCk);
 
   t.group('Défi du jour');
-  // l'IA joue le défi à ta place (trouve la passe, attaque, défense) : 3 scores, l'équipe revient à 5 contre 5
-  const dly = R(`(() => { const out = {};
+  // l'IA joue le défi à ta place (trouve la passe, attaque, défense, épreuve du jour) : 4 scores, retour à 5 contre 5
+  const dlyRun = (n, only) => R(`(() => {
     let res = null, sizes = []; const oF = dailyFinish; dailyFinish = function () { res = G.daily.res.slice(); oF(); };
     const oS = dailySit; dailySit = function () { oS(); sizes.push(players.length); };
-    dailyStart(1, true); G.humans = []; syncMe();
+    dailyStart(${n}, ${only === undefined}, ${only === undefined ? 'undefined' : only}); G.humans = []; syncMe();
     let f = 0; while (G.daily && f < 60 * 600) {
-      if (G.phase === 'play') { G.gt += 1 / 60; update(1 / 60); } G.time += 1 / 60; fxUpdate(1 / 60); dailyFrame(1 / 60); f++; }
+      if (G.phase === 'play') { G.gt += 1 / 60 * SPEEDS[G.form.speed]; update(1 / 60 * SPEEDS[G.form.speed]); } G.time += 1 / 60; fxUpdate(1 / 60); replayTick(1 / 60); dailyFrame(1 / 60); f++; }
     dailyFinish = oF; dailySit = oS; if (G.daily) dailyRestore();
-    out.run = { res: res && res.map(r => r.type + ':' + r.v), sizes, back: players.length, t0: TEAMS[0].length, saved: !!dailyDone(1), mins: +(f / 3600).toFixed(1) };
-    out.same = JSON.stringify(dailyGen(5)) === JSON.stringify(dailyGen(5)) && JSON.stringify(dailyGen(5)) !== JSON.stringify(dailyGen(6));
-    out.num = [dailyNum(new Date(2026, 10, 19, 9)), dailyNum(new Date(2026, 10, 20, 23, 50)), dailyNum(new Date(2026, 11, 1, 0, 5))];
-    out.share = dailyShareText(1, dailyDone(1));
-    return out; })()`);
-  const rr = dly.run.res || [];
-  t.ok(rr.length === 3 && /^pass:/.test(rr[0]) && /^att:\d/.test(rr[1]) && /^def:/.test(rr[2]) && +rr[1].split(':')[1] > 0, 'défi du jour : trouve la passe, attaque, défense, chacun son score', dly.run);
-  t.ok(dly.run.sizes[0] === 10 && dly.run.sizes[1] === 10 && dly.run.sizes.slice(2).every(n => n === 6), 'trouve la passe et attaque en 5 contre 5, défense en 3 contre 3', dly.run.sizes);
-  t.ok(dly.run.back === 10 && dly.run.t0 === 5 && dly.run.saved, 'après le défi : retour à 5 contre 5, le score du jour est gardé', dly.run);
-  t.ok(dly.same && dly.num.join() === '1,2,13', 'même défi pour tous le même jour (tirage par le numéro du jour), un nouveau chaque jour', dly);
-  t.ok(/^🥏 Ultimate du jour #1 [🟩🟨🟥]{3}\n🎯 \d+ m · ⏱ [0-9.]+ s · 📏 \d+ m\nhttp/u.test(dly.share), 'texte à partager : numéro, cases, les 3 scores, lien', dly.share);
+    return { res: res && res.map(r => (r.x || r.type) + ':' + r.v), sizes, back: players.length, t0: TEAMS[0].length, saved: !!dailyDone(${n}), speed: G.form.speed, mins: +(f / 3600).toFixed(1) };
+  })()`);
+  const d1 = dlyRun(1), rr = d1.res || [];
+  t.ok(rr.length === 4 && /^pass:/.test(rr[0]) && /^att:\d/.test(rr[1]) && /^def:/.test(rr[2]) && /^keep:\d/.test(rr[3]) && +rr[1].split(':')[1] > 0, 'défi du jour : trouve la passe, attaque, défense, épreuve du jour (garde le disque), chacun son score', d1);
+  t.ok(d1.sizes[0] === 10 && d1.sizes[1] === 10 && d1.sizes[2] === 6 && d1.sizes.slice(-1)[0] === 10, 'passe et attaque à 5 contre 5, défense à 3 contre 3, épreuve du jour à 5 contre 5', d1.sizes);
+  t.ok(d1.back === 10 && d1.t0 === 5 && d1.saved && d1.speed !== 'daily', 'après le défi : retour à 5 contre 5 et aux réglages, le score du jour est gardé', d1);
+  // les épreuves du jour : chacune se joue seule (entraînement), avec son score
+  const xs = {};
+  for (const n of [2, 3, 4, 5, 6]) { const x = R(`dailyGen(${n}).sits[3].x`), r = dlyRun(n, 3); xs[x] = r.res && r.res[0]; xs[x + 'Size'] = r.sizes[0]; }
+  t.ok(/^huck:\d/.test(xs.huck) && /^slow:\d/.test(xs.slow) && +xs.slow.split(':')[1] > 0 && /^passes:\d/.test(xs.passes) && /^outnum:\d/.test(xs.outnum) && xs.outnumSize === 7 && /^fast:\d/.test(xs.fast), 'épreuves du jour : huck, ralenti, passes, défense à 3 contre 4, accéléré — chacune jouée seule, avec son score', xs);
+  const dly = R(`(() => ({ same: JSON.stringify(dailyGen(5)) === JSON.stringify(dailyGen(5)) && JSON.stringify(dailyGen(5)) !== JSON.stringify(dailyGen(6)),
+    num: [dailyNum(new Date(Date.UTC(2026, 10, 19, 22, 30))), dailyNum(new Date(Date.UTC(2026, 10, 19, 23, 30))), dailyNum(new Date(Date.UTC(2026, 11, 1, 10)))],
+    share: dailyShareText(1, dailyDone(1)) }))()`);
+  t.ok(dly.same && dly.num.join() === '1,2,13', 'même défi pour tous le même jour ; il change à minuit heure de Paris (23 h 30 UTC = 0 h 30 à Paris)', dly);
+  t.ok(/^🥏 Ultimate du jour #1 [🟩🟨🟥]{4}\n\S+ [^\n]+\n🎯 \d+ m · ⏱ [0-9.]+ s · 📏 \d+ m · 🔒 [0-9.]+ s\nhttp/u.test(dly.share), 'texte à partager : cases, titre de la journée, les 4 scores, lien', dly.share);
 }

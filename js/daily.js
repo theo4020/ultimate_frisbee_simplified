@@ -1,5 +1,5 @@
-// daily.js — Défi du jour : le même pour tout le monde, un essai officiel par jour, un score à partager.
-// Chaque jour, 3 épreuves :
+// daily.js — Défi du jour : le même pour tout le monde, un essai officiel par jour, des scores à partager.
+// Chaque jour, 4 épreuves :
 //  1. Trouve la passe (5 contre 5) : les 4 receveurs font chacun une coupe écrite d'avance (la même pour tous : où et
 //     quand), les défenseurs les suivent. Une seule passe, au bon moment, la plus longue possible vers l'en-but.
 //     Score : les mètres gagnés (0 si elle est perdue ou si le compte arrive au bout). Le plus grand gagne.
@@ -8,15 +8,41 @@
 //  3. Défense (3 contre 3) : la ligne avance à chaque passe reçue par l'adversaire (elle ne recule pas sur une passe en
 //     arrière). S'il marque : DAILY.GOAL m de plus et on rejoue, jusqu'à ce que ta défense récupère le disque (au plus
 //     DAILY.MAXG points encaissés). Score : les mètres concédés (le plus petit gagne).
+//  4. L'épreuve du jour, qui change chaque jour (DAILY_X) : une variante rapide d'une des épreuves (garder le disque,
+//     enchaîner les passes, huck, jeu ralenti ou accéléré, défense en infériorité numérique).
 // Les situations sont tirées à partir du numéro du jour (même tirage pour tous) ; pendant le défi, le hasard du jeu (IA,
-// rafales) part du même tirage pour tout le monde, puis suit ce que chacun fait.
+// rafales) part du même tirage pour tout le monde, puis suit ce que chacun fait. Le jour change à minuit, heure de Paris.
 
-const DAILY = { EPOCH: Date.UTC(2026, 10, 19), PEN: 10, GOAL: 80, MAXG: 3, KEY: 'uf-daily2', ARCH: 'uf-daily2-arch' };   // ARCH : défis passés rejoués (archives, hors compétition)   // jour n° 1 : le 19 novembre 2026
+const DAILY = { EPOCH: Date.UTC(2026, 10, 19), PEN: 10, GOAL: 80, MAXG: 3, KEEP: 90, PASSES: 30, KEY: 'uf-daily2', ARCH: 'uf-daily2-arch' };   // jour n° 1 : le 19 novembre 2026 · ARCH : défis passés rejoués (archives)
 const DAILY_NAMES = { pass: 'Trouve la passe', att: 'Attaque', def: 'Défense' };
 const DAILY_ICON = { pass: '🎯', att: '⏱', def: '📏' };
+// l'épreuve du jour : base = la façon de jouer et de compter (voir dailyFrame, dailyTurn, dailyScored)
+const DAILY_X = {
+  keep: { base: 'keep', name: 'Garde le disque', icon: '🔒', lvl: 'difficile', boost: true, d: [38, 48],
+    how: `Garde le disque le plus longtemps possible contre des adversaires au niveau maximum, plus rapides que d'habitude. Tu marques : on repart, le chrono continue (${DAILY.KEEP} s au plus).` },
+  huck: { base: 'huck', name: 'Huck', icon: '🚀', d: [58, 64],
+    how: 'Depuis ton camp, marque en 2 passes au plus. Score : le terrain gagné (0 si tu perds le disque).' },
+  slow: { base: 'att', name: 'Ralenti', icon: '🐢', lvl: 'difficile', speed: 0.6, d: [34, 46],
+    how: 'Le jeu tourne à 60 % de sa vitesse : plus facile à lire, mais l\'adversaire est au niveau maximum. Marque le plus vite possible (temps de jeu).' },
+  passes: { base: 'passes', name: 'Passes', icon: '🔁', lvl: 'difficile', boost: true, d: [38, 48],
+    how: `Enchaîne le plus de passes possible contre des adversaires au niveau maximum, plus rapides, jusqu'à la première perte (${DAILY.PASSES} au plus).` },
+  outnum: { base: 'def', name: 'Défense en infériorité', icon: '🫣', lvl: 'facile', n: [3, 4], d: [45, 55],
+    how: '3 contre 4 : ils sont faibles mais plus nombreux. La ligne avance à chaque passe ; un point encaissé, +80 m et on rejoue.' },
+  fast: { base: 'att', name: 'Accéléré', icon: '⏩', speed: 1.5, d: [34, 46],
+    how: 'Le jeu tourne 50 % plus vite. Marque le plus vite possible (temps de jeu).' }
+};
+const DAILY_X_ORDER = ['keep', 'huck', 'slow', 'passes', 'outnum', 'fast'];
+// nom et icône d'une épreuve (ou d'un résultat), épreuve du jour comprise
+const dailyName = s => (s.x ? DAILY_X[s.x].name : DAILY_NAMES[s.type]);
+const dailyIcon = s => (s.x ? DAILY_X[s.x].icon : DAILY_ICON[s.type]);
 
-// numéro du défi d'une date (jour local)
-function dailyNum(d) { d = d || new Date(); return Math.floor((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - DAILY.EPOCH) / 864e5) + 1; }
+// numéro du défi d'une date : le jour à Paris (le même pour tout le monde, il change à minuit heure française)
+function dailyNum(d) {
+  d = d || new Date();
+  let y = d.getUTCFullYear(), m = d.getUTCMonth(), day = d.getUTCDate();
+  try { const p = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d).split('-'); y = +p[0]; m = +p[1] - 1; day = +p[2]; } catch (e) { }
+  return Math.floor((Date.UTC(y, m, day) - DAILY.EPOCH) / 864e5) + 1;
+}
 // petit générateur de hasard réglé (le même tirage partout)
 function dailyRng(seed) {
   let a = seed >>> 0;
@@ -24,13 +50,16 @@ function dailyRng(seed) {
 }
 // mélange (Fisher-Yates) : le même sur tous les navigateurs (un tri au hasard dépend du navigateur)
 function dailyShuffle(a, r) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
-// les 3 épreuves du jour n (d : distance du porteur à l'en-but qu'il attaque)
+// les 4 épreuves du jour n (d : distance du porteur à l'en-but qu'il attaque)
 function dailyGen(n) {
   const r = dailyRng(n * 7919 + 17), R = (a, b) => a + (b - a) * r(), P = o => o[Math.floor(r() * o.length)];
-  const sits = [['pass', 40, 58], ['att', 34, 46], ['def', 40, 55]].map(([type, d0, d1]) => {
+  const x = DAILY_X_ORDER[((n - 1) % DAILY_X_ORDER.length + DAILY_X_ORDER.length) % DAILY_X_ORDER.length], X0 = DAILY_X[x];
+  const sits = [['pass', 40, 58], ['att', 34, 46], ['def', 40, 55], [X0.base, X0.d[0], X0.d[1], x]].map(([type, d0, d1, xk], k) => {
     const kmh = r() < 0.25 ? 0 : Math.round(R(6, 26)), a = Math.floor(r() * 8) * Math.PI / 4;
-    return { type, d: Math.round(R(d0, d1)), y: Math.round(R(7, H - 7)), wind: { x: Math.cos(a) * kmh / 3.6, y: Math.sin(a) * kmh / 3.6, kmh },
-      def: type === 'att' ? P(['man', 'man', 'zone', 'clam']) : 'man', force: P(['haut', 'bas', 'middle', 'straight']), off: P(['vert', 'ho', 'side']) };
+    const s = { type, k, d: Math.round(R(d0, d1)), y: Math.round(R(7, H - 7)), wind: { x: Math.cos(a) * kmh / 3.6, y: Math.sin(a) * kmh / 3.6, kmh },
+      def: type === 'att' || type === 'keep' || type === 'passes' || type === 'huck' ? P(['man', 'man', 'zone', 'clam']) : 'man', force: P(['haut', 'bas', 'middle', 'straight']), off: P(['vert', 'ho', 'side']) };
+    if (xk) s.x = xk;
+    return s;
   });
   return { n, sits };
 }
@@ -46,49 +75,79 @@ function dailyStreak() {
   while (all[n]) { k++; n--; }
   return k;
 }
+// l'épreuve d'un résultat (r.k : sa place dans le défi du jour ; anciens résultats : leur rang)
+const dailySitOf = (n, r, i) => dailyGen(n).sits[r.k !== undefined ? r.k : i];
 // cases du partage, selon l'épreuve
 function dailyMark(type, v, s) {
   if (type === 'pass') return v >= 25 ? '🟩' : v >= 12 ? '🟨' : '🟥';
   if (type === 'att') { const par = 6 + s.d / 4; return v <= par ? '🟩' : v <= par * 2 ? '🟨' : '🟥'; }
-  return v <= 8 ? '🟩' : v <= 25 ? '🟨' : '🟥';
+  if (type === 'keep') return v >= 60 ? '🟩' : v >= 25 ? '🟨' : '🟥';
+  if (type === 'passes') return v >= 12 ? '🟩' : v >= 5 ? '🟨' : '🟥';
+  if (type === 'huck') return v >= s.d - 0.5 ? '🟩' : v >= s.d * 0.5 ? '🟨' : '🟥';
+  const k = s && s.x === 'outnum' ? 2 : 1;                     // défense
+  return v <= 8 * k ? '🟩' : v <= 25 * k ? '🟨' : '🟥';
 }
-const dailyFmt = (type, v) => (type === 'att' ? v.toFixed(1) + ' s' : Math.round(v) + ' m');
+function dailyFmt(type, v) {
+  if (type === 'att' || type === 'keep') return v.toFixed(1) + ' s';
+  if (type === 'passes') return Math.round(v) + (Math.round(v) > 1 ? ' passes' : ' passe');
+  return Math.round(v) + ' m';
+}
+// le titre de la journée (repris dans le partage) : ce qu'on a fait de mieux
+function dailyTitle(n, res) {
+  const S = res.map((r, i) => dailySitOf(n, r, i)), M = res.map((r, i) => dailyMark(r.type, r.v, S[i])), g = M.filter(m => m === '🟩').length;
+  const has = (t, f) => res.some((r, i) => r.type === t && f(r.v, S[i]));
+  if (res.length >= 4 && g === res.length) return '🏆 Journée parfaite';
+  if (has('pass', v => v >= 35)) return '🚀 Huckeur fou';
+  if (has('huck', (v, s) => v >= s.d - 0.5)) return '🎯 Missile';
+  if (has('def', (v, s) => v <= 3 && s.x !== 'outnum')) return '🧱 Mur défensif';
+  if (has('att', (v, s) => v <= (6 + s.d / 4) * 0.6)) return '⚡ Éclair';
+  if (has('keep', v => v >= DAILY.KEEP)) return '🔒 Coffre-fort';
+  if (has('passes', v => v >= 20)) return '🔁 Métronome';
+  if (g >= 2) return '💪 Belle journée';
+  if (!g) return '🌱 Ça ira mieux demain';
+  return '🥏 Joueur du jour';
+}
 
 // ---------- le défi en jeu ----------
-function dailyStart(n, official) {
+// only : rejouer une seule épreuve (son rang), pour s'entraîner
+function dailyStart(n, official, only) {
   backToSolo();
   G.series = null; G.ms = null;
-  G.daily = Object.assign(dailyGen(n), { official, i: 0, res: [], wait: 0, after: null, t: 0, pen: 0, turns: 0, goals: 0, line: 0, x0: 0, gain: 0, thrown: false,
-    keep: { form: Object.assign({}, G.form), ai: Object.assign({}, G.ai), rnd: Math.random }, bench: null });
+  const gen = dailyGen(n);
+  if (only !== undefined) gen.sits = [gen.sits[only]];
+  G.daily = Object.assign(gen, { official: official && only === undefined, i: 0, res: [], wait: 0, after: null, t: 0, pen: 0, turns: 0, goals: 0, line: 0, x0: 0, gain: 0, passes: 0, thrown: false, cont: false,
+    keep: { form: Object.assign({}, G.form), ai: Object.assign({}, G.ai), rnd: Math.random }, bench: null, nb: [5, 5], boost: false });
   Object.assign(G.form, { level: 'normal', allyLevel: 'normal', play: 'none', dplay: 'none', points: '99' });   // mêmes adversaires et coéquipiers pour tous
   for (const id of ['lobbyCard', 'stratCard', 'seriesCard', 'dailyCard', 'endlessCard']) $(id).style.display = 'none';
   $('overlay').classList.add('hidden'); G.menuShown = false;
   $('dailyBox').style.display = '';
   newMatchStats(); dailySit(); resize();
 }
-// 3 contre 3 (défense) : deux joueurs de chaque équipe sur le banc ; retour à 5 contre 5 ensuite
-function dailyBench(on) {
+// joueurs sur le terrain : nb = [ton équipe, l'adversaire] (défense : 3 contre 3, ou 3 contre 4) ; les autres sur le banc
+function dailyBench(nb) {
   const D = G.daily;
-  if (on && !D.bench) {
-    D.bench = [];
-    for (const t of [0, 1]) D.bench.push(...TEAMS[t].splice(3));
-    for (const b of D.bench) players.splice(players.indexOf(b), 1);
-    for (const t of [0, 1]) G.order[t] = [];
-    G.form.def = 'man';
-  } else if (!on && D.bench) {
+  if (D.nb[0] === nb[0] && D.nb[1] === nb[1]) return;
+  if (D.bench) {                                               // d'abord tout le monde revient
     for (const b of D.bench) TEAMS[b.team].push(b);
-    players.length = 0; for (const t of [0, 1]) { TEAMS[t].sort((a, b) => a.i - b.i); players.push(...TEAMS[t]); }
-    for (const t of [0, 1]) G.order[t] = [];
-    G.form.def = D.keep.form.def; D.bench = null;
+    for (const t of [0, 1]) TEAMS[t].sort((a, b) => a.i - b.i);
+    D.bench = null;
   }
+  if (nb[0] < 5 || nb[1] < 5) { D.bench = []; for (const t of [0, 1]) D.bench.push(...TEAMS[t].splice(nb[t])); }
+  players.length = 0; for (const t of [0, 1]) players.push(...TEAMS[t]);
+  for (const t of [0, 1]) G.order[t] = [];
+  G.form.def = nb[0] < 5 ? 'man' : D.keep.form.def;
+  D.nb = nb.slice();
   visReset();
 }
-const dailyType = () => G.daily.sits[G.daily.i].type;
-// mise en place de l'épreuve en cours (ou rejouée après un point encaissé en défense)
+const dailySitNow = () => G.daily.sits[G.daily.i];
+const dailyType = () => dailySitNow().type;
+// mise en place de l'épreuve en cours (ou rejouée : point encaissé en défense, point marqué en « garde le disque »)
 function dailySit() {
-  const D = G.daily, s = D.sits[D.i], a = s.type === 'def' ? 1 : 0, d = 1 - a;
-  dailyBench(s.type === 'def');
-  Math.random = dailyRng(D.n * 1009 + D.i * 101 + D.goals * 13 + 7);   // le même hasard pour tout le monde, au départ
+  const D = G.daily, s = D.sits[D.i], X0 = s.x ? DAILY_X[s.x] : {}, a = s.type === 'def' ? 1 : 0, d = 1 - a;
+  dailyBench(s.type === 'def' ? X0.n || [3, 3] : [5, 5]);
+  Math.random = dailyRng(D.n * 1009 + s.k * 101 + D.goals * 13 + (D.cont ? 977 : 0) + 7);   // le même hasard pour tout le monde, au départ
+  G.form.level = X0.lvl || 'normal'; D.boost = !!X0.boost;    // adversaires de l'épreuve du jour (humans.js : aiLvl)
+  SPEEDS.daily = SPEEDS.normal * (X0.speed || 1); G.form.speed = X0.speed ? 'daily' : D.keep.form.speed;   // jeu ralenti / accéléré
   G.score = [0, 0]; G.wind = Object.assign({}, s.wind); G.gt = 0;
   Object.assign(G.ai, { off: s.off, def: s.def, force: s.force, play: 'none', dplay: 'none', restart: 'pose' });
   Object.assign(G, { phase: 'play', oplay: null, dplay: null, pendingOPlay: null, pullPending: false, carryTo: null, stall: 0, marker: null, dbl: null, pickup: null, loft: LOFT.N, aiPlayTried: true });
@@ -129,20 +188,30 @@ function dailySit() {
     });
   }
   holdDisc(h); visReset(); updateSelected();
-  if (!D.goals) { D.t = 0; D.pen = 0; D.turns = 0; }
-  D.line = 0; D.x0 = h.x; D.gain = 0; D.thrown = false;
-  flash(`${D.i + 1}/3 · ` + (s.type === 'pass' ? 'Trouve la passe : regarde les coupes !' : s.type === 'att' ? `Marque ! (à ${s.d} m de l'en-but)` : D.goals ? 'On rejoue : défends !' : 'Défends : recule-les le moins possible'), true);
+  if (!D.goals && !D.cont) { D.t = 0; D.pen = 0; D.turns = 0; D.passes = 0; }
+  D.cont = false; D.line = 0; D.x0 = h.x; D.gain = 0; D.thrown = false; D.lastH = h;
+  const tag = `${D.i + 1}/${D.sits.length} · `;
+  flash(tag + (s.x ? `${X0.icon} ${X0.name} !` : s.type === 'pass' ? 'Trouve la passe : regarde les coupes !' : s.type === 'att' ? `Marque ! (à ${s.d} m de l'en-but)` : D.goals ? 'On rejoue : défends !' : 'Défends : recule-les le moins possible'), true);
   dailyHud();
 }
 function dailyFrame(dt) {
   const D = G.daily; if (!D) return;
-  if (D.wait > 0) { D.wait -= dt; if (D.wait <= 0) D.after(); return; }
+  if (G.dailyPop && !G.replay) G.dailyPop.t += dt;
+  if (D.wait > 0) { if (!G.replay) D.wait -= dt; if (D.wait <= 0) D.after(); return; }
   if (G.phase !== 'play' || G.paused) return;
-  const type = dailyType();
+  const type = dailyType(), s = dailySitNow();
   D.t += dt * SPEEDS[G.form.speed];
+  const caught = (disc.mode === 'held' || disc.mode === 'carry') && disc.holder && disc.holder.team === 0 && disc.holder !== D.lastH;
   if (type === 'pass') {
     if (disc.mode === 'air') D.thrown = true;
     if (D.thrown && (disc.mode === 'held' || disc.mode === 'carry') && disc.holder && disc.holder.team === 0) { D.gain = Math.max(0, dirOf(0) * (disc.holder.x - D.x0)); dailyNext('Attrapé !'); return; }
+  }
+  if (caught) D.lastH = disc.holder;
+  if (type === 'keep' && D.t >= DAILY.KEEP) { D.t = DAILY.KEEP; dailyNext('Coffre-fort ! 🔒'); return; }
+  if (type === 'passes' && caught && ++D.passes >= DAILY.PASSES) { dailyNext('Quel enchaînement ! 🔁'); return; }
+  if (type === 'huck' && caught) {
+    D.passes++; D.gain = Math.max(D.gain, dirOf(0) * (disc.holder.x - D.x0));
+    if (D.passes >= 2) { dailyNext('2 passes, pas de point'); return; }
   }
   if (type === 'def' && disc.mode === 'held' && disc.holder && disc.holder.team === 1) D.line = Math.max(D.line, dirOf(1) * (disc.x - D.x0));
   dailyHud();
@@ -155,21 +224,55 @@ function dailyPin(p) {
   else { p.tx = c.x; p.ty = c.y; p.sp = SPD.cut * aiLvl(p.team).speed; }
   return true;
 }
-// une pause courte (le message reste à l'écran), puis la suite
+// adversaires « plus rapides que d'habitude » (épreuve du jour) : humans.js, aiLvl
+const DAILY_BOOST = new Map();
+function dailyBoost(L) {
+  if (!DAILY_BOOST.has(L)) DAILY_BOOST.set(L, Object.assign({}, L, { speed: L.speed * 1.15, react: L.react * 0.8 }));
+  return DAILY_BOOST.get(L);
+}
+// une pause courte (le message reste à l'écran ; un ralenti peut passer avant), puis la suite
 function dailyPause(sec, fn) { const D = G.daily; G.phase = 'daily'; D.wait = sec; D.after = () => { G.phase = 'play'; fn(); }; }
-function dailyVal() { const D = G.daily, t = dailyType(); return t === 'pass' ? D.gain : t === 'att' ? D.t + D.pen : D.line + D.goals * DAILY.GOAL; }
+function dailyVal() {
+  const D = G.daily, t = dailyType();
+  return t === 'pass' || t === 'huck' ? D.gain : t === 'att' ? D.t + D.pen : t === 'keep' ? Math.min(DAILY.KEEP, D.t) : t === 'passes' ? D.passes : D.line + D.goals * DAILY.GOAL;
+}
+// ---------- les moments forts : le score en grand, le public, un ralenti sur une belle passe ----------
+const DAILY_PRAISE = { '🟩': ['Superbe !', 'Énorme !', 'Magnifique !'], '🟨': ['Pas mal !', 'Bien joué', 'Correct'], '🟥': ['Raté…', 'Aïe…', 'Ça arrive'] };
+function dailyMoment(type, v, s, msg) {
+  const m = dailyMark(type, v, s), praise = DAILY_PRAISE[m][Math.floor(G.time * 7) % 3];
+  G.dailyPop = { big: dailyFmt(type, v), sub: `${msg} · ${praise}`, m, t: 0 }; G.msgT = 0;   // (le message va sous le score, pas par-dessus)
+  try {
+    const au = typeof crowdSample === 'function';
+    if (m === '🟩') { if (!au || !crowdSample('cheer', { vol: 0.5 })) SOUNDS.cheer(); }
+    else if (m === '🟨') { if (au) crowdSample('cheer-short', { vol: 0.4 }); }
+    else if (au) crowdSample('sigh', { vol: 0.35 });
+  } catch (e) { }
+  return m;
+}
+// ralenti des dernières secondes (la passe réussie de « Trouve la passe ») ; rend sa durée (s)
+function dailyReplay(sec) {
+  if (typeof startReplay !== 'function' || !REPLAY.frames.length) return 0;
+  const fr = REPLAY.frames.slice(-Math.round(sec / REPLAY.STEP)); fr.push(replayFrame());
+  for (let i = 0; i < 6; i++) fr.push(fr[fr.length - 1]);
+  if (fr.length < 10) return 0;
+  REPLAY.last = { frames: fr, team: 0, score: [0, 0] }; startReplay('last');
+  return fr.length * REPLAY.STEP / 0.55;
+}
 // l'épreuve est finie : on note, puis la suivante (ou la fin)
 function dailyNext(msg) {
-  const D = G.daily, v = dailyVal(), type = dailyType();
-  D.res.push({ type, v: Math.round(v * 10) / 10, turns: D.turns, goals: D.goals });
-  flash(`${msg} · ${dailyFmt(type, v)}`, true); dailyHud();
-  dailyPause(2.2, () => { D.i++; D.goals = 0; if (D.i >= D.sits.length) dailyFinish(); else dailySit(); });
+  const D = G.daily, v = dailyVal(), type = dailyType(), s = dailySitNow();
+  D.res.push({ type, k: s.k, x: s.x, v: Math.round(v * 10) / 10, turns: D.turns, goals: D.goals });
+  const m = dailyMoment(type, v, s, msg);
+  dailyHud();
+  const slow = type === 'pass' && m === '🟩' ? dailyReplay(3.2) : 0;   // une belle passe : on la revoit au ralenti
+  dailyPause(2.4 + slow, () => { D.i++; D.goals = 0; G.dailyPop = null; if (D.i >= D.sits.length) dailyFinish(); else dailySit(); });
 }
 // perte de disque (events.js : turnover, interception) — rend true si le défi s'en occupe
 function dailyTurn(x, y, msg) {
   const D = G.daily; if (!D || G.phase !== 'play') return false;
   const type = dailyType();
-  if (type === 'pass') { disc.mode = 'dead'; disc.holder = null; D.gain = 0; dailyNext(msg + ' : 0 m'); return true; }
+  if (type === 'pass' || type === 'huck') { disc.mode = 'dead'; disc.holder = null; D.gain = 0; dailyNext(msg + ' : 0 m'); return true; }
+  if (type === 'keep' || type === 'passes') { disc.mode = 'dead'; disc.holder = null; dailyNext(msg); return true; }
   if (type === 'def') { disc.mode = 'dead'; disc.holder = null; fxPlay('catch', x, y, 0); dailyNext('Disque récupéré ! 🛡️'); return true; }
   // attaque : +PEN s, et on te rend le disque là où il a été perdu
   D.pen += DAILY.PEN; D.turns++;
@@ -183,9 +286,15 @@ function dailyTurn(x, y, msg) {
 }
 // point marqué (events.js : scorePoint)
 function dailyScored(t) {
-  const D = G.daily, type = dailyType();
+  const D = G.daily, type = dailyType(), s = dailySitNow();
   if (type === 'pass') { D.gain = Math.max(0, dirOf(0) * (disc.x - D.x0)); dailyNext('Dans l’en-but ! 🥏'); return; }
   if (type === 'att') { dailyNext('Point ! 🥏'); return; }
+  if (type === 'huck') { D.gain = s.d; dailyNext('Point ! 🚀'); return; }
+  if (type === 'keep' || type === 'passes') {                  // garder le disque : on repart du départ, le compte continue
+    if (type === 'passes') D.passes++;
+    D.cont = true; flash('Point ! On repart, ça continue', true); dailyHud();
+    dailyPause(1.5, dailySit); return;
+  }
   D.goals++; D.line = 0;                                       // défense : point encaissé, on rejoue l'épreuve
   if (D.goals >= DAILY.MAXG) { dailyNext(`${D.goals} points encaissés, on passe à la suite`); return; }
   flash(`Point encaissé : +${DAILY.GOAL} m`, true); dailyHud();
@@ -194,15 +303,16 @@ function dailyScored(t) {
 function dailyRestore() {
   const D = G.daily; if (!D) return;
   Math.random = D.keep.rnd;
-  dailyBench(false);
+  dailyBench([5, 5]);
   Object.assign(G.form, D.keep.form); Object.assign(G.ai, D.keep.ai);
-  G.daily = null; G.score = [0, 0];
+  G.daily = null; G.dailyPop = null; G.score = [0, 0];
+  if (G.replay) stopReplay();
   $('dailyBox').style.display = 'none';
 }
 function dailyFinish() {
-  const D = G.daily, run = { n: D.n, res: D.res, official: D.official };
+  const D = G.daily, single = D.sits.length === 1, run = { n: D.n, res: D.res, official: D.official, single };
   if (D.official && !dailyDone(D.n)) { const all = dailyAll(); all[D.n] = { res: D.res, at: Date.now() }; storeSet(DAILY.KEY, all); }
-  else if (!D.official && D.n < dailyNum()) { const ar = dailyArch(); ar[D.n] = { res: D.res, at: Date.now() }; storeSet(DAILY.ARCH, ar); }   // archives : ton dernier essai
+  else if (!D.official && !single && D.n < dailyNum()) { const ar = dailyArch(); ar[D.n] = { res: D.res, at: Date.now() }; storeSet(DAILY.ARCH, ar); }   // archives : ton dernier essai
   dailyRestore();
   G.phase = 'menu'; placeForPoint();
   showDaily(D.n, run); resize();
@@ -221,12 +331,15 @@ const DAILY_HOW = {
 };
 function dailyHud() {
   const D = G.daily; if (!D) return;
-  const type = dailyType(), v = dailyVal(), done = D.res.map((r, k) => dailyMark(r.type, r.v, D.sits[k])).join('');
-  $('dailyStats').textContent = `${D.i + 1}/3 ${done} · ` + (type === 'pass' ? (D.thrown ? 'la passe vole…' : `stall ${Math.floor(G.stall)}`)
+  const s = dailySitNow(), type = s.type, done = D.res.map(r => dailyMark(r.type, r.v, D.sits.find(q => q.k === r.k) || s)).join('');
+  $('dailyStats').textContent = `${D.i + 1}/${D.sits.length} ${done} · ` + (type === 'pass' ? (D.thrown ? 'la passe vole…' : `stall ${Math.floor(G.stall)}`)
     : type === 'att' ? `⏱ ${D.t.toFixed(1)} s` + (D.pen ? ` + ${D.pen} s` : '')
+    : type === 'keep' ? `🔒 ${Math.min(DAILY.KEEP, D.t).toFixed(1)} s`
+    : type === 'passes' ? `🔁 ${D.passes} passe${D.passes > 1 ? 's' : ''}`
+    : type === 'huck' ? `🚀 ${Math.round(D.gain)} m · passe ${Math.min(2, D.passes + 1)}/2`
     : `📏 ${Math.round(D.line)} m` + (D.goals ? ` + ${D.goals * DAILY.GOAL} m` : ''));
-  $('dailyTitle').textContent = `Défi #${D.n} · ${DAILY_NAMES[type]}` + (D.official ? '' : ' (entraînement)');
-  $('dailyText').innerHTML = DAILY_HOW[type];
+  $('dailyTitle').textContent = `Défi #${D.n} · ${dailyName(s)}` + (D.official ? '' : ' (entraînement)');
+  $('dailyText').innerHTML = s.x ? DAILY_X[s.x].how : DAILY_HOW[type];
 }
 // trouve la passe : la coupe écrite d'un receveur (tant que la passe n'est pas partie)
 const dailyCutOf = p => { const D = G.daily; return D && D.cuts && !D.thrown && D.wait <= 0 ? D.cuts.find(c => c.p === p) || null : null; };
@@ -249,11 +362,25 @@ function drawDailyCuts() {
   }
   ctx.restore();
 }
-// la ligne jusqu'où l'adversaire a avancé (défense) ; la ligne de départ du lancer (trouve la passe)
+// le score de l'épreuve en grand, au milieu du terrain (il grossit, puis s'efface)
+function drawDailyPop() {
+  const P = G.dailyPop; if (!P || G.replay) return;
+  const k = Math.min(1, P.t / 0.25), sc = 0.6 + 0.4 * (1 - (1 - k) ** 3) + (k >= 1 ? 0.03 * Math.sin(P.t * 6) : 0), al = Math.min(1, P.t / 0.12);
+  const col = P.m === '🟩' ? '#4ade80' : P.m === '🟨' ? '#facc15' : '#f87171', cx = X(W / 2), cy = Y(H / 2);
+  ctx.save(); ctx.globalAlpha = al; ctx.translate(cx, cy); ctx.scale(sc, sc); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = `900 ${Math.max(36, S * 6.5)}px system-ui`; ctx.lineWidth = Math.max(5, S * 0.7); ctx.strokeStyle = 'rgba(15,23,42,.85)';
+  ctx.strokeText(P.big, 0, 0); ctx.fillStyle = col; ctx.fillText(P.big, 0, 0);
+  ctx.font = `800 ${Math.max(16, S * 2.4)}px system-ui`; ctx.lineWidth = Math.max(3, S * 0.4);
+  ctx.strokeText(P.sub, 0, S * 4.6); ctx.fillStyle = '#fff'; ctx.fillText(P.sub, 0, S * 4.6);
+  ctx.restore();
+}
+// la ligne jusqu'où l'adversaire a avancé (défense) ; la ligne de départ du lancer (trouve la passe, huck)
 function drawDaily() {
-  const D = G.daily; if (!D || D.wait > 0) return;
+  const D = G.daily; if (!D) return;
+  drawDailyPop();
+  if (D.wait > 0) return;
   drawDailyCuts();
-  const type = dailyType(); if (type === 'att') return;
+  const type = dailyType(); if (type !== 'def' && type !== 'pass' && type !== 'huck') return;
   const x = type === 'def' ? D.x0 + dirOf(1) * D.line : D.x0;
   ctx.save(); ctx.strokeStyle = 'rgba(250,204,21,.85)'; ctx.lineWidth = 3; ctx.setLineDash([10, 6]);
   ctx.beginPath(); ctx.moveTo(X(x), Y(0)); ctx.lineTo(X(x), Y(H)); ctx.stroke(); ctx.setLineDash([]);
@@ -262,33 +389,39 @@ function drawDaily() {
   ctx.restore();
 }
 function dailyShareText(n, run) {
-  const sits = dailyGen(n).sits, marks = run.res.map((r, k) => dailyMark(r.type, r.v, sits[k])).join('');
+  const marks = run.res.map((r, i) => dailyMark(r.type, r.v, dailySitOf(n, r, i))).join('');
   const url = String(location.href || '').split(/[?#]/)[0] + '?defi=' + n;
-  return `🥏 Ultimate du jour #${n} ${marks}\n` + run.res.map(r => DAILY_ICON[r.type] + ' ' + dailyFmt(r.type, r.v)).join(' · ') + `\n${url}`;
+  return `🥏 Ultimate du jour #${n} ${marks}\n${dailyTitle(n, run.res)}\n` + run.res.map((r, i) => dailyIcon(Object.assign({}, r, { x: dailySitOf(n, r, i).x })) + ' ' + dailyFmt(r.type, r.v)).join(' · ') + `\n${url}`;
 }
-// le panneau du défi : avant (règles, Commencer), après (scores, Partager, rejouer pour s'entraîner)
+// le panneau du défi : avant (règles, Commencer), après (scores, titre, Partager, rejouer une épreuve)
 function showDaily(n, run) {
   n = n || dailyNum();
-  const today = dailyNum(), done = dailyDone(n), arch = dailyArch()[n], sits = dailyGen(n).sits;
-  const res = run || (done && Object.assign({ n, official: true }, done)) || (arch && Object.assign({ n, official: false }, arch));
+  const today = dailyNum(), done = dailyDone(n), arch = dailyArch()[n], sits = dailyGen(n).sits, sx = sits[3];
+  const full = run && !run.single ? run : null;
+  const res = full || (done && Object.assign({ n, official: true }, done)) || (arch && Object.assign({ n, official: false }, arch));
   G.menuShown = true;
   for (const id of ['lobbyCard', 'stratCard', 'seriesCard', 'endlessCard']) $(id).style.display = 'none';
   $('dailyCard').style.display = ''; $('overlay').classList.remove('hidden');
   $('dailyHead').textContent = n !== today ? `📚 Défi #${n} · ${dailyDate(n)}` : `📅 Défi du jour #${n}`;
   const streak = dailyStreak();
-  $('dailyRules').innerHTML = `Trois épreuves, les mêmes pour tout le monde ${n === today ? 'aujourd’hui' : 'ce jour-là'} :<br>`
+  $('dailyRules').innerHTML = `Quatre épreuves, les mêmes pour tout le monde ${n === today ? 'aujourd’hui' : 'ce jour-là'} :<br>`
     + `🎯 <b>Trouve la passe</b> : tes receveurs coupent chacun à leur tour ; une seule passe, au bon moment, la plus longue possible (0 m si elle est perdue).<br>`
     + `⏱ <b>Attaque</b>, 5 contre 5 : marque le plus vite possible ; une perte de disque, +${DAILY.PEN} s.<br>`
-    + `📏 <b>Défense</b>, 3 contre 3 : la ligne jaune avance à chaque passe ; un point encaissé, +${DAILY.GOAL} m et on rejoue.`
+    + `📏 <b>Défense</b>, 3 contre 3 : la ligne jaune avance à chaque passe ; un point encaissé, +${DAILY.GOAL} m et on rejoue.<br>`
+    + `${DAILY_X[sx.x].icon} <b>L'épreuve du jour : ${DAILY_X[sx.x].name}</b>. ${DAILY_X[sx.x].how}`
     + (streak ? `<br>Série : <b>${streak} jour${streak > 1 ? 's' : ''}</b> 🔥` : '');
-  if (res) {
-    $('dailyRes').innerHTML = `<b>${res.official ? (n === today ? 'Tes scores' : 'Tes scores du jour même') : n === today ? 'Scores (entraînement, non comptés)' : 'Ton dernier essai (archives)'}</b><br>`
-      + res.res.map((r, k) => `${dailyMark(r.type, r.v, sits[k])} ${DAILY_ICON[r.type]} ${DAILY_NAMES[r.type]} : ${dailyFmt(r.type, r.v)}` + (r.turns ? ` (${r.turns} perte${r.turns > 1 ? 's' : ''})` : '') + (r.goals ? ` (${r.goals} point${r.goals > 1 ? 's' : ''} encaissé${r.goals > 1 ? 's' : ''})` : '')).join('<br>');
-    $('dailyRes').style.display = '';
-  } else $('dailyRes').style.display = 'none';
+  // les scores : chaque épreuve se rejoue seule (↻), pour s'entraîner
+  const line = (r, i) => { const s = dailySitOf(n, r, i); return `${dailyMark(r.type, r.v, s)} ${dailyIcon(s)} ${dailyName(s)} : <b>${dailyFmt(r.type, r.v)}</b>` + (r.turns ? ` (${r.turns} perte${r.turns > 1 ? 's' : ''})` : '') + (r.goals ? ` (${r.goals} point${r.goals > 1 ? 's' : ''} encaissé${r.goals > 1 ? 's' : ''})` : ''); };
+  let h = '';
+  if (run && run.single) h += `<b>Entraînement : </b>${line(run.res[0], 0)}<br><br>`;
+  if (res) h += `<span class="dailyTitle">${dailyTitle(n, res.res)}</span><br><b>${res.official ? (n === today ? 'Tes scores' : 'Tes scores du jour même') : n === today ? 'Scores (entraînement, non comptés)' : 'Ton dernier essai (archives)'}</b><br>`
+    + res.res.map((r, i) => `${line(r, i)} <button class="ghost dailyOne" data-k="${r.k !== undefined ? r.k : i}" title="Rejouer cette épreuve (entraînement)">↻</button>`).join('<br>');
+  else if (n !== today || done) h += sits.map(s => `${dailyIcon(s)} ${dailyName(s)} <button class="ghost dailyOne" data-k="${s.k}" title="Jouer cette épreuve seule (entraînement)">▶</button>`).join(' · ');
+  $('dailyRes').innerHTML = h; $('dailyRes').style.display = h ? '' : 'none';
+  $('dailyRes').querySelectorAll('.dailyOne').forEach(b => b.addEventListener('click', () => dailyStart(n, false, +b.dataset.k)));
   const official = n === today && !done, newbie = !storeGet('uf-tuto', false);
   $('dailyNew').style.display = newbie ? '' : 'none';            // nouveau joueur (souvent arrivé par un lien partagé) : le tutoriel d'abord
-  $('dailyGo').textContent = official ? (newbie ? 'Jouer quand même ▶' : 'Commencer ▶') : n !== today ? (res ? 'Rejouer ce défi ▶' : 'Jouer ce défi ▶') : 'Rejouer pour s’entraîner ▶';
+  $('dailyGo').textContent = official ? (newbie ? 'Jouer quand même ▶' : 'Commencer ▶') : n !== today ? (res ? 'Rejouer tout ce défi ▶' : 'Jouer ce défi ▶') : 'Tout rejouer pour s’entraîner ▶';
   $('dailyGo').classList.toggle('primary', official && !newbie);
   $('dailyGo').onclick = () => dailyStart(n, official);
   $('dailyShare').style.display = done ? '' : 'none';
@@ -307,14 +440,14 @@ let dailyArchOpen = false;
 function dailyArchList(cur, today) {
   const nPast = today - 1, ar = dailyArch(), el = $('dailyPast');
   if (nPast < 1) { el.innerHTML = '📚 Archives : les défis passés arriveront ici dès demain.'; return; }
-  const marks = r => r.res.map((x, k, a) => dailyMark(x.type, x.v, dailyGen(r.n).sits[k])).join('');
+  const marks = (k, r) => r.res.map((x, i) => dailyMark(x.type, x.v, dailySitOf(k, x, i))).join('');
   let h = `<button class="ghost" id="dailyArchB">📚 Archives (${nPast} défi${nPast > 1 ? 's' : ''} passé${nPast > 1 ? 's' : ''}) ${dailyArchOpen ? '▴' : '▾'}</button>`;
   if (cur !== today) h += ` <button class="ghost" data-n="${today}">📅 Défi du jour</button>`;
   if (dailyArchOpen) {
     h += '<span class="dailyArch">';
     for (let k = nPast; k >= 1; k--) {
       const d = dailyDone(k), a = ar[k], r = d || a;
-      h += `<button class="ghost${k === cur ? ' on' : ''}" data-n="${k}">#${k} · ${dailyDate(k)}${r ? ' ' + marks(Object.assign({ n: k }, r)) : ''}${d ? ' ✓' : ''}</button>`;
+      h += `<button class="ghost${k === cur ? ' on' : ''}" data-n="${k}">#${k} · ${dailyDate(k)}${r ? ' ' + marks(k, r) : ''}${d ? ' ✓' : ''}</button>`;
     }
     h += '</span><br>✓ : joué le jour même · les archives se rejouent autant que tu veux, sans compter.';
   }
@@ -324,8 +457,8 @@ function dailyArchList(cur, today) {
 }
 // bouton de l'accueil : numéro du jour, et tes scores s'il est déjà fait
 function dailyHomeTxt() {
-  const n = dailyNum(), d = dailyDone(n);
-  return d ? `Fait : ${d.res.map(r => DAILY_ICON[r.type] + ' ' + dailyFmt(r.type, r.v)).join(' · ')} · reviens demain !` : `#${n} · trouve la passe, attaque, défense : le même pour tout le monde, un essai par jour`;
+  const n = dailyNum(), d = dailyDone(n), sx = dailyGen(n).sits[3];
+  return d ? `Fait : ${dailyTitle(n, d.res)} · reviens demain !` : `#${n} · trouve la passe, attaque, défense + ${DAILY_X[sx.x].icon} ${DAILY_X[sx.x].name} · un essai par jour`;
 }
 if (typeof document !== 'undefined' && document.getElementById('dailyB')) {
   $('dailyB').addEventListener('click', () => { backToSolo(); showDaily(); });

@@ -13,7 +13,8 @@ function aiLvl(t) {
   if (G.tuto && G.tuto.level && !human(t)) return AI_LEVELS[G.tuto.level];      // tutoriel : adversaire réglé par l'étape
   if (G.series && !human(t)) return oppLevel();                                   // tournoi / infini : niveau de l'adversaire du jour
   const lv = human(t) || (G.watchOn && (t === 0 || G.oppCustom)) ? cfg(t).allyLevel : G.form.level;   // (mode spectateur : le niveau choisi pour chaque équipe)
-  return AI_LEVELS[lv] || AI_LEVELS.normal;
+  const L = AI_LEVELS[lv] || AI_LEVELS.normal;
+  return G.daily && G.daily.boost && !human(t) ? dailyBoost(L) : L;   // défi du jour : adversaires plus rapides (daily.js)
 }
 // style de jeu de l'IA de l'équipe t (personnalité des équipes du tournoi)
 const aiStyle = t => {

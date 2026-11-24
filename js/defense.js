@@ -8,6 +8,7 @@ function assignMan(defT, h) {
   const pool = TEAMS[defT].slice();
   for (const a of atk) {
     const d = nearest(pool, a.x, a.y);
+    if (!d) break;                                             // en infériorité numérique : le plus loin du disque reste libre
     d.match = a; pool.splice(pool.indexOf(d), 1);
   }
 }
