@@ -9,7 +9,7 @@ const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
   { id: 47, date: '2026-11-19', tag: 'Solo', title: 'Le défi du jour 📅',
-    body: `Chaque jour, les mêmes épreuves pour tout le monde : <b>trouve la passe</b>, <b>attaque</b>, <b>défense</b> à 3 contre 3, et une <b>épreuve du jour</b> qui change (huck, ralenti, garde le disque…). Un essai, un titre, et un bouton pour partager tes scores.` },
+    body: `Chaque jour, les mêmes épreuves pour tout le monde : <b>trouve la passe</b>, <b>attaque</b>, <b>défense</b> à 3 contre 3, et une <b>épreuve du jour</b> qui change (huck, 1 contre 1, vent fou…). Un essai, un titre, et un bouton pour partager tes scores. Et l'<b>épreuve libre</b> 🎲 pour t'entraîner sur n'importe quelle épreuve.` },
   { id: 46, date: '2026-11-04', tag: 'Jeu', title: 'Le vent de côté 🌬️',
     body: `• Le disque <b>ralentit face au vent</b> et accélère vent dans le dos ; plus il est haut, plus le vent le pousse.<br>
       • La courbe suit le disque jusqu'au bout : le vent la déporte sans la casser.<br>

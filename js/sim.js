@@ -195,7 +195,8 @@ function update(dt) {
     G.dbl = G.marker ? dbl : null;
     if (G.checkT > 0) G.checkT = Math.max(0, G.checkT - dt);   // check après un hors-jeu : le compte attend
     else if (G.marker && !G.dbl) G.stall += dt * STALL_RATE;
-    if (G.stall >= 10) { G.stats.stalls++; msTurnover(h, 'stall'); turnover(h.x, h.y, 'Stall 10 ! Turnover', 'stall'); return; }
+    const smax = G.daily ? G.daily.stallMax || 10 : 10;        // (défi du jour : stall court)
+    if (G.stall >= smax) { G.stats.stalls++; msTurnover(h, 'stall'); turnover(h.x, h.y, `Stall ${smax} ! Turnover`, 'stall'); return; }
     // pivot du porteur : humain, vers le côté où il vise ; IA, choisi dans aiThrow (passe ou feinte)
     // pivot du porteur : un humain le choisit (bouton pivot, côté open au départ) ; l'IA, dans aiThrow (passe ou feinte)
     const th = throwerHuman();

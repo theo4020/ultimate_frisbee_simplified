@@ -64,7 +64,7 @@ function updateHud() {
   const myPlay = (op && G.oplay.team === ME) ? op : (dp && G.dplay.team === ME) ? dp : '';
   const oppPlay = (op && G.oplay.team === OP) ? op : (dp && G.dplay.team === OP) ? dp : '';
   const playTxt = myPlay ? ` · play ${PLAY_NAMES[myPlay]}` : '', oppTxt = oppPlay ? ` · play ${PLAY_NAMES[oppPlay]}` : '';
-  $('status').innerHTML = G.attract ? '<b>Match de démonstration</b>' : G.practice ? '<b>Entraînement</b> · lance dans la cible' : G.daily ? `<b>Défi du jour #${G.daily.n}</b> · ${dailyName(dailySitNow())}` : G.spectator ? `<b>Spectateur</b> · tu regardes la partie` : G.phase === 'pull'
+  $('status').innerHTML = G.attract ? '<b>Match de démonstration</b>' : G.practice ? '<b>Entraînement</b> · lance dans la cible' : G.daily ? (G.daily.free ? '<b>Épreuve libre</b>' : `<b>Défi du jour #${G.daily.n}</b>`) + ` · ${dailyName(dailySitNow())}` : G.spectator ? `<b>Spectateur</b> · tu regardes la partie` : G.phase === 'pull'
     ? (pulling ? '<b>Pull</b> · vise, choisis la courbe, puis arrête la jauge dans le vert' : '<b>Pull</b> · ' + (G.receiving === ME ? 'tu reçois le pull' : 'ton équipe pulle'))
     : att
     ? `<b>Attaque</b> · ${NAMES[formOf(ME)]}${playTxt} — en face : ${NAMES[defFormOf(OP)]}, ${NAMES[forceOf(OP)]}${oppTxt}`

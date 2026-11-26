@@ -89,7 +89,7 @@ function updateSelected() {
     const hs = teamHumans(t);
     if (hs.length === 1) {
       const h = hs[0];
-      h.sel = G.off !== t ? nearest(TEAMS[t], disc.x, disc.y) : null;
+      h.sel = G.off !== t ? (G.daily && G.daily.lockP && G.daily.lockP.team === t ? G.daily.lockP : nearest(TEAMS[t], disc.x, disc.y)) : null;   // (défi du jour, 1 contre 1 : toujours ton défenseur)
       inputOf(h).last = -1e9;
     } else if (hs.length > 1) assignFixed(t);
   }

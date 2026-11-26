@@ -877,8 +877,12 @@ export default async function (t, { quick }) {
   t.ok(d1.back === 10 && d1.t0 === 5 && d1.saved && d1.speed !== 'daily', 'après le défi : retour à 5 contre 5 et aux réglages, le score du jour est gardé', d1);
   // les épreuves du jour : chacune se joue seule (entraînement), avec son score
   const xs = {};
-  for (const n of [2, 3, 4, 5, 6]) { const x = R(`dailyGen(${n}).sits[3].x`), r = dlyRun(n, 3); xs[x] = r.res && r.res[0]; xs[x + 'Size'] = r.sizes[0]; }
+  for (let n = 2; n <= 12; n++) { const x = R(`dailyGen(${n}).sits[3].x`), r = dlyRun(n, 3); xs[x] = r.res && r.res[0]; xs[x + 'Size'] = r.sizes[0]; }
   t.ok(/^huck:\d/.test(xs.huck) && /^slow:\d/.test(xs.slow) && +xs.slow.split(':')[1] > 0 && /^passes:\d/.test(xs.passes) && /^outnum:\d/.test(xs.outnum) && xs.outnumSize === 7 && /^fast:\d/.test(xs.fast), 'épreuves du jour : huck, ralenti, passes, défense à 3 contre 4, accéléré — chacune jouée seule, avec son score', xs);
+  t.ok(['high', 'nocurve', 'stall5', 'crazy'].every(k => new RegExp('^' + k + ':\\d').test(xs[k]) && +xs[k].split(':')[1] > 0) && /^oneone:\d/.test(xs.oneone) && xs.oneoneSize === 10, 'épreuves du jour : passes hautes, sans courbe, stall court, vent fou, 1 contre 1', xs);
+  const fr = R(`(() => { const before = JSON.stringify(localStorage); dailyFree('oneone'); const D = G.daily, o = { free: D.free, n: D.sits.length, x: D.sits[0].x, lock: !!D.lockP && D.lockP.team === 0, man: !!D.man && D.man.team === 1, stall: (dailyFree('stall5'), G.daily.stallMax) };
+    dailyQuit(); o.left = !G.daily; o.same = JSON.stringify(localStorage) === before; return o; })()`);
+  t.ok(fr.free && fr.n === 1 && fr.x === 'oneone' && fr.lock && fr.man && fr.stall === 5 && fr.left && fr.same, 'épreuve libre : une épreuve au choix, situation au hasard, rien de gardé ni de partagé', fr);
   const dly = R(`(() => ({ same: JSON.stringify(dailyGen(5)) === JSON.stringify(dailyGen(5)) && JSON.stringify(dailyGen(5)) !== JSON.stringify(dailyGen(6)),
     num: [dailyNum(new Date(Date.UTC(2026, 10, 19, 22, 30))), dailyNum(new Date(Date.UTC(2026, 10, 19, 23, 30))), dailyNum(new Date(Date.UTC(2026, 11, 1, 10)))],
     share: dailyShareText(1, dailyDone(1)) }))()`);
