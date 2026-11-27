@@ -342,7 +342,7 @@ export default async function (t) {
         return { ring, idx: players.indexOf(q), after: G.myPick, arrow: arrowOk() };
       }, a); });
       await host.waitForFunction(i => { const q = players[i]; return !!q.callTo && G.time - q.called < 4 && Math.hypot(q.callTo[0] - 70, q.callTo[1] - 12) < 1; }, pk.idx, { timeout: 4000 }).catch(() => {});
-      const hp = await host.evaluate(i => { const q = players[i]; return { cut: !!q.callTo && G.time - q.called < 4 && Math.hypot(q.callTo[0] - 70, q.callTo[1] - 12) < 1 }; }, pk.idx);
+      const hp = await host.evaluate(i => { const q = players[i]; return { cut: !!q.callTo && G.time - q.called < 4 && Math.hypot(q.callTo[0] - 70, q.callTo[1] - 12) < 1, ph: G.phase, mode: disc.mode, off: G.off, who: players.filter(p => p.callTo && Math.hypot(p.callTo[0] - 70, p.callTo[1] - 12) < 1).map(p => players.indexOf(p)), pick: G.humans.map(h => h.callPick ? players.indexOf(h.callPick) : null) }; }, pk.idx);
       t.ok(pk.ring && pk.after === null && pk.arrow && hp.cut, 'coéquipier désigné par l’invité : anneau chez lui, c’est bien lui qui coupe chez l’hôte, flèche des deux côtés', { pk: { ...pk, after: !!pk.after }, hp });
       // appel dans l'espace sans désigner : la flèche part du coéquipier choisi par l'hôte, chez l'invité aussi
       // (un endroit loin de tout le monde : un appel tout près d'un coéquipier le désignerait au lieu de le faire couper)

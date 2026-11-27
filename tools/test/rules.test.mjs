@@ -891,6 +891,19 @@ export default async function (t, { quick }) {
   t.ok(/^huck:\d/.test(xs.huck) && /^slow:\d/.test(xs.slow) && +xs.slow.split(':')[1] > 0 && /^passes:\d/.test(xs.passes) && /^outnum:\d/.test(xs.outnum) && xs.outnumSize === 7 && /^fast:\d/.test(xs.fast), 'épreuves du jour : huck, ralenti, passes, défense à 3 contre 4, accéléré — chacune jouée seule, avec son score', xs);
   t.ok(['high', 'nocurve', 'stall5', 'crazy'].every(k => new RegExp('^' + k + ':\\d').test(xs[k]) && +xs[k].split(':')[1] > 0) && /^oneone:\d/.test(xs.oneone) && xs.oneoneSize === 10, 'épreuves du jour : passes hautes, sans courbe, stall court, vent fou, 1 contre 1', xs);
   t.ok(['middle', 'thrower'].every(k => new RegExp('^' + k + ':[0-3]$').test(xs[k]) && xs[k + 'Size'] === 4 && xs[k + 'Sits'] === 3), 'le middle et le lanceur : 2 contre 2, 3 tentatives, score sur 3', xs);
+  const mid = R(`(() => { dailyFree('middle'); dailyIntroGo(); G.humans = []; syncMe(); const D = G.daily, out = [];
+    for (let f = 0; f < 60 * 120 && G.daily && out.length < 3; f++) { const was = D.thrown; G.time += 1 / 60; if (G.phase === 'play') { G.gt += 1 / 60; update(1 / 60); } replayTick(1 / 60); dailyFrame(1 / 60);
+      if (G.daily && G.daily.intro) dailyIntroGo(); if (D.thrown && !was) out.push({ dt: +(D.t - D.at0).toFixed(1), crossed: dirOf(0) * (D.lockP.x - D.lineX) >= 0 }); }
+    if (G.daily) dailyQuit(); return out; })()`);
+  t.ok(mid.length === 3 && mid.every(m => m.dt > 0.8 && (m.crossed || m.dt >= 9.9)), 'le middle : à chaque disque, le lancer part quand le receveur passe la ligne (pas tout de suite)', mid);
+  const pv = R(`(() => { const o = { tuto: CTRL.pivot }; CTRL.pivot = false;
+    backToSolo(); placeForPoint(); G.phase = 'play'; G.off = 0; const h = TEAMS[0][0]; holdDisc(h); G.recvAt = -9; pivotBtnFrame();
+    const [bx, by] = pivotAxis(h); G.pointer.active = true; G.pointer.x = h.x + bx * 8; G.pointer.y = h.y + by * 8;   // je vise côté fermé
+    o.want = pivotFor(h, G.pointer.x, G.pointer.y); for (let i = 0; i < 40; i++) { G.time += 1 / 60; update(1 / 60); } o.auto = +(h.pivY || 0).toFixed(2);
+    pivotBtnDown(); o.btnOff = !PB.down;
+    CTRL.pivot = true; G.pivSel = -1; for (let i = 0; i < 40; i++) { G.time += 1 / 60; update(1 / 60); } o.manual = +(h.pivY || 0).toFixed(2);
+    CTRL.pivot = false; G.pointer.active = false; return o; })()`);
+  t.ok(pv.want === 1 && pv.auto > 0.9 && pv.btnOff && pv.manual < -0.9, 'pied de pivot automatique (activé à la main par le tutoriel) : il suit la visée (bouton pivot sans effet) ; à la main, il reste où on l’a mis', pv);
   const g2 = R(`(() => { const o = { old: dailyGen(9).sits.map(s => s.type).slice(0, 3).join(), ok: true, seen: new Set() };
     for (let n = 10; n < 70; n++) { const k = dailyGen(n).sits.map(s => s.x || s.type); if (k.length !== 4 || new Set(k).size !== 4 || k.some(x => !DAILY_POOL.includes(x)) || k.includes('att') || k.includes('def')) o.ok = false; k.forEach(x => o.seen.add(x)); }
     o.seen = o.seen.size; return o; })()`);

@@ -648,3 +648,6 @@ body.touch .bigbtn{font-size:17px}
 #dailyIntro{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.45);padding:16px;z-index:9}
 #dailyIntro .card{max-width:440px;border:2px solid #facc15} #dailyIntro small{color:#facc15;font-weight:700;text-transform:uppercase;letter-spacing:.5px;font-size:12px}
 .dailyFriend{display:inline-block;background:rgba(250,204,21,.12);border:1px solid rgba(250,204,21,.5);border-radius:8px;padding:6px 10px;margin-bottom:6px;color:#fde68a}
+body.nopivot #highB{display:none!important}
+#toast button{padding:2px 10px;margin:0 4px;width:auto;display:inline-block}
+#toast.show{pointer-events:auto}

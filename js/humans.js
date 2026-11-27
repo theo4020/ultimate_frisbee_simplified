@@ -185,13 +185,15 @@ function pickAt(team, x, y) {
   const [q, dq] = nearestD(TEAMS[team].filter(p => p !== disc.holder && !controllerOf(p)), x, y);
   return q && dq < PICK_R ? q : null;
 }
-function callFor(h, x, y) {
+// pk : le coéquipier que l'invité a touché chez lui (son numéro) ; sur un réseau lent, il a pu bouger depuis chez l'hôte
+function callFor(h, x, y, pk) {
   if (!h || G.phase !== 'play' || G.off !== h.team || disc.mode === 'dead') return;
-  const q = pickAt(h.team, x, y);
+  const pp = Number.isInteger(pk) ? players[pk] : null;
+  const q = pp && pp.team === h.team && pp !== disc.holder && !controllerOf(pp) ? pp : pk === -1 ? null : pickAt(h.team, x, y);
   if (q) { h.callPick = h.callPick === q ? null : q; return; }
   if (G.tuto) G.tuto.called = true;
   x = clamp(x, 1, W - 1); y = clamp(y, 1.5, H - 1.5);
-  const pool = TEAMS[h.team].filter(p => p !== disc.holder && p !== disc.intended && p !== G.pickup && !controllerOf(p));
+  const pool = TEAMS[h.team].filter(p => p !== disc.holder && !(disc.mode === 'air' && p === disc.intended) && p !== G.pickup && !controllerOf(p));   // (le receveur visé : seulement pendant le vol)
   const c = h.callPick && pool.includes(h.callPick) ? h.callPick : nearest(pool, x, y);   // le coéquipier désigné, sinon le plus proche
   h.callPick = null;
   if (!c) return;

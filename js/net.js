@@ -53,7 +53,7 @@ function sendInput(force) {
   const q = ++PRED.q; PRED.sent.set(q, performance.now());      // numéro de l'ordre : l'hôte dit lequel il a appliqué (prédiction)
   if (PRED.sent.size > 120) PRED.sent.delete(PRED.sent.keys().next().value);
   const aim = canThrow() && G.pointer.active;                  // il vise : ses coéquipiers voient l'aperçu de sa passe
-  netSend({ t: 'in', x: +G.pointer.x.toFixed(2), y: +G.pointer.y.toFixed(2), down: G.pointer.down, brake: braking(G.pointer), loft: canThrow() ? +G.loft.toFixed(2) : LOFT.N, aim, aiming: aim && !!G.aiming, curve: aim ? +(+G.curve || 0).toFixed(2) : 0, piv: canThrow() && G.pivHolder === disc.holder ? G.pivSel : -1, ma: CTRL.markAssist ? 1 : 0, q });
+  netSend({ t: 'in', x: +G.pointer.x.toFixed(2), y: +G.pointer.y.toFixed(2), down: G.pointer.down, brake: braking(G.pointer), loft: canThrow() ? +G.loft.toFixed(2) : LOFT.N, aim, aiming: aim && !!G.aiming, curve: aim ? +(+G.curve || 0).toFixed(2) : 0, piv: canThrow() ? myPivFor(disc.holder) : -1, ma: CTRL.markAssist ? 1 : 0, q });
 }
 function netError(msg, view = 'online') {
   if (msg) netLog('fin : ' + msg);
@@ -310,7 +310,7 @@ function hostOnData(id, m) {
     case 'jump': jumpFor(h); break;
     case 'switch': { const n = switchTarget(h); if (n) selectFor(h, n); break; }
     case 'select': selectFor(h, players[m.i | 0]); break;
-    case 'call': callFor(h, +m.x, +m.y); break;
+    case 'call': callFor(h, +m.x, +m.y, Number.isInteger(m.p) ? m.p : undefined); break;
     case 'pause': setPause(id, !!m.on); break;
     case 'start': startPress(h); break;
     case 'pull': if (G.phase === 'pull' && G.pull && G.pull.by === h.id && !G.pull.pend) requestPull(+m.x, +m.y, m.curve, m.q); break;

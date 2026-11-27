@@ -147,6 +147,7 @@ const TUTO_STEPS = [
       pad: 'Ta mark ferme le côté de ton coéquipier (sa zone rouge). Un appui sur <b>Y</b> change de pied : le disque passe de l’autre côté de la mark. Pivote, attends que le disque soit passé de l’autre côté, puis lance avec A.'
     },
     setup() {
+      if (!CTRL.pivot) { CTRL.pivot = true; saveCtrl(); toast('🦶 Pied de pivot à la main activé <small>(Commandes pour revenir en automatique)</small>'); }   // c'est le moment de l'apprendre
       tutoReset(); G.tuto.mark = true; G.tuto.level = 'facile'; G.tuto.piv = -1;
       Object.assign(G.ai, { off: 'vert', def: 'man', force: 'haut', play: 'none', dplay: 'none' });   // force haut : la mark ferme le bas
       tutoPut(0, TUTO_PIV);

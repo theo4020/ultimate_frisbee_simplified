@@ -159,7 +159,7 @@ export default async function (t) {
     t.ok(out.inside || (aimOut.aiming && aimOut.out), 'clic sous le terrain : la visée part, hors des lignes', { out, aimOut });
     t.ok(out.inside || (await p.evaluate(() => G.stats.throws)) === th1 + 1, 'relâcher hors du terrain lance le disque', out);
     t.group('PC : pied de pivot (X), hauteur de passe (Z / S, flèches, molette), courbe (← →)');
-    await p.evaluate(() => { G.off = G.me; G.oplay = null; G.pickup = null; const h = TEAMS[G.me][0]; h.x = W / 2; h.y = H / 2; holdDisc(h); h.think = 99; });
+    await p.evaluate(() => { CTRL.pivot = true; G.off = G.me; G.oplay = null; G.pickup = null; const h = TEAMS[G.me][0]; h.x = W / 2; h.y = H / 2; holdDisc(h); h.think = 99; });
     await p.waitForFunction(() => canThrow(), null, { timeout: 5000 });
     await p.waitForTimeout(100);
     const pv0 = await p.evaluate(() => G.pivSel);
@@ -356,7 +356,7 @@ export default async function (t) {
 
     t.group('Téléphone : pivot sur ton porteur, courbe et hauteur au 2e doigt');
     await q.waitForTimeout(300);
-    await q.evaluate(() => { G.off = G.me; G.oplay = null; G.pickup = null; const p = TEAMS[G.me][0]; p.x = W / 2; p.y = H / 2; holdDisc(p); p.think = 99; });
+    await q.evaluate(() => { CTRL.pivot = true; G.off = G.me; G.oplay = null; G.pickup = null; const p = TEAMS[G.me][0]; p.x = W / 2; p.y = H / 2; holdDisc(p); p.think = 99; });
     await q.waitForFunction(() => canThrow(), null, { timeout: 5000 });
     const hp = await q.evaluate(() => { const r = canvas.getBoundingClientRect(), h = disc.holder; return { x: r.left + X(h.x) * r.width / (canvas.width / dpr), y: r.top + Y(h.y) * r.height / (canvas.height / dpr) }; });
     const tch = (type, pts) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: pts });

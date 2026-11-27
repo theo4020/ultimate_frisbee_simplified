@@ -105,6 +105,7 @@ export default async function (t) {
 
     t.group('Feinte de pivot contre une mark IA');
     const fe = await p.evaluate(async () => {
+      CTRL.pivot = true;                                        // (pied de pivot à la main)
       closeAllCards(); document.getElementById('overlay').classList.add('hidden'); G.menuShown = false; G.paused = false;
       G.phase = 'play'; G.off = G.me; G.pickup = null; G.oplay = null; G.dplay = null; G.checkT = 0;
       const h = TEAMS[G.me][0]; h.x = 50; h.y = 18; h.vx = h.vy = 0; holdDisc(h); h.think = 99;

@@ -8,6 +8,8 @@ const NEW_HOST = 'ultimate-frisbee-simplified.theosyle42.workers.dev';
 const NEW_URL = 'https://' + NEW_HOST + '/';
 
 const NEWS = [
+  { id: 48, date: '2026-11-27', tag: 'Jeu', title: 'Pied de pivot automatique 🦶',
+    body: `Ton porteur pivote tout seul du côté où tu vises. Le pivot à la main (pour feinter la mark) s'active dans le tutoriel avancé ou dans <b>Commandes</b>.` },
   { id: 47, date: '2026-11-19', tag: 'Solo', title: 'Le défi du jour 📅',
     body: `Chaque jour, 4 épreuves tirées au hasard, les mêmes pour tout le monde : trouve la passe, huck, 1 contre 1, vent fou, <b>le middle</b> et <b>le lanceur</b> en 2 contre 2… Un essai, un titre, et un bouton pour partager tes scores. Et l'<b>épreuve libre</b> 🎲 pour t'entraîner sur n'importe quelle épreuve.` },
   { id: 46, date: '2026-11-04', tag: 'Jeu', title: 'Le vent de côté 🌬️',

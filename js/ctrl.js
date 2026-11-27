@@ -27,6 +27,10 @@ if (!['fixe', 'suivi'].includes(CTRL.cam)) CTRL.cam = typeof window !== 'undefin
 CTRL.perf = !!CTRL.perf;
 if (!['auto', 'on', 'off'].includes(CTRL.eco)) CTRL.eco = 'auto';                    // mode économie (main.js) : automatique si l'image saccade
 if (CTRL.markAssist === undefined) CTRL.markAssist = true;
+if (CTRL.pivot === undefined) {                                       // (ceux qui ont déjà réussi l'étape du tutoriel le gardent à la main)
+  try { CTRL.pivot = !!(JSON.parse(localStorage.getItem('uf-tuto-stars') || '{}') || {})['Le pied de pivot']; } catch (e) { CTRL.pivot = false; }
+}
+CTRL.pivot = CTRL.pivot === true;                                     // pied de pivot à la main (sinon automatique : il suit ta visée) ; activé par le tutoriel ou proposé plus tard
 if (!CTRL.music) CTRL.music = 'menus';                                 // musique (audio.js) : dans les menus par défaut
 // volumes (0 à 100) : effets du jeu, musique, public (l'ancien réglage « Public : non » devient un volume à 0)
 if (!CTRL.vol || typeof CTRL.vol !== 'object') CTRL.vol = { fx: 100, music: 100, crowd: CTRL.crowd === false ? 0 : 100 };
@@ -73,6 +77,9 @@ function renderCtrl() {
     <div class="row"><span>Musique</span>${b('music', 'off', 'Coupée')}${b('music', 'menus', 'Menus')}${b('music', 'tout', 'Menus et matchs')}</div>
     ${[['fx', '🔉 Effets'], ['music', '🔉 Musique'], ['crowd', '🔉 Public']].map(([k, l]) => `<div class="row"><span>${l}</span><input type="range" class="vol" data-k="${k}" min="0" max="100" step="5" value="${CTRL.vol[k]}" aria-label="${l}"><b class="volv" id="volv-${k}">${CTRL.vol[k] ? CTRL.vol[k] + ' %' : 'Coupé'}</b></div>`).join('')}
     <div class="desc">Effets : lancers, réceptions, sifflet… Une petite musique dans les menus (et en fond pendant les matchs si tu veux). Le public applaudit les points et les beaux gestes, réagit aux blocks et aux drops (à 0 : plus de public). Le bouton 🔊 en haut coupe tout.</div>
+    <h2>Attaque</h2>
+    <div class="row"><span>Pied de pivot</span>${b('pivot', false, 'Automatique')}${b('pivot', true, 'À la main')}</div>
+    <div class="desc">${CTRL.pivot ? `Tu changes de pied toi-même (${keysOf('pivot').map(keyName).join(' / ')}, ou tape ton joueur) pour faire passer le disque de l’autre côté de la mark.` : 'Ton porteur pivote tout seul du côté où tu vises. Plus simple ; à la main, tu peux feinter la mark.'}</div>
     <h2>Défense</h2>
     <div class="row"><span>Mark aimantée</span>${b('markAssist', true, 'Oui')}${b('markAssist', false, 'Non')}</div>
     <div class="desc">${CTRL.markAssist ? 'Dans le cercle du thrower, ton joueur se cale tout seul face à lui : déplace-toi à gauche ou à droite pour fermer un côté. Vise plus loin (ou change de joueur) pour quitter la mark, comme en match.' : 'Ton joueur suit toujours ta souris ou ton doigt, même en mark.'}</div>

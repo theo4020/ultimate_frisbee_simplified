@@ -82,7 +82,7 @@ export default async function (t) {
     t.ok(pkb.on && pkb.off, 'clic droit / tap sur un coéquipier : il est désigné (anneau doré), un 2e appel l’annule', pkb);
     const pt2 = await p.evaluate(async () => {
       const fr = n => new Promise(r => { let k = 0; const f = () => (++k >= n ? r() : requestAnimationFrame(f)); requestAnimationFrame(f); });
-      G.phase = 'play'; G.off = G.me; G.checkT = 0; const h = TEAMS[G.me][0]; holdDisc(h); h.think = 99;
+      CTRL.pivot = true; G.phase = 'play'; G.off = G.me; G.checkT = 0; const h = TEAMS[G.me][0]; holdDisc(h); h.think = 99;
       const early = canThrow(); await new Promise(r => setTimeout(r, 850)); const later = canThrow();   // un instant après la réception
       const q = TEAMS[G.me][2]; disc.intended = null; let sp = { x: 50, y: 18 }, bd = 0;
       TEAMS[G.me].forEach((o, i) => { if (o !== h) { o.x = 30 + i * 9; o.y = 30; o.vx = o.vy = 0; } }); sp = { x: 60, y: 6 };   // coéquipiers bien séparés, endroit libre

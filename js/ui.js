@@ -486,7 +486,13 @@ function doThrow(x, y, curve) {
 // Bouton pivot (X, Y à la manette, bouton à l'écran, appui sur ton porteur au doigt) : changer de pied de pivot
 // (côté open ↔ côté fermé, la mark suit : feinte possible)
 const PB = { down: false };
-function pivotBtnDown() { if (!canThrow() || PB.down) return; PB.down = true; }
+function pivotBtnDown() { if (!canThrow() || PB.down || !CTRL.pivot) return; PB.down = true; }
+// pied de pivot de ce porteur pour moi : à la main (bouton), ou automatique, du côté où je vise (Commandes)
+function myPivFor(h) {
+  if (G.pivHolder !== h) return -1;
+  if (CTRL.pivot) return G.pivSel;
+  return G.pointer && G.pointer.active ? pivotFor(h, G.pointer.x, G.pointer.y) : -1;
+}
 function pivotBtnCancel() { PB.down = false; }
 function pivotBtnUp() {
   if (!PB.down) return;
@@ -495,10 +501,21 @@ function pivotBtnUp() {
 }
 function togglePivot() { if (G.pivHolder !== disc.holder) { G.pivHolder = disc.holder; G.pivSel = -1; } G.pivSel = G.pivSel > 0 ? -1 : 1; sendInput(true); }
 function pivotBtnFrame() {
+  if (typeof document !== 'undefined' && document.body) document.body.classList.toggle('nopivot', !CTRL.pivot);
+  pivotOffer();
   if (disc.mode !== 'held') G.pivHolder = null;             // le même porteur peut recevoir à nouveau : on repart côté open
   if (disc.mode === 'held' && disc.holder !== G.pivHolder) { G.pivHolder = disc.holder; G.pivSel = -1; }   // nouvelle réception : pivot côté open
 }
 
+// pied de pivot automatique : après une trentaine de passes lancées en match, on propose (une fois) de le faire à la main
+function pivotOffer() {
+  if (CTRL.pivot || G.tuto || G.daily || G.attract || !G.stats || (G.stats.throws || 0) < 30 || pivotOffer.done) return;
+  try { if (localStorage.getItem('uf-pivoffer')) { pivotOffer.done = true; return; } localStorage.setItem('uf-pivoffer', '1'); } catch (e) { }
+  pivotOffer.done = true;
+  toast('🦶 Prêt pour le <b>pied de pivot à la main</b> ? Pour feinter la mark : <button class="ghost" id="pivOn">Activer</button> <small>(ou dans Commandes)</small>');
+  clearTimeout(toast.t); toast.t = setTimeout(() => $('toast').classList.remove('show'), 9000);
+  const b = $('pivOn'); if (b) b.addEventListener('click', () => { CTRL.pivot = true; saveCtrl(); toast('🦶 Pied de pivot à la main activé : ' + keysOf('pivot').map(keyName).join(' / ') + ' (ou tape ton joueur)'); });
+}
 // chat rapide en ligne
 // un seul petit bouton 😀 sur le terrain ; la liste des réactions ne s'ouvre qu'en le touchant (et se referme seule)
 $('emoBar').innerHTML = '<button id="emoToggle" title="Réactions">😀</button><span id="emoList">'
@@ -559,7 +576,7 @@ function playBtnsFrame() {
 function doCall(x, y) {
   const h = meH(), q = h && G.phase === 'play' && G.off === h.team ? pickAt(h.team, x, y) : null;
   if (q) { const on = myPick() !== q; ring(q.x, q.y, on ? '#facc15' : 'rgba(255,255,255,.6)', 1.6, 0.45); if (on) vibrate(15); }
-  if (G.net === 'guest') { if (!q && G.myPick) { G.myPick.called = G.time; G.myPick.callTo = [x, y]; } G.myPick = q ? (G.myPick === q ? null : q) : null; netSend({ t: 'call', x, y }); return; }
+  if (G.net === 'guest') { if (!q && G.myPick) { G.myPick.called = G.time; G.myPick.callTo = [x, y]; } G.myPick = q ? (G.myPick === q ? null : q) : null; netSend({ t: 'call', x, y, p: q ? players.indexOf(q) : -1 }); return; }
   callFor(h, x, y);
 }
 // ton coéquipier désigné pour le prochain cut (l'invité garde sa propre copie pour l'affichage)

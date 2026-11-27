@@ -42,7 +42,7 @@ const DAILY_X = {
   oneone: { base: 'oneone', name: '1 contre 1', icon: '🧍', d: [40, 50],
     how: 'Tu défends seul sur leur meilleur coupeur (pas de changement de joueur). Score : les passes qu\'il reçoit ; s\'ils marquent, +2 et on rejoue (3 points au plus), jusqu\'à ce que ta défense récupère le disque.' },
   middle: { base: 'middle', name: 'Le middle', icon: '🙌', lvl: 'difficile', d: [58, 66],
-    how: `2 contre 2 : c'est toi le receveur. Ton lanceur envoie le disque en longue au bout de 2 s : démarque-toi vers le fond. Disque loin : plonge (layout) ! Disque court : gagne ton duel (saut). ${DAILY.TRIES} disques ; score : les réceptions.` },
+    how: `2 contre 2 : c'est toi le receveur. Cours vers le fond : ton lanceur envoie le disque en longue dès que tu passes la ligne jaune. Disque loin : plonge (layout) ! Disque court : gagne ton duel (saut). ${DAILY.TRIES} disques ; score : les réceptions.` },
   thrower: { base: 'thrower', name: 'Le lanceur', icon: '🏹', lvl: 'difficile', boost: true, d: [42, 54],
     how: `2 contre 2 : ton coéquipier enchaîne les coupes, collé par son défenseur, et ta mark te gêne. Trouve-le au bon moment (pivote pour éviter la mark). ${DAILY.TRIES} essais ; score : les passes réussies.` }
 };
@@ -144,7 +144,7 @@ function dailyStart(n, official, only, free) {
   G.series = null; G.ms = null;
   const gen = free ? free.gen : dailyGen(n);
   if (only !== undefined) gen.sits = [gen.sits[only]];
-  G.daily = Object.assign(gen, { official: official && only === undefined, i: 0, res: [], wait: 0, after: null, t: 0, pen: 0, turns: 0, goals: 0, line: 0, x0: 0, gain: 0, passes: 0, recv: 0, bonus: 0, ok: 0, tries: 0, multi: false, way: null, wayP: null, throwAt: 0, kind: null, thrown: false, cont: false, free: !!free, freeX: free ? free.x : null, lockP: null, man: null, stallMax: 10,
+  G.daily = Object.assign(gen, { official: official && only === undefined, i: 0, res: [], wait: 0, after: null, t: 0, pen: 0, turns: 0, goals: 0, line: 0, x0: 0, gain: 0, passes: 0, recv: 0, bonus: 0, ok: 0, tries: 0, multi: false, way: null, wayP: null, lineX: null, at0: 0, kind: null, thrown: false, cont: false, free: !!free, freeX: free ? free.x : null, lockP: null, man: null, stallMax: 10,
     keep: { form: Object.assign({}, G.form), ai: Object.assign({}, G.ai), rnd: Math.random }, bench: null, nb: [5, 5], boost: false });
   Object.assign(G.form, { level: 'normal', allyLevel: 'normal', play: 'none', dplay: 'none', points: '99' });   // mêmes adversaires et coéquipiers pour tous
   for (const id of ['lobbyCard', 'stratCard', 'seriesCard', 'dailyCard', 'endlessCard']) $(id).style.display = 'none';
@@ -178,7 +178,7 @@ function dailySit() {
   dailyBench(s.type === 'def' ? X0.n || [3, 3] : duo ? [2, 2] : [5, 5]);
   Math.random = dailyRng(D.n * 1009 + s.k * 101 + D.goals * 13 + (D.cont ? 977 : 0) + D.tries * 53 + 7);   // le même hasard pour tout le monde, au départ
   G.form.level = X0.lvl || 'normal'; D.boost = !!X0.boost;    // adversaires de l'épreuve du jour (humans.js : aiLvl)
-  D.stallMax = X0.stall || 10; D.lockP = null; D.man = null; D.multi = false; D.way = null; D.wayP = null; D.kind = null;   // stall court (sim.js) ; 1 contre 1 : ton défenseur, sans changement (humans.js)
+  D.stallMax = X0.stall || 10; D.lockP = null; D.man = null; D.multi = false; D.way = null; D.wayP = null; D.kind = null; D.lineX = null;   // stall court (sim.js) ; 1 contre 1 : ton défenseur, sans changement (humans.js)
   if (s.type === 'oneone') G.form.def = 'man';
   SPEEDS.daily = SPEEDS.normal * (X0.speed || 1); G.form.speed = X0.speed ? 'daily' : D.keep.form.speed;   // jeu ralenti / accéléré
   G.score = [0, 0]; G.wind = Object.assign({}, s.wind); G.gt = 0;
@@ -204,12 +204,13 @@ function dailySit() {
     c.x = clamp(h.x + dir * (s.type === 'middle' ? 9 : 12), 2, W - 2); c.y = clamp(s.y + side * 7, 3, H - 3);
     const rw = dailyRng(D.n * 577 + s.k * 89 + D.tries * 7 + 3);
     if (s.type === 'middle') {                                 // tu joues le receveur ; ton lanceur (IA) envoie en longue
-      D.multi = true; D.lockP = c; D.throwAt = 1.8 + rw() * 0.6;
+      D.multi = true; D.lockP = c; D.at0 = D.t;
+      D.lineX = dir > 0 ? Math.max(W / 2, c.x + 12) : Math.min(W / 2, c.x - 12);   // le lancer part quand tu passes cette ligne (milieu du terrain)
       const kinds = dailyShuffle(['far', 'duel', rw() < 0.5 ? 'far' : 'duel'], dailyRng(D.n * 131 + s.k * 17 + 1));
       D.kind = kinds[D.tries % kinds.length];
     } else {                                                   // ton coéquipier enchaîne des coupes (les mêmes pour tous)
       const sd = rw() < 0.5 ? 1 : -1, P = (t, fx, fy) => ({ t, x: clamp(h.x + dir * fx, 2, W - 2), y: clamp(h.y + fy, 2.5, H - 2.5) });
-      D.wayP = c;
+      D.wayP = c; D.at0 = D.t;                                  // (horloge de la tentative : D.t continue d'un essai à l'autre)
       D.way = [P(0, dir * (c.x - h.x), c.y - h.y), P(0.9, 6, sd * 7), P(2.6, 24, sd * 3), P(4.4, 11, -sd * 9), P(6.2, 5, -sd * 5), P(7.9, 21, sd * 8), P(9.6, 8, sd * 6)];
     }
   }
@@ -304,7 +305,7 @@ function dailyFrame(dt) {
 function dailyPin(p) {
   const D0 = G.daily;
   if (D0.way && p === D0.wayP && !D0.thrown && disc.mode === 'held') {   // le lanceur : les coupes du coéquipier
-    let w = D0.way[0]; for (const q of D0.way) if (D0.t >= q.t) w = q;
+    let w = D0.way[0]; for (const q of D0.way) if (D0.t - (D0.at0 || 0) >= q.t) w = q;
     p.tx = w.x; p.ty = w.y; p.sp = w.t ? SPD.cut * aiLvl(p.team).speed : SPD.jog; return true;
   }
   const D = G.daily, c = D.cuts && !D.thrown && disc.mode === 'held' && D.cuts.find(q => q.p === p);
@@ -317,7 +318,9 @@ function dailyPin(p) {
 // rend true tant que le défi décide à sa place (sim.js)
 function dailyHold(h) {
   const D = G.daily; if (!D || dailyType() !== 'middle' || h.team !== 0) return false;
-  if (D.thrown || D.t < D.throwAt) return true;
+  if (D.thrown) return true;
+  G.stall = 0;                                                 // (le lanceur t'attend : pas de compte)
+  if (dirOf(0) * (D.lockP.x - D.lineX) < 0 && D.t - D.at0 < 10) return true;   // (au bout de 10 s, il lance quand même)
   const p = D.lockP, dir = dirOf(0), v = Math.hypot(p.vx || 0, p.vy || 0);
   let ux = dir, uy = 0;
   if (v > 2) { ux = (ux + p.vx / v) / 2; uy = p.vy / v / 2; const l = Math.hypot(ux, uy) || 1; ux /= l; uy /= l; }
@@ -326,7 +329,7 @@ function dailyHold(h) {
     const R = SPD.user * throwDur(h.x, h.y, tx, ty, LOFT.N, 0) * 0.85, k = D.kind === 'far' ? R + 1.7 : R * 0.45 + 1;
     tx = clamp(p.x + ux * k, 1, W - 1); ty = clamp(p.y + uy * k, 1.5, H - 1.5);
   }
-  if (throwDisc(h, tx, ty, 0, 0.25, LOFT.N)) D.thrown = true; else D.throwAt = D.t + 0.3;
+  if (throwDisc(h, tx, ty, 0, 0.25, LOFT.N)) D.thrown = true;
   return true;
 }
 // une tentative du middle ou du lanceur : réussie ou non ; au bout de DAILY.TRIES, l'épreuve est finie
@@ -460,7 +463,7 @@ function dailyHud() {
     : type === 'passes' ? `🔁 ${D.passes} passe${D.passes > 1 ? 's' : ''}` + (D.bonus ? ` + ${D.bonus}` : '')
     : type === 'huck' ? `🚀 ${Math.round(D.gain)} m · passe ${Math.min(2, D.passes + 1)}/2`
     : type === 'oneone' ? `🧍 ${D.recv} réception${D.recv > 1 ? 's' : ''}` + (D.goals ? ` + ${D.goals * 2}` : '')
-    : type === 'middle' ? `🙌 ${D.ok}/${D.tries} · disque ${Math.min(DAILY.TRIES, D.tries + 1)}/${DAILY.TRIES}` + (D.thrown ? '' : ` · lancer dans ${Math.max(0, D.throwAt - D.t).toFixed(1)} s`)
+    : type === 'middle' ? `🙌 ${D.ok}/${D.tries} · disque ${Math.min(DAILY.TRIES, D.tries + 1)}/${DAILY.TRIES}` + (D.thrown ? '' : ' · passe la ligne jaune')
     : type === 'thrower' ? `🏹 ${D.ok}/${D.tries} · essai ${Math.min(DAILY.TRIES, D.tries + 1)}/${DAILY.TRIES} · stall ${Math.floor(G.stall)}`
     : `📏 ${Math.round(D.line)} m` + (D.goals ? ` + ${D.goals * DAILY.GOAL} m` : '')) + (D.stallMax !== 10 ? ` · stall max ${D.stallMax}` : '');
   $('dailyTitle').textContent = D.free ? `🎲 Épreuve libre · ${dailyName(s)}` : `Défi #${D.n} · ${dailyName(s)}` + (D.official ? '' : ' (entraînement)');
@@ -505,6 +508,12 @@ function drawDaily() {
   drawDailyPop();
   if (D.wait > 0) return;
   drawDailyCuts();
+  if (D.lineX !== null && !D.thrown) {                         // le middle : la ligne qui déclenche le lancer
+    ctx.save(); ctx.strokeStyle = 'rgba(250,204,21,.9)'; ctx.lineWidth = 3; ctx.setLineDash([10, 7]);
+    ctx.beginPath(); ctx.moveTo(X(D.lineX), Y(0)); ctx.lineTo(X(D.lineX), Y(H)); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = '#facc15'; ctx.font = `700 ${Math.max(11, Math.round(0.9 * (X(1) - X(0))))}px system-ui, sans-serif`; ctx.textAlign = 'center';
+    ctx.fillText('passe la ligne : lancer', X(D.lineX), Y(1.6)); ctx.restore();
+  }
   if (D.man) {                                                 // 1 contre 1 : le coupeur que tu marques (cible rouge)
     const r = 1.9 * (X(1) - X(0)), pulse = 0.6 + 0.4 * Math.sin(G.time * 6);
     ctx.save(); ctx.strokeStyle = `rgba(248,113,113,${pulse})`; ctx.lineWidth = 2.5; ctx.setLineDash([5, 4]);
