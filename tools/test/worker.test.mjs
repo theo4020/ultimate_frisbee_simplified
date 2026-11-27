@@ -120,6 +120,9 @@ export default async function (t) {
   const envP = { ...env, ASSETS: { fetch: async () => new Response(page, { headers: { 'Content-Type': 'text/html; charset=utf-8' } }) } };
   const get = async p => (await worker.fetch(new Request('https://jeu.example' + p), envP)).text();
   const og = (h, k) => (h.match(new RegExp('<meta property="og:' + k + '" content="([^"]*)"')) || [])[1];
+  const d9 = await get('/?defi=9&r=gyrg'), d9bad = await get('/?defi=9&r=<x>');
+  t.ok(og(d9, 'title') === 'Ultimate du jour #9 · 🟩🟨🟥🟩' && og(d9, 'image').endsWith('/icons/share/gyrg.jpg') && og(d9, 'url').endsWith('/?defi=9&amp;r=gyrg') && og(d9bad, 'image').endsWith('/icons/share.jpg') && /27 novembre/.test(og(d9bad, 'title')),
+    'lien ?defi=9&r=gyrg : l’aperçu montre les carrés de celui qui partage (image et titre) ; r invalide ignoré', { t: og(d9, 'title'), i: og(d9, 'image'), u: og(d9, 'url'), b: og(d9bad, 'image') });
   const d12 = await get('/?defi=12'), plain = await get('/'), bad = await get('/?defi=abc');
   t.ok(og(d12, 'title') === 'Ultimate du jour #12 · 30 novembre' && /compare ton score/.test(og(d12, 'description')) && og(d12, 'url').endsWith('/?defi=12') && /<title>Ultimate du jour #12/.test(d12), 'lien ?defi=12 : titre, texte et adresse de l’aperçu propres à ce défi', { t: og(d12, 'title'), u: og(d12, 'url') });
   t.ok(plain === page && bad === page && /icons\/share\.jpg/.test(og(d12, 'image')), 'sans défi (ou numéro invalide) : la page telle quelle ; l’image est la même', og(d12, 'image'));

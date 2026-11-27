@@ -144,5 +144,6 @@ resize();
 const joinHash = (location.hash.match(/join=([A-Za-z0-9]{4})/) || [])[1];
 if (joinHash) { showLobby(); $('joinB').click(); $('joinCode').value = joinHash.toUpperCase(); joinGame(joinHash); }
 else showLobby();
-{ const dn = typeof URLSearchParams === 'function' ? +new URLSearchParams(location.search || '').get('defi') : 0; if (dn > 0 && dn <= dailyNum()) showDaily(dn); }   // lien partagé : le défi du jour
+{ const q = typeof URLSearchParams === 'function' ? new URLSearchParams(location.search || '') : null, dn = q ? +q.get('defi') : 0;   // lien partagé : le défi du jour (et les carrés de l'ami)
+  if (dn > 0 && dn <= dailyNum()) { const m = dailyMarksOf(q.get('r')); if (m) dailyFriend = { n: dn, marks: m }; showDaily(dn); } }   // lien partagé : le défi du jour
 requestAnimationFrame(loop);

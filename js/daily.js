@@ -449,9 +449,14 @@ function drawDaily() {
   ctx.fillText(type === 'def' ? Math.round(D.line) + ' m' : '0 m', X(x), Y(0) - 6);
   ctx.restore();
 }
+// notes en lettres (lien partagé) : 🟩 g, 🟨 y, 🟥 r — et retour
+const dailyCode = marks => [...marks].map(m => ({ '🟩': 'g', '🟨': 'y', '🟥': 'r' })[m] || '').join('');
+const dailyMarksOf = code => /^[gyr]{4}$/.test(code || '') ? [...code].map(c => ({ g: '🟩', y: '🟨', r: '🟥' })[c]).join('') : '';
+// le défi d'un ami (lien partagé ?defi=n&r=gyrr) : ses carrés, pour te mesurer à lui
+let dailyFriend = null;
 function dailyShareText(n, run) {
   const marks = run.res.map((r, i) => dailyMark(r.type, r.v, dailySitOf(n, r, i))).join('');
-  const url = String(location.href || '').split(/[?#]/)[0] + '?defi=' + n;
+  const url = String(location.href || '').split(/[?#]/)[0] + '?defi=' + n + '&r=' + dailyCode(marks);   // r : l'aperçu du lien montre tes carrés (worker)
   return `🥏 Ultimate du jour #${n} ${marks}\n${dailyTitle(n, run.res)}\n` + run.res.map((r, i) => dailyIcon(Object.assign({}, r, { x: dailySitOf(n, r, i).x })) + ' ' + dailyFmt(r.type, r.v)).join(' · ') + `\n${url}`;
 }
 // le panneau du défi : avant (règles, Commencer), après (scores, titre, Partager, rejouer une épreuve)
@@ -476,6 +481,14 @@ function showDaily(n, run) {
   let h = '';
   if (res) h += `<span class="dailyTitle">${dailyTitle(n, res.res)}</span><br><b>${res.official ? (n === today ? 'Tes scores' : 'Tes scores du jour même') : n === today ? 'Scores (entraînement, non comptés)' : 'Ton dernier essai (archives)'}</b><br>`
     + res.res.map((r, i) => line(r, i)).join('<br>');
+  const fr = dailyFriend && dailyFriend.n === n ? dailyFriend.marks : '';
+  if (fr) {                                                     // venu par le lien d'un ami : ses carrés, puis la comparaison
+    const mine = res ? res.res.map((r, i) => dailyMark(r.type, r.v, dailySitOf(n, r, i))).join('') : '';
+    const pts = m => [...m].reduce((a, c) => a + (c === '🟩' ? 2 : c === '🟨' ? 1 : 0), 0);
+    const vs = !mine ? 'À toi de faire mieux !' : pts(mine) > pts(fr) ? 'Tu as fait mieux 🎉' : pts(mine) === pts(fr) ? 'Égalité !' : 'Ton ami a fait mieux… pour cette fois';
+    $('dailyFriendBox').innerHTML = `<span class="dailyFriend">🤝 Ton ami : <b>${fr}</b>` + (mine ? ` · toi : <b>${mine}</b>` : '') + `<br>${vs}</span>`;
+  }
+  $('dailyFriendBox').style.display = fr ? '' : 'none';
   $('dailyRes').innerHTML = h; $('dailyRes').style.display = h ? '' : 'none';
   const official = n === today && !done, newbie = !storeGet('uf-tuto', false);
   $('dailyNew').style.display = newbie ? '' : 'none';            // nouveau joueur (souvent arrivé par un lien partagé) : le tutoriel d'abord
@@ -505,7 +518,7 @@ function showFree(x, run) {
   G.menuShown = true;
   for (const id of ['lobbyCard', 'stratCard', 'seriesCard', 'endlessCard']) $(id).style.display = 'none';
   $('dailyCard').style.display = ''; $('overlay').classList.remove('hidden');
-  $('dailyHead').textContent = '🎲 Épreuve libre';
+  $('dailyHead').textContent = '🎲 Épreuve libre'; $('dailyFriendBox').style.display = 'none';
   const it = k => { const s = { type: DAILY_X[k] ? DAILY_X[k].base : k, x: DAILY_X[k] ? k : undefined }; return `<button class="ghost freeOne${k === x ? ' on' : ''}" data-x="${k}">${dailyIcon(s)} ${dailyName(s)}</button>`; };
   $('dailyRules').innerHTML = `N'importe quelle épreuve, dans une situation tirée au hasard, autant de fois que tu veux. Pour t'entraîner : rien n'est gardé ni partagé.<br><span class="dailyFree">${DAILY_ALL.map(it).join('')}<button class="ghost freeOne" data-x="rand">🎲 Au hasard</button></span>`;
   if (run && run.res[0]) {

@@ -332,12 +332,15 @@ export default async function (t) {
       // (attentes sur ce qu'on attend de voir, pas sur une durée fixe : le réseau lent et une machine chargée varient)
       const pk = await guest.evaluate(async () => {
         const q = TEAMS[0][3]; doCall(q.x, q.y); const ring = myPick() === q;
-        await new Promise(r => setTimeout(r, 700));
+        return { ring, idx: players.indexOf(q) };
+      }).then(async a => {
+        await host.waitForFunction(i => G.humans.some(h => h.callPick === players[i]), a.idx, { timeout: 6000 }).catch(() => {});   // l'hôte connaît le choix (réseau lent)
+        return guest.evaluate(async a => { const q = players[a.idx], ring = a.ring;
         doCall(70, 12);
         const arrowOk = () => !!q.callTo && G.time - q.called < 3.5 && Math.hypot(q.callTo[0] - 70, q.callTo[1] - 12) < 1;
         for (const t0 = performance.now(); performance.now() - t0 < 4000 && !arrowOk();) await new Promise(r => requestAnimationFrame(r));
         return { ring, idx: players.indexOf(q), after: G.myPick, arrow: arrowOk() };
-      });
+      }, a); });
       await host.waitForFunction(i => { const q = players[i]; return !!q.callTo && G.time - q.called < 4 && Math.hypot(q.callTo[0] - 70, q.callTo[1] - 12) < 1; }, pk.idx, { timeout: 4000 }).catch(() => {});
       const hp = await host.evaluate(i => { const q = players[i]; return { cut: !!q.callTo && G.time - q.called < 4 && Math.hypot(q.callTo[0] - 70, q.callTo[1] - 12) < 1 }; }, pk.idx);
       t.ok(pk.ring && pk.after === null && pk.arrow && hp.cut, 'coéquipier désigné par l’invité : anneau chez lui, c’est bien lui qui coupe chez l’hôte, flèche des deux côtés', { pk: { ...pk, after: !!pk.after }, hp });

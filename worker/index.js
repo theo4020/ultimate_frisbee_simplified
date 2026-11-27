@@ -540,12 +540,16 @@ async function sharePage(request, env, url) {
   const res = await env.ASSETS.fetch(request), n = Math.floor(+url.searchParams.get('defi'));
   if (!res.ok || !(n >= 1 && n <= 100000) || !(res.headers.get('Content-Type') || '').includes('text/html')) return res;
   const date = new Date(DAILY_EPOCH + (n - 1) * 864e5).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', timeZone: 'UTC' });
-  const title = `Ultimate du jour #${n} · ${date}`, desc = 'Trouve la passe, attaque, défense : relève le même défi et compare ton score !';
-  const page = '/?defi=' + n;
+  const code = /^[gyr]{4}$/.test(url.searchParams.get('r') || '') ? url.searchParams.get('r') : '';   // les 4 notes de celui qui partage
+  const marks = [...code].map(c => ({ g: '🟩', y: '🟨', r: '🟥' })[c]).join('');
+  const title = marks ? `Ultimate du jour #${n} · ${marks}` : `Ultimate du jour #${n} · ${date}`;
+  const desc = marks ? `Défi du ${date} : voilà mon score. Même défi pour toi : fais-tu mieux ?` : 'Trouve la passe, attaque, défense : relève le même défi et compare ton score !';
+  const page = '/?defi=' + n + (code ? '&r=' + code : '');
   let html = await res.text();
   html = html.replace(/(<meta property="og:title" content=")[^"]*/, '$1' + title)
     .replace(/(<meta property="og:description" content=")[^"]*/, '$1' + desc)
-    .replace(/(<meta property="og:url" content="[^"?]*?)\/?"/, '$1' + page + '"')
+    .replace(/(<meta property="og:url" content="[^"?]*?)\/?"/, '$1' + page.replace(/&/g, '&amp;') + '"')
+    .replace(/(<meta property="og:image" content="[^"]*\/icons\/)share\.jpg/, '$1' + (code ? `share/${code}.jpg` : 'share.jpg'))
     .replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`);
   const h = new Headers(res.headers); h.delete('Content-Length'); h.delete('ETag');
   return new Response(html, { status: res.status, headers: h });
