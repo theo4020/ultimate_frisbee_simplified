@@ -32,7 +32,7 @@ const human = t => G.humans.some(h => h.team === t);
 const captain = t => teamHumans(t)[0] || null;                // choisit la stratégie et pulle
 const meH = () => G.humans.find(h => h.id === G.myId) || null;
 const humanById = id => G.humans.find(h => h.id === id) || null;
-const soloStyle = t => teamHumans(t).length === 1;
+const soloStyle = t => teamHumans(t).length === 1 && !(G.daily && G.daily.multi && G.daily.lockP && G.daily.lockP.team === t);   // (défi du jour, le middle : tu joues le receveur)
 // nom affiché d'un humain : son pseudo, sinon J1, J2…
 const humanLabel = h => (h && h.name) || 'J' + (h.id + 1);
 const cleanName = n => String(n || '').replace(/[<>&"'`]/g, '').replace(/\s+/g, ' ').trim().slice(0, 12);
@@ -62,7 +62,7 @@ function inputOf(h) {
 function controllerOf(p) {
   const hs = teamHumans(p.team);
   if (!hs.length) return null;
-  if (hs.length === 1 && G.off === p.team) return null;        // seul en attaque : on lance, l'IA fait les cuts
+  if (hs.length === 1 && G.off === p.team && soloStyle(p.team)) return null;        // seul en attaque : on lance, l'IA fait les cuts
   return hs.find(h => h.sel === p) || null;
 }
 // humain qui lance quand ce porteur a le disque (null = l'IA lance)
@@ -70,7 +70,7 @@ function throwerHuman() {
   if (disc.mode !== 'held' || !disc.holder) return null;
   const hs = teamHumans(disc.holder.team);
   if (!hs.length) return null;
-  if (hs.length === 1) return hs[0];
+  if (hs.length === 1 && soloStyle(disc.holder.team)) return hs[0];
   return hs.find(h => h.sel === disc.holder) || null;
 }
 function userControls(p) {
@@ -89,7 +89,7 @@ function updateSelected() {
     const hs = teamHumans(t);
     if (hs.length === 1) {
       const h = hs[0];
-      h.sel = G.off !== t ? (G.daily && G.daily.lockP && G.daily.lockP.team === t ? G.daily.lockP : nearest(TEAMS[t], disc.x, disc.y)) : null;   // (défi du jour, 1 contre 1 : toujours ton défenseur)
+      h.sel = G.daily && G.daily.lockP && G.daily.lockP.team === t ? G.daily.lockP : G.off !== t ? nearest(TEAMS[t], disc.x, disc.y) : null;   // (défi du jour, 1 contre 1 et middle : toujours le même joueur)
       inputOf(h).last = -1e9;
     } else if (hs.length > 1) assignFixed(t);
   }

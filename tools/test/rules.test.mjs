@@ -877,9 +877,24 @@ export default async function (t, { quick }) {
   t.ok(d1.back === 10 && d1.t0 === 5 && d1.saved && d1.speed !== 'daily', 'après le défi : retour à 5 contre 5 et aux réglages, le score du jour est gardé', d1);
   // les épreuves du jour : chacune se joue seule (entraînement), avec son score
   const xs = {};
-  for (let n = 2; n <= 12; n++) { const x = R(`dailyGen(${n}).sits[3].x`), r = dlyRun(n, 3); xs[x] = r.res && r.res[0]; xs[x + 'Size'] = r.sizes[0]; }
+  // chaque épreuve, jouée seule par l'IA (épreuve libre)
+  const dlyFree = x => R(`(() => {
+    let res = null, sizes = []; const oF = dailyFinish; dailyFinish = function () { res = G.daily.res.slice(); oF(); };
+    const oS = dailySit; dailySit = function () { oS(); sizes.push(players.length); };
+    dailyFree('${x}'); G.humans = []; syncMe();
+    let f = 0; while (G.daily && f < 60 * 600) {
+      if (G.phase === 'play') { G.gt += 1 / 60 * SPEEDS[G.form.speed]; update(1 / 60 * SPEEDS[G.form.speed]); } G.time += 1 / 60; fxUpdate(1 / 60); replayTick(1 / 60); dailyFrame(1 / 60); if (G.daily && G.daily.intro) dailyIntroGo(); f++; }
+    dailyFinish = oF; dailySit = oS; if (G.daily) dailyRestore();
+    return { res: res && res.map(r => (r.x || r.type) + ':' + r.v), sizes };
+  })()`);
+  for (const x of ['keep', 'huck', 'slow', 'passes', 'outnum', 'fast', 'high', 'nocurve', 'stall5', 'crazy', 'oneone', 'middle', 'thrower']) { const r = dlyFree(x); xs[x] = r.res && r.res[0]; xs[x + 'Size'] = r.sizes[0]; xs[x + 'Sits'] = r.sizes.length; }
   t.ok(/^huck:\d/.test(xs.huck) && /^slow:\d/.test(xs.slow) && +xs.slow.split(':')[1] > 0 && /^passes:\d/.test(xs.passes) && /^outnum:\d/.test(xs.outnum) && xs.outnumSize === 7 && /^fast:\d/.test(xs.fast), 'épreuves du jour : huck, ralenti, passes, défense à 3 contre 4, accéléré — chacune jouée seule, avec son score', xs);
   t.ok(['high', 'nocurve', 'stall5', 'crazy'].every(k => new RegExp('^' + k + ':\\d').test(xs[k]) && +xs[k].split(':')[1] > 0) && /^oneone:\d/.test(xs.oneone) && xs.oneoneSize === 10, 'épreuves du jour : passes hautes, sans courbe, stall court, vent fou, 1 contre 1', xs);
+  t.ok(['middle', 'thrower'].every(k => new RegExp('^' + k + ':[0-3]$').test(xs[k]) && xs[k + 'Size'] === 4 && xs[k + 'Sits'] === 3), 'le middle et le lanceur : 2 contre 2, 3 tentatives, score sur 3', xs);
+  const g2 = R(`(() => { const o = { old: dailyGen(9).sits.map(s => s.type).slice(0, 3).join(), ok: true, seen: new Set() };
+    for (let n = 10; n < 70; n++) { const k = dailyGen(n).sits.map(s => s.x || s.type); if (k.length !== 4 || new Set(k).size !== 4 || k.some(x => !DAILY_POOL.includes(x)) || k.includes('att') || k.includes('def')) o.ok = false; k.forEach(x => o.seen.add(x)); }
+    o.seen = o.seen.size; return o; })()`);
+  t.ok(g2.old === 'pass,att,def' && g2.ok && g2.seen === 14, 'depuis le défi 10 : 4 épreuves différentes tirées au hasard (sans attaque ni défense simples) ; les défis d’avant ne changent pas', g2);
   const kb = R(`(() => { const defs = []; for (let n = 1; n < 40; n++) for (const s of dailyGen(n).sits) if (s.type === 'keep' || s.type === 'passes') defs.push(s.def);
     const o = { man: defs.length > 0 && defs.every(d => d === 'man') };
     for (const x of ['keep', 'passes']) { dailyFree(x); const D = G.daily; o[x + 'Intro'] = D.intro && G.phase === 'daily'; dailyIntroGo(); D.t = 20; D.passes = 4; const v0 = dailyVal(); dailyScored(0); o[x] = +(dailyVal() - v0).toFixed(1); dailyQuit(); }

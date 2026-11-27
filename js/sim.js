@@ -215,6 +215,7 @@ function update(dt) {
     }
     if (!throwerHuman() && !(G.checkT > 0)) {               // porteur sans humain : l'IA lance (pas pendant un check)
       if (G.tuto && tutoHold(h, dt)) { /* tutoriel : lanceur scénarisé */ }
+      else if (G.daily && dailyHold(h)) { /* défi du jour, le middle : lanceur scénarisé (daily.js) */ }
       else if (h.windup) {                                       // passe haute armée : il choisit son moment
         const w = h.windup, mk = G.marker, L = aiLvl(h.team);
         w.t -= dt;
