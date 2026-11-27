@@ -13,19 +13,19 @@
 // Les situations sont tirées à partir du numéro du jour (même tirage pour tous) ; pendant le défi, le hasard du jeu (IA,
 // rafales) part du même tirage pour tout le monde, puis suit ce que chacun fait. Le jour change à minuit, heure de Paris.
 
-const DAILY = { EPOCH: Date.UTC(2026, 10, 19), PEN: 10, GOAL: 80, MAXG: 3, KEEP: 90, PASSES: 30, KEY: 'uf-daily2', ARCH: 'uf-daily2-arch' };   // jour n° 1 : le 19 novembre 2026 · ARCH : défis passés rejoués (archives)
+const DAILY = { EPOCH: Date.UTC(2026, 10, 19), PEN: 10, GOAL: 80, MAXG: 3, KEEP: 90, PASSES: 30, BKEEP: 15, BPASS: 5, KEY: 'uf-daily2', ARCH: 'uf-daily2-arch' };   // jour n° 1 : le 19 novembre 2026 · ARCH : défis passés rejoués (archives)
 const DAILY_NAMES = { pass: 'Trouve la passe', att: 'Attaque', def: 'Défense' };
 const DAILY_ICON = { pass: '🎯', att: '⏱', def: '📏' };
 // l'épreuve du jour : base = la façon de jouer et de compter (voir dailyFrame, dailyTurn, dailyScored)
 const DAILY_X = {
   keep: { base: 'keep', name: 'Garde le disque', icon: '🔒', lvl: 'difficile', boost: true, d: [38, 48],
-    how: `Garde le disque le plus longtemps possible contre des adversaires au niveau maximum, plus rapides que d'habitude. Tu marques : on repart, le chrono continue (${DAILY.KEEP} s au plus).` },
+    how: `Garde le disque le plus longtemps possible contre des adversaires au niveau maximum, plus rapides que d'habitude. Défense individuelle : pas de passe facile. Tu marques : <b>+${DAILY.BKEEP} s de bonus</b>, on repart et le chrono continue (${DAILY.KEEP} s de jeu au plus).` },
   huck: { base: 'huck', name: 'Huck', icon: '🚀', d: [58, 64],
     how: 'Depuis ton camp, marque en 2 passes au plus. Score : le terrain gagné (0 si tu perds le disque).' },
   slow: { base: 'att', name: 'Ralenti', icon: '🐢', lvl: 'difficile', speed: 0.6, d: [34, 46],
     how: 'Le jeu tourne à 60 % de sa vitesse : plus facile à lire, mais l\'adversaire est au niveau maximum. Marque le plus vite possible (temps de jeu).' },
   passes: { base: 'passes', name: 'Passes', icon: '🔁', lvl: 'difficile', boost: true, d: [38, 48],
-    how: `Enchaîne le plus de passes possible contre des adversaires au niveau maximum, plus rapides, jusqu'à la première perte (${DAILY.PASSES} au plus).` },
+    how: `Enchaîne le plus de passes possible contre des adversaires au niveau maximum, plus rapides, en défense individuelle, jusqu'à la première perte (${DAILY.PASSES} au plus). Tu marques : <b>+${DAILY.BPASS} passes de bonus</b> et on repart.` },
   outnum: { base: 'def', name: 'Défense en infériorité', icon: '🫣', lvl: 'facile', n: [3, 4], d: [45, 55],
     how: '3 contre 4 : ils sont faibles mais plus nombreux. La ligne avance à chaque passe ; un point encaissé, +80 m et on rejoue.' },
   fast: { base: 'att', name: 'Accéléré', icon: '⏩', speed: 1.5, d: [34, 46],
@@ -69,6 +69,7 @@ function dailyGen(n, forceX) {
     const kmh = r() < 0.25 ? 0 : Math.round(R(6, 26)), a = Math.floor(r() * 8) * Math.PI / 4;
     const s = { type, k, d: Math.round(R(d0, d1)), y: Math.round(R(7, H - 7)), wind: { x: Math.cos(a) * kmh / 3.6, y: Math.sin(a) * kmh / 3.6, kmh },
       def: type === 'att' || type === 'keep' || type === 'passes' || type === 'huck' ? P(['man', 'man', 'zone', 'clam']) : 'man', force: P(['haut', 'bas', 'middle', 'straight']), off: P(['vert', 'ho', 'side']) };
+    if (type === 'keep' || type === 'passes') s.def = 'man';     // garder le disque : en zone, on se ferait des passes sans fin sans avancer
     if (xk) s.x = xk;
     return s;
   });
@@ -129,13 +130,13 @@ function dailyStart(n, official, only, free) {
   G.series = null; G.ms = null;
   const gen = free ? free.gen : dailyGen(n);
   if (only !== undefined) gen.sits = [gen.sits[only]];
-  G.daily = Object.assign(gen, { official: official && only === undefined, i: 0, res: [], wait: 0, after: null, t: 0, pen: 0, turns: 0, goals: 0, line: 0, x0: 0, gain: 0, passes: 0, recv: 0, thrown: false, cont: false, free: !!free, freeX: free ? free.x : null, lockP: null, man: null, stallMax: 10,
+  G.daily = Object.assign(gen, { official: official && only === undefined, i: 0, res: [], wait: 0, after: null, t: 0, pen: 0, turns: 0, goals: 0, line: 0, x0: 0, gain: 0, passes: 0, recv: 0, bonus: 0, thrown: false, cont: false, free: !!free, freeX: free ? free.x : null, lockP: null, man: null, stallMax: 10,
     keep: { form: Object.assign({}, G.form), ai: Object.assign({}, G.ai), rnd: Math.random }, bench: null, nb: [5, 5], boost: false });
   Object.assign(G.form, { level: 'normal', allyLevel: 'normal', play: 'none', dplay: 'none', points: '99' });   // mêmes adversaires et coéquipiers pour tous
   for (const id of ['lobbyCard', 'stratCard', 'seriesCard', 'dailyCard', 'endlessCard']) $(id).style.display = 'none';
   $('overlay').classList.add('hidden'); G.menuShown = false;
   $('dailyBox').style.display = '';
-  newMatchStats(); dailySit(); resize();
+  newMatchStats(); dailySit(); dailyIntro(); resize();
 }
 // joueurs sur le terrain : nb = [ton équipe, l'adversaire] (défense : 3 contre 3, ou 3 contre 4) ; les autres sur le banc
 function dailyBench(nb) {
@@ -158,6 +159,7 @@ const dailyType = () => dailySitNow().type;
 // mise en place de l'épreuve en cours (ou rejouée : point encaissé en défense, point marqué en « garde le disque »)
 function dailySit() {
   const D = G.daily, s = D.sits[D.i], X0 = s.x ? DAILY_X[s.x] : {}, a = s.type === 'def' || s.type === 'oneone' ? 1 : 0, d = 1 - a;
+  const again = D.cont || D.goals > 0;
   dailyBench(s.type === 'def' ? X0.n || [3, 3] : [5, 5]);
   Math.random = dailyRng(D.n * 1009 + s.k * 101 + D.goals * 13 + (D.cont ? 977 : 0) + 7);   // le même hasard pour tout le monde, au départ
   G.form.level = X0.lvl || 'normal'; D.boost = !!X0.boost;    // adversaires de l'épreuve du jour (humans.js : aiLvl)
@@ -209,12 +211,31 @@ function dailySit() {
     D.lockP.x = D.man.x + dirOf(a) * 1.2; D.lockP.y = D.man.y;
   }
   holdDisc(h); visReset(); updateSelected();
-  if (!D.goals && !D.cont) { D.t = 0; D.pen = 0; D.turns = 0; D.passes = 0; D.recv = 0; }
+  if (!D.goals && !D.cont) { D.t = 0; D.pen = 0; D.turns = 0; D.passes = 0; D.recv = 0; D.bonus = 0; }
   D.lastH1 = h;
   D.cont = false; D.line = 0; D.x0 = h.x; D.gain = 0; D.thrown = false; D.lastH = h;
   const tag = D.sits.length > 1 ? `${D.i + 1}/${D.sits.length} · ` : '';
-  flash(tag + (s.x ? `${X0.icon} ${X0.name} !` : s.type === 'pass' ? 'Trouve la passe : regarde les coupes !' : s.type === 'att' ? `Marque ! (à ${s.d} m de l'en-but)` : D.goals ? 'On rejoue : défends !' : 'Défends : recule-les le moins possible'), true);
+  D.go = () => flash(tag + (s.x ? `${X0.icon} ${X0.name} !` : s.type === 'pass' ? 'Trouve la passe : regarde les coupes !' : s.type === 'att' ? `Marque ! (à ${s.d} m de l'en-but)` : D.goals ? 'On rejoue : défends !' : 'Défends : recule-les le moins possible'), true);
+  if (again) D.go();                                           // (point rejoué : on repart tout de suite ; sinon, dailyIntro attend le joueur)
   dailyHud();
+}
+// avant chaque épreuve : ce qu'il faut faire, et le joueur lance quand il est prêt (le jeu attend)
+const DAILY_DEF = { man: 'défense individuelle', zone: 'défense en zone', clam: 'défense « clam »' };
+function dailyIntro() {
+  const D = G.daily, s = dailySitNow(), X0 = s.x ? DAILY_X[s.x] : null;
+  G.phase = 'daily'; D.wait = 0; D.intro = true;
+  $('dIntroStep').textContent = D.free ? '🎲 Épreuve libre' : (D.sits.length > 1 ? `Épreuve ${D.i + 1} sur ${D.sits.length}` : `Défi #${D.n}`) + (s.x ? ' · l’épreuve du jour' : '');
+  $('dIntroName').textContent = `${dailyIcon(s)} ${dailyName(s)}`;
+  $('dIntroHow').innerHTML = X0 ? X0.how : DAILY_HOW[s.type];
+  const att = s.type !== 'def' && s.type !== 'oneone', w = G.wind && G.wind.kmh ? `vent ${Math.round(G.wind.kmh)} km/h` : 'pas de vent';
+  $('dIntroSit').textContent = [att ? `à ${s.d} m de l'en-but` : null, w, att ? 'en face : ' + (DAILY_DEF[s.def] || s.def) : null].filter(Boolean).join(' · ');
+  $('dailyIntro').style.display = ''; dailyHud();
+  setTimeout(() => { try { $('dIntroGo').focus(); } catch (e) { } }, 50);
+}
+function dailyIntroGo() {
+  const D = G.daily; if (!D || !D.intro) return;
+  D.intro = false; $('dailyIntro').style.display = 'none';
+  G.phase = 'play'; D.go(); dailyHud();
 }
 function dailyFrame(dt) {
   const D = G.daily; if (!D) return;
@@ -263,7 +284,7 @@ function dailyBoost(L) {
 function dailyPause(sec, fn) { const D = G.daily; G.phase = 'daily'; D.wait = sec; D.after = () => { G.phase = 'play'; fn(); }; }
 function dailyVal() {
   const D = G.daily, t = dailyType();
-  return t === 'pass' || t === 'huck' ? D.gain : t === 'att' ? D.t + D.pen : t === 'keep' ? Math.min(DAILY.KEEP, D.t) : t === 'passes' ? D.passes : t === 'oneone' ? D.recv + D.goals * 2 : D.line + D.goals * DAILY.GOAL;
+  return t === 'pass' || t === 'huck' ? D.gain : t === 'att' ? D.t + D.pen : t === 'keep' ? Math.min(DAILY.KEEP, D.t) + D.bonus : t === 'passes' ? D.passes + D.bonus : t === 'oneone' ? D.recv + D.goals * 2 : D.line + D.goals * DAILY.GOAL;
 }
 // ---------- les moments forts : le score en grand, le public, un ralenti sur une belle passe ----------
 const DAILY_PRAISE = { '🟩': ['Superbe !', 'Énorme !', 'Magnifique !'], '🟨': ['Pas mal !', 'Bien joué', 'Correct'], '🟥': ['Raté…', 'Aïe…', 'Ça arrive'] };
@@ -294,7 +315,7 @@ function dailyNext(msg) {
   const m = dailyMoment(type, v, s, msg);
   dailyHud();
   const slow = type === 'pass' && m === '🟩' ? dailyReplay(3.2) : 0;   // une belle passe : on la revoit au ralenti
-  dailyPause(2.4 + slow, () => { D.i++; D.goals = 0; G.dailyPop = null; if (D.i >= D.sits.length) dailyFinish(); else dailySit(); });
+  dailyPause(2.4 + slow, () => { D.i++; D.goals = 0; G.dailyPop = null; if (D.i >= D.sits.length) dailyFinish(); else { dailySit(); dailyIntro(); } });
 }
 // perte de disque (events.js : turnover, interception) — rend true si le défi s'en occupe
 function dailyTurn(x, y, msg) {
@@ -321,7 +342,9 @@ function dailyScored(t) {
   if (type === 'huck') { D.gain = s.d; dailyNext('Point ! 🚀'); return; }
   if (type === 'keep' || type === 'passes') {                  // garder le disque : on repart du départ, le compte continue
     if (type === 'passes') D.passes++;
-    D.cont = true; flash('Point ! On repart, ça continue', true); dailyHud();
+    const b = type === 'keep' ? DAILY.BKEEP : DAILY.BPASS; D.bonus += b;
+    D.cont = true; flash(`Point ! Bonus +${b}${type === 'keep' ? ' s' : ' passes'} · on repart, ça continue`, true); dailyHud();
+    try { if (typeof crowdSample !== 'function' || !crowdSample('cheer-short', { vol: 0.45 })) SOUNDS.cheer(); } catch (e) { }
     dailyPause(1.5, dailySit); return;
   }
   if (type === 'oneone' && G.scorer === D.man) D.recv++;      // (la réception dans l'en-but compte aussi)
@@ -335,7 +358,7 @@ function dailyRestore() {
   Math.random = D.keep.rnd;
   dailyBench([5, 5]);
   Object.assign(G.form, D.keep.form); Object.assign(G.ai, D.keep.ai);
-  G.daily = null; G.dailyPop = null; G.score = [0, 0];
+  G.daily = null; G.dailyPop = null; G.score = [0, 0]; $('dailyIntro').style.display = 'none';
   if (G.replay) stopReplay();
   $('dailyBox').style.display = 'none';
 }
@@ -366,8 +389,8 @@ function dailyHud() {
   const s = dailySitNow(), type = s.type, done = D.res.map(r => dailyMark(r.type, r.v, D.sits.find(q => q.k === r.k) || s)).join('');
   $('dailyStats').textContent = (D.sits.length > 1 ? `${D.i + 1}/${D.sits.length} ${done} · ` : '') + (type === 'pass' ? (D.thrown ? 'la passe vole…' : `stall ${Math.floor(G.stall)}`)
     : type === 'att' ? `⏱ ${D.t.toFixed(1)} s` + (D.pen ? ` + ${D.pen} s` : '')
-    : type === 'keep' ? `🔒 ${Math.min(DAILY.KEEP, D.t).toFixed(1)} s`
-    : type === 'passes' ? `🔁 ${D.passes} passe${D.passes > 1 ? 's' : ''}`
+    : type === 'keep' ? `🔒 ${Math.min(DAILY.KEEP, D.t).toFixed(1)} s` + (D.bonus ? ` + ${D.bonus} s` : '')
+    : type === 'passes' ? `🔁 ${D.passes} passe${D.passes > 1 ? 's' : ''}` + (D.bonus ? ` + ${D.bonus}` : '')
     : type === 'huck' ? `🚀 ${Math.round(D.gain)} m · passe ${Math.min(2, D.passes + 1)}/2`
     : type === 'oneone' ? `🧍 ${D.recv} réception${D.recv > 1 ? 's' : ''}` + (D.goals ? ` + ${D.goals * 2}` : '')
     : `📏 ${Math.round(D.line)} m` + (D.goals ? ` + ${D.goals * DAILY.GOAL} m` : '')) + (D.stallMax !== 10 ? ` · stall max ${D.stallMax}` : '');
@@ -527,6 +550,7 @@ function dailyHomeTxt() {
 if (typeof document !== 'undefined' && document.getElementById('dailyB')) {
   $('dailyB').addEventListener('click', () => { backToSolo(); showDaily(); });
   $('dailyQuit').addEventListener('click', dailyQuit);
+  $('dIntroGo').addEventListener('click', dailyIntroGo);
   $('dailyBack').addEventListener('click', () => { $('dailyCard').style.display = 'none'; showLobby(); });
   $('dailyTutoB').addEventListener('click', () => { $('dailyCard').style.display = 'none'; G.afterTuto = 'daily'; tutoStart('base'); });
 }

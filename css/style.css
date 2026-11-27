@@ -645,3 +645,5 @@ body.touch .bigbtn{font-size:17px}
 .oppAuto{display:block;margin:0 0 6px auto;width:auto;padding:5px 12px;font-size:13px;border-radius:14px;background:#0f1626;border:1px solid #334155;color:var(--text)}
 .oppAuto.on{border-color:#facc15;color:#facc15;cursor:default}
 
+#dailyIntro{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.45);padding:16px;z-index:9}
+#dailyIntro .card{max-width:440px;border:2px solid #facc15} #dailyIntro small{color:#facc15;font-weight:700;text-transform:uppercase;letter-spacing:.5px;font-size:12px}

@@ -863,16 +863,16 @@ export default async function (t, { quick }) {
   t.group('Défi du jour');
   // l'IA joue le défi à ta place (trouve la passe, attaque, défense, épreuve du jour) : 4 scores, retour à 5 contre 5
   const dlyRun = (n, only) => R(`(() => {
-    let res = null, sizes = []; const oF = dailyFinish; dailyFinish = function () { res = G.daily.res.slice(); oF(); };
+    let res = null, sizes = [], intros = 0; const oF = dailyFinish; dailyFinish = function () { res = G.daily.res.slice(); oF(); };
     const oS = dailySit; dailySit = function () { oS(); sizes.push(players.length); };
     dailyStart(${n}, ${only === undefined}, ${only === undefined ? 'undefined' : only}); G.humans = []; syncMe();
     let f = 0; while (G.daily && f < 60 * 600) {
-      if (G.phase === 'play') { G.gt += 1 / 60 * SPEEDS[G.form.speed]; update(1 / 60 * SPEEDS[G.form.speed]); } G.time += 1 / 60; fxUpdate(1 / 60); replayTick(1 / 60); dailyFrame(1 / 60); f++; }
+      if (G.phase === 'play') { G.gt += 1 / 60 * SPEEDS[G.form.speed]; update(1 / 60 * SPEEDS[G.form.speed]); } G.time += 1 / 60; fxUpdate(1 / 60); replayTick(1 / 60); dailyFrame(1 / 60); if (G.daily && G.daily.intro) { intros++; dailyIntroGo(); } f++; }
     dailyFinish = oF; dailySit = oS; if (G.daily) dailyRestore();
-    return { res: res && res.map(r => (r.x || r.type) + ':' + r.v), sizes, back: players.length, t0: TEAMS[0].length, saved: !!dailyDone(${n}), speed: G.form.speed, mins: +(f / 3600).toFixed(1) };
+    return { res: res && res.map(r => (r.x || r.type) + ':' + r.v), sizes, back: players.length, t0: TEAMS[0].length, saved: !!dailyDone(${n}), speed: G.form.speed, intros, mins: +(f / 3600).toFixed(1) };
   })()`);
   const d1 = dlyRun(1), rr = d1.res || [];
-  t.ok(rr.length === 4 && /^pass:/.test(rr[0]) && /^att:\d/.test(rr[1]) && /^def:/.test(rr[2]) && /^keep:\d/.test(rr[3]) && +rr[1].split(':')[1] > 0, 'défi du jour : trouve la passe, attaque, défense, épreuve du jour (garde le disque), chacun son score', d1);
+  t.ok(rr.length === 4 && /^pass:/.test(rr[0]) && /^att:\d/.test(rr[1]) && /^def:/.test(rr[2]) && /^keep:\d/.test(rr[3]) && +rr[1].split(':')[1] > 0 && d1.intros === 4, 'défi du jour : un écran d’explication avant chaque épreuve (le jeu attend) ; trouve la passe, attaque, défense, épreuve du jour (garde le disque), chacun son score', d1);
   t.ok(d1.sizes[0] === 10 && d1.sizes[1] === 10 && d1.sizes[2] === 6 && d1.sizes.slice(-1)[0] === 10, 'passe et attaque à 5 contre 5, défense à 3 contre 3, épreuve du jour à 5 contre 5', d1.sizes);
   t.ok(d1.back === 10 && d1.t0 === 5 && d1.saved && d1.speed !== 'daily', 'après le défi : retour à 5 contre 5 et aux réglages, le score du jour est gardé', d1);
   // les épreuves du jour : chacune se joue seule (entraînement), avec son score
@@ -880,6 +880,11 @@ export default async function (t, { quick }) {
   for (let n = 2; n <= 12; n++) { const x = R(`dailyGen(${n}).sits[3].x`), r = dlyRun(n, 3); xs[x] = r.res && r.res[0]; xs[x + 'Size'] = r.sizes[0]; }
   t.ok(/^huck:\d/.test(xs.huck) && /^slow:\d/.test(xs.slow) && +xs.slow.split(':')[1] > 0 && /^passes:\d/.test(xs.passes) && /^outnum:\d/.test(xs.outnum) && xs.outnumSize === 7 && /^fast:\d/.test(xs.fast), 'épreuves du jour : huck, ralenti, passes, défense à 3 contre 4, accéléré — chacune jouée seule, avec son score', xs);
   t.ok(['high', 'nocurve', 'stall5', 'crazy'].every(k => new RegExp('^' + k + ':\\d').test(xs[k]) && +xs[k].split(':')[1] > 0) && /^oneone:\d/.test(xs.oneone) && xs.oneoneSize === 10, 'épreuves du jour : passes hautes, sans courbe, stall court, vent fou, 1 contre 1', xs);
+  const kb = R(`(() => { const defs = []; for (let n = 1; n < 40; n++) for (const s of dailyGen(n).sits) if (s.type === 'keep' || s.type === 'passes') defs.push(s.def);
+    const o = { man: defs.length > 0 && defs.every(d => d === 'man') };
+    for (const x of ['keep', 'passes']) { dailyFree(x); const D = G.daily; o[x + 'Intro'] = D.intro && G.phase === 'daily'; dailyIntroGo(); D.t = 20; D.passes = 4; const v0 = dailyVal(); dailyScored(0); o[x] = +(dailyVal() - v0).toFixed(1); dailyQuit(); }
+    return o; })()`);
+  t.ok(kb.man && kb.keepIntro && kb.passesIntro && kb.keep === 15 && kb.passes === 6, 'garde le disque / passes : défense individuelle (pas de zone), bonus quand tu marques (+15 s, +5 passes et la passe dans l’en-but)', kb);
   const fr = R(`(() => { const before = JSON.stringify(localStorage); dailyFree('oneone'); const D = G.daily, o = { free: D.free, n: D.sits.length, x: D.sits[0].x, lock: !!D.lockP && D.lockP.team === 0, man: !!D.man && D.man.team === 1, stall: (dailyFree('stall5'), G.daily.stallMax) };
     dailyQuit(); o.left = !G.daily; o.same = JSON.stringify(localStorage) === before; return o; })()`);
   t.ok(fr.free && fr.n === 1 && fr.x === 'oneone' && fr.lock && fr.man && fr.stall === 5 && fr.left && fr.same, 'épreuve libre : une épreuve au choix, situation au hasard, rien de gardé ni de partagé', fr);
